@@ -10,21 +10,22 @@ Tablero de outreach de STRIKD: registro de meets, journey del pitch a publicado,
 | `claude-shim.js` | Login de STRIKD + conexión a Supabase (base de datos, tiempo real, archivos) |
 | `index.html` | Se genera con `./build.sh` a partir de `src/board.html` |
 | `api/config.js` | Le pasa al navegador la URL y la llave pública de Supabase |
-| `api/invite.js` | El Head invita personas por correo con su rol |
+| `api/invite.js` | El Head da de alta personas con su rol |
+| `api/setup.js` | Configuración inicial (tablas, datos y cuenta del Head) |
 | `api/blob/[id].js` | Sirve skeletons y PDFs (`/_blob/<id>`) |
 | `supabase/schema.sql` | Tablas, permisos por rol (RLS), tiempo real y archivos |
 | `supabase/seed.sql` | Los datos actuales del tablero (incluye datos de ejemplo) |
 
-## Puesta en marcha (una sola vez)
+## Puesta en marcha
 
-1. **Base de datos:** en Supabase → *SQL Editor* → pega y corre `supabase/schema.sql`. Luego pega y corre `supabase/seed.sql`.
-2. **Tu usuario de Head:** Supabase → *Authentication* → *Users* → *Add user* → *Create new user*, con tu correo y una contraseña, marcando *Auto Confirm User*. El primer usuario que se crea queda como **Head**.
-3. **Links de correo:** Supabase → *Authentication* → *URL Configuration*:
-   - *Site URL*: `https://growth.strikd.ai`
-   - *Redirect URLs*: agrega `https://growth.strikd.ai` y `https://*.vercel.app`
-4. **Cerrar registro libre:** Supabase → *Authentication* → *Providers / Sign In* → apaga *Allow new users to sign up*. Así solo entra quien tú invites.
-5. **Vercel:** las variables `SUPABASE_URL`, `SUPABASE_ANON_KEY` (o `NEXT_PUBLIC_…`) y `SUPABASE_SERVICE_ROLE_KEY` las pone la integración de Supabase. Redeploy después de conectarla.
-6. Entra a growth.strikd.ai con tu correo → *Organigrama* → *Accesos* → invita a tu equipo.
+Ya no hay que tocar Supabase a mano:
+
+1. Abre growth.strikd.ai. La primera vez sale **"Configurar STRIKD Growth"**: pon tu nombre, correo y contraseña. Eso crea las tablas, carga los datos y te deja como **Head**.
+2. Entra → *Organigrama* → *Accesos* → da de alta a tu equipo. A cada persona se le crea una contraseña temporal que le mandas tú; al entrar la cambia con "Cambiar contraseña".
+
+Necesita estas variables en Vercel (la integración de Supabase las pone sola): `SUPABASE_URL`, `SUPABASE_ANON_KEY` (o `NEXT_PUBLIC_…`), `SUPABASE_SERVICE_ROLE_KEY`, `POSTGRES_URL`.
+
+Opcional, para que funcione "Olvidé mi contraseña": Supabase → *Authentication* → *URL Configuration* → *Site URL* = `https://growth.strikd.ai`.
 
 ## Roles
 

@@ -390,7 +390,7 @@ a.btn.ghost{background:transparent;color:#fff;border-color:var(--line2)}
 
 .acc-form{display:flex;gap:6px;flex-wrap:wrap}.acc-form input,.acc-form select{font:inherit;font-size:13px;background:var(--bg);color:var(--fg);border:1px solid var(--line2);border-radius:8px;padding:6px 8px;flex:1;min-width:140px}
 .acc-list{display:grid;gap:4px;margin-top:8px}.acc-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)}.acc-row.pend{opacity:.7}
-.acc h3{margin:0;font-size:14px}.okmsg{color:var(--ok)}
+.acc h3{margin:0;font-size:14px}.acc-cred{display:grid;gap:4px;margin-top:6px}.acc-cred textarea{width:100%;font:inherit;font-size:12.5px;background:var(--bg);color:var(--fg);border:1px solid var(--line2);border-radius:8px;padding:8px}.okmsg{color:var(--ok)}
 .org-set{margin-top:22px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:8px;max-width:520px}
 .gc{background:var(--surface);border:1px solid var(--line2);border-radius:16px;padding:14px 16px;display:grid;gap:8px;margin-bottom:16px}
 .gc-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}.gc-h h3{margin:0;font-size:15px}.gc-h .sub{margin:2px 0 0}
@@ -3226,11 +3226,12 @@ function renderAccess(){
   const RL = {head:"Head", manager:"Creator Partnerships Manager", am:"Account Manager", none:"Sin acceso"};
   const users = (ACC.list && ACC.list.users) || [], inv = (ACC.list && ACC.list.invites) || [];
   box.innerHTML = `<h3>Accesos</h3>
-    <p class="mut small">Invita a tu equipo por correo. Les llega un link para crear su contraseña y entran con el rol que elijas.</p>
+    <p class="mut small">Da de alta a tu equipo: se crea su cuenta con una contraseña temporal que les mandas tú. Al entrar la pueden cambiar.</p>
     <div class="acc-form"><input id="accEmail" type="email" placeholder="correo@ejemplo.com"><input id="accName" placeholder="Nombre">
       <select id="accRole"><option value="am">Account Manager</option><option value="manager">Creator Partnerships Manager</option></select>
-      <button type="button" class="btn small primary" id="accGo"${ACC.busy?" disabled":""}>${ACC.busy?"Enviando…":"Invitar"}</button></div>
+      <button type="button" class="btn small primary" id="accGo"${ACC.busy?" disabled":""}>${ACC.busy?"Creando…":"Dar de alta"}</button></div>
     ${ACC.msg ? `<p class="small ${ACC.ok?"okmsg":"err"}">${esc(ACC.msg)}</p>` : ""}
+    ${ACC.cred ? `<div class="acc-cred"><b>Mándale esto por WhatsApp:</b><textarea rows="4" readonly>${esc(ACC.cred)}</textarea></div>` : ""}
     <div class="acc-list">${users.map(u => `<div class="acc-row"><b>${esc(u.name||u.email)}</b><span class="mut small">${esc(u.email)}</span><span class="chip ${u.role==="none"?"muted":"info"}">${esc(RL[u.role]||u.role)}</span></div>`).join("")}
       ${inv.map(i => `<div class="acc-row pend"><b>${esc(i.name||i.email)}</b><span class="mut small">${esc(i.email)}</span><span class="chip muted">Invitación enviada · ${esc(RL[i.role])}</span></div>`).join("")}</div>`;
 }
@@ -3239,7 +3240,9 @@ document.addEventListener("click", async e => {
   const email = $("accEmail").value.trim(), name = $("accName").value.trim(), role = $("accRole").value;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ ACC.msg = "Revisa el correo."; ACC.ok = false; return schedule(); }
   ACC.busy = true; ACC.msg = ""; schedule();
-  try{ const r = await window.STRIKD_INVITE(email, name, role); ACC.ok = true; ACC.msg = r.already ? `${email} ya tenía cuenta; se le asignó el rol.` : `Listo: le llegó la invitación a ${email}.`; ACC.list = null; ACC.loading = false; }
+  try{ const r = await window.STRIKD_INVITE(email, name, role); ACC.ok = true; ACC.msg = r.already ? `${email} ya tenía cuenta; se le asignó el rol.` : `Listo: ${email} ya tiene cuenta.`;
+    ACC.cred = r.tempPassword ? `¡Hola${name?" "+name.split(" ")[0]:""}! Ya tienes acceso a STRIKD Growth.\nEntra a ${location.origin}\nCorreo: ${email}\nContraseña temporal: ${r.tempPassword}\nAl entrar, cámbiala en "Cambiar contraseña".` : "";
+    ACC.list = null; ACC.loading = false; }
   catch(ex){ ACC.ok = false; ACC.msg = ex.message || "No se pudo invitar."; }
   ACC.busy = false; schedule();
 });

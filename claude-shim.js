@@ -13,7 +13,11 @@
     session = data.session;
     const hash = location.hash || "";
     if (session && /type=(invite|recovery)/.test(hash)) await passwordScreen(hash.includes("invite") ? "Bienvenido a STRIKD Growth" : "Nueva contraseña");
-    if (!session) session = await loginScreen();
+    if (!session){
+      const st = await fetch("/api/setup").then(r => r.json()).catch(() => ({}));
+      if (st.needsSetup) await setupScreen();
+      session = await loginScreen();
+    }
     const r = await sb.from("app_users").select("*").eq("id", session.user.id).maybeSingle();
     me = r.data || {id:session.user.id, email:session.user.email, role:"none"};
     if (me.role === "none" || me.active === false) { blockScreen(me.email); throw new Error("sin acceso"); }
@@ -53,6 +57,23 @@
       };
     });
   }
+  function setupScreen(){
+    return new Promise(resolve => {
+      const el = shell(`<h2>Configurar STRIKD Growth</h2><p class="sg-sub">Primera vez: crea tu cuenta de Head. Esto prepara la base de datos y carga tus datos.</p>
+        <label>Tu nombre<input id="suName" autocomplete="name"></label>
+        <label>Correo<input id="suEmail" type="email" autocomplete="email"></label>
+        <label>Contraseña<input id="suPass" type="password" autocomplete="new-password"></label>
+        <p class="sg-err" id="sgErr"></p><button id="sgGo" class="sg-btn">Configurar</button>`);
+      el.querySelector("#sgGo").onclick = async () => {
+        const b = el.querySelector("#sgGo"), e = el.querySelector("#sgErr");
+        b.disabled = true; b.textContent = "Configurando… (unos segundos)"; e.textContent = "";
+        const r = await fetch("/api/setup", {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({name:el.querySelector("#suName").value, email:el.querySelector("#suEmail").value, password:el.querySelector("#suPass").value})});
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok){ b.disabled = false; b.textContent = "Configurar"; e.textContent = j.error || "No se pudo configurar."; return; }
+        el.remove(); resolve();
+      };
+    });
+  }
   function passwordScreen(title){
     return new Promise(resolve => {
       const el = shell(`<h2>${title}</h2><p class="sg-sub">Crea tu contraseña para entrar.</p>
@@ -78,7 +99,9 @@
     const acts = document.querySelector(".tabrow") || document.body;
     const b = document.createElement("button"); b.className = "sg-out"; b.type = "button";
     b.textContent = `${me.name || me.email} · Salir`; b.onclick = () => sb.auth.signOut();
-    acts.appendChild(b);
+    const c = document.createElement("button"); c.className = "sg-out"; c.type = "button"; c.textContent = "Cambiar contraseña";
+    c.onclick = () => passwordScreen("Cambiar contraseña");
+    acts.appendChild(c); acts.appendChild(b);
   }
 
   /* ---------- db: colecciones y documentos ---------- */
