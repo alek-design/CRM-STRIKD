@@ -1,0 +1,13 @@
+{
+  "rewrites": [
+    {
+      "source": "/_blob/:id",
+      "destination": "/api/blob/:id"
+    }
+  ],
+  "functions": {
+    "api/setup.js": {
+      "includeFiles": "supabase/**"
+    }
+  }
+}

@@ -1,24 +1,44 @@
-# CRM STRIKD — Growth
+# STRIKD Growth · growth.strikd.ai
 
 Tablero de outreach de STRIKD: registro de meets, journey del pitch a publicado, leaderboard, embudo, Lista Mich, canal de WhatsApp, mensajes y plantillas A/B.
 
-## Estado actual
+## Cómo está armado
 
-`index.html` es la versión que hoy corre como artifact en claude.ai. Depende del runtime de claude.ai (`window.claude.use(...)`) para:
+| Archivo | Qué es |
+|---|---|
+| `src/board.html` | El tablero (la misma pantalla que corría en claude.ai) |
+| `claude-shim.js` | Login de STRIKD + conexión a Supabase (base de datos, tiempo real, archivos) |
+| `index.html` | Se genera con `./build.sh` a partir de `src/board.html` |
+| `api/config.js` | Le pasa al navegador la URL y la llave pública de Supabase |
+| `api/invite.js` | El Head da de alta personas con su rol |
+| `api/setup.js` | Configuración inicial (tablas, datos y cuenta del Head) |
+| `api/blob/[id].js` | Sirve skeletons y PDFs (`/_blob/<id>`) |
+| `supabase/schema.sql` | Tablas, permisos por rol (RLS), tiempo real y archivos |
+| `supabase/seed.sql` | Los datos actuales del tablero (incluye datos de ejemplo) |
 
-- **Login y roles** (`user`): Head, Creator Partnerships Manager, Account Manager
-- **Base de datos** (`db`): meets, validaciones, puntos, roles, Lista Mich, WhatsApp, plantillas
-- **Archivos** (`assets`): skeletons y PDFs de plantillas
-- **Google Calendar** (`mcp`) e **IA para sugerir respuestas** (`sample`)
+## Puesta en marcha
 
-Fuera de claude.ai (por ejemplo en growth.strikd.ai) la página carga pero muestra "Abre esta página con tu sesión de claude.ai", porque esas piezas no existen ahí.
+Ya no hay que tocar Supabase a mano:
 
-## Para que funcione en growth.strikd.ai
+1. Abre growth.strikd.ai. La primera vez sale **"Configurar STRIKD Growth"**: pon tu nombre, correo y contraseña. Eso crea las tablas, carga los datos y te deja como **Head**.
+2. Entra → *Organigrama* → *Accesos* → da de alta a tu equipo. A cada persona se le crea una contraseña temporal que le mandas tú; al entrar la cambia con "Cambiar contraseña".
 
-Reemplazar la capa `claude.use(...)` por un backend propio:
+Necesita estas variables en Vercel (la integración de Supabase las pone sola): `SUPABASE_URL`, `SUPABASE_ANON_KEY` (o `NEXT_PUBLIC_…`), `SUPABASE_SERVICE_ROLE_KEY`, `POSTGRES_URL`.
 
-1. **Supabase**: Auth (invitaciones por correo y roles), Postgres con RLS y Storage.
-2. **Funciones de servidor** (Vercel u otro): Google Calendar con OAuth de STRIKD e integración con ISKRA (`ISKRA_API_KEY` como variable de entorno, nunca en el código).
-3. Migrar los datos actuales del artifact a Postgres.
+Opcional, para que funcione "Olvidé mi contraseña": Supabase → *Authentication* → *URL Configuration* → *Site URL* = `https://growth.strikd.ai`.
+
+## Roles
+
+- **Head**: ve todo, invita, cambia roles y reglas.
+- **Creator Partnerships Manager**: ve a todo el equipo, valida, pitchea y lleva a publicado.
+- **Account Manager**: solo sus prospectos; registra meets, confirma y propone influencers.
+
+Los permisos se aplican en la base de datos (RLS), no solo en la pantalla.
+
+## Pendiente (segunda parte)
+
+- Google Calendar con el OAuth de STRIKD (invitaciones con Meet).
+- Sugerencias de respuesta con IA (bandeja de Mensajes).
+- ISKRA: campañas, conversaciones y envío (`ISKRA_API_KEY` como variable de Vercel).
 
 Nunca subas llaves ni `.env` a este repositorio.
