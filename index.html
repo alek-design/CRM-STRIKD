@@ -1,5 +1,9 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="stylesheet" href="/auth.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/claude-shim.js"></script>
+</head><body>
 <title>Tablero de Meets</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,800;125,900&display=swap">
@@ -390,6 +394,9 @@ a.btn.ghost{background:transparent;color:#fff;border-color:var(--line2)}
 .vip-st{font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;border:1px solid #4a3a0a;color:#facc15;white-space:nowrap}
 .vip-st.st-interesado,.vip-st.st-agendo{color:var(--ok);border-color:#1f5135}.vip-st.st-descartado{color:var(--muted);border-color:var(--line2)}
 
+.acc-form{display:flex;gap:6px;flex-wrap:wrap}.acc-form input,.acc-form select{font:inherit;font-size:13px;background:var(--bg);color:var(--fg);border:1px solid var(--line2);border-radius:8px;padding:6px 8px;flex:1;min-width:140px}
+.acc-list{display:grid;gap:4px;margin-top:8px}.acc-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)}.acc-row.pend{opacity:.7}
+.acc h3{margin:0;font-size:14px}.okmsg{color:var(--ok)}
 .org-set{margin-top:22px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:8px;max-width:520px}
 .gc{background:var(--surface);border:1px solid var(--line2);border-radius:16px;padding:14px 16px;display:grid;gap:8px;margin-bottom:16px}
 .gc-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}.gc-h h3{margin:0;font-size:15px}.gc-h .sub{margin:2px 0 0}
@@ -788,6 +795,7 @@ label.f em{color:var(--bad);font-style:normal}
   <section class="view" id="view-org" hidden>
     <div class="row"><div><h2>Organigrama</h2><p class="sub">Quién lleva qué y quién ve a quién.</p></div></div>
     <div id="orgBox"></div>
+    <div class="org-set acc" id="accessBox" hidden></div>
     <div class="org-set">
       <label class="f">Email que recibe las invitaciones de pitch (Partnerships Manager)<input id="inviteEmail" type="email" placeholder="admin@tuempresa.com" autocomplete="off"></label>
       <div class="row"><span class="mono" id="invSaved"></span><div class="spacer"></div><button class="btn small primary" id="invSave">Guardar</button></div>
@@ -948,7 +956,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = Object.keys(S.team).map(id=>`<option value="${id}">${esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -3210,6 +3218,36 @@ $("inboxBox").addEventListener("click", async e => {
       delete INB.draftOut[c.k]; INB.res = null; INB.err = ""; schedule();
     }catch(ex){ b.disabled = false; INB.err = "No se guardó, reintenta."; schedule(); }
   }
+});
+
+/* ---------- Accesos (solo en growth.strikd.ai: invitaciones con login propio) ---------- */
+let ACC = {list:null, msg:"", busy:false};
+async function loadAccess(){ if (!window.STRIKD_USERS) return; try{ ACC.list = await window.STRIKD_USERS(); }catch(e){ ACC.list = {users:[], invites:[]}; } schedule(); }
+function renderAccess(){
+  const box = $("accessBox"); if (!box) return;
+  if (!window.STRIKD_INVITE || !S.isOwner){ box.hidden = true; return; }
+  box.hidden = false;
+  if (busyIn(box)) return;
+  if (!ACC.list && !ACC.loading){ ACC.loading = true; loadAccess(); }
+  const RL = {head:"Head", manager:"Creator Partnerships Manager", am:"Account Manager", none:"Sin acceso"};
+  const users = (ACC.list && ACC.list.users) || [], inv = (ACC.list && ACC.list.invites) || [];
+  box.innerHTML = `<h3>Accesos</h3>
+    <p class="mut small">Invita a tu equipo por correo. Les llega un link para crear su contraseña y entran con el rol que elijas.</p>
+    <div class="acc-form"><input id="accEmail" type="email" placeholder="correo@ejemplo.com"><input id="accName" placeholder="Nombre">
+      <select id="accRole"><option value="am">Account Manager</option><option value="manager">Creator Partnerships Manager</option></select>
+      <button type="button" class="btn small primary" id="accGo"${ACC.busy?" disabled":""}>${ACC.busy?"Enviando…":"Invitar"}</button></div>
+    ${ACC.msg ? `<p class="small ${ACC.ok?"okmsg":"err"}">${esc(ACC.msg)}</p>` : ""}
+    <div class="acc-list">${users.map(u => `<div class="acc-row"><b>${esc(u.name||u.email)}</b><span class="mut small">${esc(u.email)}</span><span class="chip ${u.role==="none"?"muted":"info"}">${esc(RL[u.role]||u.role)}</span></div>`).join("")}
+      ${inv.map(i => `<div class="acc-row pend"><b>${esc(i.name||i.email)}</b><span class="mut small">${esc(i.email)}</span><span class="chip muted">Invitación enviada · ${esc(RL[i.role])}</span></div>`).join("")}</div>`;
+}
+document.addEventListener("click", async e => {
+  if (!e.target.closest("#accGo")) return;
+  const email = $("accEmail").value.trim(), name = $("accName").value.trim(), role = $("accRole").value;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ ACC.msg = "Revisa el correo."; ACC.ok = false; return schedule(); }
+  ACC.busy = true; ACC.msg = ""; schedule();
+  try{ const r = await window.STRIKD_INVITE(email, name, role); ACC.ok = true; ACC.msg = r.already ? `${email} ya tenía cuenta; se le asignó el rol.` : `Listo: le llegó la invitación a ${email}.`; ACC.list = null; ACC.loading = false; }
+  catch(ex){ ACC.ok = false; ACC.msg = ex.message || "No se pudo invitar."; }
+  ACC.busy = false; schedule();
 });
 
 /* ---------- Embudo por manager ---------- */
