@@ -2498,7 +2498,7 @@ function applyRole(saved){
   const set = (id, show) => { const el = $(id); if (el) el.hidden = !show; };
   if (!S.viewAs){
     ["tabFlow","tabAgenda","tabFunnel","tabVip","tabWa"].forEach(id => set(id, lead));
-    set("adminActs", lead); set("tabMine", !lead); set("tabPerf", !lead);
+    set("adminActs", lead); set("viewAsBtn", S.isOwner); set("tabMine", !lead); set("tabPerf", !lead);
   }
   $("tabOrg").hidden = !S.isOwner || !!S.viewAs;
   $("mgrNeedsEdit").hidden = !(roleOf(S.uid)==="manager" && !lead && !S.isOwner);
@@ -3324,7 +3324,7 @@ $("funCanal").addEventListener("change", e => { e.target.blur(); schedule(); });
 /* ---------- user view (admin preview) ---------- */
 function setFormEnabled(on){ $("meetForm").querySelectorAll("input,select,textarea,button").forEach(el=>el.disabled=!on); }
 function enterViewAs(uid){
-  if (!uid) return;
+  if (!uid || !S.isOwner) return; // solo el Head puede usar la Vista de usuario
   S.viewAs = uid; resetForm(); setFormEnabled(true);
   $("viewAsBar").hidden = false; $("adminActs").hidden = true;
   $("tabAdmin").hidden = true; $("tabFlow").hidden = true; $("tabAgenda").hidden = true; $("tabFunnel").hidden = true; $("tabVip").hidden = true; $("tabWa").hidden = true; $("tabMine").hidden = false; $("tabPerf").hidden = false; $("tabOrg").hidden = true;
