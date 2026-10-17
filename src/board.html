@@ -850,8 +850,8 @@ label.f em{color:var(--bad);font-style:normal}
 
   <section class="view" id="view-wa" hidden>
     <div class="subnav" role="tablist" aria-label="Resultados"><button type="button" data-go="funnel">Embudo y leaderboard</button><button type="button" data-go="wa">WhatsApp outreach</button></div>
-    <div class="row"><div><h2><span class="wa-b">WA</span> WhatsApp outreach</h2><p class="sub">Campañas masivas con su embudo, y los interesados que pasan al equipo para agendar meet. Al conectar ISKRA, campañas e interesados se llenan solos.</p></div><div class="spacer"></div>
-      <select class="inline" id="waPeriod" aria-label="Periodo"><option value="1">Esta semana</option><option value="4" selected>Últimas 4 semanas</option><option value="10">Últimas 10 semanas</option><option value="all">Todo</option></select></div>
+    <div class="row"><div><h2><span class="wa-b">WA</span> WhatsApp outreach</h2><p class="sub">Envíos, respuestas y campañas salen de ISKRA; los chats se reparten solos al equipo en Mensajes.</p></div><div class="spacer"></div>
+      <select class="inline" id="waPeriod" aria-label="Periodo" hidden><option value="1">Esta semana</option><option value="4" selected>Últimas 4 semanas</option><option value="10">Últimas 10 semanas</option><option value="all">Todo</option></select></div>
     <div id="waBox"></div>
   </section>
 
@@ -976,7 +976,7 @@ function showTab(t){
   if (t==="admin" || t==="hist" || t==="rules" || (t==="org" && !S.isOwner)) t = S.tab = "board";
   ["board","mine","msgs","flow","agenda","funnel","vip","wa","perf","org","hist","rules"].forEach(v => $("view-"+v).hidden = v!==t);
   try{ localStorage.setItem("meets_tab", t); }catch(e){}
-  if (t==="msgs") schedule();
+  if (t==="msgs" || t==="wa" || t==="mine") schedule();
 }
 
 try{ $("onlyToday").checked = localStorage.getItem("meets_today")==="1"; }catch(e){}
@@ -2529,7 +2529,9 @@ function renderPlan(){
       : `<button type="button" class="pl-item ${state}${sel===key?" sel":""}" data-pick="${key}">${inner}</button>${expand(key, e.uid, e.id, e.m)}`;
   });
   if (!nowPlaced && evs.length) line += nowMark;
-  const waToday = admin ? [] : myWaLeadList();
+  const waToday = [];
+  if (iskFn() && !S.viewAs && Date.now() - ISK.at > 60e3 && !ISK.loading) iskLoad(true);
+  const me0 = meId(), iskOpen = ISK.convs.filter(c => c.lastDir==="in" && (admin ? (c.owner===me0 || c.esc || !c.owner) : c.owner===me0)).length;
   const PL_LIM = 5, plAll = MORE.plan || tks.length <= PL_LIM;
   const todo = (plAll ? tks : tks.slice(0, PL_LIM)).map(t => {
     const d = dueInfo(t.due, now), key = `tk|${t.uid}__${t.id}`;
@@ -2539,7 +2541,8 @@ function renderPlan(){
       <span class="sema ${d.cls}"><i></i>${t.due < now ? esc(d.txt) : `Antes de ${hm(t.due)}`}</span></button>${expand(key, t.uid, t.id, t.m)}`;
   }).join("") + (tks.length > PL_LIM ? `<button type="button" class="more" data-plmore="1">${MORE.plan ? "Ver menos" : `Ver los ${tks.length}`}</button>` : "")
     + waToday.slice(0, 5).map(([id,l]) => { const d = dueInfo((l.assignedAt||0)+24*HR, now); return `<button type="button" class="pl-item task ${d.cls}" data-gowa="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Agenda el meet con ${esc(l.name)}</b><small>Interesado de WhatsApp</small></span><span class="sema ${d.cls}"><i></i>${l.assignedAt+24*HR < now ? esc(d.txt) : `Antes de ${hm(l.assignedAt+24*HR)}`}</span></button>`; }).join("")
-    + (waToday.length > 5 ? `<button type="button" class="more" data-gowa="1">+${waToday.length-5} interesados de WhatsApp</button>` : "");
+    + (waToday.length > 5 ? `<button type="button" class="more" data-gowa="1">+${waToday.length-5} interesados de WhatsApp</button>` : "")
+    + (iskOpen ? `<button type="button" class="pl-item task soon" data-gomsgs="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Tienes ${iskOpen} chat${iskOpen===1?"":"s"} de WhatsApp sin responder</b><small>Contéstalos en Mensajes</small></span><span class="sema soon"><i></i>Hoy</span></button>` : "");
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
   const late = tks.filter(t => t.due < now).length;
   box.innerHTML = `<section class="plan">
@@ -2552,6 +2555,7 @@ function renderPlan(){
   </section>`;
 }
 $("dayPlan").addEventListener("click", e => {
+  if (e.target.closest("[data-gomsgs]")){ MSEG.v = "isk"; showTab("msgs"); return; }
   if (e.target.closest("[data-gowa]")){ showTab("mine"); setTimeout(() => $("myWaLeads").scrollIntoView({behavior:"smooth", block:"start"}), 60); return; }
   if (e.target.closest("[data-plpast]")){ MORE.planPast = !MORE.planPast; schedule(); return; }
   if (e.target.closest("[data-plmore]")){ MORE.plan = !MORE.plan; schedule(); return; }
@@ -2960,7 +2964,49 @@ const WAF = {};
 function waPeriodWeeks(){ const v = $("waPeriod").value || "4"; const now = Date.now(); return v==="all" ? null : Array.from({length:Number(v)}, (_,i) => weekKey(now - i*7*DAY)); }
 function waAllLeads(){ const out = []; Object.entries(S.waLeads).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,l]) => out.push([u,id,l]))); return out; }
 function waMeets(){ const out = []; Object.entries(S.all).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,m]) => { if (canalOf(m)==="whatsapp") out.push([u,id,m]); })); return out; }
+const WAS = {data:null, at:0, loading:false, err:""};
+const WAS_DEMO = {summary:{sent:5150, delivered:4980, replies:727, opportunities:151, meetings:9, deals_won:2},
+  campaigns:{data:[{name:"Nutriólogos MTY · mensaje A", sent:1980, delivered:1930, replies:290, meetings:4, cost:1250},{name:"Entrenadores GDL · mensaje B", sent:1720, delivered:1660, replies:241, meetings:3, cost:1080},{name:"Nutriólogos CDMX · mensaje A", sent:1450, delivered:1390, replies:196, meetings:2, cost:910}]}};
+const WAS_L = {sent:"Enviados", delivered:"Entregados", replies:"Respondieron", replied:"Respondieron", opportunities:"Oportunidades", interested:"Interesados", meetings:"Meets en ISKRA", deals_won:"Ganados", won:"Ganados", cost:"Costo", spend:"Costo", name:"Campaña", campaign:"Campaña", campaign_name:"Campaña"};
+async function wasLoad(){
+  if (WAS.loading || (WAS.data && Date.now() - WAS.at < 120e3)) return;
+  const fn = iskFn(); if (!fn) return;
+  if (fn===iskMock){ WAS.data = WAS_DEMO; WAS.at = Date.now(); return; }
+  WAS.loading = true;
+  try{ const j = await fn("stats", {}); WAS.data = j.data || {}; WAS.err = ""; WAS.at = Date.now(); }
+  catch(e){ WAS.err = e.message; }
+  finally{ WAS.loading = false; schedule(); }
+}
+const numKeys = o => Object.entries(o||{}).filter(([k,v]) => typeof v==="number" || (typeof v==="string" && /^\d+(\.\d+)?$/.test(v)));
 function renderWa(){
+  const box = $("waBox"); if (!box || !adminMode() || busyIn($("view-wa"))) return;
+  if (S.tab==="wa") wasLoad();
+  const demo = iskFn()===iskMock, D = WAS.data || {};
+  const sumObj = D.summary && (D.summary.data && !Array.isArray(D.summary.data) ? D.summary.data : D.summary) || {};
+  const kpis = numKeys(sumObj).slice(0, 8);
+  const camps = iskArr(D.campaigns || []);
+  const cols = camps.length ? [...new Set(camps.flatMap(c => Object.keys(c)))].filter(k => k!=="id" && !/_id$/.test(k)).slice(0, 8) : [];
+  const nameK = cols.find(k => /name|campaign/i.test(k));
+  const meets = waMeets(), tom = meets.filter(([,id]) => statusOf(id)==="attended").length, pub = meets.filter(([,,m]) => m.flow && m.flow.launchedAt).length;
+  const reps = Number(sumObj.replies || sumObj.replied || 0);
+  const pc = (a,b) => b ? Math.round(a/b*100)+"%" : "—";
+  const st = [["Respondieron en WhatsApp", reps, null], ["Meet agendado", meets.length, reps], ["Pitch tomado", tom, meets.length], ["Publicados", pub, tom]];
+  const mx = Math.max(1, ...st.map(x => x[1]));
+  const fnl = st.map(([l,v,b]) => `<div class="fn-row"><span class="fn-l">${l}</span><div class="fn-bar"><i style="width:${Math.max(v?2:0, Math.round(v/mx*100))}%"></i></div><span class="fn-n">${Number(v).toLocaleString("es-MX")}</span><span class="fn-p">${b==null?"":pc(v,b)}</span></div>`).join("");
+  const fmtV = (k,v) => { const n = Number(v); return isNaN(n) ? esc(String(v)) : /cost|spend/i.test(k) ? "$" + n.toLocaleString("es-MX") : n.toLocaleString("es-MX"); };
+  box.innerHTML = `
+    ${!iskFn() ? `<p class="notice">Al conectar ISKRA aquí salen los envíos, respuestas y campañas en automático.</p>` : WAS.err && !WAS.data ? `<p class="notice">No se pudieron leer los resultados de ISKRA: ${esc(WAS.err)}</p>` : !WAS.data ? `<p class="mut small">Leyendo resultados de ISKRA…</p>` : ""}
+    ${kpis.length ? `<div class="wa-kpis">${kpis.map(([k,v]) => `<span><b>${fmtV(k,v)}</b>${esc(WAS_L[k] || k.replace(/_/g," "))}</span>`).join("")}</div>` : ""}
+    <div class="wa-grid">
+      <section class="fn-card"><div class="fn-h"><h3>Del chat al publicado</h3></div>${fnl}
+        <p class="mut small">Las respuestas vienen de ISKRA${demo?" (ejemplo)":""}; desde "Meet agendado" se cuentan los meets reales marcados como WhatsApp.</p></section>
+      <section class="fn-card"><div class="fn-h"><h3>Campañas en ISKRA</h3></div>
+        ${camps.length ? `<table class="cmp-t wa-t"><thead><tr>${cols.map(k => `<th class="${k===nameK?"":"num"}">${esc(WAS_L[k] || k.replace(/_/g," "))}</th>`).join("")}</tr></thead><tbody>${camps.slice(0,30).map(c => `<tr>${cols.map(k => k===nameK ? `<td><b>${esc(String(c[k]??""))}</b></td>` : `<td class="num">${c[k]==null?"—":fmtV(k,c[k])}</td>`).join("")}</tr>`).join("")}</tbody></table>`
+          : `<p class="mut small">${WAS.data ? "ISKRA no regresó campañas para este periodo." : "—"}</p>`}
+      </section>
+    </div>`;
+}
+function renderWaOld(){
   const box = $("waBox"); if (!box || !adminMode() || busyIn($("view-wa"))) return;
   const weeks = waPeriodWeeks(), inP = w => !weeks || weeks.includes(w);
   const camps = Object.entries(S.waCamps).filter(([,c]) => inP(c.week)).sort((a,b) => (b[1].week||"").localeCompare(a[1].week||"") || (b[1].createdAt||0)-(a[1].createdAt||0));
@@ -3052,7 +3098,9 @@ $("view-wa").addEventListener("click", e => {
 });
 /* the Account Manager's side: their assigned WhatsApp leads */
 function myWaLeadList(){ const src = (S.viewAs ? S.waLeads[S.viewAs] : S.myWaLeads) || {}; return Object.entries(src).filter(([,l]) => (l.status||"nuevo")==="nuevo").sort((a,b) => (a[1].assignedAt||0)-(b[1].assignedAt||0)); }
-function renderMyWa(){
+function renderMyWa(){ const bx = $("myWaLeads"); if (bx){ bx.hidden = true; bx.innerHTML = ""; } return; // reemplazado por las conversaciones de ISKRA con dueño (Mensajes)
+}
+function renderMyWaOld(){
   const box = $("myWaLeads"); if (!box || adminMode()) return;
   const list = myWaLeadList();
   box.hidden = !list.length;

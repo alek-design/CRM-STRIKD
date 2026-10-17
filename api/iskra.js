@@ -106,6 +106,12 @@ module.exports = async (req, res) => {
         await c.query("update public.iskra_owner set owner=$2, escalated_at=now(), assigned_by='escalado' where conversation_id=$1", [String(input.id), m ? m.id : null]);
         return {ok:true};
       }
+      if (op === "stats"){
+        if (!lead) throw Object.assign(new Error("Solo el Head o el Manager ven los resultados."), {status:403});
+        const q = new URLSearchParams(); ["from","to","period"].forEach(k => { if (input[k]) q.set(k, String(input[k])); });
+        const [sum, acc] = await Promise.all([iskra("GET", "/v1/stats/summary" + (q.toString() ? "?" + q : "")), iskra("GET", "/v1/campaigns/accounting" + (q.toString() ? "?" + q : "")).catch(e => ({error:e.message}))]);
+        return {data:{summary:sum, campaigns:acc}};
+      }
       if (op === "numbers") return {data:await iskra("GET", "/v1/numbers")};
       if (op === "templates") return {data:await iskra("GET", "/v1/templates")};
       throw Object.assign(new Error("Operación no permitida"), {status:400});
