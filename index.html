@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 16:45 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 16:53 UTC"</script>
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/claude-shim.js"></script>
@@ -632,7 +632,7 @@ label.f em{color:var(--bad);font-style:normal}
 .step .sname,.pl-col h3,.pl-now,.eyb,.org-t,.pf-h,.kv span,.lb .score small{text-transform:none!important;letter-spacing:0!important;font-size:12px!important}
 /* rediseño: barra y menú de cuenta */
 .brand{font-size:20px}
-.acct{position:relative;margin-left:auto}
+.acct{position:relative}.viewas{margin-left:auto}.viewas+.acct{margin-left:0}.acct:first-child,nav+.acct{margin-left:auto}
 .avatar{width:34px;height:34px;border-radius:50%;border:1px solid var(--line2);background:var(--raised);color:var(--fg);font:inherit;font-weight:700;font-size:14px;cursor:pointer;display:grid;place-items:center}
 .avatar:hover{border-color:var(--muted)}
 .avatar .dot{position:absolute;top:0;right:0;width:9px;height:9px;border-radius:50%;background:var(--wait);border:2px solid var(--bg)}
@@ -672,6 +672,7 @@ label.f em{color:var(--bad);font-style:normal}
       <button role="tab" data-tab="funnel" id="tabFunnel" hidden>Resultados</button>
       <button role="tab" data-tab="perf" id="tabPerf" hidden>Mi desempeño</button>
     </nav>
+    <button class="btn small viewas" id="viewAsBtn" hidden>Vista de usuario</button>
     <div class="acct" id="acct">
       <button type="button" class="avatar" id="acctBtn" aria-haspopup="true" aria-expanded="false" aria-label="Tu cuenta">·</button>
       <div class="acct-menu" id="acctMenu" hidden>
@@ -679,7 +680,6 @@ label.f em{color:var(--bad);font-style:normal}
         <div id="amAcct"></div>
         <button type="button" class="btn small gc-chip" id="gcChip" hidden></button>
         <div class="adminacts" id="adminActs" hidden>
-          <button class="btn small" id="viewAsBtn">Vista de usuario</button>
           <button class="btn small" id="xlsBtn" hidden>Descargar Excel</button>
         </div>
         <button type="button" data-tab="vip" id="tabVip" hidden>Lista Mich</button>
@@ -992,7 +992,7 @@ function applyTheme(t){ document.documentElement.dataset.theme = t; $("themeBtn"
 $("themeBtn").addEventListener("click", () => { const t = document.documentElement.dataset.theme==="light" ? "dark" : "light"; applyTheme(t); try{ localStorage.setItem("strikd_theme", t); }catch(e){} schedule(); });
 const MSEG = {v:null};
 function syncMsgSeg(){
-  const isk = !!window.STRIKD_ISKRA && S.isLead && !S.viewAs;
+  const isk = !!iskFn() && S.isLead && !S.viewAs;
   $("msegIsk").hidden = !isk;
   if (!MSEG.v || (MSEG.v==="isk" && !isk)) MSEG.v = isk ? "isk" : "inbox";
   document.querySelectorAll("#msgSeg [data-mseg]").forEach(b => b.classList.toggle("on", b.dataset.mseg===MSEG.v));
@@ -3211,7 +3211,27 @@ async function convPush(c, msg, state){
   const chat = (c.chat||[]).concat([msg]);
   await convRef(c.k).update({chat, chatState:{...(c.cs||{}), ...state, updatedAt:Date.now()}});
 }
-/* ---------- ISKRA en vivo (solo dominio · Head y Manager) ---------- */
+/* ---------- ISKRA en vivo (dominio) · en claude.ai se muestra con datos de ejemplo ---------- */
+const ISK_DEMO = (() => { const t = m => new Date(Date.now() - m*60e3).toISOString();
+  return {convs:[
+    {id:"d1", lead_name:"Karla Ríos (ejemplo)", phone:"5218112345601", last_message:{text:"¿Cuánto cuesta y sirve para grupos?", direction:"inbound", created_at:t(4)}, unread_count:1},
+    {id:"d2", lead_name:"Pablo Garza (ejemplo)", phone:"5218112345602", last_message:{text:"Gracias por comunicarte. En breve te atendemos 🙌", direction:"inbound", created_at:t(38)}},
+    {id:"d3", lead_name:"Lorena Treviño (ejemplo)", phone:"5218112345603", last_message:{text:"¿Te late una llamada de 30 min el jueves?", direction:"outbound", created_at:t(180)}}],
+   msgs:{
+    d1:[{text:"¡Hola Karla! Vi tu perfil y creo que STRIKD te puede ayudar a lanzar tu propio programa. ¿Te interesa?", direction:"outbound", created_at:t(60)},{text:"Hola! sí me interesa", direction:"inbound", created_at:t(20)},{text:"¿Cuánto cuesta y sirve para grupos?", direction:"inbound", created_at:t(4)}],
+    d2:[{text:"¡Hola Pablo! Te escribo de STRIKD: ayudamos a coaches a vender su propio programa.", direction:"outbound", created_at:t(45)},{text:"Gracias por comunicarte. En breve te atendemos 🙌", direction:"inbound", created_at:t(38)}],
+    d3:[{text:"Me encantó tu propuesta, tengo 40 pacientes activos", direction:"inbound", created_at:t(200)},{text:"¿Te late una llamada de 30 min el jueves?", direction:"outbound", created_at:t(180)}]}}; })();
+async function iskMock(op, input){
+  await new Promise(r => setTimeout(r, 150));
+  if (op==="whoami") return {configured:true, data:{workspace:{name:"Ejemplo · sin conexión real"}}};
+  if (op==="conversations") return {configured:true, data:{data:ISK_DEMO.convs}};
+  if (op==="messages") return {configured:true, data:{data:(ISK_DEMO.msgs[input.id]||[]).slice().reverse()}};
+  if (op==="reply"){ const m = {text:input.text, direction:"outbound", created_at:new Date().toISOString()}; (ISK_DEMO.msgs[input.conversation_id] ||= []).push(m);
+    const c = ISK_DEMO.convs.find(x => x.id===input.conversation_id); if (c){ c.last_message = m; c.unread_count = 0; } return {configured:true, data:{id:"demo"}}; }
+  return {configured:true, data:{}};
+}
+function iskFn(){ return window.STRIKD_ISKRA || (window.STRIKD_SB ? null : iskMock); }
+
 const ISK = {st:null, who:null, convs:[], sel:null, msgs:{}, draft:{}, busy:false, err:"", raw:null, at:0, loading:false, timer:null};
 const iskArr = j => { const d = j && (j.data !== undefined ? j.data : j); return Array.isArray(d) ? d : (d && (d.data || d.items || d.conversations || d.messages || d.results)) || []; };
 const iskTxt = m => String(m.text || m.body || m.content || m.message || (m.template && (m.template.name || m.template)) || "");
@@ -3235,11 +3255,11 @@ function iskMatch(phone){
   return null;
 }
 async function iskLoad(force){
-  if (!window.STRIKD_ISKRA || ISK.loading || (!force && Date.now() - ISK.at < 12e3)) return;
+  if (!iskFn() || ISK.loading || (!force && Date.now() - ISK.at < 12e3)) return;
   ISK.loading = true;
   try{
-    if (!ISK.who){ const w = await window.STRIKD_ISKRA("whoami"); if (w.configured===false){ ISK.st = "off"; return; } ISK.who = w.data || {}; }
-    const j = await window.STRIKD_ISKRA("conversations", {limit:50});
+    if (!ISK.who){ const w = await iskFn()("whoami"); if (w.configured===false){ ISK.st = "off"; return; } ISK.who = w.data || {}; }
+    const j = await iskFn()("conversations", {limit:50});
     ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.data;
     if (ISK.convs.some(c => c.at)) ISK.convs.sort((a,b) => b.at - a.at); ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
     if (ISK.sel) await iskThread(ISK.sel, true);
@@ -3247,7 +3267,7 @@ async function iskLoad(force){
   finally{ ISK.loading = false; schedule(); }
 }
 async function iskThread(id, quiet){
-  try{ const j = await window.STRIKD_ISKRA("messages", {id, limit:50});
+  try{ const j = await iskFn()("messages", {id, limit:50});
     let ms = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m), at:iskAt(m), st:m.status||""}));
     ms = ms.some(x => x.at) ? ms.sort((a,b) => a.at-b.at) : ms.reverse(); // la API da lo más nuevo primero
     ISK.msgs[id] = ms; }
@@ -3256,7 +3276,7 @@ async function iskThread(id, quiet){
 }
 function renderIskra(){
   const box = $("iskBox"); if (!box) return;
-  const on = !!window.STRIKD_ISKRA && S.isLead && !S.viewAs;
+  const on = !!iskFn() && S.isLead && !S.viewAs;
   box.hidden = !on; if (!on || S.tab!=="msgs") { clearInterval(ISK.timer); ISK.timer = null; return; }
   if (!ISK.timer){ ISK.timer = setInterval(() => { if (S.tab==="msgs" && !document.hidden) iskLoad(); }, 15e3); iskLoad(true); }
   if (busyIn(box)) return;
@@ -3281,7 +3301,7 @@ function renderIskra(){
           <button type="button" class="btn small primary" data-isksend="1"${ISK.busy?" disabled":""}>${ISK.busy?"Enviando…":"Enviar por ISKRA"}</button></div></div>
         <p class="mut small">Solo se puede contestar en conversaciones que el prospecto ya abrió. Para escribir primero se usa una plantilla aprobada.</p></div></div>`;
   }
-  box.innerHTML = `<div class="isk"><div class="isk-top"><span class="isk-dot"></span><b>ISKRA en vivo</b>${ws?`<span class="mut small">${esc(ws)}</span>`:""}<span class="mut small">· ${ISK.convs.length} conversaciones · actualizado ${ISK.at?esc(fmtLocal(ISK.at).split(", ").pop()):""}${window.STRIKD_BUILD?` · versión ${esc(window.STRIKD_BUILD)}`:""}</span><div class="spacer"></div>
+  box.innerHTML = `<div class="isk"><div class="isk-top"><span class="isk-dot"></span><b>${iskFn()===iskMock ? "ISKRA · ejemplo" : "ISKRA en vivo"}</b>${ws?`<span class="mut small">${esc(ws)}</span>`:""}<span class="mut small">· ${ISK.convs.length} conversaciones · actualizado ${ISK.at?esc(fmtLocal(ISK.at).split(", ").pop()):""}${window.STRIKD_BUILD?` · versión ${esc(window.STRIKD_BUILD)}`:""}</span><div class="spacer"></div>
     <button type="button" class="btn small" data-iskre="1">${ISK.loading?"Actualizando…":"Actualizar"}</button>${S.isOwner?`<button type="button" class="btn small ghost" data-iskraw="1">Datos crudos</button>`:""}</div>
     ${ISK.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISK.raw, null, 1).slice(0,6000))}</pre>` : ""}
     <div class="cv"><div class="cv-left"><div class="cv-list">${ISK.convs.map(item).join("") || `<p class="mut small cv-empty">ISKRA no tiene conversaciones todavía.</p>`}</div></div>${right}</div></div>`;
@@ -3298,7 +3318,7 @@ document.addEventListener("click", async e => {
     ISK.busy = true; ISK.err = ""; schedule();
     const key = ISK.idem && ISK.idem.text===text && ISK.idem.id===id ? ISK.idem.key : "strikd-" + id + "-" + Date.now().toString(36);
     ISK.idem = {id, text, key};
-    try{ await window.STRIKD_ISKRA("reply", {conversation_id:id, text, idempotency_key:key}); ISK.draft[id] = ""; ISK.idem = null; await iskThread(id); }
+    try{ await iskFn()("reply", {conversation_id:id, text, idempotency_key:key}); ISK.draft[id] = ""; ISK.idem = null; await iskThread(id); }
     catch(err){ ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : ""); }
     finally{ ISK.busy = false; schedule(); }
   }
@@ -3520,14 +3540,14 @@ function setFormEnabled(on){ $("meetForm").querySelectorAll("input,select,textar
 function enterViewAs(uid){
   if (!uid || !S.isOwner) return; // solo el Head puede usar la Vista de usuario
   S.viewAs = uid; resetForm(); setFormEnabled(true);
-  $("viewAsBar").hidden = false; $("adminActs").hidden = true;
+  $("viewAsBar").hidden = false; $("adminActs").hidden = true; $("viewAsBtn").hidden = true;
   $("tabAdmin").hidden = true; $("tabFlow").hidden = true; $("tabAgenda").hidden = true; $("tabFunnel").hidden = true; $("tabVip").hidden = true; $("tabWa").hidden = true; $("tabMine").hidden = false; $("tabPerf").hidden = false; $("tabOrg").hidden = true;
   showTab("board");
   schedule();
 }
 function exitViewAs(){
   S.viewAs = null; setFormEnabled(true);
-  $("viewAsBar").hidden = true; $("adminActs").hidden = false;
+  $("viewAsBar").hidden = true; $("adminActs").hidden = false; $("viewAsBtn").hidden = !S.isOwner;
   $("tabMine").hidden = true; $("tabPerf").hidden = true; if (S.tab==="perf") showTab("board"); $("tabOrg").hidden = !S.isOwner; $("tabAdmin").hidden = false; $("tabFlow").hidden = false; $("tabAgenda").hidden = false; $("tabFunnel").hidden = false; $("tabVip").hidden = false; $("tabWa").hidden = false;
   showTab("board"); schedule();
 }
