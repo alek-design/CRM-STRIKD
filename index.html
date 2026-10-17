@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 17:24 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 17:25 UTC"</script>
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/claude-shim.js"></script>
@@ -2810,7 +2810,7 @@ function syncPerfilUi(){
   $("f_notesLbl").firstChild.textContent = vip ? "¿Por qué vale la pena? (audiencia, engagement, afinidad)" : "Notas (contexto, interés, siguiente paso)";
   if (!S.editingId){ $("formTitle").textContent = vip ? "Proponer a Mich" : "Registrar meet"; $("submitBtn").textContent = vip ? "Agregar a la lista de Mich" : "Enviar a validación"; }
   const g = PERFILES[p];
-  $("pfGuide").hidden = !g;
+  $("pfGuide").hidden = true; if (false)
   if (g) $("pfGuide").innerHTML = `${PICON[p]}<div><b>${esc(g.name)} · ${esc(g.short)}</b>
     <span><em>Dónde buscar:</em> ${esc(g.where)}</span><span><em>Canal:</em> ${esc(g.channel)}</span><span><em>Estrategia:</em> ${esc(g.how)}</span><span><em>Objetivo:</em> ${esc(g.goal)}</span></div>`;
   if (!vip) syncInvUi(); else { $("mkInvL").hidden = true; $("invHint").hidden = true; $("linkWrap").hidden = true; }
