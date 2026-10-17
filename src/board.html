@@ -3184,7 +3184,7 @@ function renderIskra(){
           <button type="button" class="btn small primary" data-isksend="1"${ISK.busy?" disabled":""}>${ISK.busy?"Enviando…":"Enviar por ISKRA"}</button></div></div>
         <p class="mut small">Solo se puede contestar en conversaciones que el prospecto ya abrió. Para escribir primero se usa una plantilla aprobada.</p></div></div>`;
   }
-  box.innerHTML = `<div class="isk"><div class="isk-top"><span class="isk-dot"></span><b>ISKRA en vivo</b>${ws?`<span class="mut small">${esc(ws)}</span>`:""}<span class="mut small">· ${ISK.convs.length} conversaciones · actualizado ${ISK.at?esc(fmtLocal(ISK.at).split(", ").pop()):""}</span><div class="spacer"></div>
+  box.innerHTML = `<div class="isk"><div class="isk-top"><span class="isk-dot"></span><b>ISKRA en vivo</b>${ws?`<span class="mut small">${esc(ws)}</span>`:""}<span class="mut small">· ${ISK.convs.length} conversaciones · actualizado ${ISK.at?esc(fmtLocal(ISK.at).split(", ").pop()):""}${window.STRIKD_BUILD?` · versión ${esc(window.STRIKD_BUILD)}`:""}</span><div class="spacer"></div>
     <button type="button" class="btn small" data-iskre="1">${ISK.loading?"Actualizando…":"Actualizar"}</button>${S.isOwner?`<button type="button" class="btn small ghost" data-iskraw="1">Datos crudos</button>`:""}</div>
     ${ISK.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISK.raw, null, 1).slice(0,6000))}</pre>` : ""}
     <div class="cv"><div class="cv-left"><div class="cv-list">${ISK.convs.map(item).join("") || `<p class="mut small cv-empty">ISKRA no tiene conversaciones todavía.</p>`}</div></div>${right}</div></div>`;
