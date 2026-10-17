@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 18:16 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 22:24 UTC"</script>
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/claude-shim.js"></script>
@@ -832,7 +832,6 @@ label.f em{color:var(--bad);font-style:normal}
         </div>
       </form>
     </div>
-    <div id="myVip" class="vip-mine" hidden></div>
     <div hidden><div class="stats" id="myStats"></div></div>
     <div class="list" id="myList" hidden><div class="empty">Todavía no registras meets esta semana. Llena el formulario de arriba para sumar tu primero.</div></div>
   </section>
@@ -868,6 +867,7 @@ label.f em{color:var(--bad);font-style:normal}
   <section class="view" id="view-perf" hidden>
     <div id="lbHomePerf"></div>
     <div id="perfBox"></div>
+    <div id="myVip" class="vip-mine" hidden></div>
   </section>
 
   <section class="view" id="view-msgs" hidden>
@@ -2604,6 +2604,7 @@ function renderPlan(){
   }).join("") + (tks.length > PL_LIM ? `<button type="button" class="more" data-plmore="1">${MORE.plan ? "Ver menos" : `Ver los ${tks.length}`}</button>` : "")
     + waToday.slice(0, 5).map(([id,l]) => { const d = dueInfo((l.assignedAt||0)+24*HR, now); return `<button type="button" class="pl-item task ${d.cls}" data-gowa="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Agenda el meet con ${esc(l.name)}</b><small>Interesado de WhatsApp</small></span><span class="sema ${d.cls}"><i></i>${l.assignedAt+24*HR < now ? esc(d.txt) : `Antes de ${hm(l.assignedAt+24*HR)}`}</span></button>`; }).join("")
     + (waToday.length > 5 ? `<button type="button" class="more" data-gowa="1">+${waToday.length-5} interesados de WhatsApp</button>` : "")
+    + (admin ? "" : Object.values(vipItems(meId())).filter(x => (x.status==="interesado" || x.status==="agendo") && x.statusAt && now - x.statusAt < 3*864e5).slice(0, 3).map(x => `<button type="button" class="pl-item task ok" data-gotab="perf"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b>${PICON[3]} ${esc(x.prospect)} ${x.status==="agendo" ? "ya agendó meet con Mich" : "está interesado"}</b><small>Una de tus propuestas para Mich</small></span><span class="sema ok"><i></i>Nuevo</span></button>`).join(""))
     + (iskOpen ? `<button type="button" class="pl-item task soon" data-gomsgs="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Tienes ${iskOpen} chat${iskOpen===1?"":"s"} de WhatsApp sin responder</b><small>Contéstalos en Mensajes</small></span><span class="sema soon"><i></i>Hoy</span></button>` : "");
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
   const late = tks.filter(t => t.due < now).length;
@@ -2617,6 +2618,7 @@ function renderPlan(){
   </section>`;
 }
 $("dayPlan").addEventListener("click", e => {
+  const gt = e.target.closest("[data-gotab]"); if (gt){ showTab(gt.dataset.gotab); setTimeout(() => { const v = $("myVip"); v && !v.hidden && v.scrollIntoView({behavior:"smooth", block:"start"}); }, 80); return; }
   if (e.target.closest("[data-gomsgs]")){ MSEG.v = "isk"; showTab("msgs"); return; }
   if (e.target.closest("[data-gowa]")){ showTab("mine"); setTimeout(() => $("myWaLeads").scrollIntoView({behavior:"smooth", block:"start"}), 60); return; }
   if (e.target.closest("[data-plpast]")){ MORE.planPast = !MORE.planPast; schedule(); return; }
@@ -2913,7 +2915,7 @@ function renderMyVip(){
   const box = $("myVip"); if (!box || adminMode()) return;
   const items = Object.entries(vipItems(meId())).sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0));
   box.hidden = !items.length;
-  box.innerHTML = items.length ? `<div class="row"><h2>${PICON[3]} Tus propuestas para Mich</h2></div>
+  box.innerHTML = items.length ? `<div class="row"><h3>${PICON[3]} Tus propuestas para Mich</h3><span class="mut small">${items.length} propuesta${items.length===1?"":"s"}</span></div>
     <div class="vip-list">${items.map(([id,x]) => vipRow(meId(), id, x, false)).join("")}</div>` : "";
 }
 function vipRow(uid, id, x, lead){
