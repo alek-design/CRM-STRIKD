@@ -1160,7 +1160,8 @@ async function cancelInvite(m){
   if (!mcp || !m || !m.gcalEventId) return;
   try{ await mcp.callTool(GCAL, "delete_event", {eventId:m.gcalEventId, notificationLevel:"ALL"}); }catch(e){}
 }
-const INV_ERR = {server_not_connected:"conecta Google Calendar en claude.ai → Ajustes → Conectores", needs_reauth:"vuelve a conectar Google Calendar en claude.ai → Ajustes → Conectores",
+const GC_HINT = () => window.STRIKD_GOOGLE ? "con el botón «Conectar mi Google Calendar» de arriba" : "en claude.ai → Ajustes → Conectores";
+const INV_ERR = {get server_not_connected(){ return "conecta tu Google Calendar " + GC_HINT(); }, get needs_reauth(){ return "vuelve a conectar tu Google Calendar " + GC_HINT(); },
   approval_required:"falta tu permiso para que la página use Google Calendar", not_in_manifest:"no diste permiso a Google Calendar en esta página", selection_required:"elige qué cuenta de Google Calendar usar",
   blocked_by_policy:"tu organización bloquea Google Calendar aquí"};
 function readForm(){ const o={}; FIELDS.forEach(f=> o[f] = $("f_"+f).value.trim()); return o; }
@@ -2159,7 +2160,7 @@ function gcalNote(mondayStr){
   if (!mcp) return `<span class="mut small">Google Calendar no disponible en esta vista</span>`;
   const g = GC[mondayStr]; if (!g) return "";
   const msg = {needs_reauth:"Vuelve a conectar Google Calendar en claude.ai → Ajustes → Conectores",
-    server_not_connected:"Conecta Google Calendar en claude.ai → Ajustes → Conectores",
+    server_not_connected:"Conecta tu Google Calendar " + GC_HINT(),
     approval_required:"Google Calendar necesita tu permiso para esta página", not_in_manifest:"Google Calendar no está permitido en esta página",
     selection_required:"Elige qué cuenta de Google Calendar usar", blocked_by_policy:"Tu organización bloquea Google Calendar aquí",
     server_unavailable:"Google Calendar no responde ahorita; mostramos lo último"}[g.err];
@@ -3216,7 +3217,7 @@ $("inboxBox").addEventListener("click", async e => {
 
 /* ---------- Accesos (solo en growth.strikd.ai: invitaciones con login propio) ---------- */
 let ACC = {list:null, msg:"", busy:false};
-async function loadAccess(){ if (!window.STRIKD_USERS) return; try{ ACC.list = await window.STRIKD_USERS(); }catch(e){ ACC.list = {users:[], invites:[]}; } schedule(); }
+async function loadAccess(){ if (!window.STRIKD_USERS) return; try{ ACC.list = await window.STRIKD_USERS(); if (window.STRIKD_GOOGLE_USERS) ACC.list.google = await window.STRIKD_GOOGLE_USERS(); }catch(e){ ACC.list = {users:[], invites:[]}; } schedule(); }
 function renderAccess(){
   const box = $("accessBox"); if (!box) return;
   if (!window.STRIKD_INVITE || !S.isOwner){ box.hidden = true; return; }
@@ -3224,7 +3225,7 @@ function renderAccess(){
   if (busyIn(box)) return;
   if (!ACC.list && !ACC.loading){ ACC.loading = true; loadAccess(); }
   const RL = {head:"Head", manager:"Creator Partnerships Manager", am:"Account Manager", none:"Sin acceso"};
-  const users = (ACC.list && ACC.list.users) || [], inv = (ACC.list && ACC.list.invites) || [];
+  const users = (ACC.list && ACC.list.users) || [], inv = (ACC.list && ACC.list.invites) || [], gset = new Set(((ACC.list && ACC.list.google) || []).map(g => g.user_id));
   box.innerHTML = `<h3>Accesos</h3>
     <p class="mut small">Da de alta a tu equipo: se crea su cuenta con una contraseña temporal que les mandas tú. Al entrar la pueden cambiar.</p>
     <div class="acc-form"><input id="accEmail" type="email" placeholder="correo@ejemplo.com"><input id="accName" placeholder="Nombre">
@@ -3232,7 +3233,7 @@ function renderAccess(){
       <button type="button" class="btn small primary" id="accGo"${ACC.busy?" disabled":""}>${ACC.busy?"Creando…":"Dar de alta"}</button></div>
     ${ACC.msg ? `<p class="small ${ACC.ok?"okmsg":"err"}">${esc(ACC.msg)}</p>` : ""}
     ${ACC.cred ? `<div class="acc-cred"><b>Mándale esto por WhatsApp:</b><textarea rows="4" readonly>${esc(ACC.cred)}</textarea></div>` : ""}
-    <div class="acc-list">${users.map(u => `<div class="acc-row"><b>${esc(u.name||u.email)}</b><span class="mut small">${esc(u.email)}</span><span class="chip ${u.role==="none"?"muted":"info"}">${esc(RL[u.role]||u.role)}</span></div>`).join("")}
+    <div class="acc-list">${users.map(u => `<div class="acc-row"><b>${esc(u.name||u.email)}</b><span class="mut small">${esc(u.email)}</span><span class="chip ${u.role==="none"?"muted":"info"}">${esc(RL[u.role]||u.role)}</span>${window.STRIKD_GOOGLE_USERS ? (gset.has(u.id) ? `<span class="chip valid">✓ Google Calendar</span>` : `<span class="chip muted">Sin Google Calendar</span>`) : ""}</div>`).join("")}
       ${inv.map(i => `<div class="acc-row pend"><b>${esc(i.name||i.email)}</b><span class="mut small">${esc(i.email)}</span><span class="chip muted">Invitación enviada · ${esc(RL[i.role])}</span></div>`).join("")}</div>`;
 }
 document.addEventListener("click", async e => {

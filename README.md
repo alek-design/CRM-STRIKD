@@ -12,6 +12,7 @@ Tablero de outreach de STRIKD: registro de meets, journey del pitch a publicado,
 | `api/config.js` | Le pasa al navegador la URL y la llave pública de Supabase |
 | `api/invite.js` | El Head da de alta personas con su rol |
 | `api/setup.js` | Configuración inicial (tablas, datos y cuenta del Head) |
+| `api/google/*`, `lib/google.js` | Conexión de cada persona con su Google Calendar |
 | `api/blob/[id].js` | Sirve skeletons y PDFs (`/_blob/<id>`) |
 | `supabase/schema.sql` | Tablas, permisos por rol (RLS), tiempo real y archivos |
 | `supabase/seed.sql` | Los datos actuales del tablero (incluye datos de ejemplo) |
@@ -35,9 +36,14 @@ Opcional, para que funcione "Olvidé mi contraseña": Supabase → *Authenticati
 
 Los permisos se aplican en la base de datos (RLS), no solo en la pantalla.
 
-## Pendiente (segunda parte)
+## Google Calendar
 
-- Google Calendar con el OAuth de STRIKD (invitaciones con Meet).
+Cada persona toca **Conectar mi Google Calendar** (arriba) y da permiso. Desde ahí sus meets crean invitación con link de Meet, se borran al cancelar y se detecta si el prospecto la rechaza.
+
+Configuración (una vez): proyecto de Google Cloud con **Google Calendar API** habilitada, pantalla de consentimiento y un **ID de cliente OAuth (Aplicación web)** con redirect `https://growth.strikd.ai/api/google/callback`. En Vercel: `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`. Los permisos de cada quien se guardan en la tabla `google_tokens` (solo el servidor la lee).
+
+## Pendiente
+
 - Sugerencias de respuesta con IA (bandeja de Mensajes).
 - ISKRA: campañas, conversaciones y envío (`ISKRA_API_KEY` como variable de Vercel).
 

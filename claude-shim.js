@@ -22,8 +22,12 @@
     me = r.data || {id:session.user.id, email:session.user.email, role:"none"};
     if (me.role === "none" || me.active === false) { blockScreen(me.email); throw new Error("sin acceso"); }
     sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") location.reload(); });
+    try{ google = await fetch("/api/google/status", {headers:{authorization:"Bearer " + session.access_token}}).then(r => r.json()); }catch(_){ google = {}; }
     headerChip();
+    const gq = new URLSearchParams(location.search).get("google");
+    if (gq){ history.replaceState(null, "", location.pathname); if (gq !== "ok") setTimeout(() => alert(gq === "cancelado" ? "No se conectó Google Calendar (cancelaste el permiso)." : "No se pudo conectar Google Calendar. Intenta de nuevo."), 300); }
   })();
+  let google = {};
 
   /* ---------- pantallas de acceso ---------- */
   function shell(inner){
@@ -99,6 +103,17 @@
     const acts = document.querySelector(".tabrow") || document.body;
     const b = document.createElement("button"); b.className = "sg-out"; b.type = "button";
     b.textContent = `${me.name || me.email} · Salir`; b.onclick = () => sb.auth.signOut();
+    if (google && google.configured !== false){
+      const g = document.createElement("button"); g.className = "sg-out" + (google.connected ? " on" : " cta"); g.type = "button";
+      g.textContent = google.connected ? `✓ Google: ${google.email || "conectado"}` : "Conectar mi Google Calendar";
+      g.title = google.connected ? "Toca para desconectar" : "Para crear tus invitaciones con link de Meet";
+      g.onclick = async () => {
+        const t = (await sb.auth.getSession()).data.session.access_token;
+        if (!google.connected) return location.href = "/api/google/connect?token=" + encodeURIComponent(t);
+        if (confirm("¿Desconectar tu Google Calendar? Ya no se crearán invitaciones automáticas.")){ await fetch("/api/google/status", {method:"POST", headers:{authorization:"Bearer " + t}}); location.reload(); }
+      };
+      acts.appendChild(g);
+    }
     const c = document.createElement("button"); c.className = "sg-out"; c.type = "button"; c.textContent = "Cambiar contraseña";
     c.onclick = () => passwordScreen("Cambiar contraseña");
     acts.appendChild(c); acts.appendChild(b);
@@ -192,6 +207,29 @@
     }
   };
 
+  /* ---------- Google Calendar (misma interfaz que el conector de claude.ai) ---------- */
+  async function gcall(tool, input){
+    const t = (await sb.auth.getSession()).data.session.access_token;
+    const r = await fetch("/api/google/calendar", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + t}, body:JSON.stringify({op:tool, input})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw {code: j.code || "upstream_error", message: j.error || "Error", retryable: j.code === "server_unavailable"};
+    return {content:[], payload:j};
+  }
+  const mcp = {
+    callTool: (server, tool, input) => gcall(tool, input || {}),
+    watchTool(server, tool, input, handler, opts){
+      let stop = false;
+      const run = () => gcall(tool, input || {}).then(r => { if (!stop) handler({type:"data", result:r}); }, e => { if (!stop) handler({type:"error", error:e}); });
+      setTimeout(run, 0);
+      const iv = setInterval(run, Math.max(60e3, (opts && opts.refetchInterval) || 300e3));
+      return () => { stop = true; clearInterval(iv); };
+    },
+    async listTools(){ return {servers:[{server:"Google Calendar", authStatus:"connected", tools:[]}]}; },
+    async invalidate(){}
+  };
+  window.STRIKD_GOOGLE = () => google;
+  window.STRIKD_GOOGLE_USERS = async () => { const t = (await sb.auth.getSession()).data.session.access_token; const r = await fetch("/api/google/status?all=1", {headers:{authorization:"Bearer " + t}}); return r.ok ? (await r.json()).users || [] : []; };
+
   /* ---------- invitaciones (Head) ---------- */
   window.STRIKD_INVITE = async (email, name, role) => {
     const { data } = await sb.auth.getSession();
@@ -204,6 +242,7 @@
 
   window.claude = { use: async (name) => {
     try{ await ready; }catch(e){ return null; }
+    if (name === "mcp") return google && google.connected ? mcp : null;
     return ({db, user, assets, downloads})[name] || null;
   }};
 })();
