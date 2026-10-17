@@ -666,6 +666,26 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* celular: todo en el menú de tres líneas */
+.mob-btn{display:none;margin-left:auto;width:40px;height:40px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);cursor:pointer;flex-direction:column;justify-content:center;align-items:center;gap:4px}
+.mob-btn span{display:block;width:18px;height:2px;border-radius:2px;background:var(--fg);transition:transform .2s,opacity .2s}
+.mob-btn[aria-expanded="true"] span:nth-child(1){transform:translateY(6px) rotate(45deg)}.mob-btn[aria-expanded="true"] span:nth-child(2){opacity:0}.mob-btn[aria-expanded="true"] span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+.mob-sheet{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.35);padding-top:calc(env(safe-area-inset-top,0px) + 64px)}
+.mob-in{background:var(--bg);border-bottom:1px solid var(--line2);max-height:calc(100dvh - 64px);overflow:auto;padding:12px 16px 18px;display:grid;gap:14px;box-shadow:var(--menu-shadow)}
+.mob-timer{display:grid;gap:2px;border:1px solid var(--line2);border-radius:14px;padding:10px 12px;background:var(--surface)}.mob-timer b{font-size:20px;font-variant-numeric:tabular-nums}
+.mob-timer #mobLb{margin-top:6px}.mob-timer .mlb li{font-size:13px}.mob-timer .mlb li b{font-size:13px}
+body.mob-open header.top{z-index:31}
+.mob-tabs{display:grid;gap:2px}
+.mob-tabs button{font:inherit;font-size:16px;font-weight:600;text-align:left;background:none;border:0;color:var(--fg);padding:11px 10px;border-radius:10px;display:flex;align-items:center;gap:8px}
+.mob-tabs button.on{background:var(--raised)}.mob-tabs .count{margin-left:auto}
+.mob-acct .acct-menu{position:static;box-shadow:none;border:0;padding:0;min-width:0;background:none}
+.mob-acct .acct-menu[hidden]{display:grid!important}
+@media (max-width:640px){
+  .mob-btn{display:flex}
+  header.top .close,header.top .tabrow{display:none!important}
+  .top .wrap{flex-wrap:nowrap}
+}
+
 /* Mensajes estilo app de chat */
 #view-msgs{gap:12px}
 .msgs-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.msgs-head h2{font-size:20px}
@@ -746,6 +766,7 @@ label.f em{color:var(--bad);font-style:normal}
 <header class="top">
   <div class="wrap">
     <div><h1 class="brand">Outreach<i>x</i>STRIKD</h1></div>
+    <button type="button" class="mob-btn" id="mobBtn" aria-label="Menú" aria-expanded="false"><span></span><span></span><span></span></button>
     <div class="close" tabindex="0" aria-describedby="closePop">
       <span class="cd" id="countdown">—</span>
       <div class="close-pop" id="closePop" role="tooltip"><div class="cp-h" id="closeLabel">Corte</div><div id="miniLb"></div></div>
@@ -782,6 +803,13 @@ label.f em{color:var(--bad);font-style:normal}
   </div>
 </header>
 
+<div class="mob-sheet" id="mobSheet" hidden>
+  <div class="mob-in">
+    <div class="mob-timer"><b id="mobCd">—</b><span class="mut small" id="mobCut"></span><div id="mobLb"></div></div>
+    <nav class="mob-tabs" id="mobTabs"></nav>
+    <div class="mob-acct" id="mobAcct"></div>
+  </div>
+</div>
 <main class="wrap">
   <div id="bootMsg" class="notice">Cargando el tablero…</div>
   <div id="mgrNeedsEdit" class="notice warn" hidden>Tienes el rol de Creator Partnerships Manager. Para ver a tu equipo, pide al Head acceso de <b>Editor</b> a esta página.</div>
@@ -1076,7 +1104,31 @@ function openFromUrl(u){
   try{ const q = new URL(u, location.href).searchParams; if (q.get("tab")==="msgs"){ MSEG.v = "isk"; if (q.get("conv")){ ISK.sel = q.get("conv"); ISK.fullAt = 0; } showTab("msgs"); if (ISK.sel) iskThread(ISK.sel, true); } }catch(e){}
 }
 window.STRIKD_OPEN = openFromUrl;
-function closeAcct(){ const m = $("acctMenu"); if (m && !m.hidden){ m.hidden = true; $("acctBtn").setAttribute("aria-expanded","false"); } }
+function mobToggle(open){
+  const sh = $("mobSheet"), btn = $("mobBtn"), am = $("acctMenu");
+  if (open === undefined) open = sh.hidden;
+  sh.hidden = !open; btn.setAttribute("aria-expanded", String(open)); document.body.style.overflow = open ? "hidden" : ""; document.body.classList.toggle("mob-open", open);
+  if (open){
+    const tabs = [...document.querySelectorAll("#tabs button[data-tab]")].filter(b => !b.hidden);
+    $("mobTabs").innerHTML = tabs.map(b => `<button type="button" data-mobtab="${b.dataset.tab}" class="${b.getAttribute("aria-selected")==="true"?"on":""}">${b.innerHTML}</button>`).join("");
+    $("mobCd").textContent = $("countdown").textContent; $("mobCut").textContent = $("closeLabel").textContent; $("mobLb").innerHTML = $("miniLb").innerHTML;
+    const va = $("viewAsBtn"); if (va && !va.hidden){ va.classList.add("mob-va"); }
+    $("mobAcct").appendChild(am); am.hidden = false;
+    if (va && !va.hidden) $("mobAcct").prepend(va);
+  } else {
+    const acct = $("acct"); if (am.parentNode !== acct){ acct.appendChild(am); am.hidden = true; }
+    const va = $("viewAsBtn"); if (va && va.parentNode !== acct.parentNode) acct.parentNode.insertBefore(va, acct);
+  }
+}
+$("mobBtn").addEventListener("click", e => { e.stopPropagation(); mobToggle(); });
+$("mobSheet").addEventListener("click", e => {
+  const t = e.target.closest("[data-mobtab]"); if (t){ mobToggle(false); showTab(t.dataset.mobtab); return; }
+  if (e.target===$("mobSheet")) return mobToggle(false);
+  if (e.target.closest("#acctMenu button[data-tab]")){ mobToggle(false); return; }
+  if (e.target.closest("#viewAsBtn,#xlsBtn")) setTimeout(() => mobToggle(false), 0);
+});
+window.addEventListener("resize", () => { if (innerWidth > 640 && !$("mobSheet").hidden) mobToggle(false); });
+function closeAcct(){ const m = $("acctMenu"); if (m && m.parentNode && m.parentNode.id==="mobAcct") return; if (m && !m.hidden){ m.hidden = true; $("acctBtn").setAttribute("aria-expanded","false"); } }
 $("acctBtn").addEventListener("click", e => { e.stopPropagation(); const m = $("acctMenu"); m.hidden = !m.hidden; $("acctBtn").setAttribute("aria-expanded", String(!m.hidden)); });
 document.addEventListener("click", e => { if (!e.target.closest("#acct")) closeAcct(); });
 document.addEventListener("keydown", e => { if (e.key==="Escape") closeAcct(); });
