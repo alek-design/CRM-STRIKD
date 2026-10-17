@@ -1264,7 +1264,7 @@ async function createInvite(o){
   const end = new Date(meetTs(o.meetAt) + MEET_MIN - OFF).toISOString().slice(0,16);
   const inv = leaderEmail(meId());
   const attendees = [{email:o.email}].concat(inv && inv.toLowerCase()!==o.email.toLowerCase() ? [{email:inv}] : []);
-  const r = await mcp.callTool(GCAL, "create_event", {summary:`STRIKD x ${o.prospect}`, startTime:`${o.meetAt}:00`, endTime:`${end}:00`, timeZone:"America/Cancun",
+  const r = await mcp.callTool(GCAL, "create_event", {summary:`${o.prospect} x STRIKD`, startTime:`${o.meetAt}:00`, endTime:`${end}:00`, timeZone:"America/Cancun",
     addGoogleMeetUrl:true, attendees, description:`Meet con ${o.prospect}${o.notes?`\n\n${o.notes}`:""}`, notificationLevel:"ALL"});
   let p = r && r.payload; if (p && p.event) p = p.event;
   const cd = (p && p.conferenceData) || {};

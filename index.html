@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 17:25 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 17:26 UTC"</script>
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/claude-shim.js"></script>
@@ -1271,7 +1271,7 @@ async function createInvite(o){
   const end = new Date(meetTs(o.meetAt) + MEET_MIN - OFF).toISOString().slice(0,16);
   const inv = leaderEmail(meId());
   const attendees = [{email:o.email}].concat(inv && inv.toLowerCase()!==o.email.toLowerCase() ? [{email:inv}] : []);
-  const r = await mcp.callTool(GCAL, "create_event", {summary:`STRIKD x ${o.prospect}`, startTime:`${o.meetAt}:00`, endTime:`${end}:00`, timeZone:"America/Cancun",
+  const r = await mcp.callTool(GCAL, "create_event", {summary:`${o.prospect} x STRIKD`, startTime:`${o.meetAt}:00`, endTime:`${end}:00`, timeZone:"America/Cancun",
     addGoogleMeetUrl:true, attendees, description:`Meet con ${o.prospect}${o.notes?`\n\n${o.notes}`:""}`, notificationLevel:"ALL"});
   let p = r && r.payload; if (p && p.event) p = p.event;
   const cd = (p && p.conferenceData) || {};
