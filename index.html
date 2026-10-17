@@ -3125,7 +3125,9 @@ const ISK = {st:null, who:null, convs:[], sel:null, msgs:{}, draft:{}, busy:fals
 const iskArr = j => { const d = j && (j.data !== undefined ? j.data : j); return Array.isArray(d) ? d : (d && (d.data || d.items || d.conversations || d.messages || d.results)) || []; };
 const iskTxt = m => String(m.text || m.body || m.content || m.message || (m.template && (m.template.name || m.template)) || "");
 const iskDir = m => /^(in|inbound|incoming|received|lead)/i.test(String(m.direction || m.dir || m.from_type || (m.from_me===false?"in":m.from_me?"out":"") || m.type || "")) ? "in" : "out";
-const iskAt = m => Date.parse(m.created_at || m.sent_at || m.timestamp || m.last_activity_at || m.last_message_at || m.updated_at || "") || 0;
+const iskAt = m => { if (!m || typeof m!=="object") return 0;
+  const v = m.created_at ?? m.createdAt ?? m.sent_at ?? m.sentAt ?? m.timestamp ?? m.ts ?? m.date ?? m.time ?? m.last_activity_at ?? m.lastActivityAt ?? m.last_message_at ?? m.lastMessageAt ?? m.updated_at ?? m.updatedAt;
+  if (v==null || v==="") return 0; if (typeof v==="number" || /^\d+$/.test(String(v))){ const n = Number(v); return n < 1e12 ? n*1000 : n; } return Date.parse(v) || 0; };
 const iskDigits = x => String(x||"").replace(/\D/g,"").slice(-10);
 function iskConv(c){
   const ct = c.contact || c.lead || {};
@@ -3142,19 +3144,22 @@ function iskMatch(phone){
   return null;
 }
 async function iskLoad(force){
-  if (!window.STRIKD_ISKRA || ISK.loading || (!force && Date.now() - ISK.at < 25e3)) return;
+  if (!window.STRIKD_ISKRA || ISK.loading || (!force && Date.now() - ISK.at < 12e3)) return;
   ISK.loading = true;
   try{
     if (!ISK.who){ const w = await window.STRIKD_ISKRA("whoami"); if (w.configured===false){ ISK.st = "off"; return; } ISK.who = w.data || {}; }
     const j = await window.STRIKD_ISKRA("conversations", {limit:50});
-    ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.data; ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
+    ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.data;
+    if (ISK.convs.some(c => c.at)) ISK.convs.sort((a,b) => b.at - a.at); ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
     if (ISK.sel) await iskThread(ISK.sel, true);
   }catch(e){ ISK.st = ISK.st==="ok" ? "ok" : "err"; ISK.err = e.message + (e.detail ? " · " + JSON.stringify(e.detail).slice(0,300) : ""); }
   finally{ ISK.loading = false; schedule(); }
 }
 async function iskThread(id, quiet){
   try{ const j = await window.STRIKD_ISKRA("messages", {id, limit:50});
-    ISK.msgs[id] = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m), at:iskAt(m), st:m.status||""})).sort((a,b) => a.at-b.at); }
+    let ms = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m), at:iskAt(m), st:m.status||""}));
+    ms = ms.some(x => x.at) ? ms.sort((a,b) => a.at-b.at) : ms.reverse(); // la API da lo más nuevo primero
+    ISK.msgs[id] = ms; }
   catch(e){ if (!quiet) ISK.err = e.message; }
   schedule();
 }
@@ -3162,7 +3167,7 @@ function renderIskra(){
   const box = $("iskBox"); if (!box) return;
   const on = !!window.STRIKD_ISKRA && S.isLead && !S.viewAs;
   box.hidden = !on; if (!on || S.tab!=="msgs") { clearInterval(ISK.timer); ISK.timer = null; return; }
-  if (!ISK.timer){ ISK.timer = setInterval(() => { if (S.tab==="msgs") iskLoad(); }, 30e3); iskLoad(true); }
+  if (!ISK.timer){ ISK.timer = setInterval(() => { if (S.tab==="msgs" && !document.hidden) iskLoad(); }, 15e3); iskLoad(true); }
   if (busyIn(box)) return;
   if (ISK.st==="off"){ $("iskNotice").hidden = false; box.innerHTML = `<p class="notice">ISKRA no está activado: falta <b>ISKRA_API_KEY</b> en Vercel (Settings → Environment Variables) y hacer Redeploy.</p>`; return; }
   $("iskNotice").hidden = ISK.st==="ok";
