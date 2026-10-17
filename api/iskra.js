@@ -11,18 +11,52 @@ const arr = j => Array.isArray(j) ? j : (j && (j.data || j.items || j.conversati
 const convId = c => String(c.id || c.conversation_id || "");
 const convPhone = c => { const ct = c.contact || c.lead || {}; return c.phone || c.lead_phone || c.contact_phone || ct.phone || c.wa_id || ""; };
 
-async function iskra(method, path, payload){
-  const r = await fetch(BASE + path, {method, headers:{authorization:"Bearer " + process.env.ISKRA_API_KEY, "content-type":"application/json"}, body: payload ? JSON.stringify(payload) : undefined});
-  const text = await r.text(); let j; try{ j = JSON.parse(text); }catch(_){ j = {raw:text.slice(0, 2000)}; }
-  if (!r.ok) throw Object.assign(new Error((j && (j.error || j.message)) || ("ISKRA " + r.status)), {status:r.status, detail:j});
-  return j;
+async function iskra(method, path, payload, timeoutMs){
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), timeoutMs || 15000);
+  try{
+    const r = await fetch(BASE + path, {method, signal:ctl.signal, headers:{authorization:"Bearer " + process.env.ISKRA_API_KEY, "content-type":"application/json"}, body: payload ? JSON.stringify(payload) : undefined});
+    const text = await r.text(); let j; try{ j = JSON.parse(text); }catch(_){ j = {raw:text.slice(0, 2000)}; }
+    if (!r.ok) throw Object.assign(new Error((j && (j.error || j.message)) || ("ISKRA " + r.status)), {status:r.status, detail:j});
+    return j;
+  }catch(e){ if (e.name === "AbortError") throw Object.assign(new Error("ISKRA tardó demasiado"), {status:504}); throw e; }
+  finally{ clearTimeout(to); }
 }
-let LIST_CACHE = {at:0, data:null, p:null};
+// Lista de conversaciones: primera página cada 10 s; hasta 4 páginas cada 60 s (por si la actividad nueva no viene arriba).
+// Además, los mensajes entrantes de las últimas 2 h (con fecha, para que ISKRA no tarde) para no perder ninguno nuevo.
+let LIST_CACHE = {at:0, deepAt:0, data:null, p:null, info:{}};
+const lastAtOf = cv => Date.parse(cv.last_message_at || (cv.last_message && cv.last_message.created_at) || cv.updated_at || cv.created_at || "") || 0;
 async function iskList(){
   if (LIST_CACHE.data && Date.now() - LIST_CACHE.at < 10e3) return LIST_CACHE.data;
   if (LIST_CACHE.p) return LIST_CACHE.p;
-  LIST_CACHE.p = iskra("GET", "/v1/conversations?limit=100").then(j => { LIST_CACHE = {at:Date.now(), data:arr(j), p:null}; return LIST_CACHE.data; })
-    .catch(e => { LIST_CACHE.p = null; throw e; });
+  LIST_CACHE.p = (async () => {
+    const info = {paginas:0};
+    const deep = !LIST_CACHE.data || Date.now() - LIST_CACHE.deepAt > 60e3;
+    const all = {}; (LIST_CACHE.data || []).forEach(cv => { all[String(cv.id)] = cv; });
+    let cursor = "", pages = deep ? 4 : 1;
+    while (pages-- > 0){
+      const j = await iskra("GET", "/v1/conversations?limit=100" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""), null, 10000);
+      info.paginas++; arr(j).forEach(cv => { all[String(cv.id || cv.conversation_id)] = cv; });
+      cursor = j && j.next_cursor; if (!cursor || !(j.has_more ?? true)) break;
+    }
+    // entrantes recientes: si ISKRA los da rápido, metemos esas conversaciones aunque no vengan en la lista
+    const since = new Date(Date.now() - 2*3600e3).toISOString();
+    try{
+      const q = `/v1/messages/whatsapp?direction=inbound&limit=50&from=${encodeURIComponent(since)}&since=${encodeURIComponent(since)}&date_from=${encodeURIComponent(since)}`;
+      const ms = arr(await iskra("GET", q, null, 4000));
+      info.entrantes_recientes = ms.length;
+      ms.forEach(m => {
+        const id = String(m.conversation_id || (m.conversation && m.conversation.id) || ""); if (!id) return;
+        const at = m.created_at || m.sent_at || m.timestamp;
+        const cv = all[id] || (all[id] = {id, contact_phone:m.phone || m.from || m.contact_phone || "", contact_name:m.contact_name || null});
+        if (!cv.last_message_at || Date.parse(at) > Date.parse(cv.last_message_at)){ cv.last_message_at = at; cv.last_message_text = m.text || m.body || m.content || cv.last_message_text; }
+        cv.unread_count = Math.max(1, Number(cv.unread_count || 0));
+      });
+    }catch(e){ info.entrantes_recientes_error = e.message; }
+    const data = Object.values(all).sort((a, b) => lastAtOf(b) - lastAtOf(a)).slice(0, 400);
+    info.mas_reciente = data[0] ? (data[0].last_message_at || null) : null;
+    LIST_CACHE = {at:Date.now(), deepAt:deep ? Date.now() : LIST_CACHE.deepAt, data, p:null, info};
+    return data;
+  })().catch(e => { LIST_CACHE.p = null; throw e; });
   return LIST_CACHE.p;
 }
 const SQL_INIT = `
@@ -84,7 +118,7 @@ module.exports = async (req, res) => {
         // Solo conversaciones donde el prospecto YA contestó al menos una vez.
         // ISKRA no dice en la lista quién escribió el último mensaje, así que:
         //  · unread_count > 0 → el prospecto escribió;
-        //  · si cambió la conversación (last_message_at), leemos sus mensajes (máx. 12 por vuelta) y guardamos lo que vimos.
+        //  · si cambió la conversación (last_message_at), leemos sus mensajes (máx. 8 por vuelta) y guardamos lo que vimos.
         const T = {}, t0 = Date.now();
         const list = await iskList(); T.iskra = Date.now() - t0;
         const ids = list.map(convId).filter(Boolean), byId = {};
@@ -96,7 +130,7 @@ module.exports = async (req, res) => {
         }
         const lastAt = cv => cv.last_message_at || (cv.last_message && cv.last_message.created_at) || cv.updated_at || "";
         const stale = id => { const sn = seen[id]; return !sn || !sn.last_at || Date.parse(lastAt(byId[id])) > new Date(sn.last_at).getTime() + 1000; };
-        const toCheck = ids.filter(id => stale(id)).slice(0, 12);
+        const toCheck = ids.filter(id => stale(id) && !(Number(byId[id].unread_count || 0) > 0 && known[id] && known[id].replied_at)).slice(0, 8);
         await Promise.all(toCheck.map(async id => {
           try{
             const ms = arr(await iskra("GET", `/v1/conversations/${enc(id)}/messages?limit=30`));
@@ -138,7 +172,7 @@ module.exports = async (req, res) => {
           if (lead || o.owner === me.id) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by}});
         }
         T.total = Date.now() - t0; res.setHeader("server-timing", `iskra;dur=${T.iskra}, total;dur=${T.total}`);
-        const debug = lead ? {tiempos_ms:T, conversaciones_en_lista:list.length, revisadas_esta_vuelta:toCheck.length, pendientes_de_revisar:ids.filter(stale).length - toCheck.length, con_respuesta:out.length, ejemplo_conversacion:list[0] || null} : undefined;
+        const debug = lead ? {tiempos_ms:T, lista:LIST_CACHE.info, conversaciones_en_lista:list.length, revisadas_esta_vuelta:toCheck.length, pendientes_de_revisar:ids.filter(stale).length - toCheck.length, con_respuesta:out.length, ejemplo_conversacion:list[0] || null} : undefined;
         return {data:{data:out}, mode, debug};
       }
       if (op === "messages"){
