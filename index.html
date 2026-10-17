@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 16:53 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 16:55 UTC"</script>
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/claude-shim.js"></script>
@@ -825,7 +825,7 @@ label.f em{color:var(--bad);font-style:normal}
 
   <section class="view" id="view-msgs" hidden>
     <div class="row"><div><h2>Mensajes</h2><p class="sub">Tus conversaciones de WhatsApp: arriba las que necesitan acción, sobre todo las que le tocan al manager.</p></div></div>
-    <div class="subnav" id="msgSeg" role="tablist" aria-label="Mensajes"><button type="button" data-mseg="isk" id="msegIsk" hidden>WhatsApp en vivo</button><button type="button" data-mseg="inbox">Conversaciones</button><button type="button" data-mseg="send">Por mandar<span class="n" id="msegSendN"></span></button><button type="button" data-mseg="tpl">Plantillas</button></div>
+    <div class="subnav" id="msgSeg" role="tablist" aria-label="Mensajes"><button type="button" data-mseg="isk" id="msegIsk" hidden>Conversaciones</button><button type="button" data-mseg="inbox" id="msegInbox">Conversaciones</button><button type="button" data-mseg="send">Por mandar<span class="n" id="msegSendN"></span></button><button type="button" data-mseg="tpl">Plantillas</button></div>
     <div data-seg="isk"><div id="iskBox" hidden></div></div>
     <div data-seg="inbox"><p class="notice" id="iskNotice">Al conectar ISKRA, "Abrir en WhatsApp" se vuelve <b>Enviar</b> y sale directo desde el número de STRIKD.</p><div id="inboxBox"></div></div>
     <div data-seg="send"><div id="msgBox"></div></div>
@@ -993,8 +993,9 @@ $("themeBtn").addEventListener("click", () => { const t = document.documentEleme
 const MSEG = {v:null};
 function syncMsgSeg(){
   const isk = !!iskFn() && S.isLead && !S.viewAs;
-  $("msegIsk").hidden = !isk;
-  if (!MSEG.v || (MSEG.v==="isk" && !isk)) MSEG.v = isk ? "isk" : "inbox";
+  // con ISKRA, la bandeja es solo la de ISKRA (una sola); sin ISKRA, la bandeja manual
+  $("msegIsk").hidden = !isk; $("msegInbox").hidden = isk;
+  if (!MSEG.v || (MSEG.v==="isk" && !isk) || (MSEG.v==="inbox" && isk)) MSEG.v = isk ? "isk" : "inbox";
   document.querySelectorAll("#msgSeg [data-mseg]").forEach(b => b.classList.toggle("on", b.dataset.mseg===MSEG.v));
   document.querySelectorAll("#view-msgs [data-seg]").forEach(d => d.hidden = d.dataset.seg!==MSEG.v);
   const n = $("msgCount") && !$("msgCount").hidden ? $("msgCount").textContent : ""; $("msegSendN").textContent = n ? n : "";
@@ -3301,7 +3302,7 @@ function renderIskra(){
           <button type="button" class="btn small primary" data-isksend="1"${ISK.busy?" disabled":""}>${ISK.busy?"Enviando…":"Enviar por ISKRA"}</button></div></div>
         <p class="mut small">Solo se puede contestar en conversaciones que el prospecto ya abrió. Para escribir primero se usa una plantilla aprobada.</p></div></div>`;
   }
-  box.innerHTML = `<div class="isk"><div class="isk-top"><span class="isk-dot"></span><b>${iskFn()===iskMock ? "ISKRA · ejemplo" : "ISKRA en vivo"}</b>${ws?`<span class="mut small">${esc(ws)}</span>`:""}<span class="mut small">· ${ISK.convs.length} conversaciones · actualizado ${ISK.at?esc(fmtLocal(ISK.at).split(", ").pop()):""}${window.STRIKD_BUILD?` · versión ${esc(window.STRIKD_BUILD)}`:""}</span><div class="spacer"></div>
+  box.innerHTML = `<div class="isk"><div class="isk-top"><span class="isk-dot"></span><b>WhatsApp de STRIKD</b><span class="mut small">${iskFn()===iskMock ? "vía ISKRA · datos de ejemplo" : "vía ISKRA · en vivo"}</span>${ws?`<span class="mut small">${esc(ws)}</span>`:""}<span class="mut small">· ${ISK.convs.length} conversaciones · actualizado ${ISK.at?esc(fmtLocal(ISK.at).split(", ").pop()):""}${window.STRIKD_BUILD?` · versión ${esc(window.STRIKD_BUILD)}`:""}</span><div class="spacer"></div>
     <button type="button" class="btn small" data-iskre="1">${ISK.loading?"Actualizando…":"Actualizar"}</button>${S.isOwner?`<button type="button" class="btn small ghost" data-iskraw="1">Datos crudos</button>`:""}</div>
     ${ISK.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISK.raw, null, 1).slice(0,6000))}</pre>` : ""}
     <div class="cv"><div class="cv-left"><div class="cv-list">${ISK.convs.map(item).join("") || `<p class="mut small cv-empty">ISKRA no tiene conversaciones todavía.</p>`}</div></div>${right}</div></div>`;
