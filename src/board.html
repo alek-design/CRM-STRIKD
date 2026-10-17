@@ -1282,7 +1282,7 @@ function renderAdmin(ps){
   const pHtml = `<option value="">Todo el equipo</option>` + Object.keys(S.team).map(id=>`<option value="${id}">${esc(nameOf(ps,id))}</option>`).join("");
   if (pSel.dataset.html !== pHtml){ const v = pSel.value; pSel.innerHTML = pHtml; pSel.dataset.html = pHtml; pSel.value = v; }
   const week = S.adminWeek, who = pSel.value, st = $("adminStatus").value;
-  $("demoBar").hidden = !S.isOwner || !Object.values(S.members).some(m => m.demo);
+  $("demoBar").hidden = !S.isOwner || !(Object.values(S.members).some(m => m.demo) || Object.values(S.waCamps||{}).some(c => c.demo) || Object.values(S.tpls||{}).some(t => t.demo) || Object.values(S.validations||{}).some(v => v.demo));
 
   const byEmail = {};
   const byProf = {}, normP = u => (u||"").toLowerCase().replace(/^https?:\/\/(www\.)?/,"").replace(/[?#].*$/,"").replace(/\/+$/,"");
@@ -1349,6 +1349,11 @@ $("demoClear").addEventListener("click", async e => {
   const b = e.currentTarget;
   if (b.dataset.armed !== "1"){ b.dataset.armed="1"; b.textContent="Confirmar: borrar ejemplos"; return; }
   b.disabled = true; b.textContent = "Borrando…";
+  if (window.STRIKD_CLEANUP){
+    try{ const r = await window.STRIKD_CLEANUP(); b.textContent = `Ejemplos borrados (${r.deleted||0})`; setTimeout(() => location.reload(), 1200); }
+    catch(ex){ b.disabled=false; b.dataset.armed=""; b.textContent="No se pudo borrar, reintenta"; }
+    return;
+  }
   try{
     const demoIds = Object.keys(S.members).filter(id => S.members[id].demo);
     for (const [id,v] of Object.entries(S.validations)) if (v.demo || demoIds.includes(v.uid)) await db.doc(`validations/${id}`).delete();
@@ -1356,9 +1361,11 @@ $("demoClear").addEventListener("click", async e => {
       for (const [id,m] of Object.entries(S.all[uid]||{})){ await db.doc(`meets/${uid}/items/${id}`).delete(); const k = igKey(m.profile) || (m.email ? "email:" + m.email.toLowerCase().replace(/[^a-z0-9._@+-]/g,"") : ""); if (k) await db.doc(`prospectIndex/${k}`).delete().catch(()=>{}); }
       for (const id of Object.keys(S.waLeads[uid]||{})) await db.doc(`meets/${uid}/waleads/${id}`).delete();
       for (const [id,x] of Object.entries(S.vip[uid]||{})){ await db.doc(`meets/${uid}/vip/${id}`).delete(); const k = x.igKey || igKey(x.profile); if (k) await db.doc(`vipIndex/${k}`).delete().catch(()=>{}); }
+      for (const id of Object.keys((S.pts||{})[uid]||{})) await db.doc(`points/${uid}/ev/${id}`).delete().catch(()=>{});
       await db.doc(`members/${uid}`).delete();
     }
     for (const [id,c] of Object.entries(S.waCamps)) if (c.demo) await db.doc(`waCampaigns/${id}`).delete();
+    for (const [id,t] of Object.entries(S.tpls||{})) if (t.demo) await db.doc(`waTemplates/${id}`).delete().catch(()=>{});
     b.textContent = "Ejemplos borrados";
   }catch(ex){ b.disabled=false; b.dataset.armed=""; b.textContent="No se pudo borrar todo, reintenta"; }
 });
