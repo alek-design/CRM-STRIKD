@@ -230,11 +230,6 @@
     async invalidate(){}
   };
   window.STRIKD_GOOGLE = () => google;
-  window.STRIKD_CLEANUP = async () => {
-    const t = (await sb.auth.getSession()).data.session.access_token;
-    const r = await fetch("/api/cleanup", {method:"POST", headers:{authorization:"Bearer " + t}});
-    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || ("Error " + r.status)); return j;
-  };
   // ISKRA (WhatsApp): {configured:false} | {data} | lanza {message, detail}
   window.STRIKD_ISKRA = async (op, input) => {
     const t = (await sb.auth.getSession()).data.session.access_token;
