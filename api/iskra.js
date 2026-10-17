@@ -24,6 +24,7 @@ async function iskra(method, path, payload, timeoutMs){
 // Lista de conversaciones: primera página cada 10 s; hasta 4 páginas cada 60 s (por si la actividad nueva no viene arriba).
 // Además, los mensajes entrantes de las últimas 2 h (con fecha, para que ISKRA no tarde) para no perder ninguno nuevo.
 let LIST_CACHE = {at:0, deepAt:0, data:null, p:null, info:{}};
+const MSG_CACHE = {};
 const lastAtOf = cv => Date.parse(cv.last_message_at || (cv.last_message && cv.last_message.created_at) || cv.updated_at || cv.created_at || "") || 0;
 async function iskList(){
   if (LIST_CACHE.data && Date.now() - LIST_CACHE.at < 10e3) return LIST_CACHE.data;
@@ -178,7 +179,25 @@ module.exports = async (req, res) => {
       if (op === "messages"){
         if (!input.id) throw Object.assign(new Error("Falta id"), {status:400});
         await mustOwn(input.id);
-        const j = await iskra("GET", `/v1/conversations/${enc(input.id)}/messages?limit=${Math.min(Number(input.limit) || 50, 100)}`);
+        // ISKRA puede regresar los mensajes del más viejo al más nuevo: recorremos páginas hasta el final para tener lo último.
+        // Caché: si la conversación no ha cambiado (según la lista), no volvemos a pedirla.
+        const cvL = (LIST_CACHE.data || []).find(x => String(x.id) === String(input.id)), lastL = cvL ? lastAtOf(cvL) : 0;
+        const mc = MSG_CACHE[input.id];
+        if (!input.force && mc && lastL && mc.lastL === lastL && Date.now() - mc.at < 120e3){
+          const sent0 = (await c.query("select user_id, text, extract(epoch from at)*1000 as at from public.iskra_sent where conversation_id=$1 order by at desc limit 200", [String(input.id)])).rows;
+          return {data:mc.data, sent:sent0.map(x => ({by:x.user_id, text:x.text, at:Number(x.at)})), cached:true};
+        }
+        const all = [], seenIds = new Set(); let cursor = "", pages = 0, info = {};
+        while (pages < 6){
+          const j = await iskra("GET", `/v1/conversations/${enc(input.id)}/messages?limit=100` + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""), null, 10000);
+          pages++; arr(j).forEach(m => { const k = m.id || (m.created_at + "|" + (m.text || m.body || "")); if (!seenIds.has(k)){ seenIds.add(k); all.push(m); } });
+          cursor = j && j.next_cursor; if (!cursor || j.has_more === false) break;
+        }
+        const at = m => Date.parse(m.created_at || m.sent_at || m.timestamp || "") || 0;
+        all.sort((x, y) => at(x) - at(y));
+        const last = all.slice(-80); info = {paginas:pages, mensajes:all.length};
+        const j = {data:last.slice().reverse(), info};
+        MSG_CACHE[input.id] = {lastL, data:j, at:Date.now()};
         const sent = (await c.query("select user_id, text, extract(epoch from at)*1000 as at from public.iskra_sent where conversation_id=$1 order by at desc limit 200", [String(input.id)])).rows;
         return {data:j, sent:sent.map(s => ({by:s.user_id, text:s.text, at:Number(s.at)}))};
       }
@@ -194,7 +213,7 @@ module.exports = async (req, res) => {
           Object.assign(payload, {type:kind, media_url:media.url, media_type:media.type, filename:media.name || undefined});
           if (text) payload.caption = text;
         }
-        const j = await iskra("POST", "/v1/messages/reply", payload); LIST_CACHE.at = 0;
+        const j = await iskra("POST", "/v1/messages/reply", payload); LIST_CACHE.at = 0; delete MSG_CACHE[input.conversation_id];
         const label = media ? `${text ? text + " " : ""}[${media.type && media.type.startsWith("audio/") ? "nota de voz" : media.name || "archivo"}]` : text;
         await c.query("insert into public.iskra_sent (conversation_id, user_id, text) values ($1,$2,$3)", [String(input.conversation_id), me.id, label]);
         await c.query("update public.iskra_owner set last_sender=$2, last_sent_at=now() where conversation_id=$1", [String(input.conversation_id), me.id]);

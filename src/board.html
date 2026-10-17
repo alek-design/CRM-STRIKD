@@ -3483,7 +3483,7 @@ function iskConv(c){
   const lm = c.last_message || {}, x = c._strikd || {};
   return {id:String(c.id || c.conversation_id || ""), name:c.name || c.lead_name || c.contact_name || ct.name || phone || "Sin nombre", phone,
     last:typeof lm==="string" ? lm : iskTxt(lm) || c.last_message_text || c.preview || "", lastDir:typeof lm==="object" && Object.keys(lm).length ? iskDir(lm) : (c.last_direction ? iskDir({direction:c.last_direction}) : ""),
-    at:iskAt(c) || iskAt(lm), unread:Number(c.unread_count || c.unread || 0), owner:x.owner || null, by:x.assignedBy || "", esc:x.escalatedAt ? Date.parse(x.escalatedAt) || 1 : 0,
+    at:(Date.parse(c.last_message_at || "") || iskAt(lm) || iskAt(c)), unread:Number(c.unread_count || c.unread || 0), owner:x.owner || null, by:x.assignedBy || "", esc:x.escalatedAt ? Date.parse(x.escalatedAt) || 1 : 0,
     lastSender:x.lastSender || null, lastSentAt:x.lastSentAt ? (typeof x.lastSentAt==="number" ? x.lastSentAt : Date.parse(x.lastSentAt)) : 0,
     disc:x.discardedAt ? (Date.parse(x.discardedAt) || 1) : 0, raw:c};
 }
