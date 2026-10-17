@@ -1650,10 +1650,10 @@ function validate(o){
   if (p===2 && !o.followers) return "Pon los seguidores aproximados.";
   if (p===2 && Number(o.followers) > 35000) return "Con más de 35K va como Perfil 3, en la lista de Mich.";
   if (!S.editingId && !autoInv() && (curPerfil()!==3 || $("f_p3meet").checked)) return "Conecta tu Google Calendar para agendar: el link de Meet se genera solo.";
-  if (!o.prospect || !o.channel || !o.profile || !o.email || !o.meetAt) return "Completa los campos marcados con *.";
+  if (!o.prospect || !o.channel || (!o.profile && o.canal!=="whatsapp") || !o.email || !o.meetAt) return "Completa los campos marcados con *.";
   if (isNaN(meetTs(o.meetAt))) return "Revisa la fecha y hora del meet.";
   { const c = slotClash(meetTs(o.meetAt)); if (c && c.hard) return `A esa hora tu team leader ya tiene ${SLOT_KIND[c.kind]||"un meet"}. Elige otro horario libre.`; }
-  if (!safeUrl(o.profile)) return "El link al perfil debe empezar con https://";
+  if (o.profile && !safeUrl(o.profile)) return "El link al perfil debe empezar con https://";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return "Revisa el email del prospecto.";
   if (o.link && !safeUrl(o.link)) return "El link debe empezar con https://";
   return "";
@@ -1698,7 +1698,7 @@ $("meetForm").addEventListener("submit", async e => {
       if (mk) o.link = "";
       // auto-validation: complete data, a future date and nobody else already has this prospect
       const pkey = igKey(o.profile) || (o.email ? "email:" + o.email.toLowerCase().replace(/[^a-z0-9._@+-]/g,"") : "");
-      let auto = !!(safeUrl(o.profile) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email) && meetTs(o.meetAt) > now && pkey), dupOf = "";
+      let auto = !!((safeUrl(o.profile) || (o.canal==="whatsapp" && !o.profile)) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email) && meetTs(o.meetAt) > now && pkey), dupOf = "";
       if (auto){
         try{
           const iref = db.doc(`prospectIndex/${pkey}`);
@@ -2552,8 +2552,9 @@ async function doAct(b){
     const ed = EDRAFT[k] || {}, msg = box.querySelector(`[data-msg="${k}"]`);
     if (!Object.keys(ed).length){ if (msg) msg.textContent = "No hay cambios por guardar."; return; }
     const o = {}; EDIT_FIELDS.forEach(([f]) => { o[f] = String(ed[f] ?? m[f] ?? "").trim(); });
-    const err = !o.prospect || !o.email || !o.meetAt || !o.profile ? "Nombre, email, perfil y fecha no pueden quedar vacíos."
-      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email) ? "Revisa el email." : (!safeUrl(o.profile) || !safeUrl(o.link)) ? "Los links deben empezar con https://" : "";
+    const wa = (m.canal || "")==="whatsapp";
+    const err = !o.prospect || !o.email || !o.meetAt || (!o.profile && !wa) ? "Nombre, email, perfil y fecha no pueden quedar vacíos."
+      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email) ? "Revisa el email." : ((o.profile && !safeUrl(o.profile)) || (o.link && !safeUrl(o.link))) ? "Los links deben empezar con https://" : "";
     if (err){ if (msg) msg.textContent = err; return; }
     sv.disabled = true;
     try{
@@ -3098,7 +3099,9 @@ function syncPerfilUi(){
   document.querySelectorAll("#p3meetL [data-p3]").forEach(b => { const on = (b.dataset.p3==="1")===p3m; b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on)); });
   document.querySelectorAll("#meetForm .m-only").forEach(el => el.hidden = vip);
   document.querySelectorAll("#meetForm .fol-only").forEach(el => el.hidden = !(p===2 || p===3));
-  $("f_profileLbl").firstChild.textContent = vip ? "Link de Instagram " : "Link al perfil del prospecto ";
+  const waNoProf = !vip && $("f_canal").value==="whatsapp";
+  $("f_profileLbl").firstChild.textContent = vip ? "Link de Instagram " : waNoProf ? "Link al perfil (opcional) " : "Link al perfil del prospecto ";
+  { const em = $("f_profileLbl").querySelector("em"); if (em) em.hidden = waNoProf; }
   $("f_profile").placeholder = vip ? "https://instagram.com/…" : "https://instagram.com/… o tiktok.com/@…";
   $("f_notesLbl").firstChild.textContent = vip ? "¿Por qué vale la pena? (audiencia, engagement, afinidad)" : "Notas (contexto, interés, siguiente paso)";
   if (!S.editingId){ $("formTitle").textContent = vip ? "Proponer a Mich" : "Registrar meet"; $("submitBtn").textContent = vip ? "Agregar a la lista de Mich" : "Enviar a validación"; }
