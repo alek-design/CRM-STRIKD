@@ -324,6 +324,22 @@ a.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line2)}
 .slot-times button.busy{color:var(--dim);border-style:dashed;text-decoration:line-through;cursor:not-allowed}
 .slot-times button.gbusy{color:var(--wait);border-color:var(--wait-line)}
 .slot-warn{font-size:12.5px;color:var(--wait)}.slot-err{font-size:12.5px;color:var(--bad);font-weight:600}
+/* resultado al agendar */
+.rs-wrap{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(0,0,0,.45);padding:16px;animation:rsFade .18s ease-out}
+:root[data-theme="light"] .rs-wrap{background:rgba(20,20,20,.25)}
+.rs{width:min(420px,100%);background:var(--surface);border:1px solid var(--line2);border-radius:20px;padding:26px 24px 20px;text-align:center;box-shadow:var(--menu-shadow);animation:rsPop .32s cubic-bezier(.2,.9,.3,1.2)}
+.rs h3{font-size:20px;margin:14px 0 6px}.rs p{margin:0;color:var(--muted)}.rs .rs-d{margin-top:10px;font-size:13px;color:var(--fg2)}
+.rs .rs-acts{display:flex;gap:8px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+.rs-ic{width:64px;height:64px;margin:0 auto;border-radius:50%;display:grid;place-items:center}
+.rs-ic svg{width:34px;height:34px;fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.rs.ok .rs-ic{background:var(--ok-soft);box-shadow:0 0 0 2px var(--ok) inset}.rs.ok svg{stroke:var(--ok)}
+.rs.warn .rs-ic{background:var(--wait-soft);box-shadow:0 0 0 2px var(--wait) inset}.rs.warn svg{stroke:var(--wait)}
+.rs.err .rs-ic{background:var(--bad-soft);box-shadow:0 0 0 2px var(--bad) inset}.rs.err svg{stroke:var(--bad)}
+.rs svg path{stroke-dasharray:60;stroke-dashoffset:60;animation:rsDraw .45s .12s ease-out forwards}
+.rs.loading .rs-ic{box-shadow:0 0 0 2px var(--line2) inset;position:relative}
+.rs.loading .rs-ic::after{content:"";position:absolute;inset:0;border-radius:50%;border:3px solid transparent;border-top-color:var(--fg);animation:rsSpin .8s linear infinite}
+@keyframes rsFade{from{opacity:0}}@keyframes rsPop{from{transform:translateY(12px) scale(.94);opacity:0}}@keyframes rsDraw{to{stroke-dashoffset:0}}@keyframes rsSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.rs,.rs-wrap,.rs svg path{animation:none!important;stroke-dashoffset:0}}
 .isk-own select{margin-left:6px}.isk-by{margin:0;padding:6px 14px;border-bottom:1px solid var(--line)}.isk-recent{margin:0 0 8px}.cv-hacts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .isk{margin:0 0 18px}.isk-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}.isk-dot{width:8px;height:8px;border-radius:50%;background:var(--wa);display:inline-block}.isk-dot.off{background:var(--wait)}.isk-raw{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto;background:var(--surface);border:1px solid var(--line2);border-radius:8px;padding:8px}
 .cv{display:grid;grid-template-columns:320px 1fr;min-height:520px;border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:var(--surface)}
@@ -786,11 +802,8 @@ label.f em{color:var(--bad);font-style:normal}
       </form>
     </div>
     <div id="myVip" class="vip-mine" hidden></div>
-    <div class="row">
-      <h2>Meets agendados</h2><div class="spacer"></div>
-      <div class="stats" id="myStats"></div>
-    </div>
-    <div class="list" id="myList"><div class="empty">Todavía no registras meets esta semana. Llena el formulario de arriba para sumar tu primero.</div></div>
+    <div hidden><div class="stats" id="myStats"></div></div>
+    <div class="list" id="myList" hidden><div class="empty">Todavía no registras meets esta semana. Llena el formulario de arriba para sumar tu primero.</div></div>
   </section>
 
   <div hidden><select id="adminWeek"></select><select id="adminPerson"></select><select id="adminStatus"><option value="todo"></option></select><div id="adminList"></div><span id="pendingCount"></span><span id="tabAdmin"></span></div>
@@ -1349,6 +1362,20 @@ function validate(o){
 }
 function resetForm(){ S.waPrefill = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Enviar a validación"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
 $("cancelEdit").addEventListener("click", resetForm);
+/* ---------- resultado claro al registrar: cargando → listo / con aviso / error ---------- */
+const RS_IC = {ok:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>', warn:'<svg viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"/></svg>', err:'<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>', loading:""};
+let rsT = null;
+function showResult(state, title, text, detail){
+  clearTimeout(rsT);
+  let w = $("rsWrap"); if (!w){ w = document.createElement("div"); w.id = "rsWrap"; w.className = "rs-wrap"; document.body.appendChild(w);
+    w.addEventListener("click", e => { if (e.target===w || e.target.closest("[data-rsclose]")) hideResult(); if (e.target.closest("[data-rsgo]")){ hideResult(); showTab("board"); } }); }
+  w.hidden = false;
+  w.innerHTML = `<div class="rs ${state}" role="${state==="err"?"alert":"status"}" aria-live="polite"><div class="rs-ic">${RS_IC[state]||""}</div><h3>${esc(title)}</h3><p>${esc(text||"")}</p>${detail?`<p class="rs-d">${esc(detail)}</p>`:""}
+    ${state==="loading" ? "" : `<div class="rs-acts">${state==="err" ? `<button type="button" class="btn primary" data-rsclose="1">Entendido</button>` : `<button type="button" class="btn" data-rsgo="1">Ver en Hoy</button><button type="button" class="btn primary" data-rsclose="1">Agendar otro</button>`}</div>`}</div>`;
+  if (state==="ok") rsT = setTimeout(hideResult, 6000);
+}
+function hideResult(){ clearTimeout(rsT); const w = $("rsWrap"); if (w) w.hidden = true; }
+document.addEventListener("keydown", e => { if (e.key==="Escape") hideResult(); });
 $("meetForm").addEventListener("submit", async e => {
   e.preventDefault();
   const o = readForm(), err = validate(o);
@@ -1356,8 +1383,8 @@ $("meetForm").addEventListener("submit", async e => {
   $("formErr").hidden = true; $("submitBtn").disabled = true;
   o.perfil = Number(o.perfil)||0; o.followers = o.followers ? Number(o.followers) : "";
   if (o.perfil===3 && !S.editingId && !$("f_p3meet").checked){
-    try{ await saveVip(o); resetForm(); $("formErr").textContent = "Listo: agregado a la lista de Mich."; $("formErr").classList.add("okmsg"); $("formErr").hidden = false; setTimeout(() => { $("formErr").hidden = true; $("formErr").classList.remove("okmsg"); }, 5000); }
-    catch(ex){ $("formErr").textContent = ex && ex.dup ? ex.msg : "No se pudo guardar. Intenta de nuevo."; $("formErr").hidden = false; }
+    try{ await saveVip(o); resetForm(); showResult("ok", "Agregado a la lista de Mich", `${o.prospect} ya está en la lista; Mich hace el primer contacto.`); }
+    catch(ex){ showResult(ex && ex.dup ? "warn" : "err", ex && ex.dup ? "Ya estaba en la lista" : "No se guardó", ex && ex.dup ? ex.msg : "Revisa tu conexión e intenta de nuevo. Tus datos siguen en el formulario."); }
     finally{ $("submitBtn").disabled = false; }
     return;
   }
@@ -1367,7 +1394,7 @@ $("meetForm").addEventListener("submit", async e => {
     if (S.editingId){
       const prev = myItems()[S.editingId];
       await col.doc(S.editingId).set({...prev, ...o, updatedAt: now});
-      resetForm();
+      resetForm(); showResult("ok", "Cambios guardados", `${o.prospect} quedó actualizado.`);
     } else {
       const mk = autoInv(), ref = col.doc();
       if (mk) o.link = "";
@@ -1386,25 +1413,23 @@ $("meetForm").addEventListener("submit", async e => {
       const wp = S.waPrefill;
       await ref.set({...o, createdAt: now, updatedAt: now, week: weekKey(now), ...(auto ? {autoValid:true, autoValidAt:now} : {}), ...(dupOf ? {dupOf} : {}), ...(wp ? {waLeadId:wp.id, waCampaign:wp.campaignId} : {})});
       if (wp) db.doc(`meets/${wp.uid}/waleads/${wp.id}`).update({status:"agendado", statusAt:now, meetId:ref.id}).catch(()=>{});
-      resetForm();
-      $("formErr").textContent = auto ? "Listo: registrado y validado automáticamente." : dupOf ? "Registrado. Ese prospecto ya lo tiene alguien del equipo: tu manager lo revisa." : "Registrado. Tu manager lo revisa.";
-      $("formErr").classList.add("okmsg"); $("formErr").hidden = false; setTimeout(() => { $("formErr").hidden = true; $("formErr").classList.remove("okmsg"); }, 7000);
+      resetForm(); SL.at = 0; slotLoad(true);
+      const when = fmtMeetAt(o.meetAt), val = auto ? "Validado automáticamente." : dupOf ? "Ese prospecto ya lo tiene alguien del equipo: tu manager lo revisa." : "Tu manager lo revisa.";
       if (mk){
-        $("formErr").textContent = "Registrado. Creando la invitación en Google Calendar…"; $("formErr").hidden = false; $("formErr").classList.add("okmsg");
+        showResult("loading", "Enviando invitación…", `Creando el meet con ${o.prospect} en tu Google Calendar.`);
+        const inv = leaderEmail(meId());
         try{
           const ev = await createInvite(o);
           await ref.update({link: ev.link, gcalEventId: ev.id, gcalHtml: ev.html, invitedAt: Date.now()});
-          $("formErr").textContent = ev.link ? "Listo: registrado y la invitación con link de Meet ya le llegó al prospecto." : "Registrado e invitación creada. No vino el link de Meet: ábrelo en tu calendario y pégalo con Editar.";
+          if (ev.link) showResult("ok", "Meet agendado", `${o.prospect} · ${when}`, `La invitación con tu link de Meet le llegó al prospecto${inv?` y a ${inv}`:""}. ${val}`);
+          else showResult("warn", "Agendado, falta el link", `${o.prospect} · ${when}`, "La invitación se creó pero no vino el link de Meet: ábrelo en tu calendario y pégalo desde la tarjeta del prospecto.");
         }catch(ex){
-          $("formErr").classList.remove("okmsg");
-          $("formErr").textContent = `Se registró, pero no se pudo crear la invitación: ${INV_ERR[ex && ex.code] || "Google Calendar no respondió"}. Pega el link a mano con Editar.`;
+          showResult("warn", "Registrado, pero sin invitación", `${o.prospect} · ${when}`, `No se pudo crear la invitación: ${INV_ERR[ex && ex.code] || "Google Calendar no respondió"}. Mándale el link a mano. ${val}`);
         }
-        setTimeout(() => { $("formErr").hidden = true; $("formErr").classList.remove("okmsg"); }, 9000);
-      }
+      } else showResult(dupOf ? "warn" : "ok", dupOf ? "Registrado, en revisión" : "Meet agendado", `${o.prospect} · ${when}`, val);
     }
   }catch(ex){
-    $("formErr").textContent = ex && ex.code==="invalid_argument" ? "No tienes permiso para registrar meets. Pide al administrador acceso de Colaborador a esta página." : "No se pudo guardar. Intenta de nuevo en un momento.";
-    $("formErr").hidden = false;
+    showResult("err", "No se agendó", ex && ex.code==="invalid_argument" ? "No tienes permiso para registrar meets. Pide al Head que te dé acceso." : "No se pudo guardar. Revisa tu conexión e intenta de nuevo; tus datos siguen en el formulario.");
   }finally{ $("submitBtn").disabled = false; }
 });
 $("myList").addEventListener("click", async e => {
