@@ -48,6 +48,7 @@ select:hover,input:hover,textarea:hover{border-color:#737373}
 ::placeholder{color:var(--dim)}
 select:focus,input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 select.inline{width:auto}
+.gc-chip{font-size:12px;padding:5px 12px}.gc-chip.cta{border-color:#25d366;color:#25d366}.gc-chip.on{border-color:#1f5135;color:#86efac}.gc-chip.off{color:var(--mut,#8c8c8c)}
 button.btn{font:inherit;font-weight:700;border-radius:999px;padding:9px 18px;cursor:pointer;border:1px solid var(--line2);background:transparent;color:var(--fg);transition:background .15s,border-color .15s}
 button.btn:hover{border-color:#a3a3a3}
 button.btn.primary{background:#fff;border-color:#fff;color:#000}
@@ -627,6 +628,7 @@ label.f em{color:var(--bad);font-style:normal}
       <button class="btn small" id="viewAsBtn">Vista de usuario</button>
       <button class="btn small" id="xlsBtn" hidden>Descargar Excel</button>
     </div>
+    <button type="button" class="btn small gc-chip" id="gcChip" hidden></button>
   </div>
 </header>
 
@@ -2132,8 +2134,37 @@ function gcalWatch(mondayStr){
 async function gcalInit(){
   if (mcpTried) return; mcpTried = true;
   try{ mcp = await claude.use("mcp"); }catch(e){ mcp = null; }
-  syncInvUi(); schedule();
+  syncInvUi(); schedule(); gcChip();
 }
+// Estado de Google Calendar visible arriba (en el dominio lo pone el botón del login).
+let GCSTATE = null;
+async function gcChip(){
+  const b = $("gcChip"); if (!b || window.STRIKD_GOOGLE) return;
+  if (!mcp) GCSTATE = "na";
+  else {
+    try{
+      const r = await mcp.listTools(GCAL);
+      const sv = (r.servers||[]).find(x => x.server===GCAL);
+      GCSTATE = !sv ? "off" : sv.authStatus==="needs_reauth" ? "reauth" : "on";
+    }catch(e){ GCSTATE = (e && e.code)==="approval_required" ? "ask" : "off"; }
+  }
+  const t = {na:["Google Calendar: abre el tablero completo","off"], off:["Conectar Google Calendar","cta"], reauth:["Reconectar Google Calendar","cta"],
+    ask:["Permitir Google Calendar","cta"], on:["✓ Google Calendar","on"]}[GCSTATE];
+  b.textContent = t[0]; b.className = "btn small gc-chip " + t[1]; b.hidden = false;
+}
+document.addEventListener("click", async e => {
+  if (!e.target.closest("#gcChip")) return;
+  if (GCSTATE==="na") return alert("Google Calendar solo funciona con el tablero abierto en claude.ai (pantalla completa, con tu sesión). Ábrelo desde el link del tablero y recarga.");
+  if (GCSTATE==="off" || GCSTATE==="reauth") return alert("Para crear invitaciones con link de Meet:\n\n1. En claude.ai ve a Ajustes → Conectores.\n2. Busca Google Calendar y dale Conectar (o Reconectar).\n3. Elige tu cuenta de Google y dale Permitir.\n4. Regresa aquí y recarga la página.");
+  if (GCSTATE==="ask" || GCSTATE==="on"){
+    const d = new Date().toISOString().slice(0,10);
+    try{ await mcp.callTool(GCAL, "list_events", {startTime:d+"T00:00:00", endTime:d+"T23:59:00", timeZone:"America/Cancun", pageSize:1}); GCSTATE = "on"; }
+    catch(err){ const c = err && err.code; if (c==="server_not_connected" || c==="needs_reauth"){ GCSTATE = "off"; } else if (GCSTATE==="on") return alert("Google Calendar está conectado."); else return alert("No se dio el permiso. Intenta de nuevo."); }
+    const b = $("gcChip"); const t = GCSTATE==="on" ? ["✓ Google Calendar","on"] : ["Conectar Google Calendar","cta"];
+    b.textContent = t[0]; b.className = "btn small gc-chip " + t[1]; syncInvUi(); schedule();
+    if (GCSTATE==="on") alert("Listo: tus meets nuevos crean la invitación con link de Meet en tu Google Calendar.");
+  }
+});
 const INV_CHK = {};
 function inviteSync(){
   if (!mcp || S.readOnly) return;
