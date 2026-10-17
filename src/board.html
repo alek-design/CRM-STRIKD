@@ -301,6 +301,7 @@ a.btn.ghost{background:transparent;color:#fff;border-color:var(--line2)}
 .msg-card textarea{width:100%;font:inherit;font-size:13px;background:var(--bg);color:var(--fg);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;resize:vertical}
 .msg-card .msg-acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .msg-h3{margin:18px 0 8px;font-size:14px}
+.isk{margin:0 0 18px}.isk-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}.isk-dot{width:8px;height:8px;border-radius:50%;background:#25d366;display:inline-block}.isk-dot.off{background:#f59e0b}.isk-raw{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto;background:#0b0b0b;border:1px solid var(--line2);border-radius:8px;padding:8px}
 .cv{display:grid;grid-template-columns:320px 1fr;min-height:520px;border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:var(--surface)}
 .cv-left{border-right:1px solid var(--line2);display:flex;flex-direction:column;min-width:0}
 .cv-filters{display:flex;gap:4px;padding:10px;flex-wrap:wrap}.cv-filters button{font:inherit;font-size:11.5px;font-weight:600;color:var(--muted);background:none;border:1px solid var(--line2);border-radius:999px;padding:4px 9px;cursor:pointer}
@@ -766,7 +767,8 @@ label.f em{color:var(--bad);font-style:normal}
 
   <section class="view" id="view-msgs" hidden>
     <div class="row"><div><h2>Mensajes</h2><p class="sub">Tus conversaciones de WhatsApp: arriba las que necesitan acción, sobre todo las que le tocan al manager.</p></div></div>
-    <p class="notice">Al conectar ISKRA, "Abrir en WhatsApp" se vuelve <b>Enviar</b> y sale directo desde el número de STRIKD.</p>
+    <p class="notice" id="iskNotice">Al conectar ISKRA, "Abrir en WhatsApp" se vuelve <b>Enviar</b> y sale directo desde el número de STRIKD.</p>
+    <div id="iskBox" hidden></div>
     <div id="inboxBox"></div>
     <details class="tpl-wrap"><summary>Plantillas de WhatsApp y prueba A/B</summary><div id="tplBox"></div></details>
     <h3 class="msg-h3">Pendientes por mandar</h3>
@@ -952,7 +954,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = Object.keys(S.team).map(id=>`<option value="${id}">${esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -3135,6 +3137,93 @@ async function convPush(c, msg, state){
   const chat = (c.chat||[]).concat([msg]);
   await convRef(c.k).update({chat, chatState:{...(c.cs||{}), ...state, updatedAt:Date.now()}});
 }
+/* ---------- ISKRA en vivo (solo dominio · Head y Manager) ---------- */
+const ISK = {st:null, who:null, convs:[], sel:null, msgs:{}, draft:{}, busy:false, err:"", raw:null, at:0, loading:false, timer:null};
+const iskArr = j => { const d = j && (j.data !== undefined ? j.data : j); return Array.isArray(d) ? d : (d && (d.data || d.items || d.conversations || d.messages || d.results)) || []; };
+const iskTxt = m => String(m.text || m.body || m.content || m.message || (m.template && (m.template.name || m.template)) || "");
+const iskDir = m => /^(in|inbound|incoming|received|lead)/i.test(String(m.direction || m.dir || m.from_type || (m.from_me===false?"in":m.from_me?"out":"") || m.type || "")) ? "in" : "out";
+const iskAt = m => Date.parse(m.created_at || m.sent_at || m.timestamp || m.last_activity_at || m.last_message_at || m.updated_at || "") || 0;
+const iskDigits = x => String(x||"").replace(/\D/g,"").slice(-10);
+function iskConv(c){
+  const ct = c.contact || c.lead || {};
+  const phone = c.phone || c.lead_phone || c.contact_phone || ct.phone || c.wa_id || "";
+  const lm = c.last_message || {};
+  return {id:String(c.id || c.conversation_id || ""), name:c.name || c.lead_name || c.contact_name || ct.name || phone || "Sin nombre", phone,
+    last:typeof lm==="string" ? lm : iskTxt(lm) || c.last_message_text || c.preview || "", lastDir:typeof lm==="object" && Object.keys(lm).length ? iskDir(lm) : (c.last_direction ? iskDir({direction:c.last_direction}) : ""),
+    at:iskAt(c) || iskAt(lm), unread:Number(c.unread_count || c.unread || 0), raw:c};
+}
+function iskMatch(phone){
+  const d = iskDigits(phone); if (!d) return null;
+  for (const [uid, items] of Object.entries(S.all||{})) for (const [id, m] of Object.entries(items||{})) if (iskDigits(m.phone)===d) return {name:m.prospect, uid};
+  for (const [u, id, l] of waLeadsAll()) if (iskDigits(l.phone)===d) return {name:l.name, uid:u};
+  return null;
+}
+async function iskLoad(force){
+  if (!window.STRIKD_ISKRA || ISK.loading || (!force && Date.now() - ISK.at < 25e3)) return;
+  ISK.loading = true;
+  try{
+    if (!ISK.who){ const w = await window.STRIKD_ISKRA("whoami"); if (w.configured===false){ ISK.st = "off"; return; } ISK.who = w.data || {}; }
+    const j = await window.STRIKD_ISKRA("conversations", {limit:50});
+    ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.data; ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
+    if (ISK.sel) await iskThread(ISK.sel, true);
+  }catch(e){ ISK.st = ISK.st==="ok" ? "ok" : "err"; ISK.err = e.message + (e.detail ? " · " + JSON.stringify(e.detail).slice(0,300) : ""); }
+  finally{ ISK.loading = false; schedule(); }
+}
+async function iskThread(id, quiet){
+  try{ const j = await window.STRIKD_ISKRA("messages", {id, limit:50});
+    ISK.msgs[id] = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m), at:iskAt(m), st:m.status||""})).sort((a,b) => a.at-b.at); }
+  catch(e){ if (!quiet) ISK.err = e.message; }
+  schedule();
+}
+function renderIskra(){
+  const box = $("iskBox"); if (!box) return;
+  const on = !!window.STRIKD_ISKRA && S.isLead && !S.viewAs;
+  box.hidden = !on; if (!on || S.tab!=="msgs") { clearInterval(ISK.timer); ISK.timer = null; return; }
+  if (!ISK.timer){ ISK.timer = setInterval(() => { if (S.tab==="msgs") iskLoad(); }, 30e3); iskLoad(true); }
+  if (busyIn(box)) return;
+  if (ISK.st==="off"){ $("iskNotice").hidden = false; box.innerHTML = `<p class="notice">ISKRA no está activado: falta <b>ISKRA_API_KEY</b> en Vercel (Settings → Environment Variables) y hacer Redeploy.</p>`; return; }
+  $("iskNotice").hidden = ISK.st==="ok";
+  if (!ISK.st){ box.innerHTML = `<p class="mut small">Conectando con ISKRA…</p>`; return; }
+  if (ISK.st==="err" && !ISK.convs.length){ box.innerHTML = `<p class="notice">No se pudo leer ISKRA: ${esc(ISK.err)} <button type="button" class="btn small" data-iskre="1">Reintentar</button></p>`; return; }
+  const ws = ISK.who && (ISK.who.workspace && (ISK.who.workspace.name || ISK.who.workspace) || ISK.who.workspace_name || ISK.who.name) || "";
+  const c = ISK.convs.find(x => x.id===ISK.sel);
+  const item = x => { const mt = iskMatch(x.phone); return `<button type="button" class="cv-it${x.id===ISK.sel?" sel":""}${x.lastDir==="in"?" reply":""}" data-iskc="${esc(x.id)}">
+      <div class="cv-l1"><b>${esc(mt ? mt.name : x.name)}</b><span class="cv-t">${x.at?ago(x.at):""}</span></div>
+      <div class="cv-l2">${x.lastDir==="out"?"Tú: ":""}${esc(String(x.last).slice(0,70)) || "<i>Sin mensajes</i>"}</div>
+      <div class="cv-l3">${x.lastDir==="in" ? `<span class="cv-flag rep">Sin responder</span>` : x.lastDir==="out" ? `<span class="cv-flag ok">Esperando respuesta</span>` : ""}${x.unread?`<span class="cv-tipo">${x.unread} nuevos</span>`:""}${mt?`<span class="cv-who">${esc(nameOf(S.ps||{}, mt.uid))}</span>`:""}</div></button>`; };
+  let right = `<div class="cv-right cv-none"><p class="mut">Elige una conversación de ISKRA.</p></div>`;
+  if (c){
+    const ms = ISK.msgs[c.id], mt = iskMatch(c.phone);
+    right = `<div class="cv-right">
+      <div class="cv-head"><div><b>${esc(mt ? mt.name : c.name)}</b><div class="mut small">${esc(c.phone||"")}${mt?` · ${esc(nameOf(S.ps||{}, mt.uid))}`:" · no está en el tablero"}</div></div></div>
+      <div class="cv-thread" id="iskThread">${!ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => `<div class="bub ${x.d}"><p>${esc(x.t)}</p><span>${x.at?esc(fmtLocal(x.at)):""}${x.st?` · ${esc(x.st)}`:""}</span></div>`).join("") || `<p class="mut small">Sin mensajes.</p>`}</div>
+      <div class="cv-compose"><div class="cv-out"><textarea rows="3" data-iskin="1" placeholder="Tu respuesta… (sale por ISKRA desde el número de STRIKD)">${esc(ISK.draft[c.id]||"")}</textarea>
+        <div class="msg-acts"><span class="err">${esc(ISK.err)}</span><div class="spacer"></div>
+          <button type="button" class="btn small primary" data-isksend="1"${ISK.busy?" disabled":""}>${ISK.busy?"Enviando…":"Enviar por ISKRA"}</button></div></div>
+        <p class="mut small">Solo se puede contestar en conversaciones que el prospecto ya abrió. Para escribir primero se usa una plantilla aprobada.</p></div></div>`;
+  }
+  box.innerHTML = `<div class="isk"><div class="isk-top"><span class="isk-dot"></span><b>ISKRA en vivo</b>${ws?`<span class="mut small">${esc(ws)}</span>`:""}<span class="mut small">· ${ISK.convs.length} conversaciones · actualizado ${ISK.at?esc(fmtLocal(ISK.at).split(", ").pop()):""}</span><div class="spacer"></div>
+    <button type="button" class="btn small" data-iskre="1">${ISK.loading?"Actualizando…":"Actualizar"}</button>${S.isOwner?`<button type="button" class="btn small ghost" data-iskraw="1">Datos crudos</button>`:""}</div>
+    ${ISK.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISK.raw, null, 1).slice(0,6000))}</pre>` : ""}
+    <div class="cv"><div class="cv-left"><div class="cv-list">${ISK.convs.map(item).join("") || `<p class="mut small cv-empty">ISKRA no tiene conversaciones todavía.</p>`}</div></div>${right}</div></div>`;
+  const th = $("iskThread"); if (th) th.scrollTop = th.scrollHeight;
+}
+document.addEventListener("input", e => { const t = e.target.closest("[data-iskin]"); if (t && ISK.sel) ISK.draft[ISK.sel] = t.value; });
+document.addEventListener("click", async e => {
+  if (e.target.closest("[data-iskre]")) { ISK.who = ISK.st==="ok" ? ISK.who : null; return iskLoad(true); }
+  if (e.target.closest("[data-iskraw]")) { ISK.showRaw = !ISK.showRaw; return schedule(); }
+  const ci = e.target.closest("[data-iskc]");
+  if (ci){ ISK.sel = ci.dataset.iskc; ISK.err = ""; schedule(); return iskThread(ISK.sel); }
+  if (e.target.closest("[data-isksend]")){
+    const id = ISK.sel, text = (ISK.draft[id]||"").trim(); if (!id || !text || ISK.busy) return;
+    ISK.busy = true; ISK.err = ""; schedule();
+    const key = ISK.idem && ISK.idem.text===text && ISK.idem.id===id ? ISK.idem.key : "strikd-" + id + "-" + Date.now().toString(36);
+    ISK.idem = {id, text, key};
+    try{ await window.STRIKD_ISKRA("reply", {conversation_id:id, text, idempotency_key:key}); ISK.draft[id] = ""; ISK.idem = null; await iskThread(id); }
+    catch(err){ ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : ""); }
+    finally{ ISK.busy = false; schedule(); }
+  }
+});
 function renderInbox(){
   const box = $("inboxBox"); if (!box || S.tab!=="msgs" || busyIn(box)) return;
   const lead = adminMode(), all = convAll();

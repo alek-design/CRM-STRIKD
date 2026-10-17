@@ -45,6 +45,6 @@ Configuración (una vez): proyecto de Google Cloud con **Google Calendar API** h
 ## Pendiente
 
 - Sugerencias de respuesta con IA (bandeja de Mensajes).
-- ISKRA: campañas, conversaciones y envío (`ISKRA_API_KEY` como variable de Vercel).
+- ISKRA (hecho, primera parte): Mensajes → "ISKRA en vivo" lee conversaciones y contesta desde el número de STRIKD (`ISKRA_API_KEY` en Vercel; solo Head y Manager). Falta: enviar plantilla para iniciar, webhook de respuestas, campañas.
 
 Nunca subas llaves ni `.env` a este repositorio.
