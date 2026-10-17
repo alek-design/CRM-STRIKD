@@ -1,0 +1,21 @@
+# Al subir cambios a main, los copia al instante al repo que usa Vercel (Alexalfaro009/CRM-STRIKD).
+# Necesita el secreto MIRROR_TOKEN (token de GitHub de Alex con permiso de escribir en su repo).
+name: Publicar en el repo de Vercel
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  publicar:
+    if: github.repository == 'alek-design/CRM-STRIKD'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Copiar a Alexalfaro009/CRM-STRIKD
+        env:
+          TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "Falta el secreto MIRROR_TOKEN; no se copia."; exit 0; fi
+          git push --force "https://x-access-token:${TOKEN}@github.com/Alexalfaro009/CRM-STRIKD.git" HEAD:refs/heads/main
