@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 17:26 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 17:31 UTC"</script>
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/claude-shim.js"></script>
@@ -1418,8 +1418,9 @@ $("meetForm").addEventListener("submit", async e => {
           else await iref.set({uid:meId(), mid:ref.id, at:now});
         }catch(e){ auto = false; }
       }
-      const wp = S.waPrefill;
-      await ref.set({...o, createdAt: now, updatedAt: now, week: weekKey(now), ...(auto ? {autoValid:true, autoValidAt:now} : {}), ...(dupOf ? {dupOf} : {}), ...(wp ? {waLeadId:wp.id, waCampaign:wp.campaignId} : {})});
+      const wp = S.waPrefill, ip = S.iskPrefill && iskDigits(S.iskPrefill.phone)===iskDigits(o.phone) ? S.iskPrefill : null;
+      await ref.set({...o, createdAt: now, updatedAt: now, week: weekKey(now), ...(auto ? {autoValid:true, autoValidAt:now} : {}), ...(dupOf ? {dupOf} : {}), ...(wp ? {waLeadId:wp.id, waCampaign:wp.campaignId} : {}), ...(ip ? {iskConvId:ip.conv, canal:"whatsapp"} : {})});
+      S.iskPrefill = null;
       if (wp) db.doc(`meets/${wp.uid}/waleads/${wp.id}`).update({status:"agendado", statusAt:now, meetId:ref.id}).catch(()=>{});
       resetForm(); SL.at = 0; slotLoad(true);
       const when = fmtMeetAt(o.meetAt), val = auto ? "Validado automáticamente." : dupOf ? "Ese prospecto ya lo tiene alguien del equipo: tu manager lo revisa." : "Tu manager lo revisa.";
@@ -3523,7 +3524,7 @@ document.addEventListener("click", async e => {
   }
   if (e.target.closest("[data-iskmeet]") && ISK.sel){
     const c = ISK.convs.find(x => x.id===ISK.sel); if (!c) return;
-    showTab("mine"); resetForm();
+    showTab("mine"); resetForm(); S.iskPrefill = {conv:c.id, phone:c.phone};
     setTimeout(() => { $("f_perfil").value = "1"; $("f_canal").value = "whatsapp"; $("f_prospect").value = c.name && !/^\d+$/.test(c.name) ? c.name : ""; $("f_phone").value = c.phone || ""; $("f_channel").value = "WhatsApp";
       $("f_notes").value = "Vino de WhatsApp (ISKRA)"; syncPerfilUi(); $("meetForm").scrollIntoView({behavior:"smooth", block:"start"}); $("f_prospect").focus(); }, 30);
     return;
