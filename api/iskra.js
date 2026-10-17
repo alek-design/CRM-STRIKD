@@ -26,27 +26,33 @@ alter table public.iskra_owner add column if not exists discarded_by uuid;
 create table if not exists public.iskra_sent (id bigserial primary key, conversation_id text, user_id uuid, text text, at timestamptz default now());
 alter table public.iskra_owner enable row level security; alter table public.iskra_sent enable row level security;`;
 
-async function pickOwner(c, phone, mode){
-  // 1) ¿el teléfono ya es de un prospecto del tablero? → quien lo lleva
-  const d = digits(phone);
-  if (d){
-    const r = await c.query(`select split_part(path,'/',2) as uid from public.docs
-      where (path like 'meets/%/items/%' or path like 'meets/%/waleads/%') and right(regexp_replace(coalesce(data->>'phone',''),'\\D','','g'),10) = $1 limit 1`, [d]);
-    if (r.rows[0]){ const u = await c.query("select id from public.app_users where id::text=$1 and active", [r.rows[0].uid]); if (u.rows[0]) return {owner:u.rows[0].id, by:"prospecto"}; }
-  }
-  // 2) Account Manager activo según la opción elegida
-  const ams = (await c.query("select id from public.app_users where role='am' and active")).rows.map(x => x.id);
-  if (!ams.length){ const m = (await c.query("select id from public.app_users where role in ('manager','head') and active order by role='head'")).rows[0]; return {owner:m ? m.id : null, by:"sin-am"}; }
-  const load = Object.fromEntries(ams.map(id => [id, 0]));
-  (await c.query("select owner, count(*)::int n from public.iskra_owner where owner = any($1) and replied_at is not null group by owner", [ams])).rows.forEach(x => load[x.owner] = x.n);
-  let score = {};
-  if (mode === "best"){
-    const since = Date.now() - 28*864e5;
-    (await c.query(`select split_part(path,'/',2) uid, sum(coalesce((data->>'pts')::numeric,0)) pts from public.docs
-      where path like 'points/%/ev/%' and coalesce((data->>'at')::bigint,0) >= $1 group by 1`, [since])).rows.forEach(x => score[x.uid] = Number(x.pts));
-  }
-  ams.sort((a, b) => mode === "best" ? ((score[b]||0) - (score[a]||0)) || (load[a] - load[b]) : (load[a] - load[b]) || ((score[b]||0) - (score[a]||0)));
-  return {owner:ams[0], by:mode === "best" ? "mejores-resultados" : "menos-carga"};
+// Elige dueño para conversaciones nuevas. Carga todo una sola vez por petición (rápido aunque lleguen muchas juntas).
+function makePicker(c, mode){
+  let ready = null;
+  const load0 = async () => {
+    const phones = {};
+    (await c.query(`select split_part(path,'/',2) as uid, right(regexp_replace(coalesce(data->>'phone',''),'\\D','','g'),10) as d from public.docs
+      where (path like 'meets/%/items/%' or path like 'meets/%/waleads/%') and coalesce(data->>'phone','') <> ''`)).rows.forEach(r => { if (r.d && !phones[r.d]) phones[r.d] = r.uid; });
+    const users = (await c.query("select id, role from public.app_users where active")).rows;
+    const active = new Set(users.map(u => u.id));
+    const ams = users.filter(u => u.role === "am").map(u => u.id);
+    const fallback = (users.find(u => u.role === "manager") || users.find(u => u.role === "head") || {}).id || null;
+    const load = Object.fromEntries(ams.map(id => [id, 0]));
+    if (ams.length) (await c.query("select owner, count(*)::int n from public.iskra_owner where owner = any($1) and replied_at is not null group by owner", [ams])).rows.forEach(x => load[x.owner] = x.n);
+    const score = {};
+    if (mode === "best" && ams.length) (await c.query(`select split_part(path,'/',2) uid, sum(coalesce((data->>'pts')::numeric,0)) pts from public.docs
+      where path like 'points/%/ev/%' and coalesce((data->>'at')::bigint,0) >= $1 group by 1`, [Date.now() - 28*864e5])).rows.forEach(x => score[x.uid] = Number(x.pts));
+    return {phones, active, ams, fallback, load, score};
+  };
+  return async phone => {
+    const k = await (ready ||= load0());
+    const d = digits(phone), u = d && k.phones[d];
+    if (u && k.active.has(u)) return {owner:u, by:"prospecto"};
+    if (!k.ams.length) return {owner:k.fallback, by:"sin-am"};
+    const am = k.ams.slice().sort((a, b) => mode === "best" ? ((k.score[b]||0) - (k.score[a]||0)) || (k.load[a] - k.load[b]) : (k.load[a] - k.load[b]) || ((k.score[b]||0) - (k.score[a]||0)))[0];
+    k.load[am]++;
+    return {owner:am, by:mode === "best" ? "mejores-resultados" : "menos-carga"};
+  };
 }
 
 module.exports = async (req, res) => {
@@ -74,11 +80,11 @@ module.exports = async (req, res) => {
         const mPhone = m => m.phone || m.from || m.lead_phone || m.contact_phone || (m.contact && m.contact.phone) || "";
         const mName = m => m.lead_name || m.contact_name || m.name || (m.contact && m.contact.name) || "";
         const mText = m => String(m.text || m.body || m.content || m.message || "");
-        let inbound = [], inErr = null;
+        let inbound = [], inErr = null; const T = {}, t0 = Date.now();
         const [inRes, j] = await Promise.all([
           iskra("GET", "/v1/messages/whatsapp?direction=inbound&limit=100").catch(e => { inErr = e.message; return []; }),
           iskra("GET", "/v1/conversations?limit=100")]);
-        inbound = arr(inRes).filter(m => isIn(m) || !m.direction);
+        inbound = arr(inRes).filter(m => isIn(m) || !m.direction); T.iskra = Date.now() - t0;
         const lastIn = {};
         inbound.forEach(m => { const id = mConv(m); if (id && (!lastIn[id] || mAt(m) > mAt(lastIn[id]))) lastIn[id] = m; });
         const list = arr(j), byId = {};
@@ -92,7 +98,7 @@ module.exports = async (req, res) => {
         const replied = id => !!(lastIn[id] || (known[id] && known[id].replied_at) || lmIn(byId[id]) || Number(byId[id].inbound_count || byId[id].replies || 0) > 0 || byId[id].last_inbound_at || byId[id].replied_at);
         const cfg = (await c.query("select data from public.docs where path='config/main'")).rows[0];
         const mode = cfg && cfg.data && cfg.data.iskAssign === "best" ? "best" : "load";
-        const out = [];
+        const out = [], pick = makePicker(c, mode); T.prep = Date.now() - t0;
         for (const id of ids){
           if (!replied(id)) continue;
           const cv = byId[id];
@@ -103,16 +109,17 @@ module.exports = async (req, res) => {
           }
           let o = known[id];
           if (!o){
-            const p = await pickOwner(c, convPhone(cv), mode);
+            const p = await pick(convPhone(cv));
             o = (await c.query(`insert into public.iskra_owner (conversation_id, phone, owner, assigned_by, replied_at) values ($1,$2,$3,$4,now())
               on conflict (conversation_id) do update set replied_at=coalesce(public.iskra_owner.replied_at, now()) returning *`, [id, digits(convPhone(cv)), p.owner, p.by])).rows[0];
           } else if (!o.replied_at){
             await c.query("update public.iskra_owner set replied_at=now() where conversation_id=$1", [id]); o.replied_at = new Date();
-            if (!o.owner){ const p = await pickOwner(c, convPhone(cv), mode); await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
+            if (!o.owner){ const p = await pick(convPhone(cv)); await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
           }
           if (lead || o.owner === me.id) out.push({...cv, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by}});
         }
-        const debug = lead ? {conversaciones_en_lista:list.length, entrantes_leidos:inbound.length, con_respuesta:out.length, error_entrantes:inErr,
+        T.total = Date.now() - t0; res.setHeader("server-timing", `iskra;dur=${T.iskra}, total;dur=${T.total}`);
+        const debug = lead ? {tiempos_ms:T, conversaciones_en_lista:list.length, entrantes_leidos:inbound.length, con_respuesta:out.length, error_entrantes:inErr,
           ejemplo_conversacion:list[0] || null, ejemplo_entrante:inbound[0] || null} : undefined;
         return {data:{data:out}, mode, debug};
       }

@@ -350,6 +350,11 @@ a.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line2)}
 .rs.loading .rs-ic::after{content:"";position:absolute;inset:0;border-radius:50%;border:3px solid transparent;border-top-color:var(--fg);animation:rsSpin .8s linear infinite}
 @keyframes rsFade{from{opacity:0}}@keyframes rsPop{from{transform:translateY(12px) scale(.94);opacity:0}}@keyframes rsDraw{to{stroke-dashoffset:0}}@keyframes rsSpin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.rs,.rs-wrap,.rs svg path{animation:none!important;stroke-dashoffset:0}}
+.bk-wrap{position:fixed;inset:0;z-index:35;background:rgba(0,0,0,.45);display:grid;place-items:start center;overflow:auto;padding:28px 16px}
+:root[data-theme="light"] .bk-wrap{background:rgba(20,20,20,.25)}
+.bk{width:min(980px,100%);background:var(--bg);border:1px solid var(--line2);border-radius:20px;padding:14px;box-shadow:var(--menu-shadow)}
+.bk-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:4px 6px 12px}
+.bk .panel{margin:0}
 .isk-recent-t{padding:6px 12px 2px;font-size:12.5px}.isk-stale{margin:0;padding:2px 12px 6px}
 .isk-att{display:flex;align-items:center;gap:10px;background:var(--raised);border:1px solid var(--line2);border-radius:10px;padding:6px 10px;margin:0 0 8px;font-size:12.5px}
 .isk-att img{width:44px;height:44px;object-fit:cover;border-radius:6px}.isk-att audio{height:32px;max-width:220px}
@@ -970,6 +975,8 @@ const $ = id => document.getElementById(id);
 const S = { tpls:{}, tplLog:{}, myTplLog:{}, waCamps:{}, waLeads:{}, myWaLeads:{}, vip:{}, myVip:{}, roles:{}, team:{}, isLead:false, pts:{}, uid:null, isOwner:false, canWrite:null, members:{}, validations:{}, mine:{}, all:{}, config:null,
   tab:"board", viewAs:null, ps:{}, boardWeek:null, rejecting:null, editingId:null, readOnly:false };
 let db=null, user=null, adminSubs={};
+var BOOK = {open:false, home:null, next:null, wrap:null};
+function bookUid(){ return S.bookFor || meId(); }
 
 /* ---------- countdown ---------- */
 function tick(){
@@ -1288,7 +1295,7 @@ function syncInvUi(){
   $("mkInvL").hidden = !can; $("mkInvL").classList.toggle("on", $("f_mkinv").checked);
   const on = can && $("f_mkinv").checked;
   $("linkWrap").hidden = on;
-  const inv = leaderEmail(meId()), ln = leaderOf(meId());
+  const inv = leaderEmail(bookUid()), ln = leaderOf(bookUid());
   $("invHint").hidden = !on;
   $("invHint").textContent = `Se crea en tu Google Calendar a la hora del meet (45 min), con tu link de Meet, y le llega la invitación al prospecto${inv?` y a tu team leader${ln?` (${nameOf(S.ps||{}, ln)})`:""}: ${inv}`:""}.`;
 }
@@ -1298,7 +1305,7 @@ function leaderOf(uid){ const mgrs = Object.keys(S.members).filter(u => roleOf(u
 function leaderEmail(uid){ const l = leaderOf(uid); return ((l && S.roles[l] && S.roles[l].inviteEmail) || (S.config && S.config.inviteEmail) || "").trim(); }
 async function createInvite(o){
   const end = new Date(meetTs(o.meetAt) + MEET_MIN - OFF).toISOString().slice(0,16);
-  const inv = leaderEmail(meId());
+  const inv = leaderEmail(bookUid());
   const attendees = [{email:o.email}].concat(inv && inv.toLowerCase()!==o.email.toLowerCase() ? [{email:inv}] : []);
   const r = await mcp.callTool(GCAL, "create_event", {summary:`${o.prospect} x STRIKD`, startTime:`${o.meetAt}:00`, endTime:`${end}:00`, timeZone:"America/Cancun",
     addGoogleMeetUrl:true, attendees, description:`Meet con ${o.prospect}${o.notes?`\n\n${o.notes}`:""}`, notificationLevel:"ALL"});
@@ -1350,7 +1357,7 @@ function slotClash(t){
 }
 const SLOT_KIND = {pitch:"un pitch", skel:"un meet de skeleton", build:"un lanzamiento"};
 function renderSlots(){
-  const box = $("slotBox"); if (!box || S.tab!=="mine" || box.offsetParent===null && !box.hidden && false) return;
+  const box = $("slotBox"); if (!box || (S.tab!=="mine" && !BOOK.open)) return;
   if (!SL.busy){ slotLoad(); box.innerHTML = `<p class="mut small">Revisando la agenda de tu team leader…</p>`; return; }
   slotLoad();
   const now = Date.now(), cur = $("f_meetAt").value, curT = meetTs(cur);
@@ -1420,13 +1427,13 @@ $("meetForm").addEventListener("submit", async e => {
   $("formErr").hidden = true; $("submitBtn").disabled = true;
   o.perfil = Number(o.perfil)||0; o.followers = o.followers ? Number(o.followers) : "";
   if (o.perfil===3 && !S.editingId && !$("f_p3meet").checked){
-    try{ await saveVip(o); resetForm(); showResult("ok", "Agregado a la lista de Mich", `${o.prospect} ya está en la lista; Mich hace el primer contacto.`); }
+    try{ await saveVip(o); resetForm(); if (BOOK.open) closeBook(); showResult("ok", "Agregado a la lista de Mich", `${o.prospect} ya está en la lista; Mich hace el primer contacto.`); }
     catch(ex){ showResult(ex && ex.dup ? "warn" : "err", ex && ex.dup ? "Ya estaba en la lista" : "No se guardó", ex && ex.dup ? ex.msg : "Revisa tu conexión e intenta de nuevo. Tus datos siguen en el formulario."); }
     finally{ $("submitBtn").disabled = false; }
     return;
   }
   try{
-    const col = db.collection(`meets/${meId()}/items`);
+    const col = db.collection(`meets/${bookUid()}/items`);
     const now = Date.now();
     if (S.editingId){
       const prev = myItems()[S.editingId];
@@ -1443,19 +1450,19 @@ $("meetForm").addEventListener("submit", async e => {
           const iref = db.doc(`prospectIndex/${pkey}`);
           const lease = await iref.acquire({holder:S.uid, ttlMs:8000});
           const cur = lease.acquired ? await iref.get() : null;
-          if (!lease.acquired || (cur.exists && cur.data().uid && !(cur.data().uid===meId() && cur.data().mid===ref.id))){ auto = false; dupOf = lease.acquired ? cur.data().uid : "?"; }
-          else await iref.set({uid:meId(), mid:ref.id, at:now});
+          if (!lease.acquired || (cur.exists && cur.data().uid && !(cur.data().uid===bookUid() && cur.data().mid===ref.id))){ auto = false; dupOf = lease.acquired ? cur.data().uid : "?"; }
+          else await iref.set({uid:bookUid(), mid:ref.id, at:now});
         }catch(e){ auto = false; }
       }
       const wp = S.waPrefill, ip = S.iskPrefill && iskDigits(S.iskPrefill.phone)===iskDigits(o.phone) ? S.iskPrefill : null;
       await ref.set({...o, createdAt: now, updatedAt: now, week: weekKey(now), ...(auto ? {autoValid:true, autoValidAt:now} : {}), ...(dupOf ? {dupOf} : {}), ...(wp ? {waLeadId:wp.id, waCampaign:wp.campaignId} : {}), ...(ip ? {iskConvId:ip.conv, canal:"whatsapp"} : {})});
       S.iskPrefill = null;
       if (wp) db.doc(`meets/${wp.uid}/waleads/${wp.id}`).update({status:"agendado", statusAt:now, meetId:ref.id}).catch(()=>{});
-      resetForm(); SL.at = 0; slotLoad(true);
+      resetForm(); SL.at = 0; slotLoad(true); if (BOOK.open) closeBook();
       const when = fmtMeetAt(o.meetAt), val = auto ? "Validado automáticamente." : dupOf ? "Ese prospecto ya lo tiene alguien del equipo: tu manager lo revisa." : "Tu manager lo revisa.";
       if (mk){
         showResult("loading", "Enviando invitación…", `Creando el meet con ${o.prospect} en tu Google Calendar.`);
-        const inv = leaderEmail(meId());
+        const inv = leaderEmail(bookUid());
         try{
           const ev = await createInvite(o);
           await ref.update({link: ev.link, gcalEventId: ev.id, gcalHtml: ev.html, invitedAt: Date.now()});
@@ -3394,6 +3401,39 @@ async function convPush(c, msg, state){
   const chat = (c.chat||[]).concat([msg]);
   await convRef(c.k).update({chat, chatState:{...(c.cs||{}), ...state, updatedAt:Date.now()}});
 }
+/* ---------- agendar el meet desde la conversación (mismo formulario, en una ventana) ---------- */
+function iskExtract(c){
+  const txt = (ISK.msgs[c.id]||[]).filter(x => x.d==="in").map(x => x.t).join("\n");
+  const email = (txt.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [""])[0];
+  let prof = (txt.match(/https?:\/\/(www\.)?(instagram|tiktok|facebook|linkedin)\.com\/[^\s,)]+/i) || [""])[0];
+  if (!prof){ const h = txt.match(/(?:^|\s)@([A-Za-z0-9_.]{3,30})\b/); if (h) prof = "https://instagram.com/" + h[1]; }
+  const name = c.name && !/^\+?\d[\d\s-]+$/.test(c.name) ? c.name : "";
+  const last = (ISK.msgs[c.id]||[]).filter(x => x.d==="in").slice(-3).map(x => x.t).filter(Boolean).join(" / ").slice(0, 280);
+  return {name, email, prof, phone:c.phone || "", note:last ? `Vino de WhatsApp (ISKRA). Dijo: ${last}` : "Vino de WhatsApp (ISKRA)"};
+}
+function openBook(c){
+  const panel = $("meetForm").closest(".panel"); if (!panel || BOOK.open) return;
+  BOOK.home = panel.parentNode; BOOK.next = panel.nextSibling; BOOK.open = true;
+  const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "bkWrap";
+  w.innerHTML = `<div class="bk" role="dialog" aria-modal="true" aria-label="Agendar meet"><div class="bk-h"><b>Agendar meet desde WhatsApp</b><span class="mut small">Revisa lo que llenamos y elige horario</span><div class="spacer"></div><button type="button" class="btn small" data-bkclose="1">Cerrar</button></div></div>`;
+  w.querySelector(".bk").appendChild(panel); document.body.appendChild(w); BOOK.wrap = w;
+  w.addEventListener("click", e => { if (e.target===w || e.target.closest("[data-bkclose]")) closeBook(); });
+  resetForm(); S.bookFor = adminMode() ? (c.owner || meId()) : meId(); S.iskPrefill = {conv:c.id, phone:c.phone};
+  const x = iskExtract(c);
+  setTimeout(() => {
+    $("f_perfil").value = "1"; $("f_canal").value = "whatsapp"; $("f_channel").value = "WhatsApp";
+    $("f_prospect").value = x.name; $("f_phone").value = x.phone; $("f_email").value = x.email; $("f_profile").value = x.prof; $("f_notes").value = x.note;
+    syncPerfilUi(); syncInvUi(); SL.at = 0; slotLoad(true); renderSlots();
+    const firstEmpty = ["f_prospect","f_profile","f_email"].map(id => $(id)).find(el => el && !el.value); (firstEmpty || $("f_meetAt")).focus();
+  }, 30);
+}
+function closeBook(){
+  if (!BOOK.open) return;
+  const panel = $("meetForm").closest(".panel");
+  if (BOOK.home) BOOK.home.insertBefore(panel, BOOK.next && BOOK.next.parentNode===BOOK.home ? BOOK.next : null);
+  if (BOOK.wrap) BOOK.wrap.remove(); BOOK.open = false; BOOK.wrap = null; S.bookFor = null; S.iskPrefill = null; resetForm(); schedule();
+}
+document.addEventListener("keydown", e => { if (e.key==="Escape" && BOOK.open && !$("rsWrap")) closeBook(); });
 /* ---------- WhatsApp de STRIKD vía ISKRA · un número, cada conversación con dueño ----------
    En growth.strikd.ai habla con /api/iskra (el servidor filtra qué ve cada quien).
    En claude.ai se muestra con datos de ejemplo que se comportan igual. */
@@ -3540,7 +3580,7 @@ function renderIskra(){
         <div class="cv-hacts">
           ${lead ? `<label class="mut small isk-own">Dueño <select class="inline" data-iskown="1">${iskOwnerOpts(c.owner)}</select></label>` : `<span class="mut small">Tuya${c.by?` · ${esc(ISK_BY[c.by]||c.by)}`:""}</span>`}
           ${!lead && mine ? `<button type="button" class="btn small" data-iskesc="1">Pasar al manager</button>` : ""}
-          ${!lead && mine && !mt ? `<button type="button" class="btn small primary" data-iskmeet="1">Registrar meet</button>` : ""}
+          ${(lead || mine) ? `<button type="button" class="btn small primary" data-iskbook="1">${mt ? "Agendar otro meet" : "Agendar meet"}</button>` : ""}
           ${(lead || mine) ? (isDisc(c) ? `<button type="button" class="btn small" data-iskdisc="undo">Regresar a la bandeja</button>` : `<button type="button" class="btn small" data-iskdisc="1">Descartar</button>`) : ""}
         </div></div>
       ${lead && c.by ? `<p class="mut small isk-by">Asignada por: ${esc(ISK_BY[c.by]||c.by)}${c.esc?" · la pasaron al manager":""}</p>` : ""}
@@ -3620,6 +3660,7 @@ document.addEventListener("click", async e => {
     try{ await iskFn()("discard", {id, undo}); }catch(err){ ISK.err = "No se pudo: " + err.message; if (cv) cv.disc = undo ? Date.now() : 0; }
     return iskLoad(true);
   }
+  if (e.target.closest("[data-iskbook]") && ISK.sel){ const c = ISK.convs.find(x => x.id===ISK.sel); if (c) openBook(c); return; }
   if (e.target.closest("[data-iskfile]")){ $("iskFile").click(); return; }
   if (e.target.closest("[data-iskattx]")){ ISK.att = null; return schedule(); }
   if (e.target.closest("[data-iskrec]")){ return iskRecToggle(); }
