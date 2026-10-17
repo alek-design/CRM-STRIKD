@@ -1,0 +1,23 @@
+# Copia automática: mantiene un repo espejo (ej. el que usa Vercel) igual a alek-design/CRM-STRIKD.
+# En el repo original no hace nada. En el espejo corre cada 10 min o con "Run workflow".
+name: Sincronizar con alek-design/CRM-STRIKD
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sync:
+    if: github.repository != 'alek-design/CRM-STRIKD'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Traer la última versión y publicarla
+        run: |
+          git remote add upstream https://github.com/alek-design/CRM-STRIKD.git
+          git fetch upstream main
+          if [ "$(git rev-parse HEAD)" = "$(git rev-parse upstream/main)" ]; then echo "Ya está al día"; exit 0; fi
+          git push origin upstream/main:refs/heads/main --force
