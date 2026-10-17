@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
       const first = !(await c.query("select 1 from public.push_seen limit 1")).rows[0];
       const owners = {}; (await c.query("select conversation_id, owner, discarded_at from public.iskra_owner where conversation_id = any($1)", [ids]).catch(() => ({rows:[]}))).rows.forEach(r => owners[r.conversation_id] = r);
       const leads = (await c.query("select id from public.app_users where role in ('head','manager') and active")).rows.map(r => r.id);
-      let sent = 0, n = 0;
+      let sent = 0, n = 0, dest = 0; const errs = [];
       for (const cv of list){
         const id = String(cv.id), at = cv.last_message_at; if (!at) continue;
         const prev = seen[id] && seen[id].last_at ? new Date(seen[id].last_at).getTime() : 0, t = Date.parse(at);
@@ -38,11 +38,12 @@ module.exports = async (req, res) => {
         await c.query("insert into public.push_seen (conversation_id, last_at) values ($1,$2) on conflict (conversation_id) do update set last_at=excluded.last_at", [id, at]);
         if (first || !(Number(cv.unread_count || 0) > 0) || Date.now() - t > 30*60e3) continue; // solo lo nuevo que escribió el prospecto
         const o = owners[id]; if (o && o.discarded_at && new Date(o.discarded_at).getTime() > t) continue;
-        const to = o && o.owner ? [o.owner] : leads; if (!to.length) continue;
+        // al dueño y siempre al Head y al Manager (ellos ven todas las conversaciones)
+        const to = [...new Set([...(o && o.owner ? [o.owner] : []), ...leads])]; if (!to.length) continue;
         const name = cv.contact_name || (cv.lead && cv.lead.full_name) || cv.contact_phone || "WhatsApp";
-        n++; sent += await sendTo(c, to, {title:name, body:String(cv.last_message_text || "Mensaje nuevo").slice(0, 160), url:"/?tab=msgs&conv=" + encodeURIComponent(id), tag:"conv-" + id});
+        n++; dest += to.length; sent += await sendTo(c, to, {title:name, body:String(cv.last_message_text || "Mensaje nuevo").slice(0, 160), url:"/?tab=msgs&conv=" + encodeURIComponent(id), tag:"conv-" + id}); errs.push(...(sendTo.lastErrors || []));
       }
-      return {ok:true, revisadas:list.length, nuevas:n, enviadas:sent, primera_vez:first};
+      return {ok:true, revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(errs.length ? {errores:errs.slice(0,3)} : {})};
     });
     res.status(out.status || 200).json(out);
   }catch(err){ res.status(500).json({error:String(err.message || err)}); }
