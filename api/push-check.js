@@ -31,6 +31,9 @@ module.exports = async (req, res) => {
       const owners = {}; (await c.query("select conversation_id, owner, discarded_at from public.iskra_owner where conversation_id = any($1)", [ids]).catch(() => ({rows:[]}))).rows.forEach(r => owners[r.conversation_id] = r);
       const leads = (await c.query("select id from public.app_users where role in ('head','manager') and active")).rows.map(r => r.id);
       let sent = 0, n = 0, dest = 0; const errs = [];
+      const isLead = new Set(leads);
+      const unreadFor = u => list.filter(cv => Number(cv.unread_count || 0) > 0 && !(owners[String(cv.id)] && owners[String(cv.id)].discarded_at)
+        && (isLead.has(u) || (owners[String(cv.id)] && owners[String(cv.id)].owner === u))).length;
       for (const cv of list){
         const id = String(cv.id), at = cv.last_message_at; if (!at) continue;
         const prev = seen[id] && seen[id].last_at ? new Date(seen[id].last_at).getTime() : 0, t = Date.parse(at);
@@ -41,7 +44,12 @@ module.exports = async (req, res) => {
         // al dueño y siempre al Head y al Manager (ellos ven todas las conversaciones)
         const to = [...new Set([...(o && o.owner ? [o.owner] : []), ...leads])]; if (!to.length) continue;
         const name = cv.contact_name || (cv.lead && cv.lead.full_name) || cv.contact_phone || "WhatsApp";
-        n++; dest += to.length; sent += await sendTo(c, to, {title:name, body:String(cv.last_message_text || "Mensaje nuevo").slice(0, 160), url:"/?tab=msgs&conv=" + encodeURIComponent(id), tag:"conv-" + id}); errs.push(...(sendTo.lastErrors || []));
+        n++; dest += to.length;
+        for (const u of to){ // cada quien con su número en el ícono: conversaciones sin leer que le tocan
+          const badge = unreadFor(u);
+          sent += await sendTo(c, [u], {title:name, body:String(cv.last_message_text || "Mensaje nuevo").slice(0, 160), url:"/?tab=msgs&conv=" + encodeURIComponent(id), tag:"conv-" + id, badge});
+          errs.push(...(sendTo.lastErrors || []));
+        }
       }
       return {ok:true, revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(errs.length ? {errores:errs.slice(0,3)} : {})};
     });

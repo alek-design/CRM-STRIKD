@@ -256,6 +256,9 @@
   window.STRIKD_ME = () => me;
   /* ---------- app en el teléfono y notificaciones ---------- */
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  // al abrir la app se limpia el número del ícono (la bandeja ya muestra lo pendiente)
+  const clearBadge = () => { if (document.visibilityState === "visible" && navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {}); };
+  document.addEventListener("visibilitychange", clearBadge); clearBadge();
   if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open" && window.STRIKD_OPEN) window.STRIKD_OPEN(e.data.url); });
   const b64 = s => { const p = "=".repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from([...r].map(ch => ch.charCodeAt(0))); };
   async function pushEnable(){
