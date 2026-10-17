@@ -847,7 +847,7 @@ label.f em{color:var(--bad);font-style:normal}
     <div id="orgBox"></div>
     <div class="org-set acc" id="accessBox" hidden></div>
     <div class="org-set">
-      <label class="f">Email que recibe las invitaciones de pitch (Partnerships Manager)<input id="inviteEmail" type="email" placeholder="admin@tuempresa.com" autocomplete="off"></label>
+      <label class="f">Email de respaldo para invitaciones (si el team leader no tiene email en el organigrama)<input id="inviteEmail" type="email" placeholder="admin@tuempresa.com" autocomplete="off"></label>
       <div class="row"><span class="mono" id="invSaved"></span><div class="spacer"></div><button class="btn small primary" id="invSave">Guardar</button></div>
     </div>
   </section>
@@ -1229,14 +1229,17 @@ function syncInvUi(){
   $("mkInvL").hidden = !can; $("mkInvL").classList.toggle("on", $("f_mkinv").checked);
   const on = can && $("f_mkinv").checked;
   $("linkWrap").hidden = on;
-  const inv = (S.config && S.config.inviteEmail) || "";
+  const inv = leaderEmail(meId()), ln = leaderOf(meId());
   $("invHint").hidden = !on;
-  $("invHint").textContent = `Se crea en tu Google Calendar a la hora del meet (30 min), con link de Meet, y le llega la invitación al prospecto${inv?` y a ${inv}`:""}.`;
+  $("invHint").textContent = `Se crea en tu Google Calendar a la hora del meet (30 min), con tu link de Meet, y le llega la invitación al prospecto${inv?` y a tu team leader${ln?` (${nameOf(S.ps||{}, ln)})`:""}: ${inv}`:""}.`;
 }
 $("f_mkinv").addEventListener("change", syncInvUi);
+// Team leader de quien agenda: su Creator Partnerships Manager (Organigrama), o el primero; si no tiene email, el de respaldo.
+function leaderOf(uid){ const mgrs = Object.keys(S.members).filter(u => roleOf(u)==="manager"); return mgrOf(uid) || mgrs[0] || ""; }
+function leaderEmail(uid){ const l = leaderOf(uid); return ((l && S.roles[l] && S.roles[l].inviteEmail) || (S.config && S.config.inviteEmail) || "").trim(); }
 async function createInvite(o){
   const end = new Date(meetTs(o.meetAt) + 30*60e3 - OFF).toISOString().slice(0,16);
-  const inv = (S.config && S.config.inviteEmail) || "";
+  const inv = leaderEmail(meId());
   const attendees = [{email:o.email}].concat(inv && inv.toLowerCase()!==o.email.toLowerCase() ? [{email:inv}] : []);
   const r = await mcp.callTool(GCAL, "create_event", {summary:`STRIKD x ${o.prospect}`, startTime:`${o.meetAt}:00`, endTime:`${end}:00`, timeZone:"America/Cancun",
     addGoogleMeetUrl:true, attendees, description:`Meet con ${o.prospect}${o.notes?`\n\n${o.notes}`:""}`, notificationLevel:"ALL"});
@@ -2549,6 +2552,7 @@ function orgCtl(uid){
   const r = roleOf(uid), mgrs = Object.keys(S.members).filter(u => roleOf(u)==="manager");
   return `<div class="org-ctl">
     <select data-orgrole="${uid}" aria-label="Rol">${["am","manager"].map(k => `<option value="${k}"${r===k?" selected":""}>${ROLES[k].title}</option>`).join("")}</select>
+    ${r==="manager" ? `<input type="email" data-orgmail="${uid}" placeholder="Email para invitaciones de meet" value="${esc((S.roles[uid]||{}).inviteEmail||"")}" aria-label="Email del team leader para invitaciones">` : ""}
     ${r==="am" && mgrs.length ? `<select data-orgmgr="${uid}" aria-label="Su manager"><option value="">Manager: cualquiera</option>${mgrs.map(m => `<option value="${m}"${mgrOf(uid)===m?" selected":""}>Manager: ${esc(nameOf(S.ps||{}, m))}</option>`).join("")}</select>` : ""}
   </div>`;
 }
@@ -2579,6 +2583,9 @@ function renderOrg(){
   </div>`;
 }
 $("orgBox").addEventListener("change", async e => {
+  const em = e.target.closest("[data-orgmail]");
+  if (em && S.isOwner){ const v = em.value.trim(); if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){ em.setCustomValidity("Revisa el email"); em.reportValidity(); return; } em.setCustomValidity("");
+    const uid = em.dataset.orgmail; try{ await db.doc(`roles/${uid}`).set({...(S.roles[uid]||{role:"manager"}), inviteEmail:v, updatedAt:Date.now()}); }catch(ex){} return; }
   const r = e.target.closest("[data-orgrole]"), g = e.target.closest("[data-orgmgr]");
   if (!S.isOwner || (!r && !g)) return;
   const uid = (r || g).dataset.orgrole || (r || g).dataset.orgmgr;
@@ -3493,7 +3500,10 @@ $("inboxBox").addEventListener("click", async e => {
 
 /* ---------- Accesos (solo en growth.strikd.ai: invitaciones con login propio) ---------- */
 let ACC = {list:null, msg:"", busy:false};
-async function loadAccess(){ if (!window.STRIKD_USERS) return; try{ ACC.list = await window.STRIKD_USERS(); if (window.STRIKD_GOOGLE_USERS) ACC.list.google = await window.STRIKD_GOOGLE_USERS(); }catch(e){ ACC.list = {users:[], invites:[]}; } schedule(); }
+async function loadAccess(){ if (!window.STRIKD_USERS) return; try{ ACC.list = await window.STRIKD_USERS(); if (window.STRIKD_GOOGLE_USERS) ACC.list.google = await window.STRIKD_GOOGLE_USERS(); }catch(e){ ACC.list = {users:[], invites:[]}; }
+  // el email de cada Creator Partnerships Manager se usa para invitarlo a los meets de su equipo
+  if (S.isOwner) (ACC.list.users||[]).forEach(u => { if (roleOf(u.id)==="manager" && u.email && !((S.roles[u.id]||{}).inviteEmail)) db.doc(`roles/${u.id}`).set({...(S.roles[u.id]||{role:"manager"}), inviteEmail:u.email, updatedAt:Date.now()}).catch(()=>{}); });
+  schedule(); }
 function renderAccess(){
   const box = $("accessBox"); if (!box) return;
   if (!window.STRIKD_INVITE || !S.isOwner){ box.hidden = true; return; }
