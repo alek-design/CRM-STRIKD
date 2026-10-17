@@ -20,7 +20,8 @@ jobs:
         run: |
           if [ -z "$TOKEN" ]; then echo "Falta el secreto MIRROR_TOKEN; no se copia."; exit 0; fi
           set +e
+          TOKEN=$(printf "%s" "$TOKEN" | tr -d '[:space:]')
           OUT=$(git push --force "https://x-access-token:${TOKEN}@github.com/Alexalfaro009/CRM-STRIKD.git" HEAD:refs/heads/main 2>&1); RC=$?
-          OUT=$(printf "%s" "$OUT" | sed "s/${TOKEN}/***/g" | tr '\n' ' ')
+          OUT="${OUT//$TOKEN/***}"; OUT=$(printf "%s" "$OUT" | tr '\n' ' ')
           if [ $RC -ne 0 ]; then echo "::error::No se pudo copiar al repo de Vercel: $OUT"; exit 1; fi
           echo "::notice::Copiado a Alexalfaro009/CRM-STRIKD"
