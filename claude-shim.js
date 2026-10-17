@@ -103,11 +103,13 @@
     const acts = document.querySelector(".tabrow") || document.body;
     const b = document.createElement("button"); b.className = "sg-out"; b.type = "button";
     b.textContent = `${me.name || me.email} · Salir`; b.onclick = () => sb.auth.signOut();
-    if (google && google.configured !== false){
+    {
       const g = document.createElement("button"); g.className = "sg-out" + (google.connected ? " on" : " cta"); g.type = "button";
       g.textContent = google.connected ? `✓ Google: ${google.email || "conectado"}` : "Conectar mi Google Calendar";
       g.title = google.connected ? "Toca para desconectar" : "Para crear tus invitaciones con link de Meet";
       g.onclick = async () => {
+        if (google.configured === false) return alert("Google Calendar todavía no está activado en el servidor.\n\nEl Head tiene que poner GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en Vercel (Settings → Environment Variables) y hacer Redeploy.");
+        if (google.error && !google.connected) return alert("No se pudo revisar Google Calendar: " + google.error);
         const t = (await sb.auth.getSession()).data.session.access_token;
         if (!google.connected) return location.href = "/api/google/connect?token=" + encodeURIComponent(t);
         if (confirm("¿Desconectar tu Google Calendar? Ya no se crearán invitaciones automáticas.")){ await fetch("/api/google/status", {method:"POST", headers:{authorization:"Bearer " + t}}); location.reload(); }
