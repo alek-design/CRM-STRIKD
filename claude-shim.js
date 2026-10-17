@@ -234,6 +234,12 @@
   };
   window.STRIKD_GOOGLE = () => google;
   window.STRIKD_ME = () => me;
+  window.STRIKD_UPLOAD = async (blob, name) => {
+    const t = (await sb.auth.getSession()).data.session.access_token;
+    const data = await new Promise((ok, ko) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(",")[1] || ""); fr.onerror = ko; fr.readAsDataURL(blob); });
+    const r = await fetch("/api/upload", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + t}, body:JSON.stringify({name, type:blob.type, data})});
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || ("Error " + r.status)); return j;
+  };
   window.STRIKD_BUSY = async (from, to) => {
     const t = (await sb.auth.getSession()).data.session.access_token;
     const r = await fetch(`/api/busy?from=${from}&to=${to}`, {headers:{authorization:"Bearer " + t}});

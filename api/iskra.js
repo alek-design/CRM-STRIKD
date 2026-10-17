@@ -21,6 +21,8 @@ const SQL_INIT = `
 create table if not exists public.iskra_owner (conversation_id text primary key, phone text, owner uuid, assigned_at timestamptz default now(),
   assigned_by text, escalated_at timestamptz, last_sender uuid, last_sent_at timestamptz);
 alter table public.iskra_owner add column if not exists replied_at timestamptz;
+alter table public.iskra_owner add column if not exists discarded_at timestamptz;
+alter table public.iskra_owner add column if not exists discarded_by uuid;
 create table if not exists public.iskra_sent (id bigserial primary key, conversation_id text, user_id uuid, text text, at timestamptz default now());
 alter table public.iskra_owner enable row level security; alter table public.iskra_sent enable row level security;`;
 
@@ -73,11 +75,12 @@ module.exports = async (req, res) => {
         const mName = m => m.lead_name || m.contact_name || m.name || (m.contact && m.contact.name) || "";
         const mText = m => String(m.text || m.body || m.content || m.message || "");
         let inbound = [], inErr = null;
-        try{ inbound = arr(await iskra("GET", "/v1/messages/whatsapp?direction=inbound&limit=100")).filter(m => isIn(m) || !m.direction); }
-        catch(e){ inErr = e.message; }
+        const [inRes, j] = await Promise.all([
+          iskra("GET", "/v1/messages/whatsapp?direction=inbound&limit=100").catch(e => { inErr = e.message; return []; }),
+          iskra("GET", "/v1/conversations?limit=100")]);
+        inbound = arr(inRes).filter(m => isIn(m) || !m.direction);
         const lastIn = {};
         inbound.forEach(m => { const id = mConv(m); if (id && (!lastIn[id] || mAt(m) > mAt(lastIn[id]))) lastIn[id] = m; });
-        const j = await iskra("GET", "/v1/conversations?limit=100");
         const list = arr(j), byId = {};
         list.forEach(cv => { const id = convId(cv); if (id) byId[id] = cv; });
         // conversaciones que contestaron pero ya no salen en la primera página de la lista
@@ -107,7 +110,7 @@ module.exports = async (req, res) => {
             await c.query("update public.iskra_owner set replied_at=now() where conversation_id=$1", [id]); o.replied_at = new Date();
             if (!o.owner){ const p = await pickOwner(c, convPhone(cv), mode); await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
           }
-          if (lead || o.owner === me.id) out.push({...cv, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at}});
+          if (lead || o.owner === me.id) out.push({...cv, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by}});
         }
         const debug = lead ? {conversaciones_en_lista:list.length, entrantes_leidos:inbound.length, con_respuesta:out.length, error_entrantes:inErr,
           ejemplo_conversacion:list[0] || null, ejemplo_entrante:inbound[0] || null} : undefined;
@@ -121,12 +124,28 @@ module.exports = async (req, res) => {
         return {data:j, sent:sent.map(s => ({by:s.user_id, text:s.text, at:Number(s.at)}))};
       }
       if (op === "reply"){
-        if (!input.conversation_id || !input.text || !input.idempotency_key) throw Object.assign(new Error("Faltan datos"), {status:400});
+        const media = input.media && input.media.url ? input.media : null;
+        if (!input.conversation_id || (!input.text && !media) || !input.idempotency_key) throw Object.assign(new Error("Faltan datos"), {status:400});
         await mustOwn(input.conversation_id);
-        const j = await iskra("POST", "/v1/messages/reply", {conversation_id:input.conversation_id, text:String(input.text).slice(0, 4000), idempotency_key:input.idempotency_key});
-        await c.query("insert into public.iskra_sent (conversation_id, user_id, text) values ($1,$2,$3)", [String(input.conversation_id), me.id, String(input.text).slice(0, 4000)]);
+        const text = String(input.text || "").slice(0, 4000);
+        const payload = {conversation_id:input.conversation_id, idempotency_key:input.idempotency_key};
+        if (text) payload.text = text;
+        if (media){ // foto, PDF o nota de voz: ISKRA la descarga del link público
+          const kind = /^image\//.test(media.type) ? "image" : /^audio\//.test(media.type) ? "audio" : "document";
+          Object.assign(payload, {type:kind, media_url:media.url, media_type:media.type, filename:media.name || undefined});
+          if (text) payload.caption = text;
+        }
+        const j = await iskra("POST", "/v1/messages/reply", payload);
+        const label = media ? `${text ? text + " " : ""}[${media.type && media.type.startsWith("audio/") ? "nota de voz" : media.name || "archivo"}]` : text;
+        await c.query("insert into public.iskra_sent (conversation_id, user_id, text) values ($1,$2,$3)", [String(input.conversation_id), me.id, label]);
         await c.query("update public.iskra_owner set last_sender=$2, last_sent_at=now() where conversation_id=$1", [String(input.conversation_id), me.id]);
         return {data:j};
+      }
+      if (op === "discard"){ // descartar (o regresar) una conversación: deja de salir en la bandeja
+        await mustOwn(input.id);
+        await c.query(input.undo ? "update public.iskra_owner set discarded_at=null, discarded_by=null where conversation_id=$1"
+          : "update public.iskra_owner set discarded_at=now(), discarded_by=$2 where conversation_id=$1", input.undo ? [String(input.id)] : [String(input.id), me.id]);
+        return {ok:true};
       }
       if (op === "assign"){
         if (!lead) throw Object.assign(new Error("Solo el Head o el Manager reasignan."), {status:403});
