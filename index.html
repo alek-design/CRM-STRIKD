@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 16:55 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 17:02 UTC"</script>
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/claude-shim.js"></script>
@@ -323,6 +323,7 @@ a.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line2)}
 .msg-card textarea{width:100%;font:inherit;font-size:13px;background:var(--bg);color:var(--fg);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;resize:vertical}
 .msg-card .msg-acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .msg-h3{margin:18px 0 8px;font-size:14px}
+.isk-own select{margin-left:6px}.isk-by{margin:0;padding:6px 14px;border-bottom:1px solid var(--line)}.isk-recent{margin:0 0 8px}.cv-hacts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .isk{margin:0 0 18px}.isk-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}.isk-dot{width:8px;height:8px;border-radius:50%;background:var(--wa);display:inline-block}.isk-dot.off{background:var(--wait)}.isk-raw{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto;background:var(--surface);border:1px solid var(--line2);border-radius:8px;padding:8px}
 .cv{display:grid;grid-template-columns:320px 1fr;min-height:520px;border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:var(--surface)}
 .cv-left{border-right:1px solid var(--line2);display:flex;flex-direction:column;min-width:0}
@@ -992,7 +993,7 @@ function applyTheme(t){ document.documentElement.dataset.theme = t; $("themeBtn"
 $("themeBtn").addEventListener("click", () => { const t = document.documentElement.dataset.theme==="light" ? "dark" : "light"; applyTheme(t); try{ localStorage.setItem("strikd_theme", t); }catch(e){} schedule(); });
 const MSEG = {v:null};
 function syncMsgSeg(){
-  const isk = !!iskFn() && S.isLead && !S.viewAs;
+  const isk = !!iskFn() && (!S.viewAs || iskFn()===iskMock);
   // con ISKRA, la bandeja es solo la de ISKRA (una sola); sin ISKRA, la bandeja manual
   $("msegIsk").hidden = !isk; $("msegInbox").hidden = isk;
   if (!MSEG.v || (MSEG.v==="isk" && !isk) || (MSEG.v==="inbox" && isk)) MSEG.v = isk ? "isk" : "inbox";
@@ -3212,28 +3213,39 @@ async function convPush(c, msg, state){
   const chat = (c.chat||[]).concat([msg]);
   await convRef(c.k).update({chat, chatState:{...(c.cs||{}), ...state, updatedAt:Date.now()}});
 }
-/* ---------- ISKRA en vivo (dominio) · en claude.ai se muestra con datos de ejemplo ---------- */
+/* ---------- WhatsApp de STRIKD vía ISKRA · un número, cada conversación con dueño ----------
+   En growth.strikd.ai habla con /api/iskra (el servidor filtra qué ve cada quien).
+   En claude.ai se muestra con datos de ejemplo que se comportan igual. */
 const ISK_DEMO = (() => { const t = m => new Date(Date.now() - m*60e3).toISOString();
+  const own = (o, by) => ({owner:o, assignedBy:by});
   return {convs:[
-    {id:"d1", lead_name:"Karla Ríos (ejemplo)", phone:"5218112345601", last_message:{text:"¿Cuánto cuesta y sirve para grupos?", direction:"inbound", created_at:t(4)}, unread_count:1},
-    {id:"d2", lead_name:"Pablo Garza (ejemplo)", phone:"5218112345602", last_message:{text:"Gracias por comunicarte. En breve te atendemos 🙌", direction:"inbound", created_at:t(38)}},
-    {id:"d3", lead_name:"Lorena Treviño (ejemplo)", phone:"5218112345603", last_message:{text:"¿Te late una llamada de 30 min el jueves?", direction:"outbound", created_at:t(180)}}],
+    {id:"d1", lead_name:"Karla Ríos (ejemplo)", phone:"5218112345601", last_message:{text:"¿Cuánto cuesta y sirve para grupos?", direction:"inbound", created_at:t(4)}, unread_count:1, _strikd:own("u_demo_vic","prospecto")},
+    {id:"d2", lead_name:"Pablo Garza (ejemplo)", phone:"5218112345602", last_message:{text:"Gracias por comunicarte. En breve te atendemos 🙌", direction:"inbound", created_at:t(38)}, _strikd:own("u_demo_rafa","menos-carga")},
+    {id:"d3", lead_name:"Lorena Treviño (ejemplo)", phone:"5218112345603", last_message:{text:"¿Te late una llamada de 30 min el jueves?", direction:"outbound", created_at:t(180)}, _strikd:{owner:"u_demo_mich", assignedBy:"mejores-resultados", lastSender:"u_demo_mich", lastSentAt:Date.now()-180*60e3}},
+    {id:"d4", lead_name:"Andrés Salinas (ejemplo)", phone:"5218112345607", last_message:{text:"Hola, vi su anuncio, ¿cómo funciona?", direction:"inbound", created_at:t(9)}, unread_count:1, _strikd:{owner:null, assignedBy:"sin-am"}}],
    msgs:{
     d1:[{text:"¡Hola Karla! Vi tu perfil y creo que STRIKD te puede ayudar a lanzar tu propio programa. ¿Te interesa?", direction:"outbound", created_at:t(60)},{text:"Hola! sí me interesa", direction:"inbound", created_at:t(20)},{text:"¿Cuánto cuesta y sirve para grupos?", direction:"inbound", created_at:t(4)}],
     d2:[{text:"¡Hola Pablo! Te escribo de STRIKD: ayudamos a coaches a vender su propio programa.", direction:"outbound", created_at:t(45)},{text:"Gracias por comunicarte. En breve te atendemos 🙌", direction:"inbound", created_at:t(38)}],
-    d3:[{text:"Me encantó tu propuesta, tengo 40 pacientes activos", direction:"inbound", created_at:t(200)},{text:"¿Te late una llamada de 30 min el jueves?", direction:"outbound", created_at:t(180)}]}}; })();
+    d3:[{text:"Me encantó tu propuesta, tengo 40 pacientes activos", direction:"inbound", created_at:t(200)},{text:"¿Te late una llamada de 30 min el jueves?", direction:"outbound", created_at:t(180)}],
+    d4:[{text:"Hola, vi su anuncio, ¿cómo funciona?", direction:"inbound", created_at:t(9)}]},
+   sent:{d3:[{by:"u_demo_mich", text:"¿Te late una llamada de 30 min el jueves?", at:Date.now()-180*60e3}]}}; })();
 async function iskMock(op, input){
-  await new Promise(r => setTimeout(r, 150));
-  if (op==="whoami") return {configured:true, data:{workspace:{name:"Ejemplo · sin conexión real"}}};
-  if (op==="conversations") return {configured:true, data:{data:ISK_DEMO.convs}};
-  if (op==="messages") return {configured:true, data:{data:(ISK_DEMO.msgs[input.id]||[]).slice().reverse()}};
+  await new Promise(r => setTimeout(r, 120));
+  const me = meId(), lead = adminMode();
+  const conv = id => ISK_DEMO.convs.find(x => x.id===id);
+  if (op==="whoami") return {configured:true, data:{workspace:{name:"Datos de ejemplo"}}};
+  if (op==="conversations") return {configured:true, mode:(S.config && S.config.iskAssign)==="best" ? "best" : "load",
+    data:{data:ISK_DEMO.convs.filter(c => lead || c._strikd.owner===me)}};
+  if (op==="messages") return {configured:true, data:{data:(ISK_DEMO.msgs[input.id]||[]).slice().reverse()}, sent:ISK_DEMO.sent[input.id]||[]};
   if (op==="reply"){ const m = {text:input.text, direction:"outbound", created_at:new Date().toISOString()}; (ISK_DEMO.msgs[input.conversation_id] ||= []).push(m);
-    const c = ISK_DEMO.convs.find(x => x.id===input.conversation_id); if (c){ c.last_message = m; c.unread_count = 0; } return {configured:true, data:{id:"demo"}}; }
+    (ISK_DEMO.sent[input.conversation_id] ||= []).push({by:me, text:input.text, at:Date.now()});
+    const c = conv(input.conversation_id); if (c){ c.last_message = m; c.unread_count = 0; c._strikd.lastSender = me; c._strikd.lastSentAt = Date.now(); } return {configured:true, data:{id:"demo"}}; }
+  if (op==="assign"){ const c = conv(input.id); if (c) c._strikd = {...c._strikd, owner:input.owner||null, assignedBy:"manual", escalatedAt:null}; return {configured:true, ok:true}; }
+  if (op==="escalate"){ const c = conv(input.id); if (c) c._strikd = {...c._strikd, owner:(S.config && S.config.headId) || S.uid, assignedBy:"escalado", escalatedAt:new Date().toISOString()}; return {configured:true, ok:true}; }
   return {configured:true, data:{}};
 }
 function iskFn(){ return window.STRIKD_ISKRA || (window.STRIKD_SB ? null : iskMock); }
-
-const ISK = {st:null, who:null, convs:[], sel:null, msgs:{}, draft:{}, busy:false, err:"", raw:null, at:0, loading:false, timer:null};
+const ISK = {st:null, who:null, convs:[], sel:null, msgs:{}, sent:{}, draft:{}, busy:false, err:"", raw:null, at:0, loading:false, timer:null, filter:"", mode:"load"};
 const iskArr = j => { const d = j && (j.data !== undefined ? j.data : j); return Array.isArray(d) ? d : (d && (d.data || d.items || d.conversations || d.messages || d.results)) || []; };
 const iskTxt = m => String(m.text || m.body || m.content || m.message || (m.template && (m.template.name || m.template)) || "");
 const iskDir = m => /^(in|inbound|incoming|received|lead)/i.test(String(m.direction || m.dir || m.from_type || (m.from_me===false?"in":m.from_me?"out":"") || m.type || "")) ? "in" : "out";
@@ -3241,13 +3253,15 @@ const iskAt = m => { if (!m || typeof m!=="object") return 0;
   const v = m.created_at ?? m.createdAt ?? m.sent_at ?? m.sentAt ?? m.timestamp ?? m.ts ?? m.date ?? m.time ?? m.last_activity_at ?? m.lastActivityAt ?? m.last_message_at ?? m.lastMessageAt ?? m.updated_at ?? m.updatedAt;
   if (v==null || v==="") return 0; if (typeof v==="number" || /^\d+$/.test(String(v))){ const n = Number(v); return n < 1e12 ? n*1000 : n; } return Date.parse(v) || 0; };
 const iskDigits = x => String(x||"").replace(/\D/g,"").slice(-10);
+const ISK_BY = {"prospecto":"ya era su prospecto", "menos-carga":"menos carga", "mejores-resultados":"mejores resultados", "manual":"asignado a mano", "escalado":"pasado al manager", "sin-am":"sin Account Managers"};
 function iskConv(c){
   const ct = c.contact || c.lead || {};
   const phone = c.phone || c.lead_phone || c.contact_phone || ct.phone || c.wa_id || "";
-  const lm = c.last_message || {};
+  const lm = c.last_message || {}, x = c._strikd || {};
   return {id:String(c.id || c.conversation_id || ""), name:c.name || c.lead_name || c.contact_name || ct.name || phone || "Sin nombre", phone,
     last:typeof lm==="string" ? lm : iskTxt(lm) || c.last_message_text || c.preview || "", lastDir:typeof lm==="object" && Object.keys(lm).length ? iskDir(lm) : (c.last_direction ? iskDir({direction:c.last_direction}) : ""),
-    at:iskAt(c) || iskAt(lm), unread:Number(c.unread_count || c.unread || 0), raw:c};
+    at:iskAt(c) || iskAt(lm), unread:Number(c.unread_count || c.unread || 0), owner:x.owner || null, by:x.assignedBy || "", esc:x.escalatedAt ? Date.parse(x.escalatedAt) || 1 : 0,
+    lastSender:x.lastSender || null, lastSentAt:x.lastSentAt ? (typeof x.lastSentAt==="number" ? x.lastSentAt : Date.parse(x.lastSentAt)) : 0, raw:c};
 }
 function iskMatch(phone){
   const d = iskDigits(phone); if (!d) return null;
@@ -3255,14 +3269,17 @@ function iskMatch(phone){
   for (const [u, id, l] of waLeadsAll()) if (iskDigits(l.phone)===d) return {name:l.name, uid:u};
   return null;
 }
+const iskWho = uid => uid ? (uid===S.uid && !S.viewAs ? "Tú" : nameOf(S.ps||{}, uid)) : "Sin dueño";
 async function iskLoad(force){
-  if (!iskFn() || ISK.loading || (!force && Date.now() - ISK.at < 12e3)) return;
+  const fn = iskFn();
+  if (!fn || ISK.loading || (!force && Date.now() - ISK.at < 12e3)) return;
   ISK.loading = true;
   try{
-    if (!ISK.who){ const w = await iskFn()("whoami"); if (w.configured===false){ ISK.st = "off"; return; } ISK.who = w.data || {}; }
-    const j = await iskFn()("conversations", {limit:50});
-    ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.data;
-    if (ISK.convs.some(c => c.at)) ISK.convs.sort((a,b) => b.at - a.at); ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
+    if (!ISK.who){ const w = await fn("whoami"); if (w.configured===false){ ISK.st = "off"; return; } ISK.who = w.data || {}; }
+    const j = await fn("conversations", {limit:50});
+    ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.data; ISK.mode = j.mode || "load"; ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
+    if (ISK.convs.some(c => c.at)) ISK.convs.sort((a,b) => b.at - a.at);
+    if (ISK.sel && !ISK.convs.some(c => c.id===ISK.sel)) ISK.sel = null;
     if (ISK.sel) await iskThread(ISK.sel, true);
   }catch(e){ ISK.st = ISK.st==="ok" ? "ok" : "err"; ISK.err = e.message + (e.detail ? " · " + JSON.stringify(e.detail).slice(0,300) : ""); }
   finally{ ISK.loading = false; schedule(); }
@@ -3271,55 +3288,101 @@ async function iskThread(id, quiet){
   try{ const j = await iskFn()("messages", {id, limit:50});
     let ms = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m), at:iskAt(m), st:m.status||""}));
     ms = ms.some(x => x.at) ? ms.sort((a,b) => a.at-b.at) : ms.reverse(); // la API da lo más nuevo primero
-    ISK.msgs[id] = ms; }
+    ISK.msgs[id] = ms; ISK.sent[id] = j.sent || []; }
   catch(e){ if (!quiet) ISK.err = e.message; }
   schedule();
 }
+function iskSentBy(id, x){ // quién del equipo mandó este mensaje (el prospecto siempre ve el número de STRIKD)
+  if (x.d!=="out") return null;
+  const s = (ISK.sent[id]||[]).find(s => s.text===x.t && (!x.at || Math.abs(s.at - x.at) < 10*60e3));
+  return s ? s.by : null;
+}
+function iskOwnerOpts(sel){
+  const ids = [...new Set(Object.keys(S.team||{}).concat(S.config && S.config.headId ? [S.config.headId] : [], S.uid ? [S.uid] : []))];
+  return `<option value="">Sin dueño</option>` + ids.map(id => `<option value="${esc(id)}"${id===sel?" selected":""}>${esc(iskWho(id))}</option>`).join("");
+}
 function renderIskra(){
   const box = $("iskBox"); if (!box) return;
-  const on = !!iskFn() && S.isLead && !S.viewAs;
+  const on = !!iskFn() && (!S.viewAs || iskFn()===iskMock);
   box.hidden = !on; if (!on || S.tab!=="msgs") { clearInterval(ISK.timer); ISK.timer = null; return; }
   if (!ISK.timer){ ISK.timer = setInterval(() => { if (S.tab==="msgs" && !document.hidden) iskLoad(); }, 15e3); iskLoad(true); }
   if (busyIn(box)) return;
+  const lead = adminMode(), me = meId();
   if (ISK.st==="off"){ $("iskNotice").hidden = false; box.innerHTML = `<p class="notice">ISKRA no está activado: falta <b>ISKRA_API_KEY</b> en Vercel (Settings → Environment Variables) y hacer Redeploy.</p>`; return; }
   $("iskNotice").hidden = ISK.st==="ok";
-  if (!ISK.st){ box.innerHTML = `<p class="mut small">Conectando con ISKRA…</p>`; return; }
+  if (!ISK.st){ box.innerHTML = `<p class="mut small">Conectando con WhatsApp…</p>`; return; }
   if (ISK.st==="err" && !ISK.convs.length){ box.innerHTML = `<p class="notice">No se pudo leer ISKRA: ${esc(ISK.err)} <button type="button" class="btn small" data-iskre="1">Reintentar</button></p>`; return; }
-  const ws = ISK.who && (ISK.who.workspace && (ISK.who.workspace.name || ISK.who.workspace) || ISK.who.workspace_name || ISK.who.name) || "";
+  const demo = iskFn()===iskMock;
+  if (!ISK.filter) ISK.filter = lead ? "todas" : "mias";
+  const needs = x => x.lastDir==="in";
+  const F = lead ? [["todas","Todas"],["mias","Mías"],["sindueno","Sin dueño"],["resp","Sin responder"]] : [["mias","Mías"],["resp","Sin responder"]];
+  const cnt = {todas:ISK.convs.length, mias:ISK.convs.filter(x => x.owner===me).length, sindueno:ISK.convs.filter(x => !x.owner).length, resp:ISK.convs.filter(needs).length};
+  const list = ISK.convs.filter(x => ISK.filter==="mias" ? x.owner===me : ISK.filter==="sindueno" ? !x.owner : ISK.filter==="resp" ? needs(x) : true);
   const c = ISK.convs.find(x => x.id===ISK.sel);
-  const item = x => { const mt = iskMatch(x.phone); return `<button type="button" class="cv-it${x.id===ISK.sel?" sel":""}${x.lastDir==="in"?" reply":""}" data-iskc="${esc(x.id)}">
+  const item = x => { const mt = iskMatch(x.phone); return `<button type="button" class="cv-it${x.id===ISK.sel?" sel":""}${needs(x)?(x.esc?" manager":" reply"):""}" data-iskc="${esc(x.id)}">
       <div class="cv-l1"><b>${esc(mt ? mt.name : x.name)}</b><span class="cv-t">${x.at?ago(x.at):""}</span></div>
-      <div class="cv-l2">${x.lastDir==="out"?"Tú: ":""}${esc(String(x.last).slice(0,70)) || "<i>Sin mensajes</i>"}</div>
-      <div class="cv-l3">${x.lastDir==="in" ? `<span class="cv-flag rep">Sin responder</span>` : x.lastDir==="out" ? `<span class="cv-flag ok">Esperando respuesta</span>` : ""}${x.unread?`<span class="cv-tipo">${x.unread} nuevos</span>`:""}${mt?`<span class="cv-who">${esc(nameOf(S.ps||{}, mt.uid))}</span>`:""}</div></button>`; };
-  let right = `<div class="cv-right cv-none"><p class="mut">Elige una conversación de ISKRA.</p></div>`;
+      <div class="cv-l2">${x.lastDir==="out"?"STRIKD: ":""}${esc(String(x.last).slice(0,70)) || "<i>Sin mensajes</i>"}</div>
+      <div class="cv-l3">${needs(x) ? (x.esc ? `<span class="cv-flag mgr">${lead?"Te toca":"Con el manager"}</span>` : `<span class="cv-flag rep">Sin responder</span>`) : x.lastDir==="out" ? `<span class="cv-flag ok">Esperando respuesta</span>` : ""}${x.unread?`<span class="cv-tipo">${x.unread} nuevos</span>`:""}<span class="cv-who">${esc(iskWho(x.owner))}</span></div></button>`; };
+  let right = `<div class="cv-right cv-none"><p class="mut">Elige una conversación.</p></div>`;
   if (c){
-    const ms = ISK.msgs[c.id], mt = iskMatch(c.phone);
+    const ms = ISK.msgs[c.id], mt = iskMatch(c.phone), mine = c.owner===me;
+    const recent = c.lastSender && c.lastSender!==me && Date.now() - c.lastSentAt < 10*60e3;
+    const canSend = lead || mine;
     right = `<div class="cv-right">
-      <div class="cv-head"><div><b>${esc(mt ? mt.name : c.name)}</b><div class="mut small">${esc(c.phone||"")}${mt?` · ${esc(nameOf(S.ps||{}, mt.uid))}`:" · no está en el tablero"}</div></div></div>
-      <div class="cv-thread" id="iskThread">${!ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => `<div class="bub ${x.d}"><p>${esc(x.t)}</p><span>${x.at?esc(fmtLocal(x.at)):""}${x.st?` · ${esc(x.st)}`:""}</span></div>`).join("") || `<p class="mut small">Sin mensajes.</p>`}</div>
-      <div class="cv-compose"><div class="cv-out"><textarea rows="3" data-iskin="1" placeholder="Tu respuesta… (sale por ISKRA desde el número de STRIKD)">${esc(ISK.draft[c.id]||"")}</textarea>
+      <div class="cv-head"><div><b>${esc(mt ? mt.name : c.name)}</b><div class="mut small">${esc(c.phone||"")}${mt?"":" · todavía no está en el tablero"}</div></div>
+        <div class="cv-hacts">
+          ${lead ? `<label class="mut small isk-own">Dueño <select class="inline" data-iskown="1">${iskOwnerOpts(c.owner)}</select></label>` : `<span class="mut small">Tuya${c.by?` · ${esc(ISK_BY[c.by]||c.by)}`:""}</span>`}
+          ${!lead && mine ? `<button type="button" class="btn small" data-iskesc="1">Pasar al manager</button>` : ""}
+          ${!lead && mine && !mt ? `<button type="button" class="btn small primary" data-iskmeet="1">Registrar meet</button>` : ""}
+        </div></div>
+      ${lead && c.by ? `<p class="mut small isk-by">Asignada por: ${esc(ISK_BY[c.by]||c.by)}${c.esc?" · la pasaron al manager":""}</p>` : ""}
+      <div class="cv-thread" id="iskThread">${!ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}"><p>${esc(x.t)}</p><span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`}</div>
+      <div class="cv-compose">
+        ${recent ? `<p class="notice warn isk-recent">${esc(iskWho(c.lastSender))} contestó hace ${esc(ago(c.lastSentAt))}. Revisa antes de mandar otro mensaje.</p>` : ""}
+        ${canSend ? `<div class="cv-out"><textarea rows="3" data-iskin="1" placeholder="Tu respuesta… sale desde el número de STRIKD">${esc(ISK.draft[c.id]||"")}</textarea>
         <div class="msg-acts"><span class="err">${esc(ISK.err)}</span><div class="spacer"></div>
-          <button type="button" class="btn small primary" data-isksend="1"${ISK.busy?" disabled":""}>${ISK.busy?"Enviando…":"Enviar por ISKRA"}</button></div></div>
-        <p class="mut small">Solo se puede contestar en conversaciones que el prospecto ya abrió. Para escribir primero se usa una plantilla aprobada.</p></div></div>`;
+          <button type="button" class="btn small primary" data-isksend="1"${ISK.busy?" disabled":""}>${ISK.busy?"Enviando…":demo?"Enviar (ejemplo)":"Enviar"}</button></div></div>
+        <p class="mut small">Solo se contesta en conversaciones que el prospecto ya abrió. Para escribir primero se usa una plantilla aprobada.</p>` : `<p class="mut small">Esta conversación es de ${esc(iskWho(c.owner))}.</p>`}</div></div>`;
   }
-  box.innerHTML = `<div class="isk"><div class="isk-top"><span class="isk-dot"></span><b>WhatsApp de STRIKD</b><span class="mut small">${iskFn()===iskMock ? "vía ISKRA · datos de ejemplo" : "vía ISKRA · en vivo"}</span>${ws?`<span class="mut small">${esc(ws)}</span>`:""}<span class="mut small">· ${ISK.convs.length} conversaciones · actualizado ${ISK.at?esc(fmtLocal(ISK.at).split(", ").pop()):""}${window.STRIKD_BUILD?` · versión ${esc(window.STRIKD_BUILD)}`:""}</span><div class="spacer"></div>
-    <button type="button" class="btn small" data-iskre="1">${ISK.loading?"Actualizando…":"Actualizar"}</button>${S.isOwner?`<button type="button" class="btn small ghost" data-iskraw="1">Datos crudos</button>`:""}</div>
+  const ws = ISK.who && (ISK.who.workspace && (ISK.who.workspace.name || ISK.who.workspace) || ISK.who.workspace_name || ISK.who.name) || "";
+  box.innerHTML = `<div class="isk"><div class="isk-top"><span class="isk-dot"></span><b>WhatsApp de STRIKD</b><span class="mut small">vía ISKRA · ${demo?"datos de ejemplo":"en vivo"}${ws&&!demo?` · ${esc(ws)}`:""} · actualizado ${ISK.at?esc(fmtLocal(ISK.at).split(", ").pop()):""}${window.STRIKD_BUILD?` · versión ${esc(window.STRIKD_BUILD)}`:""}</span><div class="spacer"></div>
+    ${S.isOwner ? `<label class="mut small">Nuevas conversaciones a <select class="inline" data-iskmode="1"><option value="load"${ISK.mode!=="best"?" selected":""}>quien tenga menos carga</option><option value="best"${ISK.mode==="best"?" selected":""}>quien da mejores resultados</option></select></label>` : ""}
+    <button type="button" class="btn small" data-iskre="1">${ISK.loading?"Actualizando…":"Actualizar"}</button>${S.isOwner && !demo?`<button type="button" class="btn small ghost" data-iskraw="1">Datos crudos</button>`:""}</div>
     ${ISK.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISK.raw, null, 1).slice(0,6000))}</pre>` : ""}
-    <div class="cv"><div class="cv-left"><div class="cv-list">${ISK.convs.map(item).join("") || `<p class="mut small cv-empty">ISKRA no tiene conversaciones todavía.</p>`}</div></div>${right}</div></div>`;
+    <div class="cv"><div class="cv-left"><div class="cv-filters">${F.map(([k,l]) => `<button type="button" class="${ISK.filter===k?"on":""}" data-iskf="${k}">${l}${cnt[k]?` · ${cnt[k]}`:""}</button>`).join("")}</div>
+      <div class="cv-list">${list.map(item).join("") || `<p class="mut small cv-empty">${ISK.convs.length ? "Nada aquí. 🙌" : "Todavía no hay conversaciones."}</p>`}</div></div>${right}</div></div>`;
   const th = $("iskThread"); if (th) th.scrollTop = th.scrollHeight;
 }
 document.addEventListener("input", e => { const t = e.target.closest("[data-iskin]"); if (t && ISK.sel) ISK.draft[ISK.sel] = t.value; });
+document.addEventListener("change", async e => {
+  const o = e.target.closest("[data-iskown]");
+  if (o && ISK.sel){ try{ await iskFn()("assign", {id:ISK.sel, owner:o.value || null}); }catch(err){ ISK.err = err.message; } return iskLoad(true); }
+  const md = e.target.closest("[data-iskmode]");
+  if (md && S.isOwner){ ISK.mode = md.value; try{ await db.doc("config/main").set({...(S.config||{}), iskAssign:md.value, updatedAt:Date.now()}); }catch(err){ ISK.err = "No se guardó la opción"; } schedule(); }
+});
 document.addEventListener("click", async e => {
   if (e.target.closest("[data-iskre]")) { ISK.who = ISK.st==="ok" ? ISK.who : null; return iskLoad(true); }
   if (e.target.closest("[data-iskraw]")) { ISK.showRaw = !ISK.showRaw; return schedule(); }
+  const f = e.target.closest("[data-iskf]"); if (f){ ISK.filter = f.dataset.iskf; return schedule(); }
   const ci = e.target.closest("[data-iskc]");
   if (ci){ ISK.sel = ci.dataset.iskc; ISK.err = ""; schedule(); return iskThread(ISK.sel); }
+  if (e.target.closest("[data-iskesc]") && ISK.sel){
+    const b = e.target.closest("[data-iskesc]"); if (b.dataset.armed!=="1"){ b.dataset.armed = "1"; b.textContent = "¿Pasarla al manager?"; return; }
+    try{ await iskFn()("escalate", {id:ISK.sel}); }catch(err){ ISK.err = err.message; } return iskLoad(true);
+  }
+  if (e.target.closest("[data-iskmeet]") && ISK.sel){
+    const c = ISK.convs.find(x => x.id===ISK.sel); if (!c) return;
+    showTab("mine"); resetForm();
+    setTimeout(() => { $("f_perfil").value = "1"; $("f_canal").value = "whatsapp"; $("f_prospect").value = c.name && !/^\d+$/.test(c.name) ? c.name : ""; $("f_phone").value = c.phone || ""; $("f_channel").value = "WhatsApp";
+      $("f_notes").value = "Vino de WhatsApp (ISKRA)"; syncPerfilUi(); $("meetForm").scrollIntoView({behavior:"smooth", block:"start"}); $("f_prospect").focus(); }, 30);
+    return;
+  }
   if (e.target.closest("[data-isksend]")){
     const id = ISK.sel, text = (ISK.draft[id]||"").trim(); if (!id || !text || ISK.busy) return;
     ISK.busy = true; ISK.err = ""; schedule();
     const key = ISK.idem && ISK.idem.text===text && ISK.idem.id===id ? ISK.idem.key : "strikd-" + id + "-" + Date.now().toString(36);
     ISK.idem = {id, text, key};
-    try{ await iskFn()("reply", {conversation_id:id, text, idempotency_key:key}); ISK.draft[id] = ""; ISK.idem = null; await iskThread(id); }
+    try{ await iskFn()("reply", {conversation_id:id, text, idempotency_key:key}); ISK.draft[id] = ""; ISK.idem = null; await iskThread(id); iskLoad(true); }
     catch(err){ ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : ""); }
     finally{ ISK.busy = false; schedule(); }
   }
@@ -3541,19 +3604,19 @@ function setFormEnabled(on){ $("meetForm").querySelectorAll("input,select,textar
 function enterViewAs(uid){
   if (!uid || !S.isOwner) return; // solo el Head puede usar la Vista de usuario
   S.viewAs = uid; resetForm(); setFormEnabled(true);
-  $("viewAsBar").hidden = false; $("adminActs").hidden = true; $("viewAsBtn").hidden = true;
+  $("viewAsBar").hidden = false; $("adminActs").hidden = true; $("viewAsBtn").hidden = true; Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]});
   $("tabAdmin").hidden = true; $("tabFlow").hidden = true; $("tabAgenda").hidden = true; $("tabFunnel").hidden = true; $("tabVip").hidden = true; $("tabWa").hidden = true; $("tabMine").hidden = false; $("tabPerf").hidden = false; $("tabOrg").hidden = true;
   showTab("board");
   schedule();
 }
 function exitViewAs(){
   S.viewAs = null; setFormEnabled(true);
-  $("viewAsBar").hidden = true; $("adminActs").hidden = false; $("viewAsBtn").hidden = !S.isOwner;
+  $("viewAsBar").hidden = true; $("adminActs").hidden = false; $("viewAsBtn").hidden = !S.isOwner; Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]});
   $("tabMine").hidden = true; $("tabPerf").hidden = true; if (S.tab==="perf") showTab("board"); $("tabOrg").hidden = !S.isOwner; $("tabAdmin").hidden = false; $("tabFlow").hidden = false; $("tabAgenda").hidden = false; $("tabFunnel").hidden = false; $("tabVip").hidden = false; $("tabWa").hidden = false;
   showTab("board"); schedule();
 }
 $("viewAsBtn").addEventListener("click", () => enterViewAs($("viewAsSel").value || Object.keys(S.team)[0]));
-$("viewAsSel").addEventListener("change", e => { S.viewAs = e.target.value; resetForm(); schedule(); });
+$("viewAsSel").addEventListener("change", e => { S.viewAs = e.target.value; resetForm(); Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]}); iskLoad(true); schedule(); });
 $("viewAsExit").addEventListener("click", exitViewAs);
 
 /* ---------- Excel export ---------- */
