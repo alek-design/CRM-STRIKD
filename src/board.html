@@ -3436,7 +3436,7 @@ async function iskLoad(force){
   try{
     if (!ISK.who){ const w = await fn("whoami"); if (w.configured===false){ ISK.st = "off"; return; } ISK.who = w.data || {}; }
     const j = await fn("conversations", {limit:50});
-    ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.data; ISK.mode = j.mode || "load"; ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
+    ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.debug || j.data; ISK.mode = j.mode || "load"; ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
     if (ISK.convs.some(c => c.at)) ISK.convs.sort((a,b) => b.at - a.at);
     if (ISK.sel && !ISK.convs.some(c => c.id===ISK.sel)) ISK.sel = null;
     if (ISK.sel) await iskThread(ISK.sel, true);
@@ -3509,7 +3509,7 @@ function renderIskra(){
     <button type="button" class="btn small" data-iskre="1">${ISK.loading?"Actualizando…":"Actualizar"}</button>${S.isOwner && !demo?`<button type="button" class="btn small ghost" data-iskraw="1">Datos crudos</button>`:""}</div>
     ${ISK.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISK.raw, null, 1).slice(0,6000))}</pre>` : ""}
     <div class="cv"><div class="cv-left"><div class="cv-filters">${F.map(([k,l]) => `<button type="button" class="${ISK.filter===k?"on":""}" data-iskf="${k}">${l}${cnt[k]?` · ${cnt[k]}`:""}</button>`).join("")}</div>
-      <div class="cv-list">${list.map(item).join("") || `<p class="mut small cv-empty">${ISK.convs.length ? "Nada aquí. 🙌" : "Todavía no hay conversaciones."}</p>`}</div></div>${right}</div></div>`;
+      <div class="cv-list">${list.map(item).join("") || `<p class="mut small cv-empty">${ISK.convs.length ? "Nada aquí. 🙌" : "Todavía nadie ha contestado. Aquí solo salen los prospectos que ya respondieron."}</p>`}</div></div>${right}</div></div>`;
   const th = $("iskThread"); if (th) th.scrollTop = th.scrollHeight;
 }
 document.addEventListener("input", e => { const t = e.target.closest("[data-iskin]"); if (t && ISK.sel) ISK.draft[ISK.sel] = t.value; });

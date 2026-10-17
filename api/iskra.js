@@ -20,6 +20,7 @@ async function iskra(method, path, payload){
 const SQL_INIT = `
 create table if not exists public.iskra_owner (conversation_id text primary key, phone text, owner uuid, assigned_at timestamptz default now(),
   assigned_by text, escalated_at timestamptz, last_sender uuid, last_sent_at timestamptz);
+alter table public.iskra_owner add column if not exists replied_at timestamptz;
 create table if not exists public.iskra_sent (id bigserial primary key, conversation_id text, user_id uuid, text text, at timestamptz default now());
 alter table public.iskra_owner enable row level security; alter table public.iskra_sent enable row level security;`;
 
@@ -35,7 +36,7 @@ async function pickOwner(c, phone, mode){
   const ams = (await c.query("select id from public.app_users where role='am' and active")).rows.map(x => x.id);
   if (!ams.length){ const m = (await c.query("select id from public.app_users where role in ('manager','head') and active order by role='head'")).rows[0]; return {owner:m ? m.id : null, by:"sin-am"}; }
   const load = Object.fromEntries(ams.map(id => [id, 0]));
-  (await c.query("select owner, count(*)::int n from public.iskra_owner where owner = any($1) group by owner", [ams])).rows.forEach(x => load[x.owner] = x.n);
+  (await c.query("select owner, count(*)::int n from public.iskra_owner where owner = any($1) and replied_at is not null group by owner", [ams])).rows.forEach(x => load[x.owner] = x.n);
   let score = {};
   if (mode === "best"){
     const since = Date.now() - 28*864e5;
@@ -62,21 +63,55 @@ module.exports = async (req, res) => {
       const mustOwn = async id => { const o = await ownerOf(id); if (!lead && (!o || o.owner !== me.id)) throw Object.assign(new Error("Esta conversación es de otra persona."), {status:403}); return o; };
       if (op === "whoami"){ const j = await iskra("GET", "/v1/whoami"); return {data:j, me:{id:me.id, role:me.role}}; }
       if (op === "conversations"){
-        const j = await iskra("GET", "/v1/conversations?limit=" + Math.min(Number(input.limit) || 50, 100));
+        // Solo conversaciones donde el prospecto YA contestó al menos una vez.
+        // Fuente 1: mensajes entrantes recientes (GET /v1/messages/whatsapp?direction=inbound), lo más nuevo primero.
+        // Fuente 2: la lista de conversaciones. Lo que ya contestó queda marcado (replied_at) para no perderlo.
+        const isIn = m => /^(in|inbound|incoming|received|lead)/i.test(String(m.direction || m.dir || m.from_type || (m.from_me===false ? "in" : m.from_me ? "out" : "") || ""));
+        const mConv = m => String(m.conversation_id || (m.conversation && m.conversation.id) || m.chat_id || m.thread_id || "");
+        const mAt = m => Date.parse(m.created_at || m.sent_at || m.received_at || m.timestamp || "") || 0;
+        const mPhone = m => m.phone || m.from || m.lead_phone || m.contact_phone || (m.contact && m.contact.phone) || "";
+        const mName = m => m.lead_name || m.contact_name || m.name || (m.contact && m.contact.name) || "";
+        const mText = m => String(m.text || m.body || m.content || m.message || "");
+        let inbound = [], inErr = null;
+        try{ inbound = arr(await iskra("GET", "/v1/messages/whatsapp?direction=inbound&limit=100")).filter(m => isIn(m) || !m.direction); }
+        catch(e){ inErr = e.message; }
+        const lastIn = {};
+        inbound.forEach(m => { const id = mConv(m); if (id && (!lastIn[id] || mAt(m) > mAt(lastIn[id]))) lastIn[id] = m; });
+        const j = await iskra("GET", "/v1/conversations?limit=100");
+        const list = arr(j), byId = {};
+        list.forEach(cv => { const id = convId(cv); if (id) byId[id] = cv; });
+        // conversaciones que contestaron pero ya no salen en la primera página de la lista
+        Object.entries(lastIn).forEach(([id, m]) => { if (!byId[id]) byId[id] = {id, phone:mPhone(m), lead_name:mName(m), last_message:{text:mText(m), direction:"inbound", created_at:m.created_at || m.sent_at || m.timestamp}}; });
+        const ids = Object.keys(byId);
+        const known = {};
+        (await c.query("select * from public.iskra_owner where conversation_id = any($1)", [ids])).rows.forEach(o => known[o.conversation_id] = o);
+        const lmIn = cv => { const lm = cv.last_message; return lm && typeof lm === "object" && isIn(lm); };
+        const replied = id => !!(lastIn[id] || (known[id] && known[id].replied_at) || lmIn(byId[id]) || Number(byId[id].inbound_count || byId[id].replies || 0) > 0 || byId[id].last_inbound_at || byId[id].replied_at);
         const cfg = (await c.query("select data from public.docs where path='config/main'")).rows[0];
         const mode = cfg && cfg.data && cfg.data.iskAssign === "best" ? "best" : "load";
-        const list = arr(j), owners = {};
-        (await c.query("select * from public.iskra_owner where conversation_id = any($1)", [list.map(convId)])).rows.forEach(o => owners[o.conversation_id] = o);
-        for (const cv of list){
-          const id = convId(cv); if (!id || owners[id]) continue;
-          const p = await pickOwner(c, convPhone(cv), mode);
-          const r = await c.query(`insert into public.iskra_owner (conversation_id, phone, owner, assigned_by) values ($1,$2,$3,$4)
-            on conflict (conversation_id) do nothing returning *`, [id, digits(convPhone(cv)), p.owner, p.by]);
-          owners[id] = r.rows[0] || await ownerOf(id);
+        const out = [];
+        for (const id of ids){
+          if (!replied(id)) continue;
+          const cv = byId[id];
+          if (lastIn[id]){ // lo más reciente que escribió el prospecto manda sobre una lista vieja
+            const li = lastIn[id], lm = cv.last_message || {};
+            const lmAt = Date.parse((lm && (lm.created_at || lm.sent_at)) || cv.last_activity_at || cv.updated_at || "") || 0;
+            if (mAt(li) >= lmAt) cv.last_message = {text:mText(li), direction:"inbound", created_at:li.created_at || li.sent_at || li.timestamp};
+          }
+          let o = known[id];
+          if (!o){
+            const p = await pickOwner(c, convPhone(cv), mode);
+            o = (await c.query(`insert into public.iskra_owner (conversation_id, phone, owner, assigned_by, replied_at) values ($1,$2,$3,$4,now())
+              on conflict (conversation_id) do update set replied_at=coalesce(public.iskra_owner.replied_at, now()) returning *`, [id, digits(convPhone(cv)), p.owner, p.by])).rows[0];
+          } else if (!o.replied_at){
+            await c.query("update public.iskra_owner set replied_at=now() where conversation_id=$1", [id]); o.replied_at = new Date();
+            if (!o.owner){ const p = await pickOwner(c, convPhone(cv), mode); await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
+          }
+          if (lead || o.owner === me.id) out.push({...cv, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at}});
         }
-        const meta = o => o ? {owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at} : {};
-        const mine = list.filter(cv => lead || (owners[convId(cv)] && owners[convId(cv)].owner === me.id)).map(cv => ({...cv, _strikd:meta(owners[convId(cv)])}));
-        return {data:{data:mine}, mode};
+        const debug = lead ? {conversaciones_en_lista:list.length, entrantes_leidos:inbound.length, con_respuesta:out.length, error_entrantes:inErr,
+          ejemplo_conversacion:list[0] || null, ejemplo_entrante:inbound[0] || null} : undefined;
+        return {data:{data:out}, mode, debug};
       }
       if (op === "messages"){
         if (!input.id) throw Object.assign(new Error("Falta id"), {status:400});
