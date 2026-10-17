@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 22:33 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 22:36 UTC"</script>
+<link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/claude-shim.js"></script>
@@ -715,6 +716,10 @@ label.f em{color:var(--bad);font-style:normal}
 .cw-menu button,.cw-opt{font:inherit;font-size:13px;text-align:left;background:none;border:0;color:var(--fg);border-radius:8px;padding:7px 9px;cursor:pointer;display:flex;gap:8px;align-items:center}
 .cw-menu button:hover{background:var(--raised)}.cw-opt.col{flex-direction:column;align-items:stretch;gap:4px;cursor:default}.cw-opt input{width:auto}
 .cw-ver{margin:4px 9px 2px;font-size:11px}
+.cw-tpl summary.cw-ic{display:grid;place-items:center;padding:0;border-radius:50%;width:38px;height:38px}
+.cw-menu.up{top:auto;bottom:calc(100% + 6px);left:0;right:auto;width:min(340px,80vw);max-height:360px;overflow:auto}
+.cw-cat{margin:6px 9px 2px;font-size:11px;font-weight:700;color:var(--muted)}
+.cw-menu [data-isktpl] span{display:grid;gap:1px}.cw-menu [data-isktpl] small{color:var(--muted);font-size:11.5px}
 @media (max-width:640px){.cv2{grid-template-columns:1fr;height:calc(100dvh - 190px)}.cv2.has-sel .cl{display:none}.cv2:not(.has-sel) .cw{display:none}.cw-back{display:block}.cw-own{max-width:120px}}
 /* rediseño: estados más calmados y etiquetas sin mayúsculas */
 .mini.late,.d-next.crit{border-color:var(--line)!important}
@@ -1074,6 +1079,11 @@ function openJourney(id){
 $("flowAll").addEventListener("click", () => { $("flowPerson").value = ""; schedule(); });
 $("tabs").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if (b && !b.hidden) showTab(b.dataset.tab); });
 /* ---------- menú de cuenta, tema y sub-pestañas ---------- */
+// abrir una conversación desde una notificación (?tab=msgs&conv=ID)
+function openFromUrl(u){
+  try{ const q = new URL(u, location.href).searchParams; if (q.get("tab")==="msgs"){ MSEG.v = "isk"; if (q.get("conv")){ ISK.sel = q.get("conv"); ISK.fullAt = 0; } showTab("msgs"); if (ISK.sel) iskThread(ISK.sel, true); } }catch(e){}
+}
+window.STRIKD_OPEN = openFromUrl;
 function closeAcct(){ const m = $("acctMenu"); if (m && !m.hidden){ m.hidden = true; $("acctBtn").setAttribute("aria-expanded","false"); } }
 $("acctBtn").addEventListener("click", e => { e.stopPropagation(); const m = $("acctMenu"); m.hidden = !m.hidden; $("acctBtn").setAttribute("aria-expanded", String(!m.hidden)); });
 document.addEventListener("click", e => { if (!e.target.closest("#acct")) closeAcct(); });
@@ -2816,11 +2826,11 @@ function applyRole(saved){
   if (lead){
     if (!downloads) claude.use("downloads").then(d => { downloads = d; $("xlsBtn").hidden = !d; });
     syncAdminSubs();
-    if (first) showTab(["msgs","flow","agenda","funnel","vip","wa","org","board"].includes(saved) ? saved : "board");
+    if (first) showTab(["msgs","flow","agenda","funnel","vip","wa","org","board"].includes(saved) ? saved : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
     else showTab("board");
   } else {
     startMemberSide();
-    if (first) showTab(["mine","msgs","perf","board"].includes(saved) ? saved : "board");
+    if (first) showTab(["mine","msgs","perf","board"].includes(saved) ? saved : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
     else showTab("board");
   }
   schedule();
@@ -3627,6 +3637,15 @@ function iskOwnerOpts(sel){
   const ids = [...new Set(Object.keys(S.team||{}).concat(S.config && S.config.headId ? [S.config.headId] : [], S.uid ? [S.uid] : []))];
   return `<option value="">Sin dueño</option>` + ids.map(id => `<option value="${esc(id)}"${id===sel?" selected":""}>${esc(iskWho(id))}</option>`).join("");
 }
+// plantillas por categoría para contestar rápido (variante A/B como en Plantillas)
+function iskTplMenu(c){
+  const groups = {};
+  Object.entries(S.tpls||{}).filter(([,t]) => t.active!==false).forEach(([id,t]) => { const k = t.trigger || "general"; (groups[k] ||= []).push([id,t]); });
+  const keys = Object.keys(groups).sort((a,b) => Object.keys(TRIG).indexOf(a) - Object.keys(TRIG).indexOf(b));
+  if (!keys.length) return `<p class="mut small cw-ver">Aún no hay plantillas. Créalas en la pestaña Plantillas.</p>`;
+  return keys.map(k => `<p class="cw-cat">${esc(TRIG[k]||k)}</p>` + groups[k].map(([id,t]) => { const v = (t.variants||{}).a || {};
+    return `<button type="button" data-isktpl="${esc(id)}"><span><b>${esc(t.name||"Plantilla")}</b><small>${esc(String(v.text||"").slice(0,70))}</small></span></button>`; }).join("")).join("");
+}
 function iskBubbles(c){ const ms = ISK.msgs[c.id]; return !ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}${x.failed?" failed":""}">${iskMediaHtml(x)}${x.t?`<p>${esc(x.t)}</p>`:""}<span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`; }
 function renderIskra(){
   const box = $("iskBox"); if (!box) return;
@@ -3682,10 +3701,12 @@ function renderIskra(){
       ${canSend ? `<div class="cw-c">
         ${recent ? `<p class="cw-warn">${esc(iskWho(c.lastSender))} contestó hace ${esc(ago(c.lastSentAt))}</p>` : ""}
         ${ISK.att && ISK.att.id===c.id ? `<div class="isk-att">${ISK.att.kind==="image" ? `<img src="${esc(ISK.att.preview)}" alt="">` : ISK.att.kind==="audio" ? `<audio controls src="${esc(ISK.att.preview)}"></audio>` : `<span class="isk-doc">PDF</span>`}<span>${esc(ISK.att.name)} · ${Math.max(1,Math.round(ISK.att.blob.size/1024))} KB</span><button type="button" class="linkbtn" data-iskattx="1">Quitar</button></div>` : ""}
+        ${ISK.tplMedia && ISK.tplMedia.conv===c.id ? `<div class="isk-att"><span class="isk-doc">PDF</span><span>${esc(ISK.tplMedia.name)} · de la plantilla</span><button type="button" class="linkbtn" data-isktplx="1">Quitar</button></div>` : ""}
         ${ISK.err ? `<p class="cw-err">${esc(ISK.err)}</p>` : ""}
         <div class="cw-bar"><input type="file" id="iskFile" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
           <button type="button" class="cw-ic" data-iskfile="1" title="Foto o PDF" aria-label="Adjuntar foto o PDF">📎</button>
           <button type="button" class="cw-ic${ISK.rec?" rec":""}" data-iskrec="1" title="${ISK.rec?"Detener y adjuntar":"Nota de voz"}" aria-label="Nota de voz">${ISK.rec?`● ${ISK.recS||0}s`:"🎤"}</button>
+          <details class="cw-more cw-tpl"><summary class="cw-ic" title="Plantillas" aria-label="Plantillas">📝</summary><div class="cw-menu up">${iskTplMenu(c)}</div></details>
           <textarea rows="1" data-iskin="1" placeholder="Escribe un mensaje…">${esc(ISK.draft[c.id]||"")}</textarea>
           <button type="button" class="btn small primary cw-send" data-isksend="1"${ISK.busy?" disabled":""}>${demo?"Enviar (ej.)":"Enviar"}</button></div>
       </div>` : `<div class="cw-c"><p class="mut small">Esta conversación es de ${esc(iskWho(c.owner))}.</p></div>`}
@@ -3745,6 +3766,20 @@ document.addEventListener("change", async e => {
 });
 document.addEventListener("click", async e => {
   if (e.target.closest("[data-iskback]")){ ISK.sel = null; return schedule(); }
+  if (e.target.closest("[data-isktplx]")){ ISK.tplMedia = null; return schedule(); }
+  const tp = e.target.closest("[data-isktpl]");
+  if (tp && ISK.sel){
+    const t = S.tpls[tp.dataset.isktpl]; if (!t) return;
+    const v = pickVariant(tp.dataset.isktpl), vf = (t.variants||{})[v] || (t.variants||{}).a || {};
+    const c = ISK.convs.find(x => x.id===ISK.sel), mt = c && iskMatch(c.phone);
+    const nombre = ((mt ? mt.name : c && c.name) || "").split(" ")[0];
+    ISK.draft[ISK.sel] = String(vf.text||"").replace(/\{nombre\}/g, nombre && !/^\d/.test(nombre) ? nombre : "").replace(/\s+([!,.?])/g, "$1");
+    ISK.tplUsed = {id:tp.dataset.isktpl, v, conv:ISK.sel};
+    ISK.tplMedia = vf.fileId ? {conv:ISK.sel, url:location.origin + "/_blob/" + vf.fileId, type:"application/pdf", name:vf.fileName || "STRIKD.pdf"} : null;
+    const d = tp.closest("details"); if (d) d.removeAttribute("open");
+    schedule(); setTimeout(() => { const ta = document.querySelector("[data-iskin]"); if (ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 50);
+    return;
+  }
   const mi = e.target.closest(".cw-menu button"); if (mi){ const d = mi.closest("details"); if (d) setTimeout(() => d.removeAttribute("open"), 0); }
   if (e.target.closest("[data-iskre]")) { ISK.who = ISK.st==="ok" ? ISK.who : null; return iskLoad(true); }
   if (e.target.closest("[data-iskraw]")) { ISK.showRaw = !ISK.showRaw; return schedule(); }
@@ -3776,19 +3811,24 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-iskattx]")){ ISK.att = null; return schedule(); }
   if (e.target.closest("[data-iskrec]")){ return iskRecToggle(); }
   if (e.target.closest("[data-isksend]")){
-    const id = ISK.sel, text = (ISK.draft[id]||"").trim(), att = ISK.att && ISK.att.id===id ? ISK.att : null; if (!id || (!text && !att) || ISK.busy) return;
+    const id = ISK.sel, text = (ISK.draft[id]||"").trim(), att = ISK.att && ISK.att.id===id ? ISK.att : null;
+    const tm = ISK.tplMedia && ISK.tplMedia.conv===id ? ISK.tplMedia : null, tu = ISK.tplUsed && ISK.tplUsed.conv===id ? ISK.tplUsed : null;
+    if (!id || (!text && !att && !tm) || ISK.busy) return;
+    ISK.tplMedia = null; ISK.tplUsed = null;
     // se ve al instante en el chat; se manda en segundo plano
     const key = ISK.idem && ISK.idem.text===text && ISK.idem.id===id ? ISK.idem.key : "strikd-" + id + "-" + Date.now().toString(36);
     ISK.idem = {id, text, key}; ISK.err = "";
-    const bub = {d:"out", t:text, at:Date.now(), st:att ? "subiendo…" : "enviando…", local:key, media:att ? {url:att.preview, type:att.blob.type, name:att.name} : null};
+    const bub = {d:"out", t:text, at:Date.now(), st:att ? "subiendo…" : "enviando…", local:key, media:att ? {url:att.preview, type:att.blob.type, name:att.name} : tm ? {url:tm.url, type:tm.type, name:tm.name} : null};
     (ISK.msgs[id] ||= []).push(bub); ISK.draft[id] = ""; ISK.att = null;
     (ISK.sent[id] ||= []).push({by:meId(), text, at:bub.at});
     const cv = ISK.convs.find(x => x.id===id); if (cv){ cv.last = text; cv.lastDir = "out"; cv.at = bub.at; cv.lastSender = meId(); cv.lastSentAt = bub.at; }
     schedule();
     try{
       let media = null;
+      if (!att && tm) media = {url:tm.url, type:tm.type, name:tm.name};
       if (att){ const up = window.STRIKD_UPLOAD ? await window.STRIKD_UPLOAD(att.blob, att.name) : {url:att.preview, type:att.blob.type, name:att.name}; media = {url:up.url, type:up.type || att.blob.type, name:att.name}; bub.st = "enviando…"; schedule(); }
-      await iskFn()("reply", {conversation_id:id, text, idempotency_key:key, ...(media ? {media} : {})}); bub.st = "enviado"; ISK.idem = null; setTimeout(() => iskTail(id), 1200); }
+      await iskFn()("reply", {conversation_id:id, text, idempotency_key:key, ...(media ? {media} : {})}); bub.st = "enviado";
+      if (tu) db.doc(`meets/${meId()}/tpllog/${key}`).set({tpl:tu.id, v:tu.v, at:Date.now(), conv:id}).catch(() => {}); ISK.idem = null; setTimeout(() => iskTail(id), 1200); }
     catch(err){ bub.st = "no se envió"; bub.failed = true; ISK.draft[id] = text; if (att) ISK.att = att; ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : "") + " · Tu texto sigue en la caja, dale Enviar otra vez."; }
     finally{ schedule(); }
   }

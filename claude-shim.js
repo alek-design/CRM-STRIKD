@@ -24,6 +24,7 @@
     sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") location.reload(); });
     try{ google = await fetch("/api/google/status", {headers:{authorization:"Bearer " + session.access_token}}).then(r => r.json()); }catch(_){ google = {}; }
     headerChip();
+    if (me.role === "head" && localStorage.getItem("strikd_cron") !== "2"){ fetch("/api/push-cron", {method:"POST", headers:{authorization:"Bearer " + session.access_token}}).then(r => { if (r.ok) localStorage.setItem("strikd_cron", "2"); }).catch(() => {}); }
     const gq = new URLSearchParams(location.search).get("google");
     if (gq){ history.replaceState(null, "", location.pathname); if (gq !== "ok") setTimeout(() => alert(gq === "cancelado" ? "No se conectó Google Calendar (cancelaste el permiso)." : "No se pudo conectar Google Calendar. Intenta de nuevo."), 300); }
   })();
@@ -121,7 +122,14 @@
     }
     const c = document.createElement("button"); c.className = "sg-out"; c.type = "button"; c.textContent = "Cambiar contraseña";
     c.onclick = () => passwordScreen("Cambiar contraseña");
-    acts.appendChild(c); b.textContent = document.getElementById("amOut") ? "Salir" : b.textContent; outBox.appendChild(b);
+    acts.appendChild(c);
+    // notificaciones de WhatsApp (iPhone: primero "Agregar a inicio")
+    if ("serviceWorker" in navigator){
+      const n = document.createElement("button"); n.className = "sg-out"; n.type = "button";
+      const label = () => { n.textContent = (window.Notification && Notification.permission === "granted" && localStorage.getItem("strikd_push") === "1") ? "🔔 Notificaciones activadas · probar" : "🔔 Activar notificaciones"; };
+      label(); n.onclick = () => pushEnable().then(label); acts.appendChild(n);
+    }
+    b.textContent = document.getElementById("amOut") ? "Salir" : b.textContent; outBox.appendChild(b);
   }
 
   /* ---------- db: colecciones y documentos ---------- */
@@ -234,6 +242,30 @@
   };
   window.STRIKD_GOOGLE = () => google;
   window.STRIKD_ME = () => me;
+  /* ---------- app en el teléfono y notificaciones ---------- */
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open" && window.STRIKD_OPEN) window.STRIKD_OPEN(e.data.url); });
+  const b64 = s => { const p = "=".repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from([...r].map(ch => ch.charCodeAt(0))); };
+  async function pushEnable(){
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent), standalone = window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+    if (ios && !standalone) return alert("Para recibir notificaciones en iPhone:\n\n1. Abre growth.strikd.ai en Safari.\n2. Toca Compartir (el cuadro con flecha ↑).\n3. Elige «Agregar a inicio».\n4. Abre STRIKD desde el ícono nuevo y vuelve a tocar «Activar notificaciones».");
+    if (!("PushManager" in window) || !window.Notification) return alert("Este navegador no permite notificaciones. En iPhone necesitas iOS 16.4 o más nuevo.");
+    const t = (await sb.auth.getSession()).data.session.access_token, H = {"content-type":"application/json", authorization:"Bearer " + t};
+    try{
+      if (Notification.permission === "granted" && localStorage.getItem("strikd_push") === "1"){ await fetch("/api/push", {method:"POST", headers:H, body:JSON.stringify({test:true})}); return; }
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") return alert("No diste permiso. Puedes activarlo después en Ajustes → Notificaciones → STRIKD.");
+      const reg = await navigator.serviceWorker.ready;
+      const k = await fetch("/api/push", {headers:H}).then(r => r.json());
+      const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64(k.publicKey)});
+      const r = await fetch("/api/push", {method:"POST", headers:H, body:JSON.stringify({subscription:sub.toJSON()})});
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "no se guardó");
+      localStorage.setItem("strikd_push", "1");
+      if (me.role === "head") fetch("/api/push-cron", {method:"POST", headers:H}).catch(() => {});
+      await fetch("/api/push", {method:"POST", headers:H, body:JSON.stringify({test:true})});
+    }catch(e){ alert("No se pudieron activar las notificaciones: " + (e.message || e)); }
+  }
+  window.STRIKD_PUSH = pushEnable;
   window.STRIKD_UPLOAD = async (blob, name) => {
     const t = (await sb.auth.getSession()).data.session.access_token;
     const data = await new Promise((ok, ko) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(",")[1] || ""); fr.onerror = ko; fr.readAsDataURL(blob); });
