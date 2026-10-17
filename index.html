@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 23:46 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 23:48 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -820,10 +820,10 @@ body.mob-open header.top{z-index:31}
         <div id="amAcct"></div>
         <button type="button" class="btn small gc-chip" id="gcChip" hidden></button>
         <div class="adminacts" id="adminActs" hidden>
-          <button class="btn small" id="xlsBtn" hidden>Descargar Excel</button>
+          <button class="btn small" id="xlsBtn" hidden style="position:absolute;left:-9999px">Descargar Excel</button>
         </div>
         <button type="button" data-tab="vip" id="tabVip" hidden>Lista Mich</button>
-        <button type="button" data-tab="org" id="tabOrg" hidden>Organigrama y accesos</button>
+        <button type="button" data-tab="org" id="tabOrg" hidden style="display:none!important">Organigrama y accesos</button>
         <button type="button" data-tab="wa" id="tabWa" hidden style="display:none!important">WhatsApp</button>
         <div class="am-sep"></div>
         <button type="button" id="themeBtn" hidden>Tema: oscuro</button>
@@ -1191,6 +1191,10 @@ function renderSettings(){
     <section class="set-card"><div class="set-theme">
       <button type="button" data-set="t-light" class="${theme==="light"?"on":""}"><span class="sw-l"></span>Claro</button>
       <button type="button" data-set="t-dark" class="${theme==="dark"?"on":""}"><span class="sw-d"></span>Oscuro</button></div></section>
+    ${S.isLead && !S.viewAs ? `<h3 class="set-h">Equipo</h3><section class="set-card">
+      ${S.isOwner ? setRow("🧭", "Organigrama y accesos", "Roles, quién reporta a quién y dar de alta al equipo", `<button type="button" class="btn small" data-set="org">Abrir</button>`) : ""}
+      ${!$("xlsBtn").hidden ? setRow("📊", "Descargar Excel", "Todos los meets y su avance en un archivo", `<button type="button" class="btn small" data-set="xls">Descargar</button>`) : ""}
+    </section>` : ""}
     ${A ? `<h3 class="set-h">Cuenta</h3><section class="set-card">
       ${setRow("🔑", "Contraseña", "Cámbiala cuando quieras", `<button type="button" class="btn small" data-set="pwd">Cambiar</button>`)}
       ${S.isOwner ? setRow("🩺", "Estado de notificaciones", "Revisión de cada minuto y dispositivos del equipo", `<button type="button" class="btn small" data-set="pdiag">Ver</button>`) : ""}
@@ -1203,6 +1207,8 @@ document.addEventListener("click", async e => {
   const A = window.STRIKD_ACT, k = b.dataset.set;
   if (k==="t-light" || k==="t-dark"){ setTheme(k==="t-light" ? "light" : "dark"); return schedule(); }
   if (k==="gchip"){ const c = $("gcChip"); if (c) c.click(); return; }
+  if (k==="org") return showTab("org");
+  if (k==="xls"){ $("xlsBtn").click(); return; }
   if (!A) return;
   if (k==="gcon") return A.googleConnect();
   if (k==="gdis") return A.googleDisconnect();

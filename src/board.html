@@ -812,10 +812,10 @@ body.mob-open header.top{z-index:31}
         <div id="amAcct"></div>
         <button type="button" class="btn small gc-chip" id="gcChip" hidden></button>
         <div class="adminacts" id="adminActs" hidden>
-          <button class="btn small" id="xlsBtn" hidden>Descargar Excel</button>
+          <button class="btn small" id="xlsBtn" hidden style="position:absolute;left:-9999px">Descargar Excel</button>
         </div>
         <button type="button" data-tab="vip" id="tabVip" hidden>Lista Mich</button>
-        <button type="button" data-tab="org" id="tabOrg" hidden>Organigrama y accesos</button>
+        <button type="button" data-tab="org" id="tabOrg" hidden style="display:none!important">Organigrama y accesos</button>
         <button type="button" data-tab="wa" id="tabWa" hidden style="display:none!important">WhatsApp</button>
         <div class="am-sep"></div>
         <button type="button" id="themeBtn" hidden>Tema: oscuro</button>
@@ -1183,6 +1183,10 @@ function renderSettings(){
     <section class="set-card"><div class="set-theme">
       <button type="button" data-set="t-light" class="${theme==="light"?"on":""}"><span class="sw-l"></span>Claro</button>
       <button type="button" data-set="t-dark" class="${theme==="dark"?"on":""}"><span class="sw-d"></span>Oscuro</button></div></section>
+    ${S.isLead && !S.viewAs ? `<h3 class="set-h">Equipo</h3><section class="set-card">
+      ${S.isOwner ? setRow("🧭", "Organigrama y accesos", "Roles, quién reporta a quién y dar de alta al equipo", `<button type="button" class="btn small" data-set="org">Abrir</button>`) : ""}
+      ${!$("xlsBtn").hidden ? setRow("📊", "Descargar Excel", "Todos los meets y su avance en un archivo", `<button type="button" class="btn small" data-set="xls">Descargar</button>`) : ""}
+    </section>` : ""}
     ${A ? `<h3 class="set-h">Cuenta</h3><section class="set-card">
       ${setRow("🔑", "Contraseña", "Cámbiala cuando quieras", `<button type="button" class="btn small" data-set="pwd">Cambiar</button>`)}
       ${S.isOwner ? setRow("🩺", "Estado de notificaciones", "Revisión de cada minuto y dispositivos del equipo", `<button type="button" class="btn small" data-set="pdiag">Ver</button>`) : ""}
@@ -1195,6 +1199,8 @@ document.addEventListener("click", async e => {
   const A = window.STRIKD_ACT, k = b.dataset.set;
   if (k==="t-light" || k==="t-dark"){ setTheme(k==="t-light" ? "light" : "dark"); return schedule(); }
   if (k==="gchip"){ const c = $("gcChip"); if (c) c.click(); return; }
+  if (k==="org") return showTab("org");
+  if (k==="xls"){ $("xlsBtn").click(); return; }
   if (!A) return;
   if (k==="gcon") return A.googleConnect();
   if (k==="gdis") return A.googleDisconnect();
