@@ -355,6 +355,7 @@ a.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line2)}
 .bk{width:min(980px,100%);background:var(--bg);border:1px solid var(--line2);border-radius:20px;padding:14px;box-shadow:var(--menu-shadow)}
 .bk-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:4px 6px 12px}
 .bk .panel{margin:0}
+.inv-need{grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.inv-need span{flex:1;min-width:200px}
 .isk-recent-t{padding:6px 12px 2px;font-size:12.5px}.isk-stale{margin:0;padding:2px 12px 6px}
 .isk-att{display:flex;align-items:center;gap:10px;background:var(--raised);border:1px solid var(--line2);border-radius:10px;padding:6px 10px;margin:0 0 8px;font-size:12.5px}
 .isk-att img{width:44px;height:44px;object-fit:cover;border-radius:6px}.isk-att audio{height:32px;max-width:220px}
@@ -812,6 +813,7 @@ label.f em{color:var(--bad);font-style:normal}
           <div class="f full inv m-only">
             <label class="chk on" id="mkInvL" hidden><input type="checkbox" id="f_mkinv" checked><span class="box"></span><span>Crear la invitación con link de Google Meet y mandársela al prospecto</span></label>
             <p class="mut small" id="invHint" hidden></p>
+            <div class="notice warn inv-need" id="invNeed" hidden><span>Para agendar, conecta tu Google Calendar: el link de Meet y la invitación se generan solos.</span><button type="button" class="btn small primary" id="invNeedBtn">Conectar Google Calendar</button></div>
             <label class="f" id="linkWrap">Link de la invitación o del meet <em>*</em><input id="f_link" type="url" placeholder="https://" autocomplete="off"></label>
           </div>
           <label class="f full" id="f_notesLbl">Notas (contexto, interés, siguiente paso)<textarea id="f_notes" rows="2"></textarea></label>
@@ -1291,15 +1293,22 @@ function renderMine(){
 const FIELDS = ["perfil","canal","prospect","followers","channel","profile","email","phone","meetAt","link","notes"];
 const autoInv = () => !!mcp && !S.editingId && $("f_mkinv").checked;
 function syncInvUi(){
-  const can = !!mcp && !S.editingId && (curPerfil()!==3 || $("f_p3meet").checked);
-  $("mkInvL").hidden = !can; $("mkInvL").classList.toggle("on", $("f_mkinv").checked);
-  const on = can && $("f_mkinv").checked;
-  $("linkWrap").hidden = on;
+  // el link de Meet siempre lo generamos nosotros: nunca se pide a mano
+  const isMeet = curPerfil()!==3 || $("f_p3meet").checked;
+  $("f_mkinv").checked = true; $("mkInvL").hidden = true;
+  const can = !!mcp && !S.editingId && isMeet, on = can;
+  $("linkWrap").hidden = true;
+  $("invNeed").hidden = !(isMeet && !mcp && !S.editingId);
   const inv = leaderEmail(bookUid()), ln = leaderOf(bookUid());
   $("invHint").hidden = !on;
   $("invHint").textContent = `Se crea en tu Google Calendar a la hora del meet (45 min), con tu link de Meet, y le llega la invitación al prospecto${inv?` y a tu team leader${ln?` (${nameOf(S.ps||{}, ln)})`:""}: ${inv}`:""}.`;
 }
 $("f_mkinv").addEventListener("change", syncInvUi);
+$("invNeedBtn").addEventListener("click", () => {
+  const g = document.querySelector("#amAcct .sg-out.cta") || $("gcChip");
+  if (g && !g.hidden){ g.click(); return; }
+  alert("Conecta tu Google Calendar desde tu menú (círculo con tu inicial, arriba a la derecha).");
+});
 // Team leader de quien agenda: su Creator Partnerships Manager (Organigrama), o el primero; si no tiene email, el de respaldo.
 function leaderOf(uid){ const mgrs = Object.keys(S.members).filter(u => roleOf(u)==="manager"); return mgrOf(uid) || mgrs[0] || ""; }
 function leaderEmail(uid){ const l = leaderOf(uid); return ((l && S.roles[l] && S.roles[l].inviteEmail) || (S.config && S.config.inviteEmail) || "").trim(); }
@@ -1396,7 +1405,8 @@ function validate(o){
   }
   if (p===2 && !o.followers) return "Pon los seguidores aproximados.";
   if (p===2 && Number(o.followers) > 35000) return "Con más de 35K va como Perfil 3, en la lista de Mich.";
-  if (!o.prospect || !o.channel || !o.profile || !o.email || !o.meetAt || (!o.link && !autoInv() && !S.editingId)) return "Completa los campos marcados con *.";
+  if (!S.editingId && !autoInv() && (curPerfil()!==3 || $("f_p3meet").checked)) return "Conecta tu Google Calendar para agendar: el link de Meet se genera solo.";
+  if (!o.prospect || !o.channel || !o.profile || !o.email || !o.meetAt) return "Completa los campos marcados con *.";
   if (isNaN(meetTs(o.meetAt))) return "Revisa la fecha y hora del meet.";
   { const c = slotClash(meetTs(o.meetAt)); if (c && c.hard) return `A esa hora tu team leader ya tiene ${SLOT_KIND[c.kind]||"un meet"}. Elige otro horario libre.`; }
   if (!safeUrl(o.profile)) return "El link al perfil debe empezar con https://";
@@ -1467,9 +1477,9 @@ $("meetForm").addEventListener("submit", async e => {
           const ev = await createInvite(o);
           await ref.update({link: ev.link, gcalEventId: ev.id, gcalHtml: ev.html, invitedAt: Date.now()});
           if (ev.link) showResult("ok", "Meet agendado", `${o.prospect} · ${when}`, `La invitación con tu link de Meet le llegó al prospecto${inv?` y a ${inv}`:""}. ${val}`);
-          else showResult("warn", "Agendado, falta el link", `${o.prospect} · ${when}`, "La invitación se creó pero no vino el link de Meet: ábrelo en tu calendario y pégalo desde la tarjeta del prospecto.");
+          else showResult("warn", "Agendado, falta el link", `${o.prospect} · ${when}`, "La invitación se creó en tu calendario, pero Google no regresó el link de Meet. Ábrela en tu calendario para verlo.");
         }catch(ex){
-          showResult("warn", "Registrado, pero sin invitación", `${o.prospect} · ${when}`, `No se pudo crear la invitación: ${INV_ERR[ex && ex.code] || "Google Calendar no respondió"}. Mándale el link a mano. ${val}`);
+          showResult("warn", "Registrado, pero sin invitación", `${o.prospect} · ${when}`, `No se pudo crear la invitación: ${INV_ERR[ex && ex.code] || "Google Calendar no respondió"}. Revisa tu conexión con Google y vuelve a agendarlo. ${val}`);
         }
       } else showResult(dupOf ? "warn" : "ok", dupOf ? "Registrado, en revisión" : "Meet agendado", `${o.prospect} · ${when}`, val);
     }
