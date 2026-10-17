@@ -669,7 +669,7 @@ label.f em{color:var(--bad);font-style:normal}
 /* Mensajes estilo app de chat */
 #view-msgs{gap:12px}
 .msgs-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.msgs-head h2{font-size:20px}
-.cv2{display:grid;grid-template-columns:340px 1fr;height:calc(100dvh - 240px);min-height:460px;border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:var(--surface)}
+.cv2{display:grid;grid-template-columns:minmax(260px,320px) 1fr;height:calc(100dvh - 240px);min-height:460px;border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:var(--surface)}
 .cl{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line2)}
 .cl-h{display:flex;gap:6px;align-items:center;padding:10px 10px 6px}
 .cl-q{flex:1;padding:7px 12px!important;border-radius:999px!important;font-size:13px}
@@ -678,13 +678,13 @@ label.f em{color:var(--bad);font-style:normal}
 .cl-f button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.cl-f button span{opacity:.7;margin-left:2px}
 .cl-stale{display:flex;gap:6px;align-items:center;margin:0;padding:6px 12px;font-size:11.5px;color:var(--muted)}
 .ck-list{flex:1;overflow-y:auto;min-height:0}
-.ck{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;font:inherit;color:var(--fg);background:none;border:0;border-bottom:1px solid var(--line);padding:10px 12px;cursor:pointer;position:relative}
+.ck{display:flex;gap:9px;align-items:center;width:100%;text-align:left;font:inherit;color:var(--fg);background:none;border:0;border-bottom:1px solid var(--line);padding:7px 10px;cursor:pointer;position:relative}
 .ck:hover{background:var(--raised)}.ck.sel{background:var(--raised);box-shadow:inset 3px 0 0 var(--fg)}
-.ck-av{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:1px solid var(--line2);font-weight:700;font-size:13px;color:var(--muted2)}
+.ck-av{flex:none;width:28px;height:28px;font-size:12px!important;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:1px solid var(--line2);font-weight:700;font-size:13px;color:var(--muted2)}
 .ck.rep .ck-av{border-color:var(--wait);color:var(--wait)}.ck.mgr .ck-av{border-color:var(--bad);color:var(--bad)}
 .ck-m{flex:1;min-width:0;display:grid;gap:1px}
-.ck-1{display:flex;gap:8px;align-items:baseline}.ck-1 b{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ck-1 time{font-size:11px;color:var(--muted);flex:none}
-.ck-2{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ck-1{display:flex;gap:6px;align-items:baseline}.ck-1 b{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ck-1 time{font-size:11px;color:var(--muted);flex:none}
+.ck-2{display:flex;gap:6px;font-size:12px;color:var(--muted);min-width:0}.ck-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ck-o{flex:none;font-size:10.5px;color:var(--dim)}
 .ck.rep .ck-2,.ck.mgr .ck-2{color:var(--fg2)}
 .ck-3{display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted)}.ck-3:empty{display:none}
 .ck-b{font-style:normal;font-weight:700;font-size:10.5px;padding:0 6px;border-radius:999px}.ck-b.rep{color:var(--wait);border:1px solid var(--wait-line)}.ck-b.mgr{color:var(--bad);border:1px solid var(--bad-line)}
@@ -708,7 +708,7 @@ label.f em{color:var(--bad);font-style:normal}
 .cw-menu button,.cw-opt{font:inherit;font-size:13px;text-align:left;background:none;border:0;color:var(--fg);border-radius:8px;padding:7px 9px;cursor:pointer;display:flex;gap:8px;align-items:center}
 .cw-menu button:hover{background:var(--raised)}.cw-opt.col{flex-direction:column;align-items:stretch;gap:4px;cursor:default}.cw-opt input{width:auto}
 .cw-ver{margin:4px 9px 2px;font-size:11px}
-@media (max-width:820px){.cv2{grid-template-columns:1fr;height:calc(100dvh - 190px)}.cv2.has-sel .cl{display:none}.cv2:not(.has-sel) .cw{display:none}.cw-back{display:block}.cw-own{max-width:120px}}
+@media (max-width:640px){.cv2{grid-template-columns:1fr;height:calc(100dvh - 190px)}.cv2.has-sel .cl{display:none}.cv2:not(.has-sel) .cw{display:none}.cw-back{display:block}.cw-own{max-width:120px}}
 /* rediseño: estados más calmados y etiquetas sin mayúsculas */
 .mini.late,.d-next.crit{border-color:var(--line)!important}
 .mini.crit{background:var(--surface)!important;border-color:var(--line)!important}
@@ -3654,9 +3654,8 @@ function renderIskra(){
   const item = x => { const n = nm(x), st = needs(x) ? (x.esc ? "mgr" : "rep") : "";
     return `<button type="button" class="ck${x.id===ISK.sel?" sel":""}${st?" "+st:""}" data-iskc="${esc(x.id)}" data-s="${esc((n+" "+(x.phone||"")).toLowerCase())}"${q && !(n+" "+(x.phone||"")).toLowerCase().includes(q)?" hidden":""}>
       <span class="ck-av">${esc((n||"?").trim()[0]||"?").toUpperCase()}</span>
-      <span class="ck-m"><span class="ck-1"><b>${esc(n)}</b><time>${x.at?ago(x.at):""}</time></span>
-      <span class="ck-2">${x.lastDir==="out"?"Tú: ":""}${esc(String(x.last).slice(0,90)) || "<i>Sin mensajes</i>"}</span>
-      <span class="ck-3">${st==="mgr" ? `<em class="ck-b mgr">${lead?"Te toca":"Con el manager"}</em>` : st==="rep" ? `<em class="ck-b rep">Sin responder</em>` : ""}${lead?`<span>${esc(iskWho(x.owner))}</span>`:""}</span></span>
+      <span class="ck-m"><span class="ck-1"><b>${esc(n)}</b>${st==="mgr" ? `<em class="ck-b mgr">${lead?"Te toca":"Manager"}</em>` : ""}<time>${x.at?ago(x.at):""}</time></span>
+      <span class="ck-2"><span class="ck-tx">${x.lastDir==="out"?"Tú: ":""}${esc(String(x.last).slice(0,90)) || "<i>Sin mensajes</i>"}</span>${lead?`<span class="ck-o">${x.owner ? esc(iskWho(x.owner).split(" ")[0]) : "sin dueño"}</span>`:""}</span></span>
       ${x.unread?`<span class="ck-n">${x.unread}</span>`:""}</button>`; };
   let right = `<div class="cw cw-none"><div><b>Elige una conversación</b><p class="mut small">Aquí solo salen los prospectos que ya contestaron.</p></div></div>`;
   if (c){
