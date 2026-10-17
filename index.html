@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 23:42 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 23:46 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -674,6 +674,27 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* Ajustes */
+#view-settings{max-width:640px;gap:22px}
+.set-card{background:var(--surface);border:1px solid var(--line2);border-radius:16px;overflow:hidden}
+.set-h{margin:6px 4px -12px;line-height:1.2;font-size:13px;color:var(--muted);font-weight:600}
+.set-who{display:flex;gap:12px;align-items:center;padding:14px 16px}.set-who div{display:grid}.set-who span{font-size:12.5px;color:var(--muted)}
+.set-av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:1px solid var(--line2);font-weight:700;font-size:18px}
+.set-row{display:flex;gap:12px;align-items:center;padding:13px 16px;border-top:1px solid var(--line)}.set-card .set-row:first-child{border-top:0}
+.set-ic{width:28px;text-align:center;font-size:18px}.set-tx{flex:1;min-width:0;display:grid;gap:2px}.set-tx span{font-size:12.5px;color:var(--muted)}
+.set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+.set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
+.set-theme button.on{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.sw-l,.sw-d{width:100%;height:56px;border-radius:10px;border:1px solid #d3d3ce}.sw-l{background:linear-gradient(#fff 0 30%,#f5f5f3 30%)}.sw-d{background:linear-gradient(#171717 0 30%,#000 30%);border-color:#3a3a3a}
+.set-ver{text-align:center}
+/* bienvenida */
+.onb-wrap{position:fixed;inset:0;z-index:45;background:var(--bg);display:grid;place-items:center;padding:24px 18px calc(24px + env(safe-area-inset-bottom,0px))}
+.onb{width:min(420px,100%);display:grid;gap:18px;text-align:center}
+.onb-dots{display:flex;gap:6px;justify-content:center}.onb-dots i{width:22px;height:4px;border-radius:4px;background:var(--line2)}.onb-dots i.on{background:var(--fg)}
+.onb-ic{font-size:44px}.onb h2{font-size:24px}.onb p{margin:0;color:var(--muted)}
+.onb .btn{width:100%;padding:12px 18px}.onb .onb-skip{background:none;border:0;color:var(--muted);font:inherit;cursor:pointer;padding:6px}
+.onb-ok{color:var(--ok);font-weight:700}
+
 /* celular: todo en el menú de tres líneas */
 .mob-btn{display:none;margin-left:auto;width:40px;height:40px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);cursor:pointer;flex-direction:column;justify-content:center;align-items:center;gap:4px}
 .mob-btn span{display:block;width:18px;height:2px;border-radius:2px;background:var(--fg);transition:transform .2s,opacity .2s}
@@ -795,6 +816,7 @@ body.mob-open header.top{z-index:31}
       <button type="button" class="avatar" id="acctBtn" aria-haspopup="true" aria-expanded="false" aria-label="Tu cuenta">·</button>
       <div class="acct-menu" id="acctMenu" hidden>
         <div class="am-who"><b id="amName">Tu cuenta</b><span id="amRole"></span></div>
+        <button type="button" data-tab="settings" id="tabSettings">⚙︎ Ajustes</button>
         <div id="amAcct"></div>
         <button type="button" class="btn small gc-chip" id="gcChip" hidden></button>
         <div class="adminacts" id="adminActs" hidden>
@@ -804,7 +826,7 @@ body.mob-open header.top{z-index:31}
         <button type="button" data-tab="org" id="tabOrg" hidden>Organigrama y accesos</button>
         <button type="button" data-tab="wa" id="tabWa" hidden style="display:none!important">WhatsApp</button>
         <div class="am-sep"></div>
-        <button type="button" id="themeBtn">Tema: oscuro</button>
+        <button type="button" id="themeBtn" hidden>Tema: oscuro</button>
         <div id="amOut"></div>
       </div>
     </div>
@@ -972,6 +994,11 @@ body.mob-open header.top{z-index:31}
     <div id="vipBox"></div>
   </section>
 
+  <section class="view" id="view-settings" hidden>
+    <div class="msgs-head"><h2>Ajustes</h2></div>
+    <div id="setBox" class="set"></div>
+  </section>
+
   <section class="view" id="view-org" hidden>
     <div class="row"><div><h2>Organigrama</h2><p class="sub">Quién lleva qué y quién ve a quién.</p></div></div>
     <div id="orgBox"></div>
@@ -1084,9 +1111,9 @@ function showTab(t){
   document.querySelectorAll(".subnav [data-go]").forEach(b => b.classList.toggle("on", b.dataset.go===t));
   closeAcct();
   if (t==="admin" || t==="hist" || t==="rules" || (t==="org" && !S.isOwner)) t = S.tab = "board";
-  ["board","mine","msgs","flow","agenda","funnel","vip","wa","perf","org","hist","rules"].forEach(v => $("view-"+v).hidden = v!==t);
+  ["board","mine","msgs","flow","agenda","funnel","vip","wa","perf","org","hist","rules","settings"].forEach(v => $("view-"+v).hidden = v!==t);
   try{ localStorage.setItem("meets_tab", t); }catch(e){}
-  if (t==="msgs" || t==="wa" || t==="mine") schedule();
+  schedule();
 }
 
 try{ $("onlyToday").checked = localStorage.getItem("meets_today")==="1"; }catch(e){}
@@ -1136,6 +1163,107 @@ $("mobSheet").addEventListener("click", e => {
   if (e.target.closest("#viewAsBtn,#xlsBtn")) setTimeout(() => mobToggle(false), 0);
 });
 window.addEventListener("resize", () => { if (innerWidth > 640 && !$("mobSheet").hidden) mobToggle(false); });
+/* ---------- Ajustes: todo lo de la cuenta en un solo lugar ---------- */
+function setRow(icon, title, sub, right){ return `<div class="set-row"><span class="set-ic">${icon}</span><div class="set-tx"><b>${title}</b>${sub?`<span>${sub}</span>`:""}</div><div class="set-r">${right||""}</div></div>`; }
+function renderSettings(){
+  const box = $("setBox"); if (!box || S.tab!=="settings") return;
+  const A = window.STRIKD_ACT, me = window.STRIKD_ME ? window.STRIKD_ME() : null;
+  const nm = (me && (me.name || me.email)) || nameOf(S.ps||{}, S.uid);
+  const role = S.isOwner ? "Head" : S.isLead ? "Creator Partnerships Manager" : "Account Manager";
+  const theme = document.documentElement.dataset.theme==="dark" ? "dark" : "light";
+  const g = A ? A.google() : null;
+  const gOn = A ? !!(g && g.connected) : GCSTATE==="on";
+  const gRight = A ? (gOn ? `<button type="button" class="btn small" data-set="gdis">Desconectar</button>` : `<button type="button" class="btn small primary" data-set="gcon">Conectar</button>`)
+                   : (gOn ? "" : `<button type="button" class="btn small primary" data-set="gchip">Conectar</button>`);
+  let pushRow = "";
+  if (A){
+    const st = A.pushOn() ? "Activadas en este dispositivo" : A.pushBlocked() ? "Bloqueadas: actívalas en Ajustes del iPhone → Notificaciones → STRIKD" : A.needsInstall() ? "Primero instala la app: Safari → Compartir → Agregar a inicio" : !A.pushSupported() ? "Este navegador no las permite" : "Te avisamos cuando un prospecto te escribe";
+    pushRow = setRow("🔔", "Notificaciones de WhatsApp", esc(st), A.pushOn() ? `<button type="button" class="btn small" data-set="ptest">Probar</button>` : (A.pushSupported() && !A.needsInstall() && !A.pushBlocked()) ? `<button type="button" class="btn small primary" data-set="pon">Activar</button>` : "");
+  }
+  box.innerHTML = `
+    <section class="set-card"><div class="set-who"><span class="set-av">${esc((nm||"·").trim()[0]||"·").toUpperCase()}</span><div><b>${esc(nm||"Tu cuenta")}</b><span>${esc(role)}${me && me.email ? " · " + esc(me.email) : ""}</span></div></div></section>
+    <h3 class="set-h">Para trabajar</h3>
+    <section class="set-card">
+      ${setRow("📅", "Google Calendar y Meet", gOn ? `Conectado${g && g.email ? " · " + esc(g.email) : ""}: los meets crean su link solos` : "Necesario para agendar: genera el link de Meet y la invitación", gRight)}
+      ${pushRow}
+    </section>
+    <h3 class="set-h">Apariencia</h3>
+    <section class="set-card"><div class="set-theme">
+      <button type="button" data-set="t-light" class="${theme==="light"?"on":""}"><span class="sw-l"></span>Claro</button>
+      <button type="button" data-set="t-dark" class="${theme==="dark"?"on":""}"><span class="sw-d"></span>Oscuro</button></div></section>
+    ${A ? `<h3 class="set-h">Cuenta</h3><section class="set-card">
+      ${setRow("🔑", "Contraseña", "Cámbiala cuando quieras", `<button type="button" class="btn small" data-set="pwd">Cambiar</button>`)}
+      ${S.isOwner ? setRow("🩺", "Estado de notificaciones", "Revisión de cada minuto y dispositivos del equipo", `<button type="button" class="btn small" data-set="pdiag">Ver</button>`) : ""}
+      ${setRow("↩︎", "Cerrar sesión", "", `<button type="button" class="btn small bad" data-set="out">Salir</button>`)}
+    </section>` : ""}
+    <p class="mut small set-ver">${window.STRIKD_BUILD ? "Versión " + esc(window.STRIKD_BUILD) : ""}</p>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-set]"); if (!b) return;
+  const A = window.STRIKD_ACT, k = b.dataset.set;
+  if (k==="t-light" || k==="t-dark"){ setTheme(k==="t-light" ? "light" : "dark"); return schedule(); }
+  if (k==="gchip"){ const c = $("gcChip"); if (c) c.click(); return; }
+  if (!A) return;
+  if (k==="gcon") return A.googleConnect();
+  if (k==="gdis") return A.googleDisconnect();
+  if (k==="pon" || k==="ptest"){ b.disabled = true; try{ await A.pushEnable(); }finally{ b.disabled = false; schedule(); } return; }
+  if (k==="pwd") return A.password();
+  if (k==="pdiag") return A.pushDiag();
+  if (k==="out") return A.logout();
+});
+/* ---------- bienvenida al entrar por primera vez: Google, notificaciones y tema ---------- */
+const ONB = {open:false, steps:[], i:0, checked:false};
+function maybeOnboard(){
+  const A = window.STRIKD_ACT; if (!A || ONB.open || !S.uid || !S.roleApplied || S.viewAs) return;
+  const m = S.members && S.members[S.uid]; if (!m) return;
+  let ls = {}; try{ ls = {done:localStorage.getItem("strikd_onb_" + S.uid), push:localStorage.getItem("strikd_onb_push")}; }catch(e){}
+  const pushAsk = A.standalone() && A.pushSupported() && !A.pushOn() && !A.pushBlocked() && ls.push !== "skip";
+  let steps = [];
+  if (!m.onboarded && ls.done !== "1") steps = ["google", "push", "theme"].filter(k => !(k==="google" && A.google().connected) && !(k==="push" && A.pushOn()));
+  else if (pushAsk && !ONB.checked) steps = ["push"];
+  ONB.checked = true;
+  if (!steps.length){ if (!m.onboarded && ls.done !== "1") onbFinish(); return; }
+  ONB.steps = steps; ONB.i = 0; ONB.open = true; onbRender();
+}
+function onbRender(){
+  const A = window.STRIKD_ACT, k = ONB.steps[ONB.i];
+  let w = $("onbWrap"); if (!w){ w = document.createElement("div"); w.id = "onbWrap"; w.className = "onb-wrap"; document.body.appendChild(w); w.addEventListener("click", onbClick); }
+  const me = window.STRIKD_ME ? window.STRIKD_ME() : null, first = ((me && (me.name || me.email)) || "").split(/[ @]/)[0];
+  const dots = ONB.steps.length > 1 ? `<div class="onb-dots">${ONB.steps.map((_,i) => `<i class="${i<=ONB.i?"on":""}"></i>`).join("")}</div>` : "";
+  let body = "";
+  if (k==="google") body = `<div class="onb-ic">📅</div><h2>${first ? `Hola, ${esc(first)}` : "Bienvenido"}</h2><p>Conecta tu Google Calendar. Así cada meet que agendes crea su link de Meet y la invitación solita.</p>
+    ${A.google().connected ? `<p class="onb-ok">✓ Conectado</p><button type="button" class="btn primary" data-onb="next">Siguiente</button>` : `<button type="button" class="btn primary" data-onb="gcon">Conectar Google Calendar</button><button type="button" class="onb-skip" data-onb="next">Después</button>`}`;
+  if (k==="push"){
+    const st = A.pushOn() ? "on" : A.needsInstall() ? "install" : A.pushBlocked() ? "blocked" : !A.pushSupported() ? "no" : "ask";
+    body = `<div class="onb-ic">🔔</div><h2>Activa las notificaciones</h2><p>Te avisamos en cuanto un prospecto te escriba por WhatsApp, aunque tengas la app cerrada.</p>
+      ${st==="on" ? `<p class="onb-ok">✓ Activadas</p><button type="button" class="btn primary" data-onb="next">Siguiente</button>`
+      : st==="install" ? `<p><b>Primero instala la app:</b> en Safari toca Compartir (↑) → <b>Agregar a inicio</b>, y ábrela desde el ícono. Ahí te pedimos el permiso.</p><button type="button" class="btn primary" data-onb="next">Entendido</button>`
+      : st==="blocked" ? `<p>Están bloqueadas. Actívalas en Ajustes del iPhone → Notificaciones → STRIKD.</p><button type="button" class="btn primary" data-onb="next">Siguiente</button>`
+      : st==="no" ? `<p>Este navegador no permite notificaciones.</p><button type="button" class="btn primary" data-onb="next">Siguiente</button>`
+      : `<button type="button" class="btn primary" data-onb="pon">Activar notificaciones</button><button type="button" class="onb-skip" data-onb="pskip">Ahora no</button>`}`;
+  }
+  if (k==="theme"){ const t = document.documentElement.dataset.theme==="dark" ? "dark" : "light";
+    body = `<div class="onb-ic">🎨</div><h2>¿Claro u oscuro?</h2><p>Puedes cambiarlo cuando quieras en Ajustes.</p>
+      <div class="set-theme"><button type="button" data-onb="t-light" class="${t==="light"?"on":""}"><span class="sw-l"></span>Claro</button><button type="button" data-onb="t-dark" class="${t==="dark"?"on":""}"><span class="sw-d"></span>Oscuro</button></div>
+      <button type="button" class="btn primary" data-onb="next">Listo</button>`; }
+  w.innerHTML = `<div class="onb">${dots}${body}</div>`; w.hidden = false;
+}
+async function onbClick(e){
+  const b = e.target.closest("[data-onb]"); if (!b) return;
+  const A = window.STRIKD_ACT, k = b.dataset.onb;
+  if (k==="gcon"){ try{ localStorage.setItem("strikd_onb_resume", "1"); }catch(_){ } return A.googleConnect(); }
+  if (k==="pon"){ b.disabled = true; try{ await A.pushEnable(); }finally{ b.disabled = false; } return onbRender(); }
+  if (k==="pskip"){ try{ localStorage.setItem("strikd_onb_push", "skip"); }catch(_){ } k2(); return; }
+  if (k==="t-light" || k==="t-dark"){ setTheme(k==="t-light" ? "light" : "dark"); return onbRender(); }
+  if (k==="next") k2();
+  function k2(){ ONB.i++; if (ONB.i >= ONB.steps.length) onbFinish(); else onbRender(); }
+}
+function onbFinish(){
+  ONB.open = false; const w = $("onbWrap"); if (w) w.remove();
+  try{ localStorage.setItem("strikd_onb_" + S.uid, "1"); localStorage.removeItem("strikd_onb_resume"); }catch(e){}
+  if (S.uid && !(S.members[S.uid]||{}).onboarded) db.doc(`members/${S.uid}`).update({onboarded:true}).catch(() => db.doc(`members/${S.uid}`).set({...(S.members[S.uid]||{}), onboarded:true}).catch(()=>{}));
+  schedule();
+}
 function closeAcct(){ const m = $("acctMenu"); if (m && m.parentNode && m.parentNode.id==="mobAcct") return; if (m && !m.hidden){ m.hidden = true; $("acctBtn").setAttribute("aria-expanded","false"); } }
 $("acctBtn").addEventListener("click", e => { e.stopPropagation(); const m = $("acctMenu"); m.hidden = !m.hidden; $("acctBtn").setAttribute("aria-expanded", String(!m.hidden)); });
 document.addEventListener("click", e => { if (!e.target.closest("#acct")) closeAcct(); });
@@ -1151,6 +1279,11 @@ function syncTheme(){
   const m = S.members && S.members[S.uid]; if (!m) return;
   themeSynced = true;
   if (m.theme && m.theme !== document.documentElement.dataset.theme){ applyTheme(m.theme); try{ localStorage.setItem("strikd_theme", m.theme); }catch(e){} }
+}
+function setTheme(t){
+  applyTheme(t); themeSynced = true;
+  try{ localStorage.setItem("strikd_theme", t); }catch(e){}
+  if (S.uid) db.doc(`members/${S.uid}`).update({theme:t}).catch(() => db.doc(`members/${S.uid}`).set({...(S.members[S.uid]||{}), theme:t}).catch(()=>{}));
 }
 $("themeBtn").addEventListener("click", () => {
   const t = document.documentElement.dataset.theme==="light" ? "dark" : "light"; applyTheme(t); themeSynced = true;
@@ -1213,7 +1346,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = Object.keys(S.team).map(id=>`<option value="${id}">${esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }

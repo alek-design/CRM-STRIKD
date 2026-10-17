@@ -101,48 +101,46 @@
     const bm = document.getElementById("bootMsg"); if (bm) bm.hidden = true;
   }
   function headerChip(){
+    // el menú solo lleva "Salir"; Google, contraseña, notificaciones y tema viven en Ajustes (STRIKD_ACT)
     const acts = document.getElementById("amAcct") || document.querySelector(".tabrow") || document.body;
     const outBox = document.getElementById("amOut") || acts;
     const b = document.createElement("button"); b.className = "sg-out"; b.type = "button";
-    b.textContent = `${me.name || me.email} · Salir`; b.onclick = () => sb.auth.signOut();
-    {
-      const g = document.createElement("button"); g.className = "sg-out" + (google.connected ? " on" : " cta"); g.type = "button";
-      g.textContent = google.connected ? `✓ Google: ${google.email || "conectado"}` : "Conectar mi Google Calendar";
-      g.title = google.connected ? "Toca para desconectar" : "Para crear tus invitaciones con link de Meet";
-      g.onclick = async () => {
-        if (google.configured === false) return alert("Google Calendar todavía no está activado en el servidor.\n\nEl Head tiene que poner GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en Vercel (Settings → Environment Variables) y hacer Redeploy.");
-        if (google.error && !google.connected) return alert("No se pudo revisar Google Calendar: " + google.error);
-        const t = (await sb.auth.getSession()).data.session.access_token;
-        if (!google.connected) return location.href = "/api/google/connect?token=" + encodeURIComponent(t);
-        if (confirm("¿Desconectar tu Google Calendar? Ya no se crearán invitaciones automáticas.")){ await fetch("/api/google/status", {method:"POST", headers:{authorization:"Bearer " + t}}); location.reload(); }
-      };
-      acts.appendChild(g);
-      const ab = document.getElementById("acctBtn");
-      if (ab && !google.connected){ const d = document.createElement("span"); d.className = "dot"; d.title = "Conecta tu Google Calendar"; ab.appendChild(d); }
-    }
-    const c = document.createElement("button"); c.className = "sg-out"; c.type = "button"; c.textContent = "Cambiar contraseña";
-    c.onclick = () => passwordScreen("Cambiar contraseña");
-    acts.appendChild(c);
-    // notificaciones de WhatsApp (iPhone: primero "Agregar a inicio")
-    if ("serviceWorker" in navigator){
-      const n = document.createElement("button"); n.className = "sg-out"; n.type = "button";
-      const label = () => { n.textContent = (window.Notification && Notification.permission === "granted" && localStorage.getItem("strikd_push") === "1") ? "🔔 Notificaciones activadas · probar" : "🔔 Activar notificaciones"; };
-      label(); n.onclick = () => pushEnable().then(label); acts.appendChild(n);
-      if (me.role === "head"){
-        const d = document.createElement("button"); d.className = "sg-out"; d.type = "button"; d.textContent = "Estado de notificaciones";
-        d.onclick = async () => {
-          const t = (await sb.auth.getSession()).data.session.access_token;
-          const j = await fetch("/api/push-status", {headers:{authorization:"Bearer " + t}}).then(r => r.json()).catch(e => ({error:String(e)}));
-          const runs = (j.ultimas_ejecuciones || []).map(x => `${x.status} ${new Date(x.start_time).toLocaleTimeString("es-MX")}`).join(", ") || "ninguna todavía";
-          const http = (j.ultimas_respuestas || []).map(x => `${x.status_code || "—"} ${x.respuesta || ""}`).join("\n") || "ninguna todavía";
-          const devs = (j.dispositivos || []).map(x => `• ${x.persona}: ${x.dispositivos} dispositivo(s)`).join("\n") || "Nadie ha activado notificaciones.";
-          alert(j.error ? "Error: " + j.error : `Revisión cada minuto: ${j.revision_programada ? "✅ activa" : "❌ no está activa"}${j.se_programo_ahora ? " (se activó ahora)" : ""}\nÚltimas ejecuciones: ${runs}\nRespuestas:\n${http}\n\nDispositivos:\n${devs}${j.errores ? "\n\nErrores: " + j.errores.join(" | ") : ""}`);
-        };
-        acts.appendChild(d);
-      }
-    }
-    b.textContent = document.getElementById("amOut") ? "Salir" : b.textContent; outBox.appendChild(b);
+    b.textContent = document.getElementById("amOut") ? "Salir" : `${me.name || me.email} · Salir`; b.onclick = () => sb.auth.signOut();
+    outBox.appendChild(b);
+    const ab = document.getElementById("acctBtn");
+    if (ab && google.configured !== false && !google.connected){ const d = document.createElement("span"); d.className = "dot"; d.title = "Conecta tu Google Calendar"; ab.appendChild(d); }
   }
+  async function pushDiag(){
+    const t = (await sb.auth.getSession()).data.session.access_token;
+    const j = await fetch("/api/push-status", {headers:{authorization:"Bearer " + t}}).then(r => r.json()).catch(e => ({error:String(e)}));
+    const runs = (j.ultimas_ejecuciones || []).map(x => `${x.status} ${new Date(x.start_time).toLocaleTimeString("es-MX")}`).join(", ") || "ninguna todavía";
+    const http = (j.ultimas_respuestas || []).map(x => `${x.status_code || "—"} ${x.respuesta || ""}`).join("\n") || "ninguna todavía";
+    const devs = (j.dispositivos || []).map(x => `• ${x.persona}: ${x.dispositivos} dispositivo(s)`).join("\n") || "Nadie ha activado notificaciones.";
+    alert(j.error ? "Error: " + j.error : `Revisión cada minuto: ${j.revision_programada ? "✅ activa" : "❌ no está activa"}${j.se_programo_ahora ? " (se activó ahora)" : ""}\nÚltimas ejecuciones: ${runs}\nRespuestas:\n${http}\n\nDispositivos:\n${devs}${j.errores ? "\n\nErrores: " + j.errores.join(" | ") : ""}`);
+  }
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const standalone = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+  window.STRIKD_ACT = {
+    google: () => google,
+    googleConnect: async () => {
+      if (google.configured === false) return alert("Google Calendar todavía no está activado en el servidor. El Head tiene que poner las llaves de Google en Vercel.");
+      const t = (await sb.auth.getSession()).data.session.access_token; location.href = "/api/google/connect?token=" + encodeURIComponent(t);
+    },
+    googleDisconnect: async () => {
+      if (!confirm("¿Desconectar tu Google Calendar? Ya no podrás agendar meets hasta volver a conectarlo.")) return;
+      const t = (await sb.auth.getSession()).data.session.access_token; await fetch("/api/google/status", {method:"POST", headers:{authorization:"Bearer " + t}}); location.reload();
+    },
+    password: () => passwordScreen("Cambiar contraseña"),
+    logout: () => sb.auth.signOut(),
+    pushSupported: () => "serviceWorker" in navigator && "PushManager" in window && !!window.Notification,
+    pushOn: () => !!(window.Notification && Notification.permission === "granted" && localStorage.getItem("strikd_push") === "1"),
+    pushBlocked: () => !!(window.Notification && Notification.permission === "denied"),
+    needsInstall: () => isIOS && !standalone(),
+    isIOS, standalone,
+    pushEnable: () => pushEnable(),
+    pushDiag,
+  };
+
 
   /* ---------- db: colecciones y documentos ---------- */
   const listeners = new Set();
