@@ -1,4 +1,5 @@
 <title>Tablero de Meets</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,800;125,900&display=swap">
 <style>
@@ -1005,8 +1006,21 @@ document.addEventListener("keydown", e => { if (e.key==="Escape") closeAcct(); }
 $("acctMenu").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if (b){ showTab(b.dataset.tab); } else if (e.target.closest("#viewAsBtn,#xlsBtn")) closeAcct(); });
 document.addEventListener("click", e => { const g = e.target.closest(".subnav [data-go]"); if (g) showTab(g.dataset.go); });
 function applyTheme(t){ document.documentElement.dataset.theme = t; $("themeBtn").textContent = t==="light" ? "Tema: claro · cambiar a oscuro" : "Tema: oscuro · cambiar a claro"; }
-(function(){ let t = "dark"; try{ t = localStorage.getItem("strikd_theme") || "dark"; }catch(e){} applyTheme(t); })();
-$("themeBtn").addEventListener("click", () => { const t = document.documentElement.dataset.theme==="light" ? "dark" : "light"; applyTheme(t); try{ localStorage.setItem("strikd_theme", t); }catch(e){} schedule(); });
+// Tema por usuario: se guarda en su perfil (members/{uid}.theme) y sigue a la persona en cualquier navegador. Blanco por defecto.
+(function(){ let t = "light"; try{ t = localStorage.getItem("strikd_theme") || "light"; }catch(e){} applyTheme(t); })();
+let themeSynced = false;
+function syncTheme(){
+  if (themeSynced || !S.uid) return;
+  const m = S.members && S.members[S.uid]; if (!m) return;
+  themeSynced = true;
+  if (m.theme && m.theme !== document.documentElement.dataset.theme){ applyTheme(m.theme); try{ localStorage.setItem("strikd_theme", m.theme); }catch(e){} }
+}
+$("themeBtn").addEventListener("click", () => {
+  const t = document.documentElement.dataset.theme==="light" ? "dark" : "light"; applyTheme(t); themeSynced = true;
+  try{ localStorage.setItem("strikd_theme", t); }catch(e){}
+  if (S.uid) db.doc(`members/${S.uid}`).update({theme:t}).catch(() => db.doc(`members/${S.uid}`).set({...(S.members[S.uid]||{}), theme:t}).catch(()=>{}));
+  schedule();
+});
 const MSEG = {v:null};
 function syncMsgSeg(){
   const isk = !!iskFn() && (!S.viewAs || iskFn()===iskMock);
@@ -1062,7 +1076,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = Object.keys(S.team).map(id=>`<option value="${id}">${esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
