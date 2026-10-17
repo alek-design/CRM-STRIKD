@@ -234,6 +234,11 @@
   };
   window.STRIKD_GOOGLE = () => google;
   window.STRIKD_ME = () => me;
+  window.STRIKD_BUSY = async (from, to) => {
+    const t = (await sb.auth.getSession()).data.session.access_token;
+    const r = await fetch(`/api/busy?from=${from}&to=${to}`, {headers:{authorization:"Bearer " + t}});
+    if (!r.ok) throw new Error("busy " + r.status); return r.json();
+  };
   // ISKRA (WhatsApp): {configured:false} | {data} | lanza {message, detail}
   window.STRIKD_ISKRA = async (op, input) => {
     const t = (await sb.auth.getSession()).data.session.access_token;

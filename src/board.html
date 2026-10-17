@@ -316,6 +316,14 @@ a.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line2)}
 .msg-card textarea{width:100%;font:inherit;font-size:13px;background:var(--bg);color:var(--fg);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;resize:vertical}
 .msg-card .msg-acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .msg-h3{margin:18px 0 8px;font-size:14px}
+.slots{grid-column:1/-1;display:grid;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.slots-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}.slots-h b{font-weight:600}
+.slot-days,.slot-times{display:flex;gap:6px;flex-wrap:wrap}
+.slot-days button,.slot-times button{font:inherit;font-size:12.5px;border:1px solid var(--line2);background:none;color:var(--fg);border-radius:999px;padding:5px 11px;cursor:pointer}
+.slot-days button.on,.slot-times button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.slot-times button.busy{color:var(--dim);border-style:dashed;text-decoration:line-through;cursor:not-allowed}
+.slot-times button.gbusy{color:var(--wait);border-color:var(--wait-line)}
+.slot-warn{font-size:12.5px;color:var(--wait)}.slot-err{font-size:12.5px;color:var(--bad);font-weight:600}
 .isk-own select{margin-left:6px}.isk-by{margin:0;padding:6px 14px;border-bottom:1px solid var(--line)}.isk-recent{margin:0 0 8px}.cv-hacts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .isk{margin:0 0 18px}.isk-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}.isk-dot{width:8px;height:8px;border-radius:50%;background:var(--wa);display:inline-block}.isk-dot.off{background:var(--wait)}.isk-raw{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto;background:var(--surface);border:1px solid var(--line2);border-radius:8px;padding:8px}
 .cv{display:grid;grid-template-columns:320px 1fr;min-height:520px;border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:var(--surface)}
@@ -762,6 +770,7 @@ label.f em{color:var(--bad);font-style:normal}
           <label class="f m-only">Email del prospecto <em>*</em><input id="f_email" type="email" autocomplete="off"></label>
           <label class="f m-only">Teléfono / WhatsApp<input id="f_phone" type="tel" autocomplete="off"></label>
           <label class="f m-only">Fecha y hora del meet <em>*</em><input id="f_meetAt" type="datetime-local"></label>
+          <div class="slots m-only" id="slotBox"></div>
           <div class="f full inv m-only">
             <label class="chk on" id="mkInvL" hidden><input type="checkbox" id="f_mkinv" checked><span class="box"></span><span>Crear la invitación con link de Google Meet y mandársela al prospecto</span></label>
             <p class="mut small" id="invHint" hidden></p>
@@ -1039,7 +1048,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); syncMsgSeg(); syncAcct(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = Object.keys(S.team).map(id=>`<option value="${id}">${esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -1257,6 +1266,66 @@ const INV_ERR = {get server_not_connected(){ return "conecta tu Google Calendar 
   approval_required:"falta tu permiso para que la página use Google Calendar", not_in_manifest:"no diste permiso a Google Calendar en esta página", selection_required:"elige qué cuenta de Google Calendar usar",
   blocked_by_policy:"tu organización bloquea Google Calendar aquí"};
 function readForm(){ const o={}; FIELDS.forEach(f=> o[f] = $("f_"+f).value.trim()); return o; }
+/* ---------- horarios libres del team leader al agendar (para no encimar meets) ---------- */
+const SL = {day:"", busy:null, at:0, loading:false, leader:null, googleOk:false};
+const SLOT_MIN = 30*60e3;
+const dayStr = t => new Date(t - OFF).toISOString().slice(0,10);
+async function slotLoad(force){
+  if (SL.loading || (!force && SL.busy && Date.now() - SL.at < 60e3)) return;
+  SL.loading = true;
+  const from = Date.now() - 3600e3, to = Date.now() + 8*864e5;
+  try{
+    if (window.STRIKD_BUSY){ const j = await window.STRIKD_BUSY(from, to); SL.busy = {board:j.board||[], google:j.google||[]}; SL.leader = j.leader; SL.googleOk = !!j.googleOk; }
+    else { // claude.ai: con lo que esta vista puede ver
+      const board = []; const add = (at, kind, mine) => { const t = meetTs(at); if (t >= from && t <= to) board.push({t, kind, mine}); };
+      Object.entries(adminMode() ? S.all : {[meId()]: myItems()}).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
+        const f = m.flow || {}; if (m.cancelled || f.lostAt) return;
+        if (effAt(m) && !f.inviteDeclinedAt) add(effAt(m), "pitch", uid===meId());
+        if (f.skeletonMeetAt && !f.skeletonAt) add(f.skeletonMeetAt, "skel", uid===meId());
+        if (f.buildMeetAt && !f.launchedAt) add(f.buildMeetAt, "build", uid===meId());
+      }));
+      SL.busy = {board, google:[]}; SL.leader = leaderOf(meId());
+    }
+    SL.at = Date.now();
+  }catch(e){ SL.busy = SL.busy || {board:[], google:[]}; }
+  finally{ SL.loading = false; schedule(); }
+}
+function slotClash(t){
+  if (!SL.busy || isNaN(t)) return null;
+  const orig = S.editingId ? meetTs((myItems()[S.editingId]||{}).meetAt) : NaN;
+  const b = SL.busy.board.find(x => Math.abs(x.t - t) < SLOT_MIN && !(Math.abs(x.t - orig) < 60e3));
+  if (b) return {hard:true, kind:b.kind, mine:b.mine};
+  const g = SL.busy.google.find(x => t < (x.end || x.t + SLOT_MIN) && t + SLOT_MIN > x.t && !SL.busy.board.some(y => Math.abs(y.t - x.t) < 60e3));
+  return g ? {hard:false} : null;
+}
+const SLOT_KIND = {pitch:"un pitch", skel:"un meet de skeleton", build:"un lanzamiento"};
+function renderSlots(){
+  const box = $("slotBox"); if (!box || S.tab!=="mine" || box.offsetParent===null && !box.hidden && false) return;
+  if (!SL.busy){ slotLoad(); box.innerHTML = `<p class="mut small">Revisando la agenda de tu team leader…</p>`; return; }
+  slotLoad();
+  const now = Date.now(), cur = $("f_meetAt").value, curT = meetTs(cur);
+  const days = []; for (let i = 0; days.length < 7 && i < 10; i++){ const d = dayStr(now + i*864e5); if (new Date(d+"T12:00:00Z").getUTCDay() !== 0) days.push(d); }
+  if (!SL.day || !days.includes(SL.day)) SL.day = cur && days.includes(cur.slice(0,10)) ? cur.slice(0,10) : days[0];
+  const wk = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  const times = []; for (let h = 8; h <= 20; h++) for (const mm of [0,30]){ if (h===20 && mm) continue; const v = `${SL.day}T${String(h).padStart(2,"0")}:${mm?"30":"00"}`; const t = meetTs(v); if (t > now + 15*60e3) times.push([v, t]); }
+  const ln = SL.leader ? nameOf(S.ps||{}, SL.leader) : "";
+  const cl = cur ? slotClash(curT) : null;
+  box.innerHTML = `<div class="slots-h"><b>Horarios libres${ln && ln!=="Alguien del equipo" ? ` de ${esc(ln)}` : " de tu team leader"}</b><span class="mut small">tachados: ya hay meet a esa hora${SL.googleOk?" · en amarillo: ocupado en su calendario":""}</span><div class="spacer"></div><button type="button" class="btn small" data-slotnext="1">Siguiente libre</button></div>
+    <div class="slot-days">${days.map(d => { const dt = new Date(d+"T12:00:00Z"); return `<button type="button" data-slotday="${d}" class="${d===SL.day?"on":""}">${wk[dt.getUTCDay()]} ${dt.getUTCDate()}</button>`; }).join("")}</div>
+    <div class="slot-times">${times.map(([v,t]) => { const c = slotClash(t); return `<button type="button" data-slot="${v}" class="${v===cur?"on":""}${c&&c.hard?" busy":c?" gbusy":""}"${c&&c.hard?` disabled title="Ya hay ${SLOT_KIND[c.kind]||"un meet"}${c.mine?" tuyo":""} a esa hora"`:""}>${v.slice(11)}</button>`; }).join("") || `<span class="mut small">Ya no quedan horarios este día.</span>`}</div>
+    ${cl && cl.hard ? `<p class="slot-err">A esa hora tu team leader ya tiene ${SLOT_KIND[cl.kind]||"un meet"}${cl.mine?" (tuyo)":""}. Elige otro horario.</p>` : cl ? `<p class="slot-warn">Tu team leader tiene algo en su calendario a esa hora. Puedes agendar, pero confirma que sí puede.</p>` : ""}`;
+}
+$("slotBox").addEventListener("click", e => {
+  const d = e.target.closest("[data-slotday]"); if (d){ SL.day = d.dataset.slotday; return renderSlots(); }
+  const t = e.target.closest("[data-slot]"); if (t && !t.disabled){ $("f_meetAt").value = t.dataset.slot; $("f_meetAt").dispatchEvent(new Event("input", {bubbles:true})); return renderSlots(); }
+  if (e.target.closest("[data-slotnext]")){
+    const now = Date.now() + 15*60e3; let t = Math.ceil(now / SLOT_MIN) * SLOT_MIN;
+    for (let i = 0; i < 48*8; i++, t += SLOT_MIN){ const v = new Date(t - OFF).toISOString().slice(0,16), h = Number(v.slice(11,13)), dow = new Date(t - OFF).getUTCDay();
+      if (dow===0 || h < 8 || h > 19 || (h===20)) continue; if (!slotClash(t)){ $("f_meetAt").value = v; SL.day = v.slice(0,10); $("f_meetAt").dispatchEvent(new Event("input", {bubbles:true})); break; } }
+    renderSlots();
+  }
+});
+$("f_meetAt").addEventListener("change", () => { SL.day = ($("f_meetAt").value||"").slice(0,10) || SL.day; renderSlots(); });
 function validate(o){
   const p = Number(o.perfil)||0;
   if (!p) return "Elige el perfil del prospecto.";
@@ -1272,6 +1341,7 @@ function validate(o){
   if (p===2 && Number(o.followers) > 35000) return "Con más de 35K va como Perfil 3, en la lista de Mich.";
   if (!o.prospect || !o.channel || !o.profile || !o.email || !o.meetAt || (!o.link && !autoInv() && !S.editingId)) return "Completa los campos marcados con *.";
   if (isNaN(meetTs(o.meetAt))) return "Revisa la fecha y hora del meet.";
+  { const c = slotClash(meetTs(o.meetAt)); if (c && c.hard) return `A esa hora tu team leader ya tiene ${SLOT_KIND[c.kind]||"un meet"}. Elige otro horario libre.`; }
   if (!safeUrl(o.profile)) return "El link al perfil debe empezar con https://";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return "Revisa el email del prospecto.";
   if (o.link && !safeUrl(o.link)) return "El link debe empezar con https://";
