@@ -3409,7 +3409,8 @@ function iskExtract(c){
   if (!prof){ const h = txt.match(/(?:^|\s)@([A-Za-z0-9_.]{3,30})\b/); if (h) prof = "https://instagram.com/" + h[1]; }
   const name = c.name && !/^\+?\d[\d\s-]+$/.test(c.name) ? c.name : "";
   const last = (ISK.msgs[c.id]||[]).filter(x => x.d==="in").slice(-3).map(x => x.t).filter(Boolean).join(" / ").slice(0, 280);
-  return {name, email, prof, phone:c.phone || "", note:last ? `Vino de WhatsApp (ISKRA). Dijo: ${last}` : "Vino de WhatsApp (ISKRA)"};
+  const r = c.raw || {}, ig = String(r.instagram || "").trim();
+  return {name, email:email || r.email || "", prof:prof || (ig ? (/^https?:/i.test(ig) ? ig : "https://instagram.com/" + ig.replace(/^@/,"")) : ""), phone:c.phone || "", note:last ? `Vino de WhatsApp (ISKRA). Dijo: ${last}` : "Vino de WhatsApp (ISKRA)"};
 }
 function openBook(c){
   const panel = $("meetForm").closest(".panel"); if (!panel || BOOK.open) return;
@@ -3505,7 +3506,7 @@ async function iskLoad(force){
     if (ISK.convs.some(c => c.at)) ISK.convs.sort((a,b) => b.at - a.at);
     ISK.stale = false; try{ localStorage.setItem("strikd_isk_" + meId(), JSON.stringify({at:Date.now(), list:iskArr(j)})); }catch(e){}
     if (ISK.sel && !ISK.convs.some(c => c.id===ISK.sel)) ISK.sel = null;
-    if (ISK.sel) await iskThread(ISK.sel, true);
+
   }catch(e){ ISK.st = ISK.st==="ok" ? "ok" : "err"; ISK.err = e.message + (e.detail ? " · " + JSON.stringify(e.detail).slice(0,300) : ""); }
   finally{ ISK.loading = false; schedule(); }
 }
@@ -3542,14 +3543,17 @@ function iskOwnerOpts(sel){
   const ids = [...new Set(Object.keys(S.team||{}).concat(S.config && S.config.headId ? [S.config.headId] : [], S.uid ? [S.uid] : []))];
   return `<option value="">Sin dueño</option>` + ids.map(id => `<option value="${esc(id)}"${id===sel?" selected":""}>${esc(iskWho(id))}</option>`).join("");
 }
+function iskBubbles(c){ const ms = ISK.msgs[c.id]; return !ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}${x.failed?" failed":""}">${iskMediaHtml(x)}${x.t?`<p>${esc(x.t)}</p>`:""}<span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`; }
 function renderIskra(){
   const box = $("iskBox"); if (!box) return;
   const on = !!iskFn() && (!S.viewAs || iskFn()===iskMock);
-  box.hidden = !on; if (!on || S.tab!=="msgs") { clearInterval(ISK.timer); ISK.timer = null; return; }
+  box.hidden = !on; if (!on || S.tab!=="msgs") { clearInterval(ISK.timer); clearInterval(ISK.thT); ISK.timer = null; ISK.thT = null; return; }
   if (!ISK.timer){
     if (!ISK.st && iskFn()!==iskMock){ try{ const c0 = JSON.parse(localStorage.getItem("strikd_isk_" + meId()) || "null"); if (c0 && c0.list && Date.now() - c0.at < 7*864e5){ ISK.convs = c0.list.map(iskConv).filter(c => c.id); ISK.st = "ok"; ISK.stale = true; ISK.at = 0; } }catch(e){} }
-    ISK.timer = setInterval(() => { if (S.tab==="msgs" && !document.hidden) iskLoad(); }, 15e3); iskLoad(true); }
-  if (busyIn(box)) return;
+    ISK.timer = setInterval(() => { if (S.tab==="msgs" && !document.hidden) iskLoad(); }, 15e3); iskLoad(true);
+    // el chat abierto se refresca solo cada 5 s, sin esperar a la lista
+    ISK.thT = setInterval(() => { if (S.tab==="msgs" && !document.hidden && ISK.sel && !ISK.thBusy){ ISK.thBusy = true; iskThread(ISK.sel, true).finally(() => { ISK.thBusy = false; }); } }, 5e3); }
+  if (busyIn(box)){ const th = $("iskThread"), c0 = ISK.convs.find(x => x.id===ISK.sel); if (th && c0){ const h = iskBubbles(c0); if (th.dataset.h!==h){ const atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 40; th.innerHTML = h; th.dataset.h = h; if (atBottom) th.scrollTop = th.scrollHeight; } } return; }
   const lead = adminMode(), me = meId();
   if (ISK.st==="off"){ $("iskNotice").hidden = false; box.innerHTML = `<p class="notice">ISKRA no está activado: falta <b>ISKRA_API_KEY</b> en Vercel (Settings → Environment Variables) y hacer Redeploy.</p>`; return; }
   $("iskNotice").hidden = ISK.st==="ok";
@@ -3584,7 +3588,7 @@ function renderIskra(){
           ${(lead || mine) ? (isDisc(c) ? `<button type="button" class="btn small" data-iskdisc="undo">Regresar a la bandeja</button>` : `<button type="button" class="btn small" data-iskdisc="1">Descartar</button>`) : ""}
         </div></div>
       ${lead && c.by ? `<p class="mut small isk-by">Asignada por: ${esc(ISK_BY[c.by]||c.by)}${c.esc?" · la pasaron al manager":""}</p>` : ""}
-      <div class="cv-thread" id="iskThread">${!ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}${x.failed?" failed":""}">${iskMediaHtml(x)}${x.t?`<p>${esc(x.t)}</p>`:""}<span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`}</div>
+      <div class="cv-thread" id="iskThread">${iskBubbles(c)}</div>
       <div class="cv-compose">
         ${recent ? `<p class="notice warn isk-recent">${esc(iskWho(c.lastSender))} contestó hace ${esc(ago(c.lastSentAt))}. Revisa antes de mandar otro mensaje.</p>` : ""}
         ${canSend ? `<div class="cv-out"><textarea rows="3" data-iskin="1" placeholder="Tu respuesta… sale desde el número de STRIKD">${esc(ISK.draft[c.id]||"")}</textarea>
@@ -3677,7 +3681,7 @@ document.addEventListener("click", async e => {
     try{
       let media = null;
       if (att){ const up = window.STRIKD_UPLOAD ? await window.STRIKD_UPLOAD(att.blob, att.name) : {url:att.preview, type:att.blob.type, name:att.name}; media = {url:up.url, type:up.type || att.blob.type, name:att.name}; bub.st = "enviando…"; schedule(); }
-      await iskFn()("reply", {conversation_id:id, text, idempotency_key:key, ...(media ? {media} : {})}); bub.st = "enviado"; ISK.idem = null; setTimeout(() => iskThread(id, true), 2500); }
+      await iskFn()("reply", {conversation_id:id, text, idempotency_key:key, ...(media ? {media} : {})}); bub.st = "enviado"; ISK.idem = null; setTimeout(() => iskThread(id, true), 1500); }
     catch(err){ bub.st = "no se envió"; bub.failed = true; ISK.draft[id] = text; if (att) ISK.att = att; ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : "") + " · Tu texto sigue en la caja, dale Enviar otra vez."; }
     finally{ schedule(); }
   }
