@@ -254,6 +254,26 @@
   window.STRIKD_ME = () => me;
   /* ---------- app en el teléfono y notificaciones ---------- */
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  /* ---------- actualización automática: si hay versión nueva, se recarga sola ---------- */
+  let updBusy = false, updLast = 0;
+  async function checkUpdate(){
+    if (updBusy || !window.STRIKD_BUILD || Date.now() - updLast < 20e3) return;
+    updBusy = true; updLast = Date.now();
+    try{
+      const v = (await fetch("/version.txt?t=" + Date.now(), {cache:"no-store"}).then(r => r.ok ? r.text() : "")).trim();
+      if (!v || v === window.STRIKD_BUILD) return;
+      const a = document.activeElement, typing = a && a.matches && a.matches("input,textarea,select") && String(a.value || "").length > 0;
+      const busy = typing || document.querySelector(".rs-wrap:not([hidden]), .bk-wrap, #sgAuth");
+      if (!busy){ location.reload(); return; }
+      if (!document.getElementById("updBar")){
+        const b = document.createElement("button"); b.id = "updBar"; b.type = "button"; b.className = "upd-bar";
+        b.textContent = "Hay una versión nueva · tocar para actualizar"; b.onclick = () => location.reload(); document.body.appendChild(b);
+      }
+    }catch(_){ } finally{ updBusy = false; }
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkUpdate(); });
+  window.addEventListener("focus", checkUpdate); window.addEventListener("pageshow", checkUpdate);
+  setInterval(() => { if (document.visibilityState === "visible") checkUpdate(); }, 120e3);
   // al abrir la app se limpia el número del ícono (la bandeja ya muestra lo pendiente)
   const clearBadge = () => { if (document.visibilityState === "visible" && navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {}); };
   document.addEventListener("visibilitychange", clearBadge); clearBadge();

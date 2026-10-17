@@ -9,3 +9,5 @@
 #sgAuth .sg-err{margin:0;min-height:1em;color:#f87171;font-size:12.5px}
 .sg-out{font:inherit;font-size:12px;background:none;border:1px solid #3a3a3a;color:#8c8c8c;border-radius:999px;padding:5px 10px;cursor:pointer;margin-left:8px}
 .sg-out.cta{border-color:#25d366;color:#25d366}.sg-out.on{color:#86efac;border-color:#1f5135}
+
+.upd-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;font:inherit;font-size:13px;font-weight:700;color:#000;background:#fff;border:0;border-radius:999px;padding:10px 18px;box-shadow:0 8px 24px rgba(0,0,0,.35);cursor:pointer}
