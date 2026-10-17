@@ -128,6 +128,18 @@
       const n = document.createElement("button"); n.className = "sg-out"; n.type = "button";
       const label = () => { n.textContent = (window.Notification && Notification.permission === "granted" && localStorage.getItem("strikd_push") === "1") ? "🔔 Notificaciones activadas · probar" : "🔔 Activar notificaciones"; };
       label(); n.onclick = () => pushEnable().then(label); acts.appendChild(n);
+      if (me.role === "head"){
+        const d = document.createElement("button"); d.className = "sg-out"; d.type = "button"; d.textContent = "Estado de notificaciones";
+        d.onclick = async () => {
+          const t = (await sb.auth.getSession()).data.session.access_token;
+          const j = await fetch("/api/push-status", {headers:{authorization:"Bearer " + t}}).then(r => r.json()).catch(e => ({error:String(e)}));
+          const runs = (j.ultimas_ejecuciones || []).map(x => `${x.status} ${new Date(x.start_time).toLocaleTimeString("es-MX")}`).join(", ") || "ninguna todavía";
+          const http = (j.ultimas_respuestas || []).map(x => `${x.status_code || "—"} ${x.respuesta || ""}`).join("\n") || "ninguna todavía";
+          const devs = (j.dispositivos || []).map(x => `• ${x.persona}: ${x.dispositivos} dispositivo(s)`).join("\n") || "Nadie ha activado notificaciones.";
+          alert(j.error ? "Error: " + j.error : `Revisión cada minuto: ${j.revision_programada ? "✅ activa" : "❌ no está activa"}${j.se_programo_ahora ? " (se activó ahora)" : ""}\nÚltimas ejecuciones: ${runs}\nRespuestas:\n${http}\n\nDispositivos:\n${devs}${j.errores ? "\n\nErrores: " + j.errores.join(" | ") : ""}`);
+        };
+        acts.appendChild(d);
+      }
     }
     b.textContent = document.getElementById("amOut") ? "Salir" : b.textContent; outBox.appendChild(b);
   }
