@@ -40,7 +40,15 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .brand{font-family:var(--wide);font-stretch:125%;font-variation-settings:"wdth" 125;font-weight:900;font-size:24px;letter-spacing:.01em;line-height:1;margin:0;text-transform:uppercase}
 .brand i{font-style:normal;color:var(--dim);font-size:.7em;margin:0 .25em;vertical-align:.1em}
 .brand-sub{font-size:13px;color:var(--muted);margin-top:6px}
-.close{margin-left:auto;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;border:1px solid var(--line2);border-radius:999px;padding:7px 16px}
+.close{margin-left:auto;position:relative;display:flex;align-items:baseline;gap:8px;border:1px solid var(--line2);border-radius:999px;padding:7px 16px;cursor:default;outline:none}
+.close .cd{color:var(--fg)!important;font-weight:600!important}
+.close-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:25;min-width:230px;background:var(--surface);border:1px solid var(--line2);border-radius:14px;box-shadow:var(--menu-shadow);padding:10px 12px;opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s,transform .15s,visibility .15s}
+.close:hover .close-pop,.close:focus .close-pop,.close:focus-within .close-pop{opacity:1;visibility:visible;transform:none}
+.cp-h{font-size:12px;color:var(--muted);margin-bottom:8px}
+.mlb{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+.mlb li{display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:center;font-size:13px}
+.mlb li i{font-style:normal;color:var(--muted);font-size:11.5px}.mlb li b{font-weight:600}.mlb li span{font-variant-numeric:tabular-nums;font-weight:700}
+.mlb li.me b{text-decoration:underline;text-underline-offset:3px}
 .close .lbl{font-size:12px;font-weight:700;color:var(--fg)}
 .close .cd{font-family:var(--mono);font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums;font-size:16px}
 .tabrow{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
@@ -677,9 +685,9 @@ label.f em{color:var(--bad);font-style:normal}
 <header class="top">
   <div class="wrap">
     <div><h1 class="brand">Outreach<i>x</i>STRIKD</h1></div>
-    <div class="close">
-      <span class="lbl" id="closeLabel">Cierre</span>
+    <div class="close" tabindex="0" aria-describedby="closePop">
       <span class="cd" id="countdown">—</span>
+      <div class="close-pop" id="closePop" role="tooltip"><div class="cp-h" id="closeLabel">Corte</div><div id="miniLb"></div></div>
     </div>
   </div>
   <div class="wrap tabrow">
@@ -961,7 +969,7 @@ function tick(){
   const now = Date.now(), end = weekEnd(now), ms = end - now;
   const d = Math.floor(ms/DAY), h = Math.floor(ms%DAY/3600e3), m = Math.floor(ms%3600e3/6e4);
   $("countdown").textContent = `${d}d ${String(h).padStart(2,"0")}h ${String(m).padStart(2,"0")}m`;
-  $("closeLabel").textContent = keyLabel(weekKey(now)) + " · 6:00 pm · faltan";
+  $("closeLabel").textContent = "Corte: " + keyLabel(weekKey(now)).replace(/^Cierra\s*/i,"") + " · 6:00 pm";
   const k = weekKey(now);
   if (S.currentKey && S.currentKey !== k){ S.currentKey = k; if (S.boardWeek && S.boardWeek < k) S.boardWeek = k; schedule(); }
   S.currentKey = k;
@@ -1188,7 +1196,14 @@ function boardHtml(ps, ids, week, live){
     </div>`).join("");
   return `${podium}${nudge}<div class="board${admin?" adm":""}">${head}${body}</div>`;
 }
+function renderMiniLb(ps, ids){
+  const box = $("miniLb"); if (!box) return;
+  const pt = tally(S.currentKey), me = meId();
+  const rows = ids.map(id => [id, (pt[id]||{}).pts||0]).sort((a,b) => b[1]-a[1]).slice(0,5);
+  box.innerHTML = rows.length ? `<ol class="mlb">${rows.map(([id,v],i) => `<li class="${id===me?"me":""}"><i>${i+1}</i><b>${esc(nameOf(ps,id))}</b><span>${Number(v).toLocaleString("es-MX")}</span></li>`).join("")}</ol>` : `<p class="mut small">Aún no hay puntos esta semana.</p>`;
+}
 function renderBoard(ps, ids){
+  renderMiniLb(ps, ids);
   const home = $(adminMode() ? "lbHomeFunnel" : "lbHomePerf"), blk = $("lbBlock");
   if (blk.parentNode !== home) home.appendChild(blk);
   $("board").innerHTML = boardHtml(ps, ids, S.currentKey, true);
