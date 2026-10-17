@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 18:13 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 18:15 UTC"</script>
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/claude-shim.js"></script>
@@ -3503,7 +3503,7 @@ function iskMatch(phone){
 const iskWho = uid => uid ? (uid===S.uid && !S.viewAs ? "Tú" : nameOf(S.ps||{}, uid)) : "Sin dueño";
 async function iskLoad(force){
   const fn = iskFn();
-  if (!fn || ISK.loading || (!force && Date.now() - ISK.at < 12e3)) return;
+  if (!fn || ISK.loading || (!force && Date.now() - ISK.at < 8e3)) return;
   ISK.loading = true;
   try{
     if (!ISK.who && !ISK.whoP) ISK.whoP = fn("whoami").then(w => { if (w.configured===false) ISK.st = "off"; else ISK.who = w.data || {}; schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
@@ -3516,6 +3516,27 @@ async function iskLoad(force){
 
   }catch(e){ ISK.st = ISK.st==="ok" ? "ok" : "err"; ISK.err = e.message + (e.detail ? " · " + JSON.stringify(e.detail).slice(0,300) : ""); }
   finally{ ISK.loading = false; schedule(); }
+}
+async function iskTail(id){
+  const fn = iskFn(); if (!fn || fn===iskMock) return;
+  const cur = ISK.msgs[id] || [], since = cur.filter(x => !x.local).reduce((a, x) => Math.max(a, x.at || 0), 0) || (Date.now() - 600e3);
+  try{
+    const j = await fn("tail", {id, since});
+    const add = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m), at:iskAt(m), st:m.status||"", media:iskMedia(m)}));
+    if (!add.length || ISK.sel!==id) return;
+    const same = (a, b) => a.d===b.d && a.t===b.t && Math.abs((a.at||0) - (b.at||0)) < 3000;
+    let list = cur.slice(), changed = false;
+    add.forEach(m => {
+      if (list.some(x => !x.local && same(x, m))) return;
+      const li = list.findIndex(x => x.local && x.d==="out" && x.t===m.t); if (li >= 0) list.splice(li, 1); // ya llegó el que mandamos
+      list.push(m); changed = true;
+    });
+    if (!changed) return;
+    list.sort((a, b) => (a.at||0) - (b.at||0)); ISK.msgs[id] = list;
+    const cv = ISK.convs.find(x => x.id===id), last = add.sort((a, b) => (a.at||0) - (b.at||0)).slice(-1)[0];
+    if (cv && last){ cv.last = last.t; cv.lastDir = last.d; cv.at = Math.max(cv.at||0, last.at||0); }
+    schedule();
+  }catch(e){ /* sigue con el refresco normal */ }
 }
 function iskMedia(m){
   const a = (Array.isArray(m.attachments) && m.attachments[0]) || m.media || m.attachment || null;
@@ -3557,9 +3578,11 @@ function renderIskra(){
   box.hidden = !on; if (!on || S.tab!=="msgs") { clearInterval(ISK.timer); clearInterval(ISK.thT); ISK.timer = null; ISK.thT = null; return; }
   if (!ISK.timer){
     if (!ISK.st && iskFn()!==iskMock){ try{ const c0 = JSON.parse(localStorage.getItem("strikd_isk_" + meId()) || "null"); if (c0 && c0.list && Date.now() - c0.at < 7*864e5){ ISK.convs = c0.list.map(iskConv).filter(c => c.id); ISK.st = "ok"; ISK.stale = true; ISK.at = 0; } }catch(e){} }
-    ISK.timer = setInterval(() => { if (S.tab==="msgs" && !document.hidden) iskLoad(); }, 15e3); iskLoad(true);
-    // el chat abierto se refresca solo cada 5 s, sin esperar a la lista
-    ISK.thT = setInterval(() => { if (S.tab==="msgs" && !document.hidden && ISK.sel && !ISK.thBusy){ ISK.thBusy = true; iskThread(ISK.sel, true).finally(() => { ISK.thBusy = false; }); } }, 5e3); }
+    ISK.timer = setInterval(() => { if (S.tab==="msgs" && !document.hidden) iskLoad(); }, 10e3); iskLoad(true);
+    // chat abierto: lo nuevo cada 3 s (consulta corta); el chat completo cada 45 s
+    ISK.thT = setInterval(() => { if (S.tab==="msgs" && !document.hidden && ISK.sel && !ISK.thBusy){ ISK.thBusy = true;
+      const full = !ISK.fullAt || Date.now() - ISK.fullAt > 45e3 || ISK.fullFor !== ISK.sel;
+      (full ? iskThread(ISK.sel, true).then(() => { ISK.fullAt = Date.now(); ISK.fullFor = ISK.sel; }) : iskTail(ISK.sel)).finally(() => { ISK.thBusy = false; }); } }, 3e3); }
   if (busyIn(box)){ const th = $("iskThread"), c0 = ISK.convs.find(x => x.id===ISK.sel); if (th && c0){ const h = iskBubbles(c0); if (th.dataset.h!==h){ const atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 40; th.innerHTML = h; th.dataset.h = h; if (atBottom) th.scrollTop = th.scrollHeight; } } return; }
   const lead = adminMode(), me = meId();
   if (ISK.st==="off"){ $("iskNotice").hidden = false; box.innerHTML = `<p class="notice">ISKRA no está activado: falta <b>ISKRA_API_KEY</b> en Vercel (Settings → Environment Variables) y hacer Redeploy.</p>`; return; }
@@ -3650,7 +3673,7 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-iskraw]")) { ISK.showRaw = !ISK.showRaw; return schedule(); }
   const f = e.target.closest("[data-iskf]"); if (f){ ISK.filter = f.dataset.iskf; return schedule(); }
   const ci = e.target.closest("[data-iskc]");
-  if (ci){ ISK.sel = ci.dataset.iskc; ISK.err = ""; schedule(); return iskThread(ISK.sel); }
+  if (ci){ ISK.sel = ci.dataset.iskc; ISK.err = ""; ISK.fullAt = Date.now(); ISK.fullFor = ISK.sel; schedule(); return iskThread(ISK.sel); }
   if (e.target.closest("[data-iskesc]") && ISK.sel){
     const b = e.target.closest("[data-iskesc]"); if (b.dataset.armed!=="1"){ b.dataset.armed = "1"; b.textContent = "¿Pasarla al manager?"; return; }
     try{ await iskFn()("escalate", {id:ISK.sel}); }catch(err){ ISK.err = err.message; } return iskLoad(true);
@@ -3688,7 +3711,7 @@ document.addEventListener("click", async e => {
     try{
       let media = null;
       if (att){ const up = window.STRIKD_UPLOAD ? await window.STRIKD_UPLOAD(att.blob, att.name) : {url:att.preview, type:att.blob.type, name:att.name}; media = {url:up.url, type:up.type || att.blob.type, name:att.name}; bub.st = "enviando…"; schedule(); }
-      await iskFn()("reply", {conversation_id:id, text, idempotency_key:key, ...(media ? {media} : {})}); bub.st = "enviado"; ISK.idem = null; setTimeout(() => iskThread(id, true), 1500); }
+      await iskFn()("reply", {conversation_id:id, text, idempotency_key:key, ...(media ? {media} : {})}); bub.st = "enviado"; ISK.idem = null; setTimeout(() => iskTail(id), 1200); }
     catch(err){ bub.st = "no se envió"; bub.failed = true; ISK.draft[id] = text; if (att) ISK.att = att; ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : "") + " · Tu texto sigue en la caja, dale Enviar otra vez."; }
     finally{ schedule(); }
   }

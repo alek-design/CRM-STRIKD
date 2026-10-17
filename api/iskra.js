@@ -24,7 +24,7 @@ async function iskra(method, path, payload, timeoutMs){
 // Lista de conversaciones: primera página cada 10 s; hasta 4 páginas cada 60 s (por si la actividad nueva no viene arriba).
 // Además, los mensajes entrantes de las últimas 2 h (con fecha, para que ISKRA no tarde) para no perder ninguno nuevo.
 let LIST_CACHE = {at:0, deepAt:0, data:null, p:null, info:{}};
-const MSG_CACHE = {};
+const MSG_CACHE = {}, OWN_CACHE = {};
 const lastAtOf = cv => Date.parse(cv.last_message_at || (cv.last_message && cv.last_message.created_at) || cv.updated_at || cv.created_at || "") || 0;
 async function iskList(){
   if (LIST_CACHE.data && Date.now() - LIST_CACHE.at < 10e3) return LIST_CACHE.data;
@@ -109,6 +109,21 @@ module.exports = async (req, res) => {
   if (!process.env.ISKRA_API_KEY) return res.json({configured:false});
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
   const op = body.op, input = body.input || {}, lead = me.role !== "am";
+  // Ruta rápida para el chat abierto: solo lo nuevo desde cierta hora (sin base de datos si ya sabemos que es suyo).
+  if (op === "tail"){
+    try{
+      const id = String(input.id || ""); if (!id) return res.status(400).json({error:"Falta id"});
+      if (!lead && OWN_CACHE[id] !== me.id){
+        const ok = await withPg(async c => (await c.query("select owner from public.iskra_owner where conversation_id=$1", [id])).rows[0]);
+        if (!ok || ok.owner !== me.id) return res.status(403).json({error:"Esta conversación es de otra persona."});
+        OWN_CACHE[id] = ok.owner;
+      }
+      const since = new Date(Math.max(0, Number(input.since) || Date.now() - 600e3) - 2000).toISOString();
+      const q = `/v1/messages/whatsapp?conversation_id=${enc(id)}&conversation=${enc(id)}&from=${enc(since)}&since=${enc(since)}&date_from=${enc(since)}&limit=50`;
+      const ms = arr(await iskra("GET", q, null, 5000)).filter(m => String(m.conversation_id || (m.conversation && m.conversation.id) || "") === id); // estricto: nunca mezclar chats
+      return res.json({configured:true, data:{data:ms}});
+    }catch(err){ return res.status(err.status || 502).json({configured:true, error:String(err.message || err)}); }
+  }
   try{
     const out = await withPg(async c => {
       if (!globalThis.__iskInit){ await c.query(SQL_INIT); globalThis.__iskInit = true; } // solo una vez por arranque
@@ -170,6 +185,7 @@ module.exports = async (req, res) => {
             await c.query("update public.iskra_owner set replied_at=now() where conversation_id=$1", [id]); o.replied_at = new Date();
             if (!o.owner){ const p = await pick(norm.phone); await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
           }
+          OWN_CACHE[id] = o.owner;
           if (lead || o.owner === me.id) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by}});
         }
         T.total = Date.now() - t0; res.setHeader("server-timing", `iskra;dur=${T.iskra}, total;dur=${T.total}`);
@@ -229,6 +245,7 @@ module.exports = async (req, res) => {
         if (!lead) throw Object.assign(new Error("Solo el Head o el Manager reasignan."), {status:403});
         await c.query(`insert into public.iskra_owner (conversation_id, owner, assigned_by) values ($1,$2,'manual')
           on conflict (conversation_id) do update set owner=excluded.owner, assigned_by='manual', assigned_at=now(), escalated_at=null`, [String(input.id), input.owner || null]);
+        OWN_CACHE[String(input.id)] = input.owner || null;
         return {ok:true};
       }
       if (op === "escalate"){
@@ -236,6 +253,7 @@ module.exports = async (req, res) => {
         const m = (await c.query("select id from public.app_users where role='manager' and active limit 1")).rows[0]
           || (await c.query("select id from public.app_users where role='head' and active limit 1")).rows[0];
         await c.query("update public.iskra_owner set owner=$2, escalated_at=now(), assigned_by='escalado' where conversation_id=$1", [String(input.id), m ? m.id : null]);
+        OWN_CACHE[String(input.id)] = m ? m.id : null;
         return {ok:true};
       }
       if (op === "stats"){
