@@ -58,7 +58,7 @@ module.exports = async (req, res) => {
   const op = body.op, input = body.input || {}, lead = me.role !== "am";
   try{
     const out = await withPg(async c => {
-      await c.query(SQL_INIT);
+      if (!globalThis.__iskInit){ await c.query(SQL_INIT); globalThis.__iskInit = true; } // solo una vez por arranque
       const ownerOf = async id => (await c.query("select * from public.iskra_owner where conversation_id=$1", [String(id)])).rows[0];
       const mustOwn = async id => { const o = await ownerOf(id); if (!lead && (!o || o.owner !== me.id)) throw Object.assign(new Error("Esta conversación es de otra persona."), {status:403}); return o; };
       if (op === "whoami"){ const j = await iskra("GET", "/v1/whoami"); return {data:j, me:{id:me.id, role:me.role}}; }

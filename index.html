@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 17:48 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 17:50 UTC"</script>
 <link rel="stylesheet" href="/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/claude-shim.js"></script>
@@ -357,6 +357,7 @@ a.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line2)}
 .rs.loading .rs-ic::after{content:"";position:absolute;inset:0;border-radius:50%;border:3px solid transparent;border-top-color:var(--fg);animation:rsSpin .8s linear infinite}
 @keyframes rsFade{from{opacity:0}}@keyframes rsPop{from{transform:translateY(12px) scale(.94);opacity:0}}@keyframes rsDraw{to{stroke-dashoffset:0}}@keyframes rsSpin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.rs,.rs-wrap,.rs svg path{animation:none!important;stroke-dashoffset:0}}
+.bub.out.failed{border-color:var(--bad)!important;opacity:.75}
 .isk-own select{margin-left:6px}.isk-by{margin:0;padding:6px 14px;border-bottom:1px solid var(--line)}.isk-recent{margin:0 0 8px}.cv-hacts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .isk{margin:0 0 18px}.isk-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}.isk-dot{width:8px;height:8px;border-radius:50%;background:var(--wa);display:inline-block}.isk-dot.off{background:var(--wait)}.isk-raw{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto;background:var(--surface);border:1px solid var(--line2);border-radius:8px;padding:8px}
 .cv{display:grid;grid-template-columns:320px 1fr;min-height:520px;border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:var(--surface)}
@@ -3469,7 +3470,9 @@ async function iskThread(id, quiet){
   try{ const j = await iskFn()("messages", {id, limit:50});
     let ms = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m), at:iskAt(m), st:m.status||""}));
     ms = ms.some(x => x.at) ? ms.sort((a,b) => a.at-b.at) : ms.reverse(); // la API da lo más nuevo primero
-    ISK.msgs[id] = ms; ISK.sent[id] = j.sent || []; }
+    const pend = (ISK.msgs[id]||[]).filter(x => x.local && (x.failed || Date.now() - x.at < 90e3) && !ms.some(y => y.d==="out" && y.t===x.t));
+    const mine = (ISK.sent[id]||[]).filter(x => Date.now() - x.at < 90e3);
+    ISK.msgs[id] = ms.concat(pend); ISK.sent[id] = (j.sent || []).concat(mine.filter(x => !(j.sent||[]).some(y => y.text===x.text))); }
   catch(e){ if (!quiet) ISK.err = e.message; }
   schedule();
 }
@@ -3517,7 +3520,7 @@ function renderIskra(){
           ${!lead && mine && !mt ? `<button type="button" class="btn small primary" data-iskmeet="1">Registrar meet</button>` : ""}
         </div></div>
       ${lead && c.by ? `<p class="mut small isk-by">Asignada por: ${esc(ISK_BY[c.by]||c.by)}${c.esc?" · la pasaron al manager":""}</p>` : ""}
-      <div class="cv-thread" id="iskThread">${!ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}"><p>${esc(x.t)}</p><span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`}</div>
+      <div class="cv-thread" id="iskThread">${!ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}${x.failed?" failed":""}"><p>${esc(x.t)}</p><span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`}</div>
       <div class="cv-compose">
         ${recent ? `<p class="notice warn isk-recent">${esc(iskWho(c.lastSender))} contestó hace ${esc(ago(c.lastSentAt))}. Revisa antes de mandar otro mensaje.</p>` : ""}
         ${canSend ? `<div class="cv-out"><textarea rows="3" data-iskin="1" placeholder="Tu respuesta… sale desde el número de STRIKD">${esc(ISK.draft[c.id]||"")}</textarea>
@@ -3560,12 +3563,17 @@ document.addEventListener("click", async e => {
   }
   if (e.target.closest("[data-isksend]")){
     const id = ISK.sel, text = (ISK.draft[id]||"").trim(); if (!id || !text || ISK.busy) return;
-    ISK.busy = true; ISK.err = ""; schedule();
+    // se ve al instante en el chat; se manda en segundo plano
     const key = ISK.idem && ISK.idem.text===text && ISK.idem.id===id ? ISK.idem.key : "strikd-" + id + "-" + Date.now().toString(36);
-    ISK.idem = {id, text, key};
-    try{ await iskFn()("reply", {conversation_id:id, text, idempotency_key:key}); ISK.draft[id] = ""; ISK.idem = null; await iskThread(id); iskLoad(true); }
-    catch(err){ ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : ""); }
-    finally{ ISK.busy = false; schedule(); }
+    ISK.idem = {id, text, key}; ISK.err = "";
+    const bub = {d:"out", t:text, at:Date.now(), st:"enviando…", local:key};
+    (ISK.msgs[id] ||= []).push(bub); ISK.draft[id] = "";
+    (ISK.sent[id] ||= []).push({by:meId(), text, at:bub.at});
+    const cv = ISK.convs.find(x => x.id===id); if (cv){ cv.last = text; cv.lastDir = "out"; cv.at = bub.at; cv.lastSender = meId(); cv.lastSentAt = bub.at; }
+    schedule();
+    try{ await iskFn()("reply", {conversation_id:id, text, idempotency_key:key}); bub.st = "enviado"; ISK.idem = null; setTimeout(() => iskThread(id, true), 2500); }
+    catch(err){ bub.st = "no se envió"; bub.failed = true; ISK.draft[id] = text; ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : "") + " · Tu texto sigue en la caja, dale Enviar otra vez."; }
+    finally{ schedule(); }
   }
 });
 function renderInbox(){
