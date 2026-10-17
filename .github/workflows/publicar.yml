@@ -13,9 +13,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Copiar a Alexalfaro009/CRM-STRIKD
         env:
           TOKEN: ${{ secrets.MIRROR_TOKEN }}
         run: |
           if [ -z "$TOKEN" ]; then echo "Falta el secreto MIRROR_TOKEN; no se copia."; exit 0; fi
-          git push --force "https://x-access-token:${TOKEN}@github.com/Alexalfaro009/CRM-STRIKD.git" HEAD:refs/heads/main
+          git push --force "https://x-access-token:${TOKEN}@github.com/Alexalfaro009/CRM-STRIKD.git" HEAD:refs/heads/main 2>&1 | sed "s/${TOKEN}/***/g"
+          test "${PIPESTATUS[0]}" = 0
