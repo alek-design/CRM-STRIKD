@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-17 23:49:36 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-17 23:52:27 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792280976">
+<link rel="stylesheet" href="/auth.css?v=1792281147">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792280976"></script>
+<script src="/claude-shim.js?v=1792281147"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -3481,14 +3481,18 @@ function renderMsgs(){
   const now = Date.now();
   const card = x => {
     const text = MSGD[x.k] ?? x.text, wa = waLink(x.m.phone, text), d = dueInfo(x.due, now);
+    // si el prospecto ya tiene chat en ISKRA, se manda directo desde el número de STRIKD
+    const ic = iskConvForPhone(x.m.phone), isk = !!(ic && iskFn() && (adminMode() || ic.owner===meId()));
     return `<div class="msg-card ${d.cls}">
       <div class="msg-top">${perfilIcon(x.m)}<b>${esc(x.m.prospect||"")}</b><span class="chip muted">${esc(x.label)}</span>${adminMode() && x.uid ? `<span class="mut small">${esc(nameOf(S.ps||{}, x.uid))}</span>` : ""}<div class="spacer"></div><span class="sema ${d.cls}"><i></i>${esc(d.txt)}</span></div>
       <textarea rows="3" data-mk="${x.k}">${esc(text)}</textarea>
       <div class="msg-acts"><span class="mut small">${x.m.phone ? esc(x.m.phone) : "Sin teléfono registrado"}</span><div class="spacer"></div>
         ${MSGD[x.k]!=null ? `<button type="button" class="linkbtn" data-mreset="${x.k}">Volver al sugerido</button>` : ""}
         <button type="button" class="btn small" data-mcopy="${x.k}">Copiar</button>
-        ${wa ? `<a class="btn small ghost" href="${esc(wa)}" target="_blank" rel="noopener" data-mopen="${x.k}">Abrir en WhatsApp</a>` : ""}
-        <button type="button" class="btn small primary" data-msent="${x.k}">Ya lo mandé</button></div>
+        ${isk ? `<button type="button" class="btn small primary" data-msendisk="${x.k}" data-conv="${esc(ic.id)}">Enviar por WhatsApp de STRIKD</button>
+                <button type="button" class="btn small" data-msent="${x.k}">Ya lo mandé</button>`
+              : `${wa ? `<a class="btn small ghost" href="${esc(wa)}" target="_blank" rel="noopener" data-mopen="${x.k}">Abrir en WhatsApp</a>` : ""}
+                <button type="button" class="btn small primary" data-msent="${x.k}">Ya lo mandé</button>`}</div>
     </div>`;
   };
   const later = items.filter(x => !x.today);
@@ -3496,6 +3500,19 @@ function renderMsgs(){
       ${later.length ? `<details class="msg-later"${S.msgLaterOpen?" open":""}><summary>Próximos (${later.length})</summary>${later.map(card).join("")}</details>` : ""}`
     : `<div class="empty">Sin mensajes pendientes. Cuando una tarea necesite un WhatsApp, aparece aquí ya redactado.</div>`;
 }
+function iskConvForPhone(phone){ const d = iskDigits(phone); return d ? ISK.convs.find(c => iskDigits(c.phone)===d && !c.disc) : null; }
+$("msgBox").addEventListener("click", async e => {
+  const b = e.target.closest("[data-msendisk]"); if (!b) return;
+  const k = b.dataset.msendisk, x = msgItems().find(y => y.k===k); if (!x) return;
+  const text = String(MSGD[k] ?? x.text ?? "").trim(); if (!text) return;
+  b.disabled = true; b.textContent = "Enviando…";
+  try{
+    await iskFn()("reply", {conversation_id:b.dataset.conv, text, idempotency_key:"porm-" + k.replace(/[^\w-]/g, "") + "-" + iskDigits(x.m.phone)});
+    const cv = ISK.convs.find(c => c.id===b.dataset.conv); if (cv){ cv.last = text; cv.lastDir = "out"; cv.at = Date.now(); cv.lastSender = meId(); cv.lastSentAt = Date.now(); }
+    const s0 = b.closest(".msg-card").querySelector("[data-msent]"); if (s0) s0.click(); // marca la tarea como hecha igual que "Ya lo mandé"
+    b.textContent = "✓ Enviado";
+  }catch(err){ b.disabled = false; b.textContent = "No se envió, reintenta"; b.title = err.message || ""; }
+});
 $("msgBox").addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.mk; if (k) MSGD[k] = e.target.value; });
 $("msgBox").addEventListener("toggle", e => { if (e.target.matches && e.target.matches("details.msg-later")) S.msgLaterOpen = e.target.open; }, true);
 $("msgBox").addEventListener("click", async e => {
