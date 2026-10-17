@@ -100,7 +100,8 @@
     const bm = document.getElementById("bootMsg"); if (bm) bm.hidden = true;
   }
   function headerChip(){
-    const acts = document.querySelector(".tabrow") || document.body;
+    const acts = document.getElementById("amAcct") || document.querySelector(".tabrow") || document.body;
+    const outBox = document.getElementById("amOut") || acts;
     const b = document.createElement("button"); b.className = "sg-out"; b.type = "button";
     b.textContent = `${me.name || me.email} · Salir`; b.onclick = () => sb.auth.signOut();
     {
@@ -115,10 +116,12 @@
         if (confirm("¿Desconectar tu Google Calendar? Ya no se crearán invitaciones automáticas.")){ await fetch("/api/google/status", {method:"POST", headers:{authorization:"Bearer " + t}}); location.reload(); }
       };
       acts.appendChild(g);
+      const ab = document.getElementById("acctBtn");
+      if (ab && !google.connected){ const d = document.createElement("span"); d.className = "dot"; d.title = "Conecta tu Google Calendar"; ab.appendChild(d); }
     }
     const c = document.createElement("button"); c.className = "sg-out"; c.type = "button"; c.textContent = "Cambiar contraseña";
     c.onclick = () => passwordScreen("Cambiar contraseña");
-    acts.appendChild(c); acts.appendChild(b);
+    acts.appendChild(c); b.textContent = document.getElementById("amOut") ? "Salir" : b.textContent; outBox.appendChild(b);
   }
 
   /* ---------- db: colecciones y documentos ---------- */
@@ -230,6 +233,7 @@
     async invalidate(){}
   };
   window.STRIKD_GOOGLE = () => google;
+  window.STRIKD_ME = () => me;
   // ISKRA (WhatsApp): {configured:false} | {data} | lanza {message, detail}
   window.STRIKD_ISKRA = async (op, input) => {
     const t = (await sb.auth.getSession()).data.session.access_token;
