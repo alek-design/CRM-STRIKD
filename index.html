@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 17:23:12 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 17:30:27 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792344192">
+<link rel="stylesheet" href="/auth.css?v=1792344627">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792344192"></script>
+<script src="/claude-shim.js?v=1792344627"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -46,6 +46,21 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+.tk-img.sm{width:84px;height:84px}
+.tk-sec{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px}
+.tk-sec b{font-size:11px;background:var(--raised);border-radius:999px;padding:1px 7px;letter-spacing:0}
+.tk-c{background:var(--raised);border-radius:12px;padding:9px 11px;display:grid;gap:4px}
+.tk-c.me{background:var(--surface);border:1px solid var(--line2)}
+.tk-c-h{display:flex;align-items:baseline;gap:8px}.tk-c-h b{font-size:13px}.tk-c-h span{font-size:11.5px;color:var(--muted)}
+.tk-c p{margin:0;font-size:14px;white-space:pre-wrap}
+.tk-cbox{display:grid;gap:8px}.tk-cbox textarea{width:100%}
+.tk-cbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tk-cf{position:relative;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:4px;border-radius:10px;background:var(--raised);border:1px solid var(--line2)}
+.tk-cfs:empty{display:none}.tk-cf-up{padding:8px 10px;color:var(--muted)}
+.tk-cf img{width:56px;height:56px;object-fit:cover;border-radius:8px;display:block}
+.tk-cf button{position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;border:1px solid var(--line2);background:var(--surface);color:var(--fg);font-size:13px;line-height:1;cursor:pointer;padding:0}
+.tk-editbtn{justify-self:start;font-size:13px}
+.tk-edit{display:grid;gap:10px;padding:10px;border:1px dashed var(--line2);border-radius:12px}
 .tk-img{display:block;width:120px;height:120px;border-radius:12px;overflow:hidden;border:1px solid var(--line2);background:var(--raised)}
 .tk-img img{width:100%;height:100%;object-fit:cover;display:block}
 .tk-files{align-items:center}
@@ -3758,6 +3773,9 @@ function taskAssignedByMe(){ const out = []; Object.entries(S.tasks||{}).forEach
 const TK_ST = {todo:"Por hacer", progress:"En progreso", review:"Esperando aprobación", changes:"Necesita ajustes", done:"Completado"};
 const tkSt = x => x.status || (x.doneAt ? "done" : "todo");
 const TKD = {}; let TK_OPEN = "";
+function tkCfHtml(k){ const d = TKD[k] || {}; return (d.cfiles||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name)}`}<button type="button" data-tkcfx="${k}|${i}" aria-label="Quitar">×</button></span>`).join("") + (d.cup ? `<span class="tk-cf tk-cf-up">Subiendo…</span>` : ""); }
+// pinta las fotos pendientes del comentario aunque la caja esté en uso (no espera al re-render)
+function tkCfPaint(k){ document.querySelectorAll(`[data-tkcfile="${CSS.escape(k)}"]`).forEach(inp => { const box = inp.closest(".tk-cbox"); const c = box && box.querySelector(".tk-cfs"); if (c) c.innerHTML = tkCfHtml(k); }); }
 const tkIsImg = f => /^image\//.test((f && f.type) || "") || /\.(png|jpe?g|gif|webp|heic|heif|avif)$/i.test((f && f.name) || "");
 function taskRow(u, id, x, lead, now){
   const k = `${u}/${id}`, st = tkSt(x), late = x.dueAt && x.dueAt < now && st!=="done" && st!=="review", open = TK_OPEN===k;
@@ -3767,15 +3785,28 @@ function taskRow(u, id, x, lead, now){
     : `<a class="tk-file" href="${esc(f.url)}" target="_blank" rel="noopener">${/pdf/i.test(f.type||f.name||"") ? "📄" : "📎"} ${esc(f.name||"archivo")}</a>`).join("");
   const thumb = (x.files||[]).find(tkIsImg);
   const d = TKD[k] || {};
+  const canEdit = !S.viewAs && (x.by===S.uid || S.isOwner);
+  const imgOrFile = f => tkIsImg(f) ? `<a class="tk-img sm" href="${esc(f.url)}" target="_blank" rel="noopener"><img src="${esc(f.url)}" alt="${esc(f.name||"imagen")}" loading="lazy"></a>` : `<a class="tk-file" href="${esc(f.url)}" target="_blank" rel="noopener">📄 ${esc(f.name||"archivo")}</a>`;
+  const thread = (x.comments||[]).map(c => `<div class="tk-c${c.by===S.uid?" me":""}"><div class="tk-c-h"><b>${esc(c.byName||"")}</b><span>${esc(fmtLocal(c.at||0))}</span></div>${c.text ? `<p>${esc(c.text)}</p>` : ""}${(c.files||[]).length ? `<div class="tk-files">${c.files.map(imgOrFile).join("")}</div>` : ""}</div>`).join("");
+  const cbox = `<div class="tk-cbox"><textarea rows="2" data-tkfb="${k}" placeholder="Escribe un comentario…">${esc(d.fb ?? "")}</textarea>
+      <div class="tk-files tk-cfs">${tkCfHtml(k)}</div>
+      <div class="tk-cbar"><label class="tk-up">${d.cup ? "Subiendo…" : "📷 Foto"}<input type="file" accept="image/*,application/pdf" data-tkcfile="${k}" hidden></label><button class="btn small" data-tkcmt="${k}">Comentar</button></div></div>`;
+  const editForm = `<div class="tk-edit">
+      <label class="f">Tarea<input data-tke="${k}|title" value="${esc(d.e_title ?? x.title)}"></label>
+      <label class="f">Detalle<textarea rows="2" data-tke="${k}|note">${esc(d.e_note ?? x.note ?? "")}</textarea></label>
+      <label class="f">Para cuándo<input type="date" data-tke="${k}|due" value="${esc(d.e_due ?? (x.dueAt ? new Date(x.dueAt - OFF).toISOString().slice(0,10) : ""))}"></label>
+      <div class="tk-files">${(x.files||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name||"archivo")}`}<button type="button" data-tkfdel="${k}|${i}" aria-label="Quitar">×</button></span>`).join("")}<label class="tk-up">${d.up ? "Subiendo…" : "📷 Agregar foto"}<input type="file" accept="image/*,application/pdf" data-tkfile="${k}" hidden></label></div>
+      <div class="tk-acts"><button class="btn small" data-tkecancel="${k}">Cancelar</button><button class="btn small primary" data-tkesave="${k}">Guardar cambios</button></div></div>`;
   const det = !open ? "" : `<div class="tk-det" data-tkbox="${k}">
-      ${x.note ? `<p class="tk-note">${esc(x.note)}</p>` : ""}
-      ${(x.comments||[]).length ? `<div class="tk-thread">${x.comments.map(c => `<div class="tk-c"><b>${esc(c.byName||"")}</b><span>${esc(fmtLocal(c.at||0))}</span><p>${esc(c.text)}</p></div>`).join("")}</div>` : ""}
-      ${lead ? `${x.reply ? `<div class="tk-rep"><b>Entrega</b><p>${esc(x.reply)}</p></div>` : `<p class="mut small">Aún no hay entrega escrita.</p>`}${files ? `<div class="tk-files">${files}</div>` : ""}
-          <label class="f">Comentario<textarea rows="2" data-tkfb="${k}" placeholder="Qué te pareció o qué hay que cambiar">${esc(d.fb ?? "")}</textarea></label>
-          <div class="tk-acts"><button class="btn small" data-tkcmt="${k}">Comentar</button><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button><button class="pr-x" data-tdel="${k}">Borrar</button></div>`
+      ${d.edit ? editForm : `${x.note ? `<p class="tk-note">${esc(x.note)}</p>` : ""}${files ? `<div class="tk-files">${files}</div>` : ""}${canEdit ? `<button type="button" class="linkbtn tk-editbtn" data-tkedit="${k}">✎ Editar tarea</button>` : ""}`}
+      ${lead ? `${x.reply ? `<div class="tk-rep"><b>Entrega</b><p>${esc(x.reply)}</p></div>` : ""}`
         : `<label class="f">Tu avance o entrega<textarea rows="3" data-tkrep="${k}" placeholder="Escribe lo que hiciste, links, dudas…">${esc(d.rep ?? x.reply ?? "")}</textarea></label>
-          <div class="tk-files">${files}<label class="tk-up">${d.up ? "Subiendo…" : "📎 Subir archivo"}<input type="file" data-tkfile="${k}" hidden></label></div>
-          <div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}${x.by === u ? `<button class="btn small primary" data-tkst="${k}|done">✓ Completar</button>` : `<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button>`}</div>`}
+          ${d.edit ? "" : `<div class="tk-files"><label class="tk-up">${d.up ? "Subiendo…" : "📎 Subir archivo o foto"}<input type="file" accept="image/*,application/pdf" data-tkfile="${k}" hidden></label></div>`}`}
+      <div class="tk-sec">Comentarios${(x.comments||[]).length ? ` <b>${x.comments.length}</b>` : ""}</div>
+      ${thread ? `<div class="tk-thread">${thread}</div>` : ""}
+      ${cbox}
+      ${lead ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button>${canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
+        : `<div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}${x.by === u ? `<button class="btn small primary" data-tkst="${k}|done">✓ Completar</button>` : `<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button>`}</div>`}
     </div>`;
   return `<div class="pr tkr st-${st}${late?" late":""}${open?" sel":""}" role="button" tabindex="0" data-tkopen="${k}">
       <span class="tk-ring st-${st}" aria-hidden="true">${st==="done" ? "✓" : ""}</span>
@@ -3852,14 +3883,22 @@ function taskOpen(){
   });
   setTimeout(() => $("tkTitle").focus(), 50);
 }
-document.addEventListener("input", e => { const r = e.target.closest("[data-tkrep]"), f = e.target.closest("[data-tkfb]");
+document.addEventListener("input", e => { const ed = e.target.closest("[data-tke]"); if (ed){ const [k, fld] = ed.dataset.tke.split("|"); (TKD[k] ||= {})["e_" + fld] = ed.value; }
+  const r = e.target.closest("[data-tkrep]"), f = e.target.closest("[data-tkfb]");
   if (r) (TKD[r.dataset.tkrep] ||= {}).rep = r.value; if (f) (TKD[f.dataset.tkfb] ||= {}).fb = f.value; });
+document.addEventListener("change", async e => { const ci = e.target.closest("[data-tkcfile]"); if (!ci || !ci.files[0]) return;
+  const k = ci.dataset.tkcfile, file = ci.files[0]; if (file.size > 15*1024*1024){ quickToast("El archivo pesa más de 15 MB"); return; }
+  const d = (TKD[k] ||= {}); d.cup = true; tkCfPaint(k);
+  try{ const assets = await claude.use("assets"); const up = await assets.upload(file); (d.cfiles ||= []).push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || ""}); }
+  catch(_){ quickToast("No se pudo subir la foto"); }
+  d.cup = false; ci.value = ""; tkCfPaint(k); });
+document.addEventListener("change", async e => { const ed = e.target.closest('input[type="date"][data-tke]'); if (ed){ const [k] = ed.dataset.tke.split("|"); (TKD[k] ||= {}).e_due = ed.value; } });
 document.addEventListener("change", async e => { const inp = e.target.closest("[data-tkfile]"); if (!inp || !inp.files[0]) return;
   const k = inp.dataset.tkfile, file = inp.files[0], [u, id] = k.split("/"), x = ((S.tasks||{})[u]||{})[id]; if (!x) return;
   if (file.size > 15*1024*1024){ quickToast("El archivo pesa más de 15 MB"); return; }
   (TKD[k] ||= {}).up = true; inp.blur(); schedule();
   try{ const assets = await claude.use("assets"); const up = await assets.upload(file);
-    await taskSave(k, {files:(x.files||[]).concat([{name:file.name, url:up.url || ("/_blob/" + up.id), type:file.type, at:Date.now()}])}); quickToast("✓ Archivo subido"); }
+    await taskSave(k, {files:(x.files||[]).concat([{name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || "", at:Date.now(), by:S.uid}])}); quickToast("✓ Archivo subido"); }
   catch(_){ quickToast("No se pudo subir el archivo"); }
   TKD[k].up = false; schedule(); });
 document.addEventListener("click", async e => {
@@ -3874,8 +3913,25 @@ document.addEventListener("click", async e => {
     if (st==="changes" && !(d.fb||"").trim()){ quickToast("Escribe qué hay que ajustar"); return; }
     const ok = await taskSave(k, patch); if (ok){ tkWho(k, x0, st, (d.fb||"").trim()); delete TKD[k]; if (st==="done" || st==="review") TK_OPEN = ""; quickToast("✓ " + TK_ST[st]); schedule(); } return; }
   const cm = e.target.closest("[data-tkcmt]"); if (cm){ e.stopPropagation(); const k = cm.dataset.tkcmt, d = TKD[k] || {}, x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
-    if (!(d.fb||"").trim()){ quickToast("Escribe el comentario"); return; }
-    if (await taskSave(k, {comments:(x0.comments||[]).concat([{by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], text:d.fb.trim(), at:Date.now()}])})){ tkWho(k, x0, "comment", d.fb.trim()); delete TKD[k]; quickToast("✓ Comentario enviado"); } return; }
+    const text = (d.fb||"").trim(), cf = d.cfiles || [];
+    if (!text && !cf.length){ quickToast("Escribe el comentario o agrega una foto"); return; }
+    if (d.cup){ quickToast("Espera a que termine de subir"); return; }
+    if (await taskSave(k, {comments:(x0.comments||[]).concat([{by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], text, at:Date.now(), ...(cf.length ? {files:cf} : {})}])})){ tkWho(k, x0, "comment", text || "📷 Foto"); d.fb = ""; d.cfiles = []; quickToast("✓ Comentario enviado"); schedule(); } return; }
+  const cfx = e.target.closest("[data-tkcfx]"); if (cfx){ e.stopPropagation(); const [k, i] = cfx.dataset.tkcfx.split("|"); ((TKD[k]||{}).cfiles||[]).splice(Number(i), 1); tkCfPaint(k); return; }
+  const te = e.target.closest("[data-tkedit]"); if (te){ e.stopPropagation(); (TKD[te.dataset.tkedit] ||= {}).edit = true; schedule(); return; }
+  const tc = e.target.closest("[data-tkecancel]"); if (tc){ e.stopPropagation(); const d = TKD[tc.dataset.tkecancel] || {}; d.edit = false; delete d.e_title; delete d.e_note; delete d.e_due; schedule(); return; }
+  const fdel = e.target.closest("[data-tkfdel]"); if (fdel){ e.stopPropagation(); const [k, i] = fdel.dataset.tkfdel.split("|"), x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
+    const fl = (x0.files||[]).slice(); fl.splice(Number(i), 1); await taskSave(k, {files:fl}); return; }
+  const es = e.target.closest("[data-tkesave]"); if (es){ e.stopPropagation(); const k = es.dataset.tkesave, d = TKD[k] || {}, x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
+    const patch = {};
+    if (d.e_title !== undefined){ const t = d.e_title.trim(); if (!t){ quickToast("La tarea necesita un título"); return; } if (t !== x0.title) patch.title = t; }
+    if (d.e_note !== undefined && d.e_note.trim() !== (x0.note||"")) patch.note = d.e_note.trim();
+    if (d.e_due !== undefined){ const du = d.e_due ? Date.parse(d.e_due + "T18:00:00-05:00") : 0; if (du !== (x0.dueAt||0)) patch.dueAt = du; }
+    if (Object.keys(patch).length){ patch.editedAt = Date.now(); if (!(await taskSave(k, patch))) return;
+      const [u] = k.split("/"); if (u !== S.uid) tkNotify([u], `✎ ${String(nameOf(S.ps||{}, S.uid)).split(" (")[0]} editó una tarea`, patch.title || x0.title, k, x0.by); }
+    d.edit = false; delete d.e_title; delete d.e_note; delete d.e_due; quickToast("✓ Tarea actualizada"); schedule(); return; }
+  const rdel = e.target.closest("[data-tdel]"); if (rdel){ e.stopPropagation(); if (rdel.dataset.armed!=="1"){ rdel.dataset.armed = "1"; rdel.textContent = "¿Borrar?"; return; } const [u,id] = rdel.dataset.tdel.split("/");
+    try{ await db.doc(`meets/${u}/tasks/${id}`).delete(); delete S.tasks[u][id]; TK_OPEN = ""; schedule(); quickToast("Tarea borrada"); }catch(_){ quickToast("No se pudo borrar"); } return; }
   const sv = e.target.closest("[data-tksave]"); if (sv){ e.stopPropagation(); const k = sv.dataset.tksave, d = TKD[k] || {}; if (await taskSave(k, {reply:d.rep ?? ""})){ delete TKD[k]; quickToast("✓ Guardado"); } return; }
   if (e.target.closest(".tk-det")) return;
   const op = e.target.closest("[data-tkopen]"); if (op){ TK_OPEN = TK_OPEN===op.dataset.tkopen ? "" : op.dataset.tkopen; schedule(); return; }
