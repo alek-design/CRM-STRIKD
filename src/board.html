@@ -677,6 +677,13 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+.lite-note{font-size:12.5px;color:var(--muted);margin:6px 2px 0}.lite-note .linkbtn{font-size:12.5px}
+.tl{margin:0 0 18px}
+.tl-p summary{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;list-style:none;border-top:1px solid var(--line)}.tl-p:first-child summary{border-top:0}.tl-p summary::-webkit-details-marker{display:none}
+.tl-p summary b{flex:1;font-size:15px;font-weight:600}.tl-n{font-size:12.5px;color:var(--muted2);font-weight:600;display:inline-flex;align-items:center;gap:5px}.tl-n::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--bad);opacity:.85}
+.tl-p[open] .pr-chev{transform:rotate(90deg)}
+.tl-i{display:flex;gap:10px;justify-content:space-between;padding:8px 14px 8px 24px;font-size:13px;border-top:1px dashed var(--line)}.tl-i small{color:var(--muted);white-space:nowrap}
+
 /* Meets: acciones según el momento */
 #dayPlan .pl-item .ma-row{grid-column:3/-1;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
 @media (max-width:520px){#dayPlan .pl-item .ma-row{grid-column:2/-1}}
@@ -1299,6 +1306,7 @@ body.mob-open header.top{z-index:31}
   <div hidden><select id="adminWeek"></select><select id="adminPerson"></select><select id="adminStatus"><option value="todo"></option></select><div id="adminList"></div><span id="pendingCount"></span><span id="tabAdmin"></span></div>
   <section class="view" id="view-flow" hidden>
     <div class="row"><h2>Equipo</h2><div class="spacer"></div><span class="mono" id="flowSum"></span></div>
+    <div id="teamLate"></div>
     <div id="teamTasks"></div>
     <div id="teamChart"></div>
     <div class="row">
@@ -3299,8 +3307,8 @@ function renderPlan(){
   evs.forEach(e => { if (e.label2) e.label = e.label2; });
   evs.sort((a,b) => a.ts - b.ts);
   // untimed: what you have to do today (overdue first)
-  const tks = [];
-  owners.forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
+  const tks = [], headLite = headIsLite();
+  if (!headLite) owners.forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
     tasksFor(uid,id,m,now).filter(t => ownTask(t) && t.due <= eod).slice(0,1).forEach(t => tks.push(t));
   }));
   tks.sort((a,b) => a.due - b.due);
@@ -3381,10 +3389,11 @@ function renderPlan(){
   // tareas que asignan el Head o el Manager: salen todos los días hasta que se marcan como hechas
   const myT = taskList(meId()).filter(([,x]) => tkSt(x)!=="done" && (!x.dueAt || x.dueAt <= eod || tkSt(x)!=="todo"));
   const tLate = myT.filter(([,x]) => x.dueAt && x.dueAt < now && tkSt(x)!=="review").length;
-  const assigned = admin && !S.viewAs ? taskAssignedByMe() : [];
+  const assigned = admin && !S.viewAs ? taskAssignedByMe().filter(([,,x]) => !headLite || x.by===S.uid) : [];
   const nRev = assigned.filter(([,,x]) => tkSt(x)==="review").length;
   const taskHtml = (myT.length ? `<section class="pg2"><div class="pg2-h"><span>Tareas</span><b>${myT.length}</b>${tLate?`<em>${tLate} tarde</em>`:""}</div><div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
     + (assigned.some(([,,x]) => tkSt(x)==="review") ? `<section class="pg2"><div class="pg2-h"><span>Por aprobar</span><b>${nRev}</b></div><div class="pg2-card">${assigned.filter(([,,x]) => tkSt(x)==="review").map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
+  if (headLite) todo += `<p class="lite-note">Lo operativo del equipo (validar, resultados, skeletons) lo lleva ${esc(headLiteMgrs())}. Los atrasos de cada quien los ves en <button type="button" class="linkbtn" data-gotab="board">Equipo</button>.</p>`;
   todo = taskHtml + todo + (totalPend > PEND_CAP ? `<button type="button" class="pend-all" data-allpend="1">${allPend ? "Ver menos" : `Ver todos los pendientes (${totalPend})`}</button>` : "");
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
   { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length + nRev, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
@@ -3943,6 +3952,19 @@ function weeklySeries(uids, itemsByUid){
   const cut = a => a.slice(st);
   return {weeks:cut(weeks), meets:cut(meets), pts:cut(pts), tom:cut(tom), T:cut(T)};
 }
+/* Head con Manager asignado: sus pendientes son solo lo suyo (tareas, aprobaciones de lo que él asignó); lo operativo es del Manager */
+function headIsLite(){ return S.isOwner && !S.viewAs && !S.viewMgr && Object.keys(S.members||{}).some(u => roleOf(u)==="manager"); }
+function headLiteMgrs(){ return Object.keys(S.members||{}).filter(u => roleOf(u)==="manager").map(u => String(nameOf(S.ps||{}, u)).split(" (")[0]).join(" y ") || "el Manager"; }
+/* Equipo: atrasados de cada AM (sus propios pendientes), para saber a quién empujar */
+function renderTeamLate(){
+  const box = $("teamLate"); if (!box || !adminMode() || busyIn(box)) return;
+  const now = Date.now();
+  const rows = Object.keys(S.team||{}).map(u => { const late = [];
+    Object.entries((S.all||{})[u]||{}).forEach(([id,m]) => { const t = tasksFor(u,id,m,now).filter(x => x.who==="member" && x.due < now)[0]; if (t) late.push(t); });
+    return [u, late.sort((a,b) => a.due - b.due)]; }).filter(([,l]) => l.length).sort((a,b) => b[1].length - a[1].length);
+  box.innerHTML = rows.length ? `<section class="pg2 tl"><div class="pg2-h"><span>Atrasados del equipo</span><b>${rows.reduce((a,[,l]) => a + l.length, 0)}</b></div><div class="pg2-card">${rows.map(([u,l]) => `<details class="tl-p"><summary><b>${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</b><span class="tl-n">${l.length} atrasado${l.length===1?"":"s"}</span><span class="pr-chev">›</span></summary>
+      ${l.map(t => { const h = Math.round((now - t.due)/HR); return `<div class="tl-i"><span>${esc(t.title)}</span><small>${h < 24 ? h + " h" : Math.round(h/24) + " d"}</small></div>`; }).join("")}</details>`).join("")}</div></section>` : "";
+}
 /* Equipo: todas las tareas asignadas (abiertas y completadas recientes); en Pendientes solo salen las que esperan tu aprobación */
 function renderTeamTasks(){
   const box = $("teamTasks"); if (!box || !adminMode() || busyIn(box)) return;
@@ -3952,7 +3974,7 @@ function renderTeamTasks(){
     ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>` : "";
 }
 function renderTeamChart(){
-  renderTeamTasks();
+  renderTeamLate(); renderTeamTasks();
   const box = $("teamChart"); if (!box || !adminMode()) return;
   const pick = $("flowPerson") && $("flowPerson").value, one = pick && S.team[pick];
   const uids = one ? [pick] : Object.keys(S.team);
