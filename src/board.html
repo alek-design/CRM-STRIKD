@@ -666,6 +666,29 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* Agenda en iPhone: una sola fecha, semana con flechas, pestañas Meets / Pendientes */
+@media (max-width:640px){
+  #view-agenda .ag-top h2{font-size:28px;letter-spacing:-.02em}
+  #view-agenda .ag-new{padding:8px 14px;font-size:14px}
+  .ap{gap:12px}
+  .ap-week{display:grid;grid-template-columns:24px 1fr 24px;align-items:center;gap:2px}
+  .ap-week .ap-nav{width:24px;height:44px;border:0;background:none;font-size:22px;color:var(--muted);padding:0}
+  .ap-week .ap-strip{gap:2px}
+  .ap-d span{font-size:10.5px}
+  .ag-seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border-radius:12px;background:var(--raised);border:1px solid var(--line)}
+  .ag-seg button{font:inherit;font-size:14px;font-weight:600;border:0;background:none;color:var(--muted);padding:9px 6px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .ag-seg button b{color:inherit;font-weight:700}
+  .ag-seg button i{white-space:nowrap;font-style:normal;font-size:11px;font-weight:700;color:#fff;background:var(--bad);border-radius:999px;padding:1px 7px}
+  .ag-seg button.on{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  #view-agenda #dayPlan{margin-top:-4px}
+  #view-agenda #dayPlan .pl-head{display:none}
+  #view-agenda #dayPlan .pl-cols{display:block}
+  #view-agenda #dayPlan .pl-col h3{display:none}
+  #view-agenda #dayPlan.seg-meets .pl-col:nth-child(2),#view-agenda #dayPlan.seg-tasks .pl-col:nth-child(1){display:none}
+  #view-agenda .plan{gap:0}
+}
+.pg-l .pg-row:first-child{border-top:0}
+
 /* Hoy en la Agenda: encabezado corto y pendientes agrupados por acción */
 .plan .pl-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .plan .pl-ttl{display:flex;align-items:baseline;gap:10px}.plan .pl-ttl h2{margin:0}
@@ -2985,12 +3008,18 @@ let AG_OFF = 0, AG_DAY = null;
 const isPhone = () => matchMedia("(max-width:640px)").matches;
 function renderAgenda(){
   const box = $("agendaCal"); if (!box) return;
-  box.innerHTML = isPhone() ? agendaPhone(AG_OFF) : calHtml(AG_OFF, null, null);
-  const todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
-  $("dayPlan").hidden = isPhone() && AG_DAY && AG_DAY !== todayStr; // en celular: hoy = tu plan (meets + pendientes); otro día = su lista
+  const phone = isPhone(), todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
+  box.innerHTML = phone ? agendaPhone(AG_OFF) : calHtml(AG_OFF, null, null);
+  const dp = $("dayPlan");
+  dp.hidden = phone && AG_DAY && AG_DAY !== todayStr; // en celular: hoy = tu plan; otro día = su lista
+  dp.classList.toggle("seg-meets", phone && AG_SEG==="meets"); dp.classList.toggle("seg-tasks", phone && AG_SEG==="tasks");
+  const h = document.querySelector("#view-agenda .ag-top h2");
+  if (h){ const d = AG_DAY || todayStr, [y,mm] = d.split("-").map(Number); h.textContent = phone ? MONTHS_L[mm-1].replace(/^./, c => c.toUpperCase()) + (y !== new Date().getFullYear() ? " " + y : "") : "Agenda"; }
   const tb = $("tabBoard"); if (tb) tb.textContent = adminMode() ? "Equipo" : "Ranking";
 }
-// iPhone: tira de 7 días + lista del día elegido (la cuadrícula semanal no cabe)
+const MONTHS_L = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+let AG_SEG = "meets";
+// iPhone: mes arriba, semana con flechas a los lados, y dos pestañas: Meets / Pendientes
 function agendaPhone(offset){
   const todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
   const t0 = new Date(todayStr + "T00:00:00Z"), dow = (t0.getUTCDay()+6)%7;
@@ -3001,31 +3030,30 @@ function agendaPhone(offset){
   const evs = calEvents().map(e => { const ts = meetTs(e.at); return {...e, ts, end:(e.endTs && e.endTs > ts ? e.endTs : ts + MEET_MIN)}; }).filter(e => !isNaN(e.ts)).sort((a,b) => a.ts - b.ts);
   for (let i = 0; i < evs.length; i++) for (let j = i+1; j < evs.length && evs[j].ts < evs[i].end + 10*60e3; j++){ evs[i].clash = true; evs[j].clash = true; }
   const by = {}; evs.forEach(e => (by[e.at.slice(0,10)] = by[e.at.slice(0,10)] || []).push(e));
-  const [,m1,d1] = days[0].split("-").map(Number), [,m7,d7] = days[6].split("-").map(Number);
   const KIND = {pitch:"Pitch", skel:"Meet de skeleton", build:"Lanzamiento", gcal:"Tu calendario"};
   const strip = days.map((d,i) => { const n = (by[d]||[]).length, c = (by[d]||[]).some(e => e.clash);
-    return `<button type="button" class="ap-d${d===AG_DAY?" on":""}${d===todayStr?" today":""}" data-agday="${d}"><span>${DOW[i]}</span><b>${Number(d.slice(8))}</b><i class="${c?"x":""}">${n?"•".repeat(Math.min(n,3)):""}</i></button>`; }).join("");
-  const list = (by[AG_DAY]||[]), nowTs = Date.now();
-  const top = `<div class="ap-top"><button type="button" class="ap-nav" data-k="__tab" data-calnav="-1" aria-label="Semana anterior">‹</button><b>${d1} ${MONTHS[m1-1]} – ${d7} ${MONTHS[m7-1]}</b><button type="button" class="ap-nav" data-k="__tab" data-calnav="1" aria-label="Semana siguiente">›</button></div>`;
-  if (AG_DAY === todayStr) return `<div class="ap">${top}<div class="ap-strip">${strip}</div></div>`;
-  // pendientes que vencen ese día (separados de los meets)
-  const d0 = Date.parse(AG_DAY + "T00:00:00-05:00"), d1e = d0 + DAY;
-  const tks = []; planOwners().forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
-    tasksFor(uid, id, m, nowTs).filter(t => ownTask(t) && t.due >= d0 && t.due < d1e).slice(0,1).forEach(t => tks.push({...t, m})); }));
-  tks.sort((a,b) => a.due - b.due);
-  const tkHtml = tks.length ? `<h3 class="ap-h ap-h2">Pendientes <span>${tks.length}</span></h3><div class="ap-list">${tks.map(t => `<div class="ap-ev task"><span class="ap-t">${esc(fmtLocal(t.due).split(", ")[1]||"")}</span><span class="ap-b"><b>${esc(t.title)}</b><span>${esc((t.m && t.m.prospect) || "")}${adminMode() ? ` · ${esc(nameOf(S.ps||{}, t.uid))}` : ""}</span></span></div>`).join("")}</div>` : "";
-  const [ay,am,ad] = AG_DAY.split("-").map(Number), wd = DOWL[new Date(AG_DAY+"T00:00:00Z").getUTCDay()];
-  const rows = list.length ? list.map(e => `<div class="ap-ev ${e.kind}${e.clash?" clash":""}${e.end < nowTs?" past":""}">
-      <span class="ap-t">${esc(e.at.split("T")[1])}</span>
-      <span class="ap-b"><b>${esc(e.label.split(" · ")[1] || e.label)}</b><span>${esc(KIND[e.kind]||"")}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""}${e.clash?` · <em>encimado</em>`:""}</span></span></div>`).join("")
-    : `<p class="ap-empty">Sin meets este día</p>`;
-  return `<div class="ap">${top}
-    <div class="ap-strip">${strip}</div>
-    <h3 class="ap-h">${wd.replace(/^./, c => c.toUpperCase())} ${ad} de ${MONTHS[am-1]} <span>${list.length} ${list.length===1?"meet":"meets"}</span></h3>
-    <div class="ap-list">${rows}</div>
-    ${tkHtml}
-  </div>`;
+    return `<button type="button" class="ap-d${d===AG_DAY?" on":""}${d===todayStr?" today":""}" data-agday="${d}"><span>${d===todayStr ? "Hoy" : DOW[i]}</span><b>${Number(d.slice(8))}</b><i class="${c?"x":""}">${n?"•".repeat(Math.min(n,3)):""}</i></button>`; }).join("");
+  const week = `<div class="ap-week"><button type="button" class="ap-nav" data-k="__tab" data-calnav="-1" aria-label="Semana anterior">‹</button><div class="ap-strip">${strip}</div><button type="button" class="ap-nav" data-k="__tab" data-calnav="1" aria-label="Semana siguiente">›</button></div>`;
+  const nowTs = Date.now(), isToday = AG_DAY === todayStr;
+  // conteos del día para las pestañas
+  let nMeets, nTasks, nLate = 0, body = "";
+  if (isToday){
+    const pc = S.planCounts || {meets:0, tasks:0, late:0}; nMeets = pc.meets; nTasks = pc.tasks; nLate = pc.late;
+  } else {
+    const list = by[AG_DAY] || [];
+    const d0 = Date.parse(AG_DAY + "T00:00:00-05:00"), d1e = d0 + DAY;
+    const tks = []; planOwners().forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
+      tasksFor(uid, id, m, nowTs).filter(t => ownTask(t) && t.due >= d0 && t.due < d1e).slice(0,1).forEach(t => tks.push({...t, m})); }));
+    tks.sort((a,b) => a.due - b.due);
+    nMeets = list.length; nTasks = tks.length;
+    body = AG_SEG==="meets"
+      ? (list.length ? `<div class="ap-list">${list.map(e => `<div class="ap-ev ${e.kind}${e.clash?" clash":""}${e.end < nowTs?" past":""}"><span class="ap-t">${esc(e.at.split("T")[1])}</span><span class="ap-b"><b>${esc(e.label.split(" · ")[1] || e.label)}</b><span>${esc(KIND[e.kind]||"")}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""}${e.clash?` · <em>encimado</em>`:""}</span></span></div>`).join("")}</div>` : `<p class="ap-empty">Sin meets este día</p>`)
+      : (tks.length ? `<div class="pg"><div class="pg-l">${tks.map(t => `<div class="pg-row"><span class="pg-who"><b>${esc(t.title)}</b>${adminMode()?`<small>${esc(String(nameOf(S.ps||{}, t.uid)).split(" ")[0])}</small>`:""}</span><span class="pg-due">${esc(fmtLocal(t.due).split(", ")[1]||"")}</span></div>`).join("")}</div></div>` : `<p class="ap-empty">Nada vence este día</p>`);
+  }
+  const seg = `<div class="ag-seg" role="tablist"><button type="button" data-agseg="meets" class="${AG_SEG==="meets"?"on":""}">Meets <b>${nMeets}</b></button><button type="button" data-agseg="tasks" class="${AG_SEG==="tasks"?"on":""}">Pendientes <b>${nTasks}</b>${nLate?`<i title="${nLate} atrasados">${nLate}</i>`:""}</button></div>`;
+  return `<div class="ap">${week}${seg}${body}</div>`;
 }
+document.addEventListener("click", e => { const b = e.target.closest("[data-agseg]"); if (b){ AG_SEG = b.dataset.agseg; renderAgenda(); } });
 document.addEventListener("click", e => { const b = e.target.closest("[data-agday]"); if (b){ AG_DAY = b.dataset.agday; renderAgenda(); } if (e.target.closest("[data-agnew]")) openBook(null); });
 addEventListener("resize", () => { if (S.tab === "agenda") renderAgenda(); });
 document.addEventListener("click", e => {
@@ -3141,6 +3169,7 @@ function renderPlan(){
     + (admin ? "" : Object.values(vipItems(meId())).filter(x => (x.status==="interesado" || x.status==="agendo") && x.statusAt && now - x.statusAt < 3*864e5).slice(0, 3).map(x => `<button type="button" class="pl-item task ok" data-gotab="perf"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b>${PICON[3]} ${esc(x.prospect)} ${x.status==="agendo" ? "ya agendó meet con Mich" : "está interesado"}</b><small>Una de tus propuestas para Mich</small></span><span class="sema ok"><i></i>Nuevo</span></button>`).join(""))
     + (iskOpen ? `<button type="button" class="pl-item task soon" data-gomsgs="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Tienes ${iskOpen} chat${iskOpen===1?"":"s"} de WhatsApp sin responder</b><small>Contéstalos en Mensajes</small></span><span class="sema soon"><i></i>Hoy</span></button>` : "");
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
+  { const late0 = tks.filter(t => t.due < now).length, pc = {meets:evs.length, tasks:tks.length, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
   const late = tks.filter(t => t.due < now).length;
   box.innerHTML = `<section class="plan">
     <div class="pl-head"><div class="pl-ttl"><h2>Hoy</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span></div>
