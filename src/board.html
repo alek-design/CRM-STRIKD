@@ -683,7 +683,9 @@ label.f em{color:var(--bad);font-style:normal}
 .mi-st{flex:none;font-size:12.5px;font-weight:700;color:var(--ok-fg)}
 .mi-ic{flex:none;width:36px;height:36px;border-radius:50%;border:1px solid var(--line2);background:none;color:var(--fg);font-size:16px;cursor:pointer}
 .mi-toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;gap:14px;align-items:center;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:calc(100% - 32px)}
-.mi-toast{width:max-content}.mi-toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.mi-toast button{flex:none;font:inherit;font-weight:700;background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer}
+.mi-toast{width:max-content}
+#viewAsSel{max-width:100%;box-sizing:border-box}.va-role{display:grid!important;grid-template-columns:repeat(3,auto);gap:2px}.va-role button{white-space:nowrap;padding-inline:12px}
+@media (max-width:640px){.va-role{grid-template-columns:repeat(3,1fr);width:100%;box-sizing:border-box}.va-role button{font-size:12.5px;padding-inline:4px;justify-content:center;text-align:center}}.mi-toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.mi-toast button{flex:none;font:inherit;font-weight:700;background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer}
 @media (min-width:641px){.mi-toast{bottom:24px}}
 
 /* iPhone: sin barra superior; el timer vive en Hoy y en Más */
@@ -942,8 +944,9 @@ body.mob-open header.top{z-index:31}
   <div id="mgrNeedsEdit" class="notice warn" hidden>Tienes el rol de Creator Partnerships Manager. Para ver a tu equipo, pide al Head acceso de <b>Editor</b> a esta página.</div>
   <div id="viewAsBar" class="notice row" hidden>
     <span>Vista de usuario: así ve la página</span>
+    <div class="subnav va-role" id="vaRole"><button type="button" data-varole="am">AM</button><button type="button" data-varole="manager">Manager</button><button type="button" data-varole="influencer">Influencer</button></div>
     <select class="inline" id="viewAsSel" aria-label="Persona"></select>
-    <span class="mono">Lo que registres aquí queda a nombre de esta persona</span>
+    <span class="mono" id="vaNote">Lo que registres aquí queda a nombre de esta persona</span>
     <div class="spacer"></div>
     <button class="btn small primary" id="viewAsExit">Volver a admin</button>
   </div>
@@ -1405,7 +1408,7 @@ function islandItems(){
   const more = am
     ? [["perf","trophy","Mi desempeño"],["settings","gear","Ajustes"]]
     : [["flow","cols","Pipeline",Number($("lateCount").textContent)||0],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
-       ...(S.isOwner && !S.viewAs ? [["viewas","eye","Vista de usuario"]] : []),["settings","gear","Ajustes"]];
+       ...(S.isOwner && !S.viewAs && !S.viewMgr ? [["viewas","eye","Vista de usuario"]] : []),["settings","gear","Ajustes"]];
   return {main, more};
 }
 function renderIsland(){
@@ -1514,9 +1517,11 @@ async function render(){
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
   syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderIsland(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
-    const h = Object.keys(S.team).concat(S.isOwner ? Object.keys(S.members).filter(u => roleOf(u)==="influencer") : []).map(id=>`<option value="${id}">${esc(nameOf(ps,id))}${roleOf(id)==="influencer"?" · Influencer Outreach":""}</option>`).join("");
+    const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
-    if (S.viewAs) sel.value = S.viewAs;
+    if (S.viewAs || S.viewMgr) sel.value = S.viewAs || S.viewMgr;
+    document.querySelectorAll("#vaRole [data-varole]").forEach(b => b.classList.toggle("on", b.dataset.varole===VA.role));
+    $("vaNote").textContent = VA.role==="manager" ? "Ve a su equipo como lo vería el Manager" : VA.role==="influencer" ? "Lo que marque aquí queda a nombre de esta persona" : "Lo que registres aquí queda a nombre de esta persona";
     $("viewAsBtn").disabled = !Object.keys(S.team).length;
   }
   renderRules();
@@ -3207,6 +3212,7 @@ function computeTeam(){
   const ams = Object.keys(S.members).filter(u => roleOf(u)==="am");
   let ids = ams;
   if (S.isLead && !S.isOwner) ids = ams.filter(u => !mgrOf(u) || mgrOf(u)===S.uid);
+  if (S.viewMgr && S.viewMgr!=="__mgr") ids = ams.filter(u => !mgrOf(u) || mgrOf(u)===S.viewMgr);
   S.team = Object.fromEntries(ids.map(u => [u, S.members[u]]));
 }
 function leadNameFor(uid){
@@ -4572,13 +4578,35 @@ function enterViewAs(uid){
   schedule();
 }
 function exitViewAs(){
-  S.viewAs = null; setFormEnabled(true);
+  S.viewAs = null; S.viewMgr = null; setFormEnabled(true);
   $("viewAsBar").hidden = true; $("adminActs").hidden = false; $("viewAsBtn").hidden = !S.isOwner; Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]});
   $("tabMine").hidden = true; $("tabPerf").hidden = true; if (S.tab==="perf") showTab("board"); $("tabOrg").hidden = !S.isOwner; $("tabAdmin").hidden = false; $("tabFlow").hidden = false; $("tabAgenda").hidden = false; $("tabFunnel").hidden = false; $("tabVip").hidden = false; $("tabWa").hidden = false;
   showTab("board"); schedule();
 }
-$("viewAsBtn").addEventListener("click", () => enterViewAs($("viewAsSel").value || Object.keys(S.team)[0]));
-$("viewAsSel").addEventListener("change", e => { S.viewAs = e.target.value; resetForm(); Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]}); iskLoad(true); schedule(); });
+/* Vista de usuario por rol: Account Manager, Manager o Influencer Outreach */
+const VA = {role:"am"};
+function vaPeople(r){
+  const all = Object.keys(S.members||{});
+  if (r==="manager"){ const m = all.filter(u => roleOf(u)==="manager"); return m.length ? m : ["__mgr"]; }
+  if (r==="influencer") return all.filter(u => roleOf(u)==="influencer");
+  return all.filter(u => roleOf(u)==="am" && u!==S.uid);
+}
+function enterVA(role, uid){
+  VA.role = role;
+  uid = uid || vaPeople(role)[0];
+  if (!uid){ alert(role==="influencer" ? "Aún no hay nadie con el rol Influencer Outreach. Asígnalo en el Organigrama." : "Aún no hay nadie con ese rol."); return schedule(); }
+  if (role==="manager"){
+    if (S.viewAs) exitViewAs();
+    S.viewMgr = uid; $("viewAsBar").hidden = false; $("viewAsBtn").hidden = true; $("tabOrg").hidden = true;
+    showTab("board"); return schedule();
+  }
+  if (S.viewMgr){ S.viewMgr = null; }
+  if (S.viewAs){ S.viewAs = uid; resetForm(); Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]}); iskLoad(true); $("tabMine").hidden = false; $("tabPerf").hidden = false; showTab(role==="influencer" ? "mich" : "board"); return schedule(); }
+  enterViewAs(uid);
+}
+$("viewAsBtn").addEventListener("click", () => enterVA(VA.role, null));
+$("viewAsSel").addEventListener("change", e => enterVA(VA.role, e.target.value));
+$("vaRole").addEventListener("click", e => { const b = e.target.closest("[data-varole]"); if (b) enterVA(b.dataset.varole, null); });
 $("viewAsExit").addEventListener("click", exitViewAs);
 
 /* ---------- Excel export ---------- */
