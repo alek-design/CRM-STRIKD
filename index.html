@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 15:55:13 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 15:59:05 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792338913">
+<link rel="stylesheet" href="/auth.css?v=1792339145">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792338913"></script>
+<script src="/claude-shim.js?v=1792339145"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -41,6 +41,35 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+#view-flow .tld{margin:0 0 26px}
+#view-flow .tld .pg2-h{font-size:18px;font-weight:800;letter-spacing:-.01em;text-transform:none;color:var(--fg);margin:0 2px 10px}
+#view-flow .tld-nav{margin-left:auto;display:inline-flex;align-items:center;gap:2px;font-size:13px;font-weight:600;color:var(--muted)}
+#view-flow .tld-nav em{font-style:normal;min-width:96px;white-space:nowrap;text-align:center;color:var(--fg2)}
+#view-flow .tld-nav button{font:inherit;font-size:18px;line-height:1;width:30px;height:30px;border-radius:50%;border:1px solid var(--line2);background:var(--surface);color:var(--fg);cursor:pointer}
+#view-flow .tld-p summary{list-style:none;cursor:pointer;padding:12px 14px;border-top:1px solid var(--line);display:grid;gap:8px}
+#view-flow .tld-p:first-child summary{border-top:0}
+#view-flow .tld-p summary::-webkit-details-marker{display:none}
+#view-flow .tld-top{display:flex;align-items:center;gap:8px}
+#view-flow .tld-top b{flex:1;font-size:15px;font-weight:700}
+#view-flow .tld-p[open] .pr-chev{transform:rotate(90deg)}
+#view-flow .tld-lv{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--raised);color:var(--muted2)}
+#view-flow .tld-lv.hi{background:var(--fg);color:var(--bg)}
+#view-flow .tld-lv.libre{background:none;border:1px dashed var(--line2)}
+#view-flow .tld-bar{height:5px;border-radius:99px;background:var(--raised);overflow:hidden}
+#view-flow .tld-bar i{display:block;height:100%;border-radius:inherit;background:var(--fg);opacity:.75}
+#view-flow .tld-n{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+#view-flow .tld-n b{color:var(--fg);font-variant-numeric:tabular-nums}
+#view-flow .tld-n em{font-style:normal;font-weight:600;color:var(--muted2);display:inline-flex;align-items:center;gap:4px;margin-left:2px}
+#view-flow .tld-n em::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--bad);opacity:.85}
+#view-flow .tld-days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+#view-flow .tld-days span{position:relative;height:30px;border-radius:8px;background:var(--raised);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--fg)}
+#view-flow .tld-days span.on{background:color-mix(in srgb,var(--fg) calc(var(--a,.3)*100%),var(--raised));color:var(--bg)}
+#view-flow .tld-days small{position:absolute;top:2px;left:5px;font-size:8.5px;font-weight:700;color:var(--muted);opacity:.9}
+#view-flow .tld-days span.on small{color:var(--bg);opacity:.7}
+#view-flow .tld-days span.today{outline:1.5px solid var(--fg);outline-offset:1px}
+#view-flow .tld-list{padding:0 14px 12px;display:grid;gap:6px;font-size:13.5px;color:var(--fg2)}
+#view-flow .tld-list span{display:inline-block;min-width:78px;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600}
+#view-flow .tld-0{color:var(--muted)}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -1362,6 +1391,7 @@ body.mob-open header.top{z-index:31}
     <div class="row"><h2>Equipo</h2><div class="spacer"></div><span class="mono" id="flowSum" hidden></span></div>
     <div id="teamLate"></div>
     <div id="teamTasks"></div>
+    <div id="teamLoad"></div>
     <div class="tf-h"><h3 class="sec-h">Prospectos activos <b id="tfN"></b></h3><button type="button" class="tf-late" id="tfLate" aria-pressed="false">Solo atrasados</button></div>
     <div class="tf-ppl" id="teamPeople"></div>
     <div hidden><select id="flowPerson" aria-label="Persona"></select><input type="checkbox" id="flowLate"></div>
@@ -2902,6 +2932,7 @@ function renderFlow(ps){
 }
 ["flowPerson","flowLate"].forEach(id => $(id).addEventListener("change", () => schedule()));
 $("view-flow").addEventListener("click", e => {
+  const w = e.target.closest("[data-ldw]"); if (w){ LOAD_W = Math.max(-4, Math.min(4, LOAD_W + Number(w.dataset.ldw))); renderTeamLoad(); return; }
   const p = e.target.closest("[data-fp]"), l = e.target.closest("#tfLate"), g = e.target.closest("[data-tfgo]");
   if (p){ $("flowPerson").value = p.dataset.fp; schedule(); }
   else if (l){ $("flowLate").checked = !$("flowLate").checked; schedule(); }
@@ -4059,8 +4090,42 @@ function renderTeamTasks(){
     <div class="pg2-card${open.length?"":" tt-0"}">${open.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("") || `<p class="tt-none">Sin tareas abiertas</p>`}
     ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>`;
 }
+/* Equipo: carga de la semana por persona (meets en agenda, pendientes que vencen y tareas), lunes a domingo */
+let LOAD_W = 0;
+function renderTeamLoad(){
+  const box = $("teamLoad"); if (!box || !adminMode() || busyIn(box)) return;
+  const now = Date.now(), todayStr = new Date(now - OFF).toISOString().slice(0,10);
+  const t0 = new Date(todayStr + "T00:00:00Z"), dow = (t0.getUTCDay()+6)%7;
+  const mon = new Date(t0.getTime() - dow*DAY + LOAD_W*7*DAY);
+  const days = Array.from({length:7}, (_,i) => new Date(mon.getTime() + i*DAY).toISOString().slice(0,10));
+  const from = Date.parse(days[0] + "T00:00:00-05:00"), to = from + 7*DAY;
+  const inW = ts => ts >= from && ts < to;
+  const ev = calEvents().filter(e => e.who && e.kind!=="gcal");
+  const rows = Object.keys(S.team||{}).map(u => {
+    const mine = ev.filter(e => e.who===u && inW(meetTs(e.at)));
+    const perDay = days.map(d => mine.filter(e => String(e.at).slice(0,10)===d).length);
+    const pend = []; Object.entries((S.all||{})[u]||{}).forEach(([id,m]) => tasksFor(u,id,m,now).forEach(t => { if (t.who==="member" && (t.due < to) && (LOAD_W===0 || t.due >= from)) pend.push(t); }));
+    const late = pend.filter(t => t.due < now).length;
+    const tk = taskList(u).filter(([,x]) => tkSt(x)!=="done" && (!x.dueAt || x.dueAt < to)).length;
+    return {u, mine, perDay, meets:mine.length, pend:pend.length, late, tk, load:mine.length*2 + pend.length + tk*2};
+  }).sort((a,b) => b.load - a.load);
+  const max = Math.max(1, ...rows.map(r => r.load)), avg = rows.length ? rows.reduce((a,r) => a + r.load, 0) / rows.length : 0;
+  const lvl = r => !r.load ? ["libre","Libre"] : r.load > avg*1.4 && r.load >= 6 ? ["hi","Cargada"] : r.load < avg*.6 ? ["lo","Ligera"] : ["mid","Normal"];
+  const D = ["L","M","M","J","V","S","D"], first = u => String(nameOf(S.ps||{}, u)).split(" (")[0].split(" ")[0];
+  const kind = {pitch:"Pitch", skel:"Skeleton", build:"Lanzamiento"};
+  const lab = LOAD_W===0 ? "Esta semana" : LOAD_W===1 ? "Próxima semana" : LOAD_W===-1 ? "Semana pasada" : `${Number(days[0].slice(8))} ${MONTHS[Number(days[0].slice(5,7))-1]}`;
+  const h = `<section class="pg2 tld"><div class="pg2-h"><span>Carga semanal</span><span class="tld-nav"><button type="button" data-ldw="-1" aria-label="Semana anterior">‹</button><em>${lab}</em><button type="button" data-ldw="1" aria-label="Semana siguiente">›</button></span></div>
+    <div class="pg2-card">${rows.map(r => { const [c, l] = lvl(r); return `<details class="tld-p"><summary>
+      <div class="tld-top"><b>${esc(first(r.u))}</b><span class="tld-lv ${c}">${l}</span><span class="pr-chev">›</span></div>
+      <div class="tld-bar"><i style="width:${Math.round(r.load/max*100)}%"></i></div>
+      <div class="tld-n"><span><b>${r.meets}</b> meet${r.meets===1?"":"s"}</span><span><b>${r.pend}</b> pendiente${r.pend===1?"":"s"}${r.late?` <em>${r.late} tarde</em>`:""}</span><span><b>${r.tk}</b> tarea${r.tk===1?"":"s"}</span></div>
+      <div class="tld-days">${r.perDay.map((n,i) => `<span class="${n?"on":""}${days[i]===todayStr?" today":""}" style="${n?`--a:${Math.min(1, .25 + n*.25)}`:""}"><small>${D[i]}</small>${n||""}</span>`).join("")}</div></summary>
+      <div class="tld-list">${r.mine.length ? r.mine.sort((a,b) => String(a.at).localeCompare(String(b.at))).map(e => { const d = days.indexOf(String(e.at).slice(0,10)); return `<div><span>${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][d]} ${String(e.at).slice(11,16)}</span>${esc(kind[e.kind] || "")} · ${esc(String(e.label).split(" · ").slice(1).join(" · ") || e.label)}</div>`; }).join("") : `<div class="tld-0">Sin meets en agenda esta semana</div>`}</div></details>`; }).join("") || `<p class="tt-none">Sin equipo todavía</p>`}</div></section>`;
+  if (box.dataset.h !== h){ const open = [...box.querySelectorAll("details[open] b")].map(b => b.textContent); box.innerHTML = h; box.dataset.h = h;
+    box.querySelectorAll(".tld-p").forEach(d => { if (open.includes(d.querySelector("b").textContent)) d.open = true; }); }
+}
 function renderTeamChart(){
-  renderTeamLate(); renderTeamTasks();
+  renderTeamLate(); renderTeamTasks(); renderTeamLoad();
   const box = $("teamChart"); if (!box || !adminMode()) return;
   const pick = $("flowPerson") && $("flowPerson").value, one = pick && S.team[pick];
   const uids = one ? [pick] : Object.keys(S.team);
