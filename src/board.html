@@ -38,6 +38,30 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+#view-report .rp{display:grid;gap:22px}
+#view-report .rp-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+#view-report .tld-nav{display:inline-flex;align-items:center;gap:2px;font-size:13px;font-weight:600;color:var(--muted)}
+#view-report .tld-nav em{font-style:normal;min-width:70px;text-align:center;color:var(--fg2)}
+#view-report .tld-nav button{font:inherit;font-size:18px;line-height:1;width:30px;height:30px;border-radius:50%;border:1px solid var(--line2);background:var(--surface);color:var(--fg);cursor:pointer}
+#view-report .tld-nav button:disabled{opacity:.35;cursor:default}
+#view-report .rp-sec{display:grid;gap:10px}#view-report .rp-sec .sec-h{margin:0 2px!important}
+#view-report .rp-k{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line2);border-radius:16px;overflow:hidden}
+#view-report .rp-k>span{border-left:1px solid var(--line);padding:11px 12px 10px;display:grid;gap:1px;font-size:11.5px;font-weight:600;color:var(--muted);line-height:1.2;min-width:0}
+#view-report .rp-k>span:first-child{border-left:0}
+#view-report .rp-k b{font-size:21px;font-weight:800;color:var(--fg);letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
+#view-report .rp-k .bad b{display:inline-flex;align-items:center;gap:6px}#view-report .rp-k .bad b::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--bad);opacity:.85}
+#view-report .rp-k .on b{color:#16a34a}
+#view-report .rp-list{display:grid}#view-report .rp-list>div{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-size:14px}#view-report .rp-list>div:first-child{border-top:0}
+#view-report .rp-list span{font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted);min-width:42px}#view-report .rp-list small{margin-left:auto;color:var(--muted);font-weight:600}
+#view-report .rp-p{padding:12px 14px;border-top:1px solid var(--line);display:grid;gap:6px}#view-report .rp-p:first-child{border-top:0}
+#view-report .rp-ph{display:flex;align-items:center;gap:8px}#view-report .rp-ph b{font-size:15px}
+#view-report .rp-pn{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}#view-report .rp-pn span{display:inline-flex;gap:4px;align-items:baseline}#view-report .rp-pn b{color:var(--fg);font-variant-numeric:tabular-nums}
+#view-report .rp-pn .bad b{display:inline-flex;align-items:center;gap:4px}#view-report .rp-pn .bad b::after{content:"";width:5px;height:5px;border-radius:50%;background:var(--bad);opacity:.85}
+#view-report .rp-k.k3{grid-template-columns:repeat(3,1fr)}#view-report .rp-k.k3>span{border-top:0!important;border-left:1px solid var(--line)}#view-report .rp-k.k3>span:first-child{border-left:0}
+#view-report .pres{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--muted)}
+#view-report .pres::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--line2)}
+#view-report .pres.on{color:#16a34a}#view-report .pres.on::before{background:#22c55e}
+@media (max-width:600px){#view-report .rp-k{grid-template-columns:repeat(2,1fr)}#view-report .rp-k>span:nth-child(3){border-left:0}#view-report .rp-k>span:nth-child(n+3){border-top:1px solid var(--line)}}
 .tk-img.sm{width:84px;height:84px}
 .tk-sec{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px}
 .tk-sec b{font-size:11px;background:var(--raised);border-radius:999px;padding:1px 7px;letter-spacing:0}
@@ -1449,6 +1473,7 @@ body.mob-open header.top{z-index:31}
     <div id="dayPlan"></div>
   </section>
 
+  <section class="view" id="view-report" hidden><div id="reportBox"></div></section>
   <section class="view" id="view-funnel" hidden>
     <div class="subnav" role="tablist" aria-label="Resultados"><button type="button" data-go="funnel">Embudo y leaderboard</button><button type="button" data-go="wa">WhatsApp outreach</button></div>
     <div id="lbHomeFunnel" class="lb-in-funnel"></div>
@@ -1622,7 +1647,7 @@ function showTab(t){
   document.querySelectorAll(".subnav [data-go]").forEach(b => b.classList.toggle("on", b.dataset.go===t));
   closeAcct();
   if (t==="admin" || t==="hist" || t==="rules" || (t==="org" && !S.isOwner)) t = S.tab = "board";
-  ["board","mine","mich","msgs","flow","agenda","funnel","vip","wa","perf","org","hist","rules","settings"].forEach(v => $("view-"+v).hidden = v!==t);
+  ["board","mine","mich","msgs","flow","agenda","funnel","report","vip","wa","perf","org","hist","rules","settings"].forEach(v => $("view-"+v).hidden = v!==t);
   try{ localStorage.setItem("meets_tab", t); }catch(e){}
   schedule();
 }
@@ -1649,6 +1674,7 @@ $("tabs").addEventListener("click", e => { const b = e.target.closest("button[da
 function openFromUrl(u){
   try{ const q = new URL(u, location.href).searchParams;
     if (q.get("tab")==="agenda"){ AG_DAY = null; AG_SEG = "tasks"; if (q.get("task")) TK_OPEN = q.get("task"); showTab("agenda"); return; }
+    if (q.get("tab")==="report"){ RPT.day = /^\d{4}-\d{2}-\d{2}$/.test(q.get("day")||"") ? q.get("day") : null; showTab("report"); return; }
     if (q.get("tab")==="msgs"){ MSEG.v = "isk"; if (q.get("conv")){ ISK.sel = q.get("conv"); ISK.fullAt = 0; } showTab("msgs"); if (ISK.sel) iskThread(ISK.sel, true); } }catch(e){}
 }
 window.STRIKD_OPEN = openFromUrl;
@@ -1808,7 +1834,7 @@ function islandItems(){
     : [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","home","Equipo",Number($("lateCount").textContent)||0],["more","more","Más"]];
   const more = am
     ? [["settings","gear","Ajustes"]]
-    : [["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
+    : [["report","cal","Reporte del día"],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
        ["settings","gear","Ajustes"]];
   return {main, more};
 }
@@ -1919,7 +1945,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !(adminMode() && !S.viewAs)); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode()); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !(adminMode() && !S.viewAs)); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode()); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -4244,6 +4270,58 @@ function presBeat(away){
 document.addEventListener("visibilitychange", () => { if (document.visibilityState==="hidden") presBeat(true); else { PRES_LAST = 0; presBeat(false); schedule(); } });
 window.addEventListener("pagehide", () => presBeat(true));
 setInterval(() => { if (document.visibilityState==="visible") presBeat(false); if (adminMode && adminMode()) schedule(); }, 60e3);
+/* Reporte del día (Head: todo el equipo · Manager: su equipo). La notificación de las 9 pm abre esta vista. */
+const RPT = {day:null};
+function renderReport(){
+  const box = $("reportBox"); if (!box || S.tab!=="report" || !adminMode() || busyIn(box)) return;
+  const now = Date.now(), today = new Date(now - OFF).toISOString().slice(0,10), day = RPT.day || today;
+  const from = Date.parse(day + "T00:00:00-05:00"), to = from + DAY, inD = t => { t = Number(t)||0; return t >= from && t < to; };
+  const isToday = day===today, team = Object.keys(S.team||{}), first = u => String(nameOf(S.ps||{}, u)).split(" (")[0].split(" ")[0];
+  const dl = (() => { const d = new Date(from); return `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(day+"T12:00:00Z").getUTCDay()]} ${Number(day.slice(8))} ${MONTHS[Number(day.slice(5,7))-1]}`; })();
+  const per = team.map(u => {
+    const items = Object.entries((S.all||{})[u]||{});
+    const reg = items.filter(([,m]) => inD(m.createdAt));
+    const vs = Object.values(S.validations||{}).filter(v => v.uid===u && inD(v.decidedAt));
+    const ev = Object.values((S.pts||{})[u]||{}).filter(e => inD(e.at));
+    const n = ms => ev.filter(e => e.ms===ms).length;
+    const tk = taskList(u);
+    return {u, reg:reg.length, wa:reg.filter(([,m]) => canalOf(m)==="whatsapp").length, tom:vs.filter(v => v.status==="attended").length, ns:vs.filter(v => v.status==="noshow").length,
+      gus:n("legusto"), apr:n("aprobado"), pw:n("progweb"), pub:n("publicado"), lost:items.filter(([,m]) => inD((m.flow||{}).lostAt)).length,
+      late:isToday ? (teamLateBy(now)[u]||[]).length : null, tkDone:tk.filter(([,x]) => inD(x.doneAt)).length, tkOpen:tk.filter(([,x]) => tkSt(x)!=="done").length, tkRev:tk.filter(([,x]) => tkSt(x)==="review").length,
+      seen:inD(((S.members||{})[u]||{}).seenAt) || (isToday && presOf(u).st) };
+  });
+  const sum = k => per.reduce((a,r) => a + (r[k]||0), 0);
+  const tomorrow = new Date(to - OFF + 12*3600e3).toISOString().slice(0,10);
+  const next = calEvents().filter(e => e.kind==="pitch" && e.who && String(e.at).slice(0,10)===tomorrow).sort((a,b) => String(a.at).localeCompare(String(b.at)));
+  // WhatsApp (bandeja de ISKRA, si ya cargó) y Mich
+  const wa = ISK.st==="ok" ? {act:ISK.convs.filter(c => inD(c.at)).length, rep:ISK.convs.filter(c => inD(c.lastSentAt)).length, open:ISK.convs.filter(c => c.lastDir==="in" && !c.disc).length} : null;
+  const vipAll = Object.values(S.vip||{}).flatMap(o => Object.values(o||{}));
+  const mi = {cont:vipAll.filter(x => inD(x.contactedAt)).length, ag:vipAll.filter(x => x.status==="agendo" && inD(x.statusAt)).length, nuevos:vipAll.filter(x => inD(x.createdAt)).length};
+  const k = (n, l, cls) => `<span class="${cls||""}"><b>${n}</b>${l}</span>`;
+  const sec = (t, body) => `<section class="rp-sec"><h3 class="sec-h">${t}</h3>${body}</section>`;
+  const row = r => `<div class="rp-p"><div class="rp-ph"><b>${esc(first(r.u))}</b>${r.seen ? `<span class="pres on">${isToday && presOf(r.u).st==="on" ? "en línea" : "entró hoy"}</span>` : `<span class="pres off">no entró</span>`}</div>
+      <div class="rp-pn">${k(r.reg, "agendó")}${k(r.tom, "pitches")}${k(r.gus + r.apr + r.pw + r.pub, "avances")}${r.late!==null ? k(r.late, "atrasados", r.late ? "bad" : "") : ""}${k(r.tkDone, "tareas hechas")}${r.tkRev ? k(r.tkRev, "por aprobar") : ""}</div></div>`;
+  const h = `<div class="rp">
+    <div class="rp-top"><div><h2>Reporte del día</h2><p class="sub">${esc(dl)}${S.isOwner && !teamScoped() ? " · todo el equipo" : " · tu equipo"}</p></div>
+      <div class="tld-nav"><button type="button" data-rpday="-1" aria-label="Día anterior">‹</button><em>${isToday ? "Hoy" : esc(dl.split(" ")[0])}</em><button type="button" data-rpday="1" aria-label="Día siguiente"${isToday ? " disabled" : ""}>›</button></div></div>
+    ${sec("Meets y pitches", `<div class="tf-kpis rp-k">${k(sum("reg"), "agendados")}${k(sum("tom"), "pitches tomados")}${k(sum("ns"), "no se conectaron", sum("ns") ? "bad" : "")}${k(next.length, "pitches mañana")}</div>
+      ${next.length ? `<div class="pg2-card rp-list">${next.slice(0, 8).map(e => `<div><span>${esc(String(e.at).slice(11,16))}</span>${esc(String(e.label).replace(/^Pitch · /,""))}<small>${esc(first(e.who))}</small></div>`).join("")}${next.length > 8 ? `<div class="mut">+${next.length-8} más</div>` : ""}</div>` : ""}`)}
+    ${sec("Avance del journey", `<div class="tf-kpis rp-k">${k(sum("gus"), "les gustó")}${k(sum("apr"), "skeleton aprobado")}${k(sum("pw"), "programa y web")}${k(sum("pub"), "publicados", sum("pub") ? "on" : "")}</div>${sum("lost") ? `<p class="mut small">${sum("lost")} marcado${sum("lost")===1?"":"s"} como perdido${sum("lost")===1?"":"s"}.</p>` : ""}`)}
+    ${sec("Equipo", `<div class="pg2-card">${per.map(row).join("") || `<p class="tt-none">Sin equipo todavía</p>`}</div>`)}
+    ${sec("WhatsApp y Mich", `<div class="tf-kpis rp-k">${wa ? k(wa.act, "chats con actividad") + k(wa.rep, "respondidos") + k(wa.open, "sin responder", wa.open ? "bad" : "") : k("—", "abre Mensajes para cargar")}${k(sum("wa"), "meets por WhatsApp")}</div>
+      ${vipAll.length ? `<div class="tf-kpis rp-k k3" style="margin-top:8px">${k(mi.cont, "Mich contactó")}${k(mi.ag, "agendaron con Mich")}${k(mi.nuevos, "propuestos a Mich")}</div>` : ""}`)}
+    <p class="mut small">Cada noche a las 9:00 pm te llega una notificación con este resumen. <button type="button" class="linkbtn" data-rptest="1">Mandármelo ahora para probar</button></p>
+  </div>`;
+  if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
+}
+document.addEventListener("click", async e => {
+  const d = e.target.closest("[data-rpday]"); if (d){ const today = new Date(Date.now() - OFF).toISOString().slice(0,10), cur = RPT.day || today;
+    const nx = new Date(Date.parse(cur + "T12:00:00Z") + Number(d.dataset.rpday)*DAY).toISOString().slice(0,10); RPT.day = nx >= today ? null : nx; renderReport(); return; }
+  const t = e.target.closest("[data-rptest]"); if (t){ if (!window.STRIKD_REPORT_TEST){ quickToast("Solo funciona en growth.strikd.ai"); return; }
+    t.disabled = true; t.textContent = "Enviando…";
+    try{ const r = await window.STRIKD_REPORT_TEST(); quickToast(r && r.enviados ? "✓ Te llegó la notificación" : "No llegó: activa las notificaciones en Ajustes"); }catch(err){ quickToast(err.message || "No se pudo"); }
+    t.disabled = false; t.textContent = "Mandármelo ahora para probar"; }
+});
 /* Equipo: carga de la semana por persona (meets en agenda, pendientes que vencen y tareas), lunes a domingo */
 let LOAD_W = 0;
 function presTag(u){ if (u===S.uid) return ""; const p = presOf(u); return p.st==="on" ? `<span class="pres on">en línea</span>` : p.st==="recent" ? `<span class="pres rc">hace ${p.min} min</span>` : ""; }

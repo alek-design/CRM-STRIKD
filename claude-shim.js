@@ -326,6 +326,12 @@
     try{ const { data } = await sb.auth.getSession();
       await fetch("/api/notify", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify(payload)}); }catch(_){}
   };
+  // reporte diario: mandármelo ahora como notificación (prueba)
+  window.STRIKD_REPORT_TEST = async () => {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch("/api/report", {method:"POST", headers:{authorization:"Bearer " + data.session.access_token}});
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "No se pudo"); return j;
+  };
   /* ---------- Mich agenda el meet de un influencer a nombre del AM que lo propuso ---------- */
   window.STRIKD_MICHMEET = async (payload) => {
     const { data } = await sb.auth.getSession();
