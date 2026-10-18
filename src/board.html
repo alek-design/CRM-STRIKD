@@ -4300,6 +4300,15 @@ function presPeople(){
   return [...new Set(all)].filter(u => u!==S.uid).sort((a,b) => (ord[roleOf(a)]??3) - (ord[roleOf(b)]??3));
 }
 function presOnline(){ return presPeople().filter(u => presOf(u).st==="on"); }
+/* iPhone (app instalada): al cerrar el teclado, a veces la barra de abajo y el encabezado se quedan desplazados
+   (queda un hueco y contenido tapado). Al salir de un campo o cuando el teclado se cierra, se reacomoda la vista. */
+(function(){
+  const fix = () => { const y = window.scrollY; window.scrollTo(window.scrollX, y + 1); window.scrollTo(window.scrollX, y); };
+  let t = null; const later = () => { clearTimeout(t); t = setTimeout(() => { const a = document.activeElement; if (!(a && a.matches && a.matches("input,textarea,select"))) fix(); }, 120); };
+  document.addEventListener("focusout", e => { if (e.target && e.target.matches && e.target.matches("input,textarea,select")) later(); });
+  if (window.visualViewport){ let h = window.visualViewport.height; window.visualViewport.addEventListener("resize", () => { const nh = window.visualViewport.height; if (nh > h + 80) later(); h = nh; }); }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState==="visible") later(); });
+})();
 let PRES_LAST = 0;
 function presBeat(away){
   if (!S.uid || !db || S.canWrite === false) return;

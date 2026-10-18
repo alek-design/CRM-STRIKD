@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 18:00:24 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 18:13:21 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792346424">
+<link rel="stylesheet" href="/auth.css?v=1792347201">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792346424"></script>
+<script src="/claude-shim.js?v=1792347201"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -4308,6 +4308,15 @@ function presPeople(){
   return [...new Set(all)].filter(u => u!==S.uid).sort((a,b) => (ord[roleOf(a)]??3) - (ord[roleOf(b)]??3));
 }
 function presOnline(){ return presPeople().filter(u => presOf(u).st==="on"); }
+/* iPhone (app instalada): al cerrar el teclado, a veces la barra de abajo y el encabezado se quedan desplazados
+   (queda un hueco y contenido tapado). Al salir de un campo o cuando el teclado se cierra, se reacomoda la vista. */
+(function(){
+  const fix = () => { const y = window.scrollY; window.scrollTo(window.scrollX, y + 1); window.scrollTo(window.scrollX, y); };
+  let t = null; const later = () => { clearTimeout(t); t = setTimeout(() => { const a = document.activeElement; if (!(a && a.matches && a.matches("input,textarea,select"))) fix(); }, 120); };
+  document.addEventListener("focusout", e => { if (e.target && e.target.matches && e.target.matches("input,textarea,select")) later(); });
+  if (window.visualViewport){ let h = window.visualViewport.height; window.visualViewport.addEventListener("resize", () => { const nh = window.visualViewport.height; if (nh > h + 80) later(); h = nh; }); }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState==="visible") later(); });
+})();
 let PRES_LAST = 0;
 function presBeat(away){
   if (!S.uid || !db || S.canWrite === false) return;
