@@ -4,7 +4,7 @@
 //  · Conversación nueva → se asigna sola: opción "load" (menos carga) u opción "best" (mejores resultados, 4 semanas).
 //  · Cada envío queda registrado con quién lo mandó. Envíos siempre por clic de una persona, con idempotency_key.
 const { withPg, userFromReq } = require("../lib/google");
-const { publicMedia, mediaPayload, asAttachment, withLink } = require("../lib/iskmedia");
+const { publicMedia, mediaPayload, asAttachment, withLink, shapes } = require("../lib/iskmedia");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const enc = encodeURIComponent;
 const digits = x => String(x || "").replace(/\D/g, "").slice(-10);
@@ -226,7 +226,12 @@ module.exports = async (req, res) => {
         const base = {conversation_id:input.conversation_id, idempotency_key:input.idempotency_key};
         let j, mediaErr = null, mediaInfo = null;
         const origin = "https://" + (req.headers["x-forwarded-host"] || req.headers.host || "growth.strikd.ai");
-        if (media && !asAttachment()){ // foto, PDF o nota de voz como link corto dentro del mensaje
+        const cfg = media ? ((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data || {} : {};
+        const shapeN = Number(cfg.iskMediaShape) || 0;
+        if (media && shapeN){ // formato de archivo confirmado con la prueba
+          const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type, como:"adjunto " + shapeN};
+          j = await iskra("POST", "/v1/messages/reply", {...base, ...shapes(pm, text, shapeN)});
+        } else if (media && !asAttachment()){ // foto, PDF o nota de voz como link corto dentro del mensaje
           const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type, como:"link"};
           j = await iskra("POST", "/v1/messages/reply", {...base, text:withLink(text, pm, origin).slice(0, 4000)});
         } else if (media){ // como adjunto (cuando ISKRA lo soporte). El texto va como pie del archivo.
@@ -243,6 +248,21 @@ module.exports = async (req, res) => {
         await c.query("insert into public.iskra_sent (conversation_id, user_id, text) values ($1,$2,$3)", [String(input.conversation_id), me.id, label]);
         await c.query("update public.iskra_owner set last_sender=$2, last_sent_at=now() where conversation_id=$1", [String(input.conversation_id), me.id]);
         return {data:j, ...(media ? {media:mediaInfo, mediaErr} : {})};
+      }
+      if (op === "mediaprobe"){ // solo Head/Manager: manda el mismo archivo en cada formato posible, uno por mensaje
+        if (!lead) throw Object.assign(new Error("Solo el Head o el Manager."), {status:403});
+        const media = input.media && input.media.url ? input.media : null;
+        if (!input.conversation_id || !media) throw Object.assign(new Error("Abre un chat de prueba y adjunta una foto o PDF."), {status:400});
+        const pm = await publicMedia(media), out = [], stamp = Date.now().toString(36);
+        const list = shapes(pm, "", 0);
+        await Promise.all(list.map(async (_, i) => { // en paralelo para no pasar el tiempo límite de Vercel
+          const n = i + 1, body = shapes(pm, `Prueba ${n}`, n);
+          try{ const r = await iskra("POST", "/v1/messages/reply", {conversation_id:input.conversation_id, idempotency_key:`probe-${stamp}-${n}`, ...body}, 8000); out.push({n, ok:true, respuesta:JSON.stringify(r).slice(0, 300)}); }
+          catch(e){ out.push({n, ok:false, error:String(e.message || e), detalle:e.detail ? JSON.stringify(e.detail).slice(0, 300) : ""}); }
+        }));
+        out.sort((a, b) => a.n - b.n);
+        LIST_CACHE.at = 0; delete MSG_CACHE[input.conversation_id];
+        return {data:out, url:pm.url};
       }
       if (op === "discard"){ // descartar (o regresar) una conversación: deja de salir en la bandeja
         await mustOwn(input.id);
