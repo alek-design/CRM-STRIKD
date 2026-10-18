@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 06:37:42 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 06:40:55 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792305462">
+<link rel="stylesheet" href="/auth.css?v=1792305655">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792305462"></script>
+<script src="/claude-shim.js?v=1792305655"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -674,6 +674,44 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* etiquetas: el asterisco junto al texto, no en otra línea */
+label.f{display:block}label.f > input,label.f > select,label.f > textarea{display:block;width:100%;margin-top:5px;box-sizing:border-box}
+.bk #meetForm > .row:first-child{display:none}
+@media (max-width:640px){
+  #meetForm .pf-pick{grid-template-columns:repeat(3,1fr)!important}
+  #meetForm .pf-pick button{min-height:0}
+  .slot-days{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto;gap:6px;padding-bottom:4px;scrollbar-width:none}
+  .slot-days button{flex:none}
+  .slot-times{display:grid!important;grid-auto-flow:column;grid-template-rows:repeat(3,auto);grid-auto-columns:max-content;overflow-x:auto;gap:6px;padding-bottom:6px;scrollbar-width:none}
+  .slots-h .mut{display:none}
+}
+
+.ag-top{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.bk-whorow{flex-basis:100%}.bk-who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}.bk-who select{flex:1;max-width:280px}
+.bk-grab{display:none}
+@media (max-width:640px){.bk-grab{display:block;width:40px;height:4px;border-radius:2px;background:var(--line2);margin:2px auto 8px}
+  #meetForm .grid > .slots{grid-column:1/-1}
+  .ag-new{padding:8px 14px}}
+
+/* Agendar: formulario agrupado y compacto */
+.fsec{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.fsec:first-of-type{border-top:0}
+.fsec-h{display:block;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:6px}
+#meetForm .grid{gap:10px 12px}
+#meetForm .grid.g3{grid-template-columns:repeat(3,1fr)}
+#meetForm textarea#f_notes{min-height:40px}
+@media (max-width:640px){
+  #meetForm .grid,#meetForm .grid.g3{grid-template-columns:1fr 1fr}
+  #meetForm .grid > .f{grid-column:span 2}
+  #meetForm .grid.g3 > label.f:nth-child(1){grid-column:span 2}
+  #meetForm .grid.g3 > label.f:nth-child(2),#meetForm .grid.g3 > label.f:nth-child(3){grid-column:span 1}
+  .pf-pick{gap:6px}.pf-pick button{grid-template-columns:1fr;justify-items:center;text-align:center;padding:8px 4px;row-gap:2px}
+  .pf-pick button .pfi{grid-row:auto}.pf-pick button span:last-child{font-size:10.5px;line-height:1.2}
+  .canal-pick{flex-wrap:wrap}
+  .bk-wrap{padding:0;place-items:end center}
+  .bk{border-radius:20px 20px 0 0;padding:10px 12px calc(16px + env(safe-area-inset-bottom,0px));max-height:94dvh;overflow:auto}
+  .bk .panel{padding:4px 2px;border:0;background:none}
+}
+
 /* Mi lista (Influencer Outreach) */
 .mi-head{display:flex;align-items:flex-start;gap:12px;justify-content:space-between;flex-wrap:wrap}
 .mi-pill{display:inline-flex;align-items:center;gap:9px;font:inherit;font-weight:700;font-size:13.5px;padding:8px 14px 8px 8px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);cursor:pointer}
@@ -1012,19 +1050,23 @@ body.mob-open header.top{z-index:31}
           <button type="button" role="radio" data-p3="0"><b>A · Prospecto para la lista</b><span>Lo identificaste y lo propones; Mich hace el primer contacto.</span></button>
           <button type="button" role="radio" data-p3="1"><b>B · Agendar el meet</b><span>Ya hablaste con él y tienen fecha: registra el meet con su invitación.</span></button>
         </div>
-        <div class="grid">
+        <div class="fsec"><span class="fsec-h">Prospecto</span><div class="grid">
           <label class="f">Nombre del prospecto <em>*</em><input id="f_prospect" autocomplete="off"></label>
           <label class="f fol-only" hidden>Seguidores aprox. <em>*</em><input id="f_followers" type="number" min="0" inputmode="numeric" placeholder="Ej. 18000" autocomplete="off"></label>
-          <label class="f m-only">¿Por dónde lo contactaste? <em>*</em>
+          <label class="f" id="f_profileLbl">Link al perfil del prospecto <em>*</em><input id="f_profile" type="url" placeholder="https://linkedin.com/in/… o instagram.com/…" autocomplete="off"></label>
+        </div></div>
+        <div class="fsec m-only"><span class="fsec-h">Contacto</span><div class="grid g3">
+          <label class="f m-only">Email del prospecto <em>*</em><input id="f_email" type="email" autocomplete="off"></label>
+          <label class="f m-only">Teléfono / WhatsApp<input id="f_phone" type="tel" autocomplete="off"></label>
+          <label class="f m-only">Lo contactaste por <em>*</em>
             <select id="f_channel">
               <option value="">Elige uno</option>
               <option>LinkedIn</option><option>Instagram</option><option>Facebook</option><option>TikTok</option>
               <option>WhatsApp</option><option>Email</option><option>YouTube</option><option>Google Maps</option><option>Referido</option><option>Otro</option>
             </select>
           </label>
-          <label class="f" id="f_profileLbl">Link al perfil del prospecto <em>*</em><input id="f_profile" type="url" placeholder="https://linkedin.com/in/… o instagram.com/…" autocomplete="off"></label>
-          <label class="f m-only">Email del prospecto <em>*</em><input id="f_email" type="email" autocomplete="off"></label>
-          <label class="f m-only">Teléfono / WhatsApp<input id="f_phone" type="tel" autocomplete="off"></label>
+        </div></div>
+        <div class="fsec m-only"><span class="fsec-h">¿Cuándo?</span><div class="grid">
           <label class="f m-only">Fecha y hora del meet <em>*</em><input id="f_meetAt" type="datetime-local"></label>
           <div class="slots m-only" id="slotBox"></div>
           <div class="f full inv m-only">
@@ -1033,8 +1075,10 @@ body.mob-open header.top{z-index:31}
             <div class="notice warn inv-need" id="invNeed" hidden><span>Para agendar, conecta tu Google Calendar: el link de Meet y la invitación se generan solos.</span><button type="button" class="btn small primary" id="invNeedBtn">Conectar Google Calendar</button></div>
             <label class="f" id="linkWrap">Link de la invitación o del meet <em>*</em><input id="f_link" type="url" placeholder="https://" autocomplete="off"></label>
           </div>
-          <label class="f full" id="f_notesLbl">Notas (contexto, interés, siguiente paso)<textarea id="f_notes" rows="2"></textarea></label>
-        </div>
+        </div></div>
+        <div class="fsec"><div class="grid">
+          <label class="f full" id="f_notesLbl">Notas (contexto, interés, siguiente paso)<textarea id="f_notes" rows="1"></textarea></label>
+        </div></div>
         <div class="row" style="margin-top:14px">
           <p class="err" id="formErr" hidden></p>
           <div class="spacer"></div>
@@ -1061,7 +1105,7 @@ body.mob-open header.top{z-index:31}
   </section>
 
   <section class="view" id="view-agenda" hidden>
-    <div class="ag-head"><h2>Agenda</h2><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
+    <div class="ag-head"><div class="ag-top"><h2>Agenda</h2><button type="button" class="btn primary ag-new" data-agnew="1">+ Agendar meet</button></div><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
     <div id="agendaCal"></div>
   </section>
 
@@ -1413,7 +1457,7 @@ function islandItems(){
   const unread = ISK.convs.filter(c => c.lastDir==="in" && !c.disc && (lead ? true : c.owner===meId())).length;
   const msgN = unread || (Number($("msgCount").textContent)||0) * ($("msgCount").hidden ? 0 : 1);
   const main = am
-    ? [["board","home","Hoy"],["mine","plus","Agendar"],["msgs","chat","Mensajes",msgN],["more","more","Más"]]
+    ? [["board","home","Hoy"],["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["more","more","Más"]]
     : [["board","home","Hoy"],["msgs","chat","Mensajes",msgN],["agenda","cal","Agenda"],["more","more","Más"]];
   const more = am
     ? [["perf","trophy","Mi desempeño"],["settings","gear","Ajustes"]]
@@ -2854,7 +2898,7 @@ function gcalNote(mondayStr){
 }
 function calEvents(){
   const ev = [];
-  Object.entries(S.all).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
+  (adminMode() ? Object.entries(S.all) : [[meId(), myItems()]]).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
     const st = statusOf(id), f = m.flow || {}, v = S.validations[id];
     if (f.lostAt || st==="rejected") return;
     const at = effAt(m);
@@ -2914,7 +2958,6 @@ function calHtml(offset, pickKey, selected){
 let AG_OFF = 0, AG_DAY = null;
 const isPhone = () => matchMedia("(max-width:640px)").matches;
 function renderAgenda(){
-  if (!S.isLead) return;
   const box = $("agendaCal"); if (!box) return;
   box.innerHTML = isPhone() ? agendaPhone(AG_OFF) : calHtml(AG_OFF, null, null);
 }
@@ -2946,7 +2989,7 @@ function agendaPhone(offset){
     <div class="ap-list">${rows}</div>
   </div>`;
 }
-document.addEventListener("click", e => { const b = e.target.closest("[data-agday]"); if (b){ AG_DAY = b.dataset.agday; renderAgenda(); } });
+document.addEventListener("click", e => { const b = e.target.closest("[data-agday]"); if (b){ AG_DAY = b.dataset.agday; renderAgenda(); } if (e.target.closest("[data-agnew]")) openBook(null); });
 addEventListener("resize", () => { if (S.tab === "agenda") renderAgenda(); });
 document.addEventListener("click", e => {
   const ga = e.target.closest("[data-gcask]");
@@ -3072,7 +3115,7 @@ function renderPlan(){
 $("dayPlan").addEventListener("click", e => {
   const gt = e.target.closest("[data-gotab]"); if (gt){ showTab(gt.dataset.gotab); setTimeout(() => { const v = $("myVip"); v && !v.hidden && v.scrollIntoView({behavior:"smooth", block:"start"}); }, 80); return; }
   if (e.target.closest("[data-gomsgs]")){ MSEG.v = "isk"; showTab("msgs"); return; }
-  if (e.target.closest("[data-gowa]")){ showTab("mine"); setTimeout(() => $("myWaLeads").scrollIntoView({behavior:"smooth", block:"start"}), 60); return; }
+  if (e.target.closest("[data-gowa]")){ showTab("msgs"); return; setTimeout(() => $("myWaLeads").scrollIntoView({behavior:"smooth", block:"start"}), 60); return; }
   if (e.target.closest("[data-plpast]")){ MORE.planPast = !MORE.planPast; schedule(); return; }
   if (e.target.closest("[data-plmore]")){ MORE.plan = !MORE.plan; schedule(); return; }
   const j = e.target.closest("[data-journey]");
@@ -3149,7 +3192,7 @@ function syncMichUi(){
   if (mm){ document.querySelectorAll("#tabs button").forEach(b => b.hidden = b.id!=="tabMich"); if (S.tab!=="mich" && S.tab!=="settings") showTab("mich"); }
   else {
     $("tabMich").hidden = true; document.querySelector('#tabs [data-tab="board"]').hidden = false; $("tabMsgs").hidden = false;
-    if (S.viewAs){ $("tabMine").hidden = false; $("tabPerf").hidden = false; }
+    if (S.viewAs){ $("tabAgenda").hidden = false; $("tabPerf").hidden = false; }
     if (S.tab==="mich") showTab("board");
   }
 }
@@ -3295,8 +3338,8 @@ function applyRole(saved){
   S.isLead = lead; S.roleApplied = true;
   const set = (id, show) => { const el = $(id); if (el) el.hidden = !show; };
   if (!S.viewAs){
-    ["tabFlow","tabAgenda","tabFunnel","tabVip","tabWa"].forEach(id => set(id, lead));
-    set("adminActs", lead); set("viewAsBtn", S.isOwner); set("tabMine", !lead); set("tabPerf", !lead);
+    ["tabFlow","tabFunnel","tabVip","tabWa"].forEach(id => set(id, lead));
+    set("tabAgenda", true); set("adminActs", lead); set("viewAsBtn", S.isOwner); set("tabMine", false); set("tabPerf", !lead);
   }
   $("tabOrg").hidden = !S.isOwner || !!S.viewAs;
   $("mgrNeedsEdit").hidden = !(roleOf(S.uid)==="manager" && !lead && !S.isOwner);
@@ -3307,7 +3350,7 @@ function applyRole(saved){
     else showTab("board");
   } else {
     startMemberSide();
-    if (first) showTab(["mine","msgs","perf","board"].includes(saved) ? saved : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
+    if (first) showTab(["agenda","msgs","perf","board"].includes(saved) ? saved : saved==="mine" ? "agenda" : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
     else showTab("board");
   }
   schedule();
@@ -3997,10 +4040,15 @@ function openBook(c){
   const panel = $("meetForm").closest(".panel"); if (!panel || BOOK.open) return;
   BOOK.home = panel.parentNode; BOOK.next = panel.nextSibling; BOOK.open = true;
   const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "bkWrap";
-  w.innerHTML = `<div class="bk" role="dialog" aria-modal="true" aria-label="Agendar meet"><div class="bk-h"><b>Agendar meet desde WhatsApp</b><span class="mut small">Revisa lo que llenamos y elige horario</span><div class="spacer"></div><button type="button" class="btn small" data-bkclose="1">Cerrar</button></div></div>`;
+  const team = Object.keys(S.team||{}), who0 = c ? (c.owner || meId()) : (adminMode() ? (team[0] || meId()) : meId());
+  const whoSel = adminMode() && team.length ? `<label class="bk-who">A nombre de <select id="bkWho">${team.map(u => `<option value="${u}"${u===who0?" selected":""}>${esc(nameOf(S.ps||{}, u))}</option>`).join("")}</select></label>` : "";
+  w.innerHTML = `<div class="bk" role="dialog" aria-modal="true" aria-label="Agendar meet"><div class="bk-grab"></div><div class="bk-h"><b>${c ? "Agendar meet desde WhatsApp" : "Agendar meet"}</b>${c ? `<span class="mut small">Revisa lo que llenamos y elige horario</span>` : ""}<div class="spacer"></div><button type="button" class="btn small" data-bkclose="1">Cerrar</button>${whoSel ? `<div class="bk-whorow">${whoSel}</div>` : ""}</div></div>`;
   w.querySelector(".bk").appendChild(panel); document.body.appendChild(w); BOOK.wrap = w;
   w.addEventListener("click", e => { if (e.target===w || e.target.closest("[data-bkclose]")) closeBook(); });
-  resetForm(); S.bookFor = adminMode() ? (c.owner || meId()) : meId(); S.iskPrefill = {conv:c.id, phone:c.phone};
+  resetForm(); S.bookFor = adminMode() ? who0 : meId();
+  const ws = w.querySelector("#bkWho"); if (ws) ws.addEventListener("change", () => { S.bookFor = ws.value; SL.at = 0; slotLoad(true); renderSlots(); });
+  if (!c){ setTimeout(() => { $("f_perfil").value = $("f_perfil").value || "1"; syncPerfilUi(); syncInvUi(); SL.at = 0; slotLoad(true); renderSlots(); $("f_prospect").focus(); }, 30); return; }
+  S.iskPrefill = {conv:c.id, phone:c.phone};
   const x = iskExtract(c);
   setTimeout(() => {
     $("f_perfil").value = "1"; $("f_canal").value = "whatsapp"; $("f_channel").value = "WhatsApp";
@@ -4327,6 +4375,7 @@ document.addEventListener("click", async e => {
   }
   if (e.target.closest("[data-iskmeet]") && ISK.sel){
     const c = ISK.convs.find(x => x.id===ISK.sel); if (!c) return;
+    return openBook(c);
     showTab("mine"); resetForm(); S.iskPrefill = {conv:c.id, phone:c.phone};
     setTimeout(() => { $("f_perfil").value = "1"; $("f_canal").value = "whatsapp"; $("f_prospect").value = c.name && !/^\d+$/.test(c.name) ? c.name : ""; $("f_phone").value = c.phone || ""; $("f_channel").value = "WhatsApp";
       $("f_notes").value = "Vino de WhatsApp (ISKRA)"; syncPerfilUi(); $("meetForm").scrollIntoView({behavior:"smooth", block:"start"}); $("f_prospect").focus(); }, 30);
@@ -4608,7 +4657,7 @@ function enterViewAs(uid){
   if (!uid || !S.isOwner) return; // solo el Head puede usar la Vista de usuario
   S.viewAs = uid; resetForm(); setFormEnabled(true);
   $("viewAsBar").hidden = false; $("adminActs").hidden = true; $("viewAsBtn").hidden = true; Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]});
-  $("tabAdmin").hidden = true; $("tabFlow").hidden = true; $("tabAgenda").hidden = true; $("tabFunnel").hidden = true; $("tabVip").hidden = true; $("tabWa").hidden = true; $("tabMine").hidden = false; $("tabPerf").hidden = false; $("tabOrg").hidden = true;
+  $("tabAdmin").hidden = true; $("tabFlow").hidden = true; $("tabAgenda").hidden = false; $("tabFunnel").hidden = true; $("tabVip").hidden = true; $("tabWa").hidden = true; $("tabMine").hidden = true; $("tabPerf").hidden = false; $("tabOrg").hidden = true;
   showTab("board");
   schedule();
 }
@@ -4636,7 +4685,7 @@ function enterVA(role, uid){
     showTab("board"); return schedule();
   }
   if (S.viewMgr){ S.viewMgr = null; }
-  if (S.viewAs){ S.viewAs = uid; resetForm(); Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]}); iskLoad(true); $("tabMine").hidden = false; $("tabPerf").hidden = false; showTab(role==="influencer" ? "mich" : "board"); return schedule(); }
+  if (S.viewAs){ S.viewAs = uid; resetForm(); Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]}); iskLoad(true); $("tabMine").hidden = true; $("tabAgenda").hidden = false; $("tabPerf").hidden = false; showTab(role==="influencer" ? "mich" : "board"); return schedule(); }
   enterViewAs(uid);
 }
 $("viewAsBtn").addEventListener("click", () => enterVA(VA.role, null));
