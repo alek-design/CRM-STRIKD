@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 15:24:02 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 15:30:13 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792337042">
+<link rel="stylesheet" href="/auth.css?v=1792337413">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792337042"></script>
+<script src="/claude-shim.js?v=1792337413"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -684,6 +684,13 @@ label.f em{color:var(--bad);font-style:normal}
 .stats{display:flex;flex-wrap:wrap;gap:8px}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Meets: acciones según el momento */
+#dayPlan .pl-item .ma-row{grid-column:3/-1;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
+@media (max-width:520px){#dayPlan .pl-item .ma-row{grid-column:2/-1}}
+.ma-rel{font-size:12px;color:var(--muted);font-weight:600}
+.ma{font:inherit;font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);text-decoration:none;cursor:pointer}
+.ma.join{background:var(--ok-fg);border-color:var(--ok-fg);color:#fff}
 
 /* Sin círculo con inicial en los pendientes: no aporta */
 #dayPlan .pr-av:not(.tk){display:none}#dayPlan .pr{padding-left:16px}
@@ -3332,12 +3339,25 @@ function renderPlan(){
     const state = e.end < now ? "past" : e.ts <= now ? "live" : "next";
     const t = e.gcal ? null : first(e.uid, e.id, e.m), key = e.gcal ? "" : `ev|${e.uid}__${e.id}|${e.ts}`;
     const d = t ? dueInfo(t.due, now) : null;
-    const tag = state==="live" ? `<span class="pl-tag live">En curso</span>` : state==="past" ? (t ? `<span class="pl-tag ${d.cls}">Falta: ${esc(t.title.split(" ").slice(0,3).join(" "))}…</span>` : `<span class="pl-tag done">✓ Pasó</span>`) : (!e.gcal && e.kind==="pitch") ? (((e.m.flow||{}).confirmedFor===effAt(e.m)) ? `<span class="pl-tag done">✓ Confirmó</span>` : `<span class="pl-tag soon">Por confirmar</span>`) : (t ? `<span class="pl-tag ${d.cls}">${esc(SEMA[d.cls])}</span>` : "");
+    // acciones del meet según el momento: antes recordar, al empezar unirse, después ¿se conectó?
+    const mins = Math.round((e.ts - now)/60e3), link = !e.gcal && e.m ? safeUrl(e.m.link) : "", isPitch = !e.gcal && e.kind==="pitch";
+    const rel = mins > 60 ? `en ${Math.round(mins/60)} h` : mins > 0 ? `en ${mins} min` : "";
+    let tag = "";
+    if (!e.gcal){
+      const ph = e.m.phone, firstN = String(e.m.prospect||"").split(" ")[0];
+      if ((state==="live" || (state==="next" && mins <= 15)) && link) tag = `<a class="ma join" href="${esc(link)}" target="_blank" rel="noopener">Unirse</a>`;
+      else if (state==="next"){
+        const conf = (e.m.flow||{}).confirmedFor===effAt(e.m);
+        tag = `<span class="ma-rel">${esc(rel)}${isPitch && conf ? " · ✓ confirmó" : ""}</span>${ph ? `<a class="ma" href="${esc(waLink(ph, `¡Hola ${firstN}! Te recuerdo nuestro meet de hoy a las ${hm(e.ts)}.${link ? ` Aquí el link: ${link}` : ""}`))}" target="_blank" rel="noopener">Recordar</a>` : ""}`;
+      } else if (state==="past" && isPitch && admin && statusOf(e.id)==="valid") tag = `<span class="ma-rel">¿Se conectó?</span><button class="ma" data-act="att-yes" data-uid="${e.uid}" data-id="${e.id}">Sí</button><button class="ma" data-act="att-no" data-uid="${e.uid}" data-id="${e.id}">No</button>`;
+      else if (state==="past") tag = `<span class="ma-rel">${t ? "falta un paso" : "✓ pasó"}</span>`;
+    } else tag = state==="live" ? `<span class="ma-rel">en curso</span>` : rel ? `<span class="ma-rel">${esc(rel)}</span>` : "";
+    tag = tag ? `<span class="ma-row">${tag}</span>` : "";
     const inner = `<span class="pl-time">${hm(e.ts)}</span><span class="pl-dot ${e.kind}"></span>
       <span class="pl-body"><b>${e.gcal ? esc(e.label) : `${perfilIcon(e.m)}${esc(e.label)} · ${esc(e.m.prospect)}`}</b>
       ${(() => { const sub = e.gcal ? (e.sub || "Tu calendario") : [admin ? nameOf(S.ps,e.uid) : "", t ? t.title : ""].filter(Boolean).join(" · "); return sub ? `<small>${esc(sub)}</small>` : ""; })()}</span>${tag}`;
     line += e.gcal ? `<div class="pl-item ${state} gcal">${inner}</div>`
-      : `<button type="button" class="pl-item ${state}${sel===key?" sel":""}" data-pick="${key}">${inner}</button>${expand(key, e.uid, e.id, e.m)}`;
+      : `<div class="pl-item ${state}${sel===key?" sel":""}" role="button" tabindex="0" data-pick="${key}">${inner}</div>${expand(key, e.uid, e.id, e.m)}`;
   });
   if (!nowPlaced && evs.length) line += nowMark;
   const waToday = [];
@@ -3351,7 +3371,7 @@ function renderPlan(){
   const PEND_CAP = 6, allPend = !!MORE.allPend; let budget = allPend ? 1e9 : PEND_CAP;
   const totalPend = groups.reduce((a,g) => a + g.items.length, 0);
   let todo = groups.map(g => { const late = g.items.filter(t => t.due < now).length, open = true, lim = Math.min(g.items.length, budget); budget -= lim; if (lim <= 0) return "";
-    return `<section class="pg2"><div class="pg2-h"><span>${esc(g.k)}</span><b>${g.items.length}</b>${late?`<em>${late} tarde</em>`:""}</div><div class="pg2-card">
+    return `<section class="pg2"><div class="pg2-h"><span>${esc(g.k)}</span><b>${g.items.length}</b></div><div class="pg2-card">
       ${g.items.slice(0, lim).map(t => { const d = dueInfo(t.due, now), key = `tk|${t.uid}__${t.id}`, nm = (t.m && t.m.prospect) || t.title;
         const quick = (t.acts||[]).find(a => !a.input), sub = [admin ? String(nameOf(S.ps,t.uid)).split(" (")[0] : "", t.m ? stageOf(t.id, t.m).t : ""].filter(Boolean).join(" · ");
         return `<div class="pr ${d.cls}${sel===key?" sel":""}" role="button" tabindex="0" data-pick="${key}">
@@ -3397,7 +3417,7 @@ $("dayPlan").addEventListener("click", e => {
   const j = e.target.closest("[data-journey]");
   if (j){ PICK.dayPlan = null; PICK.myPath = j.dataset.journey; schedule(); setTimeout(() => $("pathWrap").scrollIntoView({behavior:"smooth", block:"start"}), 80); return; }
   const p = e.target.closest("[data-pick]");
-  if (p && !e.target.closest("button[data-act]")){ PICK.dayPlan = PICK.dayPlan===p.dataset.pick ? null : p.dataset.pick; schedule(); }
+  if (p && !e.target.closest("button[data-act]") && !e.target.closest("a")){ PICK.dayPlan = PICK.dayPlan===p.dataset.pick ? null : p.dataset.pick; schedule(); }
 });
 setInterval(() => schedule(), 60e3);
 
