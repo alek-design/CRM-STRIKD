@@ -273,9 +273,12 @@ module.exports = async (req, res) => {
         ];
         if (input.deep){ // 2a vuelta: lista completa de endpoints y qué pide /v1/messages/send (sin destinatario: no se envía nada)
           const who = await iskra("GET", "/v1/whoami").catch(e => ({error:e.message}));
-          const probes = [{idempotency_key:"probe-" + Date.now()}, {idempotency_key:"probe2-" + Date.now(), type:"image"}, {idempotency_key:"probe3-" + Date.now(), media_url:"https://example.com/x.png"}];
+          const nums = await iskra("GET", "/v1/numbers").catch(e => ({error:e.message}));
+          const nid = (arr(nums)[0] || {}).id || (arr(nums)[0] || {}).number_id || "";
+          // sin destinatario: solo para ver qué pide y si nuestro número es "reserved sender"
+          const probes = [{idempotency_key:"probe-" + Date.now(), sender_number_id:nid}, {idempotency_key:"probe2-" + Date.now(), sender_number_id:nid, header_image_url:"https://example.com/x.png"}];
           const send = await Promise.all(probes.map(async b => { try{ return {b, r:await iskra("POST", "/v1/messages/send", b, 6000)}; }catch(e){ return {b, status:e.status, r:e.detail || e.message}; } }));
-          return {data:{endpoints:who.endpoints || who, send}};
+          return {data:{numbers:arr(nums).map(n => ({id:n.id || n.number_id, phone:n.phone || n.display_phone_number, name:n.display_name || n.name, reserved:n.reserved, status:n.status})), send}};
         }
         const out = await Promise.all(tries.map(async ([m, path]) => {
           try{ const j = await iskra(m, path, m === "POST" ? {} : null, 6000); return {m, path, status:200, body:JSON.stringify(j).slice(0, 700)}; }
