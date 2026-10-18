@@ -3633,7 +3633,9 @@ function taskSubs(){
   ids.forEach(u => { if (!u || TSUB[u]) return; TSUB[u] = db.collection(`meets/${u}/tasks`).onSnapshot(sn => { (S.tasks ||= {})[u] = {}; sn.docs.forEach(d => S.tasks[u][d.id] = d.data()); schedule(); }, () => {}); });
 }
 function taskList(u){ return Object.entries((S.tasks||{})[u] || {}).sort((a,b) => (a[1].dueAt||9e15) - (b[1].dueAt||9e15)); }
-function taskAssignedByMe(){ const out = []; Object.entries(S.tasks||{}).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,x]) => { if ((x.by===S.uid || roleOf(S.uid)==="manager" || S.isOwner) && u!==S.uid) out.push([u,id,x]); }));
+function taskAssignedByMe(){ const out = []; Object.entries(S.tasks||{}).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,x]) => { if (u===S.uid || x.by===u) return; // las tareas personales (que alguien se crea a sí mismo) no las ve nadie más
+    const headU = S.config && S.config.headId;
+    if (x.by===S.uid || S.isOwner || (roleOf(S.uid)==="manager" && u!==headU)) out.push([u,id,x]); }));
   const ord = {review:0, changes:1, progress:2, todo:3, done:4};
   return out.sort((a,b) => ord[tkSt(a[2])] - ord[tkSt(b[2])] || (b[2].createdAt||0) - (a[2].createdAt||0)).filter(([,,x]) => tkSt(x)!=="done" || Date.now() - (x.doneAt||0) < 3*864e5); }
 /* Estatus: Por hacer → En progreso (AM) → Esperando aprobación (AM) → Necesita ajustes / Completado (Head o Manager) */
