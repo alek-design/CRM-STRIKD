@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 15:22:40 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 15:24:02 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792336960">
+<link rel="stylesheet" href="/auth.css?v=1792337042">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792336960"></script>
+<script src="/claude-shim.js?v=1792337042"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -685,6 +685,8 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* Sin círculo con inicial en los pendientes: no aporta */
+#dayPlan .pr-av:not(.tk){display:none}#dayPlan .pr{padding-left:16px}
 /* Menos rojo: el atraso se marca con un punto, no pintando todo */
 #dayPlan .pr.late .pr-av,#dayPlan .pr.crit .pr-av,#teamTasks .pr.late .pr-av{background:var(--raised);color:var(--muted2);border-color:var(--line2)}
 #dayPlan .pr-due.late,#dayPlan .pr-due.crit,#teamTasks .pr-due.late{background:none;color:var(--muted2);padding:3px 2px;display:inline-flex;align-items:center;gap:5px;font-weight:600}
