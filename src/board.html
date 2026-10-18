@@ -8,7 +8,8 @@
 @keyframes spIn{from{opacity:0;transform:scale(.85) rotate(-6deg)}to{opacity:1;transform:none}}
 @keyframes spPulse{0%,100%{opacity:1}50%{opacity:.55}}
 @media (prefers-reduced-motion:reduce){#splash svg{animation:none}}
-#view-flow .tf-kpis{margin:10px 0 22px}
+#view-flow .tf-kpis{margin:10px 0 22px;grid-template-columns:repeat(4,1fr)}
+@media (max-width:600px){#view-flow .tf-kpis{grid-template-columns:repeat(2,1fr)}}
 #view-flow .tf-k{font:inherit;text-align:left;color:var(--fg);cursor:pointer}
 #view-flow .tf-k span{line-height:1.25}
 #view-flow .tf-k.bad b{display:inline-flex;align-items:center;gap:7px}
@@ -2929,7 +2930,7 @@ $("view-flow").addEventListener("click", e => {
   if (p){ $("flowPerson").value = p.dataset.fp; schedule(); }
   else if (l){ $("flowLate").checked = !$("flowLate").checked; schedule(); }
   else if (g){ const go = g.dataset.tfgo;
-    if (go==="late"){ $("flowLate").checked = true; schedule(); $("tfLate").scrollIntoView({behavior:"smooth", block:"start"}); }
+    if (go==="late" || go==="act"){ $("flowLate").checked = go==="late"; $("flowPerson").value = ""; schedule(); $("tfLate").scrollIntoView({behavior:"smooth", block:"start"}); }
     else $(go==="tasks" ? "teamTasks" : "teamChart").scrollIntoView({behavior:"smooth", block:"start"}); }
 });
 ["flowList","myPath","teamPath"].forEach(id => $(id).addEventListener("focusout", () => setTimeout(schedule, 50)));
@@ -4082,8 +4083,10 @@ function renderTeamLate(){
   const now = Date.now(), late = Object.values(teamLateBy(now)).reduce((a, l) => a + l.length, 0);
   const open = taskAssignedByMe().filter(([,,x]) => tkSt(x)!=="done").length;
   const s = weeklySeries(Object.keys(S.team||{}), S.all||{}), pit = (s.tom||[]).slice(-1)[0] || 0;
+  const actSteps = new Set(STEPS.filter(x => !x.goal).map(x => x.n));
+  let act = 0; Object.values(S.all||{}).forEach(o => Object.entries(o||{}).forEach(([id,m]) => { const st = stepOf(id,m); if (actSteps.has(st==="rejected" && !m.cancelled ? 1 : st)) act++; }));
   const k = (go, n, l, cls) => `<button type="button" class="mi-kpi tf-k ${cls||""}" data-tfgo="${go}"><b>${n}</b><span>${l}</span></button>`;
-  const h = `<div class="mi-kpis tf-kpis">${k("late", late, late===1?"prospecto atrasado":"prospectos atrasados", late?"bad":"")}${k("tasks", open, open===1?"tarea abierta":"tareas abiertas")}${k("chart", pit, "pitches esta semana")}</div>`;
+  const h = `<div class="mi-kpis tf-kpis">${k("act", act, act===1?"prospecto activo":"prospectos activos")}${k("late", late, late===1?"prospecto atrasado":"prospectos atrasados", late?"bad":"")}${k("tasks", open, open===1?"tarea abierta":"tareas abiertas")}${k("chart", pit, "pitches esta semana")}</div>`;
   if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
 }
 /* Equipo: todas las tareas asignadas (abiertas y completadas recientes); en Pendientes solo salen las que esperan tu aprobación */
