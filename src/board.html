@@ -3661,7 +3661,7 @@ function growthChart(o){
   const step = v => { const raw = v/4, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw/p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p; };
   const bm = Math.max(4, step(bmax)*4), lm = Math.max(4, step(lmax)*4), y = (v,m) => T + (H-T-B) * (1 - v/m);
   let g = "";
-  for (let i = 0; i <= 4; i++){ const yy = T + (H-T-B)*i/4; g += `<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" class="gc-grid"/><text x="${L-6}" y="${yy+3}" class="gc-ax" text-anchor="end">${Math.round(bm*(1-i/4))}</text><text x="${W-R+6}" y="${yy+3}" class="gc-ax">${Math.round(lm*(1-i/4))}</text>`; }
+  for (let i = 0; i <= 4; i++){ const yy = T + (H-T-B)*i/4; g += `<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" class="gc-grid"/><text x="${L-6}" y="${yy+3}" class="gc-ax" text-anchor="end">${Math.round(bm*(1-i/4))}</text>${o.lines.length ? `<text x="${W-R+6}" y="${yy+3}" class="gc-ax">${Math.round(lm*(1-i/4))}</text>` : ""}`; }
   const bars = o.bars.vals.map((v,i) => { const x = L + i*cw + cw*.2, w = cw*.6, yy = y(v,bm);
     return `<rect x="${x}" y="${yy}" width="${w}" height="${H-B-yy}" rx="3" class="gc-bar${i===n-1?" cur":""}"><title>${wkShort(o.weeks[i])}: ${v} ${o.bars.label.toLowerCase()}</title></rect>${v?`<text x="${x+w/2}" y="${yy-4}" class="gc-v" text-anchor="middle">${v}</text>`:""}`; }).join("");
   const lines = o.lines.map(l => { const pts = l.vals.map((v,i) => [L + i*cw + cw/2, y(v,lm)]);
@@ -3672,7 +3672,7 @@ function growthChart(o){
   return `<section class="gc">
     <div class="gc-h"><div><h3>${esc(o.title)}</h3><p class="sub">${o.weeks.length < 10 ? `Desde que hay historial · ${o.weeks.length} semanas` : "Últimas 10 semanas"} · cada semana cierra el viernes 6:00 pm</p></div>
       ${trend===null ? "" : `<span class="gc-tr ${trend>=0?"up":"down"}">${trend>=0?"▲":"▼"} ${Math.abs(trend)}% ${esc(o.bars.label.toLowerCase())}<small>últimas ${half} vs. ${half} anteriores</small></span>`}</div>
-    <div class="gc-leg"><span><i class="sw bar"></i>${esc(o.bars.label)} <small>(eje izq.)</small></span>${o.lines.map(l => `<span><i class="sw ${l.cls}"></i>${esc(l.label)} <small>(eje der.)</small></span>`).join("")}</div>
+    ${!o.lines.length ? "" : `<div class="gc-leg"><span><i class="sw bar"></i>${esc(o.bars.label)} <small>(eje izq.)</small></span>${o.lines.map(l => `<span><i class="sw ${l.cls}"></i>${esc(l.label)} <small>(eje der.)</small></span>`).join("")}</div>`}
     <svg viewBox="0 0 ${W} ${H}" class="gc-svg" role="img" aria-label="${esc(o.title)}">${g}${bars}${lines}${xl}</svg>
   </section>`;
 }
@@ -3693,8 +3693,8 @@ function renderTeamChart(){
   const pick = $("flowPerson") && $("flowPerson").value, one = pick && S.team[pick];
   const uids = one ? [pick] : Object.keys(S.team);
   const s = weeklySeries(uids, S.all);
-  box.innerHTML = growthChart({title: one ? `Crecimiento de ${nameOf(S.ps||{}, pick)}` : "Crecimiento del equipo", weeks:s.weeks,
-    bars:{label:"Meets agendados", vals:s.meets}, lines:[{label:"Puntos", vals:s.pts, cls:"pts"}, {label:"Pitch tomados", vals:s.tom, cls:"tom"}]});
+  box.innerHTML = growthChart({title: one ? `Pitches tomados de ${nameOf(S.ps||{}, pick)}` : "Pitches tomados del equipo", weeks:s.weeks,
+    bars:{label:"Pitch tomados", vals:s.tom}, lines:[]});
 }
 function perfChart(){
   const me = meId(), team = Object.keys(S.team), mine = S.viewAs ? (S.all[me]||{}) : S.mine;
