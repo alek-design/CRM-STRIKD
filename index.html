@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 07:07:43 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 07:13:13 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792307263">
+<link rel="stylesheet" href="/auth.css?v=1792307593">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792307263"></script>
+<script src="/claude-shim.js?v=1792307593"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -674,6 +674,20 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+.mi-act{display:flex;align-items:center;gap:8px;width:100%;font:inherit;text-align:left;background:var(--surface);border:1px dashed var(--line2);border-radius:12px;padding:9px 12px;margin:-2px 0 10px;color:var(--fg);cursor:pointer}
+.mi-act b{font-size:13.5px}.mi-act span{font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mi-act em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--muted)}
+.mi-act:not(.none){border-style:solid;border-color:var(--ok-line);background:var(--ok-soft2)}
+.mt-help{margin:0 0 10px}
+.mt-list{display:grid;gap:10px}
+.mt-card{font:inherit;color:var(--fg);text-align:left;background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:12px 14px;cursor:pointer;display:grid;gap:6px}
+.mt-card.on{border-color:var(--ok-fg);box-shadow:inset 0 0 0 1px var(--ok-fg)}
+.mt-h{display:flex;align-items:center;gap:8px}.mt-h b{font-size:15px}.mt-on{font-size:11px;font-weight:700;color:var(--ok-fg);background:var(--ok-soft2);border-radius:999px;padding:2px 8px}.mt-best{font-size:11px;font-weight:700}
+.mt-ed{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--muted);text-decoration:underline}
+.mt-card p{margin:0;font-size:13px;color:var(--muted2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.mt-st{display:flex;gap:14px;font-size:12px;color:var(--muted)}.mt-st b{color:var(--fg);font-size:14px}
+.mt-new{font:inherit;font-weight:700;font-size:14px;color:var(--fg);background:none;border:1.5px dashed var(--line2);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}.mt-new span{font-size:20px}
+.mt-form{display:grid;gap:8px;background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:12px}
+
 /* Mi lista: encabezado compacto, toggle arriba a la derecha y 3 indicadores */
 #view-mich .mi-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap}#view-mich .mi-head .sub{margin:2px 0 0}
 .mi-pill{flex:none;padding:6px 6px 6px 12px;font-size:13px;gap:8px}
@@ -1224,8 +1238,8 @@ body.mob-open header.top{z-index:31}
       <button type="button" class="mi-pill" id="miPill" aria-pressed="false" title="Modo contactar: al tocar un perfil se abre su Instagram y pasa a Contactados"><span>Contactar</span><i></i></button></div>
     <div class="mi-kpis" id="miKpis"></div>
     <p class="mi-hint" id="miHint" hidden></p>
-    <div class="mi-bar"><div class="subnav" id="miSeg"><button type="button" data-mif="nuevo" class="on">Pendientes</button><button type="button" data-mif="contactado">Contactados</button><button type="button" data-mif="todos">Todos</button></div>
-      <input type="search" id="miQ" placeholder="Buscar nombre o @usuario"></div>
+    <div class="mi-bar"><div class="subnav" id="miSeg"><button type="button" data-mif="nuevo" class="on">Pendientes</button><button type="button" data-mif="contactado">Contactados</button><button type="button" data-mif="tpl">Plantillas</button></div></div>
+    <div id="miTplBar"></div>
     <div id="miBox"></div>
     <div class="mi-toast" id="miToast" hidden></div>
   </section>
@@ -3298,7 +3312,7 @@ function renderPerf(){
 }
 
 /* ---------- Influencer Outreach (Mich): su lista con links de Instagram ---------- */
-const MICH = {f:"nuevo", q:"", undo:null, on:(() => { try{ return localStorage.getItem("strikd_mich_on")!=="0"; }catch(_){ return true; } })(), subs:{}};
+const MICH = {f:"nuevo", q:"", tpl:(() => { try{ return localStorage.getItem("strikd_mich_tpl") || ""; }catch(_){ return ""; } })(), undo:null, on:(() => { try{ return localStorage.getItem("strikd_mich_on")!=="0"; }catch(_){ return true; } })(), subs:{}};
 function michMode(){ return roleOf(meId())==="influencer" && (!S.isOwner || !!S.viewAs); }
 function syncMichUi(){
   const mm = michMode();
@@ -3325,6 +3339,8 @@ function michRows(){
 }
 function renderMich(){
   const box = $("miBox"); if (!box || S.tab!=="mich") return;
+  if (busyIn(box)) return;
+  michTplSub();
   const rows = michRows(), done = x => (x.status||"nuevo")!=="nuevo";
   const today0 = Date.parse(new Date(Date.now()-OFF).toISOString().slice(0,10) + "T00:00:00-05:00");
   const nPend = rows.filter(r => !done(r[2])).length, nDone = rows.length - nPend, nHoy = rows.filter(r => (r[2].contactedAt||r[2].statusAt||0) >= today0 && r[2].status==="contactado").length;
@@ -3339,8 +3355,12 @@ function renderMich(){
   $("miPill").classList.toggle("on", MICH.on); $("miPill").setAttribute("aria-pressed", String(MICH.on));
 
   document.querySelectorAll("#miSeg [data-mif]").forEach(b => b.classList.toggle("on", b.dataset.mif===MICH.f));
-  const q = MICH.q.trim().toLowerCase().replace(/^@/,"");
-  const list = rows.filter(([,,x]) => MICH.f==="todos" ? true : MICH.f==="nuevo" ? !done(x) : done(x))
+  // plantilla activa: se copia al tocar a cada perfil y queda asignada para medir su conversión
+  const act = MICH.tpl && S.michTpl && S.michTpl[MICH.tpl];
+  $("miTplBar").innerHTML = MICH.f==="nuevo" ? `<button type="button" class="mi-act${act?"":" none"}" data-mif="tpl">${act ? `📋 <b>${esc(act.name)}</b><span>se copia al tocar cada perfil</span>` : `📋 <b>Elige una plantilla</b><span>para copiarla y medir cuál convierte</span>`}<em>Cambiar</em></button>` : "";
+  if (MICH.f==="tpl"){ box.innerHTML = michTplHtml(rows); return; }
+  const q = "";
+  const list = rows.filter(([,,x]) => MICH.f==="nuevo" ? !done(x) : done(x))
     .filter(([,,x]) => !q || (String(x.prospect||"")+" "+igUser(x.profile)).toLowerCase().includes(q))
     .sort((a,b) => MICH.f==="nuevo" ? (b[2].followers||0) - (a[2].followers||0) : (b[2].statusAt||b[2].createdAt||0) - (a[2].statusAt||a[2].createdAt||0));
   const ini = n => esc((String(n||"?").trim()[0]||"?").toUpperCase());
@@ -3356,7 +3376,8 @@ function renderMich(){
 async function michMark(k, status){
   const [u, id] = k.split("/"), x = (S.vip[u]||{})[id]; if (!x) return;
   const prev = {status:x.status||"nuevo", statusAt:x.statusAt||0}, now = Date.now();
-  const patch = status==="contactado" ? {status, statusAt:now, contactedAt:now, contactedBy:meId()} : {status, statusAt:now};
+  const at = MICH.tpl && S.michTpl && S.michTpl[MICH.tpl];
+  const patch = status==="contactado" ? {status, statusAt:now, contactedAt:now, contactedBy:meId(), ...(at ? {tpl:MICH.tpl, tplName:at.name} : {})} : {status, statusAt:now};
   Object.assign(x, patch); schedule();
   clearTimeout(MICH.tT); MICH.undo = {k, prev};
   const t = $("miToast"); t.hidden = false; t.innerHTML = `<span>${status==="contactado" ? `✓ ${esc(x.prospect||"Perfil")} contactado` : "Regresó a por contactar"}</span><button type="button" data-mtundo="1">Deshacer</button>`;
@@ -3371,7 +3392,6 @@ async function michStatsLoad(){
   MICH.stLoading = false;
 }
 $("miSeg").addEventListener("click", e => { const b = e.target.closest("[data-mif]"); if (b){ MICH.f = b.dataset.mif; schedule(); } });
-$("miQ").addEventListener("input", e => { MICH.q = e.target.value; renderMich(); });
 $("view-mich").addEventListener("click", e => {
   const bk = e.target.closest("[data-mbook]"); if (bk){ e.preventDefault(); e.stopPropagation(); return michBookOpen(bk.dataset.mbook); }
   const dn = e.target.closest("[data-mdone]"), un = e.target.closest("[data-mundo]"), tu = e.target.closest("[data-mtundo]");
@@ -3379,11 +3399,61 @@ $("view-mich").addEventListener("click", e => {
   if (un){ e.preventDefault(); e.stopPropagation(); return michMark(un.dataset.mundo, "nuevo"); }
   if (tu && MICH.undo){ const {k, prev} = MICH.undo, [u,id] = k.split("/"), x = (S.vip[u]||{})[id]; MICH.undo = null; $("miToast").hidden = true;
     if (x){ Object.assign(x, prev); schedule(); db.doc(`meets/${u}/vip/${id}`).update(prev).catch(() => {}); } return; }
+  const te = e.target.closest("[data-mtpled]"); if (te){ e.stopPropagation(); const t = S.michTpl[te.dataset.mtpled]; MICH.tf = {id:te.dataset.mtpled, name:t.name, text:t.text}; return renderMich(); }
+  const tp = e.target.closest("[data-mtpl]"); if (tp){ return michTplPick(tp.dataset.mtpl); }
+  if (e.target.closest("[data-mtplnew]")){ MICH.tf = {name:"", text:""}; return renderMich(); }
+  if (e.target.closest("[data-mtplx]")){ MICH.tf = null; return renderMich(); }
+  if (e.target.closest("[data-mtplsave]")){ return michTplSave(); }
+  const mf = e.target.closest("[data-mif]"); if (mf && !e.target.closest("#miSeg")){ MICH.f = mf.dataset.mif; return schedule(); }
   const go = e.target.closest("[data-mgo]"); if (!go) return;
   if (go.getAttribute("href")==="#"){ e.preventDefault(); return; }
   const [u,id] = go.dataset.mgo.split("/"), x = (S.vip[u]||{})[id];
+  { const at = MICH.tpl && S.michTpl && S.michTpl[MICH.tpl]; if (at && x && (x.status||"nuevo")==="nuevo"){ try{ navigator.clipboard.writeText(fillVars(at.text, x.prospect||"").replace(/\s+([!,.?])/g, "$1")); }catch(_){} } }
   if (MICH.on && x && (x.status||"nuevo")==="nuevo") setTimeout(() => michMark(go.dataset.mgo, "contactado"), 0); // el link abre Instagram; aquí solo se marca
 });
+
+/* Plantillas de Mich: tocar una la copia y la deja activa; cada perfil que contacte queda con esa plantilla */
+const MICH_DEF = [
+  {name:"Directo", text:"¡Hola {nombre}! Me encanta tu contenido 🙌 Soy Mich de STRIKD: ayudamos a creadores fitness a lanzar su propia app de entrenamiento con su marca. ¿Te cuento en 2 minutos cómo funcionaría para tu comunidad?"},
+  {name:"Colaboración", text:"{nombre}, ¡qué comunidad tan buena has armado! Estamos eligiendo a pocos creadores para lanzar su programa en su propia app con STRIKD: nosotros hacemos toda la parte técnica y tú pones el contenido. ¿Te interesa que platiquemos?"},
+  {name:"Pregunta", text:"Hola {nombre} 👋 Pregunta rápida: ¿has pensado en tener tu propia app con tus rutinas? Trabajo con STRIKD y creo que encajarías increíble. ¿Te mando la info?"}];
+function michTplSub(){
+  const uid = meId(); if (MICH.tplFor === uid) return; MICH.tplFor = uid; if (MICH.tplUnsub){ try{ MICH.tplUnsub(); }catch(_){} }
+  S.michTpl = null;
+  MICH.tplUnsub = db.collection(`meets/${uid}/michtpl`).onSnapshot(sn => { S.michTpl = {}; sn.docs.forEach(d => S.michTpl[d.id] = d.data());
+    if (!sn.docs.length && !MICH.seeded){ MICH.seeded = true; MICH_DEF.forEach((t,i) => db.collection(`meets/${uid}/michtpl`).doc().set({...t, order:i, createdAt:Date.now()}).catch(() => {})); }
+    schedule(); }, () => {});
+}
+function michTplHtml(rows){
+  michTplSub();
+  const T = S.michTpl; if (!T) return `<p class="mut small">Cargando plantillas…</p>`;
+  const list = Object.entries(T).sort((a,b) => (a[1].order??9) - (b[1].order??9) || (a[1].createdAt||0) - (b[1].createdAt||0));
+  const st = id => { const r = rows.map(x => x[2]).filter(x => x.tpl===id); const conv = r.filter(x => x.meetId || x.status==="interesado" || x.status==="agendo").length, mt = r.filter(x => x.meetId || x.status==="agendo").length;
+    return {n:r.length, conv, mt, pc:r.length ? Math.round(conv/r.length*100) : null}; };
+  const stats = list.map(([id]) => [id, st(id)]), best = stats.filter(([,x]) => x.n >= 5).sort((a,b) => b[1].pc - a[1].pc)[0];
+  const f = MICH.tf;
+  const form = f ? `<div class="mt-form"><input id="mtName" placeholder="Nombre (ej. Directo)" value="${esc(f.name||"")}"><textarea id="mtText" rows="4" placeholder="Mensaje. Usa {nombre} para su nombre.">${esc(f.text||"")}</textarea>
+    <div class="row"><span class="err" id="mtErr"></span><div class="spacer"></div><button type="button" class="btn small" data-mtplx="1">Cancelar</button><button type="button" class="btn small primary" data-mtplsave="1">Guardar</button></div></div>` : "";
+  return `<p class="mut small mt-help">Toca una plantilla: se copia y queda activa. Cada perfil que contactes queda con esa plantilla para medir cuál convierte (le interesó o agendó meet).</p>
+    <div class="mt-list">${list.map(([id,t]) => { const x = st(id), on = MICH.tpl===id;
+      return `<button type="button" class="mt-card${on?" on":""}" data-mtpl="${id}"><div class="mt-h"><b>${esc(t.name)}</b>${on?`<span class="mt-on">Activa</span>`:""}${best && best[0]===id ? `<span class="mt-best">🏆 Mejor</span>` : ""}<span class="mt-ed" data-mtpled="${id}" role="button" aria-label="Editar">Editar</span></div>
+        <p>${esc(t.text)}</p><div class="mt-st"><span><b>${x.n}</b> enviados</span><span><b>${x.pc==null?"—":x.pc+"%"}</b> conversión</span><span><b>${x.mt}</b> meets</span></div></button>`; }).join("")}
+      ${f ? form : `<button type="button" class="mt-new" data-mtplnew="1"><span>+</span> Nueva plantilla</button>`}</div>`;
+}
+function michTplPick(id){
+  const t = S.michTpl && S.michTpl[id]; if (!t) return;
+  MICH.tpl = id; try{ localStorage.setItem("strikd_mich_tpl", id); }catch(_){}
+  try{ navigator.clipboard.writeText(String(t.text).replace(/\s*\{nombre\}/gi, "").replace(/^[,\s]+/, "")); }catch(_){}
+  const tt = $("miToast"); clearTimeout(MICH.tT); tt.hidden = false; tt.innerHTML = `<span>📋 "${esc(t.name)}" copiada y activa</span>`; MICH.tT = setTimeout(() => { tt.hidden = true; }, 2500);
+  MICH.f = "nuevo"; schedule();
+}
+async function michTplSave(){
+  const name = $("mtName").value.trim(), text = $("mtText").value.trim();
+  if (!name || !text){ $("mtErr").textContent = "Ponle nombre y mensaje."; return; }
+  const col = `meets/${meId()}/michtpl`;
+  try{ if (MICH.tf.id) await db.doc(`${col}/${MICH.tf.id}`).update({name, text, updatedAt:Date.now()}); else await db.collection(col).doc().set({name, text, order:Object.keys(S.michTpl||{}).length, createdAt:Date.now()}); MICH.tf = null; renderMich(); }
+  catch(e){ $("mtErr").textContent = "No se pudo guardar."; }
+}
 
 /* Mich agenda el meet: queda en el journey del AM que propuso al influencer (su conexión y sus puntos) */
 const MBK = {k:null, busy:false, err:""};
