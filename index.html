@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 15:32:59 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 15:35:41 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792337579">
+<link rel="stylesheet" href="/auth.css?v=1792337741">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792337579"></script>
+<script src="/claude-shim.js?v=1792337741"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -3395,7 +3395,7 @@ function renderPlan(){
     + (admin ? "" : Object.values(vipItems(meId())).filter(x => (x.status==="interesado" || x.status==="agendo") && x.statusAt && now - x.statusAt < 3*864e5).slice(0, 3).map(x => `<button type="button" class="pl-item task ok" data-gotab="perf"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b>${PICON[3]} ${esc(x.prospect)} ${x.status==="agendo" ? "ya agendó meet con Mich" : "está interesado"}</b><small>Una de tus propuestas para Mich</small></span><span class="sema ok"><i></i>Nuevo</span></button>`).join(""))
     + (iskOpen ? `<button type="button" class="pl-item task soon" data-gomsgs="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Tienes ${iskOpen} chat${iskOpen===1?"":"s"} de WhatsApp sin responder</b><small>Contéstalos en Mensajes</small></span><span class="sema soon"><i></i>Hoy</span></button>` : "");
   // tareas que asignan el Head o el Manager: salen todos los días hasta que se marcan como hechas
-  const myT = taskList(meId()).filter(([,x]) => tkSt(x)!=="done" && (!x.dueAt || x.dueAt <= eod || tkSt(x)!=="todo"));
+  const myT = taskList(meId()).filter(([,x]) => tkSt(x)!=="done"); // todas las abiertas, aunque sean para otro día
   const tLate = myT.filter(([,x]) => x.dueAt && x.dueAt < now && tkSt(x)!=="review").length;
   const assigned = admin && !S.viewAs ? taskAssignedByMe().filter(([,,x]) => !headLite || x.by===S.uid) : [];
   const nRev = assigned.filter(([,,x]) => tkSt(x)==="review").length;
@@ -3687,7 +3687,8 @@ function taskOpen(){
     try{ for (const u of to){ const ref = db.collection(`meets/${u}/tasks`).doc(), data = {title, note, dueAt, status:"todo", by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], createdAt:now};
         await ref.set(data); ((S.tasks ||= {})[u] ||= {})[ref.id] = data;
         tkNotify([u], `Nueva tarea de ${data.byName}`, title + (note ? ` · ${note}` : ""), `${u}/${ref.id}`, u); } schedule();
-      w.remove(); taskSubs(); quickToast(to.length > 1 ? `✓ Tarea asignada a ${to.length}` : `✓ Tarea asignada a ${String(nameOf(S.ps||{}, to[0])).split(" (")[0]}`); }
+      w.remove(); taskSubs(); if (to.includes(meId())){ AG_DAY = null; showTab("agenda"); }
+      quickToast(to.length > 1 ? `✓ Tarea asignada a ${to.length}` : `✓ Tarea asignada a ${String(nameOf(S.ps||{}, to[0])).split(" (")[0]}`); }
     catch(_){ $("tkGo").disabled = false; $("tkErr").textContent = "No se pudo guardar."; }
   });
   setTimeout(() => $("tkTitle").focus(), 50);
