@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 06:48:29 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 06:51:23 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792306109">
+<link rel="stylesheet" href="/auth.css?v=1792306283">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792306109"></script>
+<script src="/claude-shim.js?v=1792306283"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -673,6 +673,23 @@ label.f em{color:var(--bad);font-style:normal}
 .stats{display:flex;flex-wrap:wrap;gap:8px}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Hoy en la Agenda: encabezado corto y pendientes agrupados por acción */
+.plan .pl-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.plan .pl-ttl{display:flex;align-items:baseline;gap:10px}.plan .pl-ttl h2{margin:0}
+.pl-date{font-size:13px;color:var(--muted)}
+.pl-stats{display:flex;gap:6px;flex-wrap:wrap}.pl-stats span{font-size:12.5px;color:var(--muted);background:var(--raised);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.pl-stats b{color:var(--fg)}.pl-stats .late{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 30%,transparent)}.pl-stats .late b{color:var(--bad)}
+.pl-col h3{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.pg{background:var(--surface);border:1px solid var(--line2);border-radius:14px;overflow:hidden;margin-bottom:10px}
+.pg-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px 6px}.pg-h b{font-size:13.5px}
+.pg-n{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}.pg-n.late{color:var(--bad)}
+.pg-row{display:flex;align-items:center;gap:10px;width:100%;font:inherit;color:var(--fg);text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:9px 12px;cursor:pointer}
+.pg-row.sel{background:var(--raised)}
+.pg-who{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px}.pg-who b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pg-who small{color:var(--muted);font-size:12px;white-space:nowrap}
+.pg-due{flex:none;font-size:11.5px;font-weight:700;color:var(--muted)}.pg-due.late,.pg-due.crit{color:var(--bad)}.pg-due.soon{color:var(--wait)}
+.pg-more{display:block;width:100%;font:inherit;font-size:12.5px;font-weight:700;color:var(--muted);background:none;border:0;border-top:1px solid var(--line);padding:8px;cursor:pointer}
+.pg .detail{margin:0 10px 10px}
 
 .ap-h2{margin-top:10px}.ap-ev.task{border-left-color:var(--wait)}
 #view-agenda #dayPlan{margin-top:16px}
@@ -3117,14 +3134,16 @@ function renderPlan(){
   const waToday = [];
   if (iskFn() && !S.viewAs && Date.now() - ISK.at > 60e3 && !ISK.loading) iskLoad(true);
   const me0 = meId(), iskOpen = ISK.convs.filter(c => c.lastDir==="in" && (admin ? (c.owner===me0 || c.esc || !c.owner) : c.owner===me0)).length;
-  const PL_LIM = 5, plAll = MORE.plan || tks.length <= PL_LIM;
-  const todo = (plAll ? tks : tks.slice(0, PL_LIM)).map(t => {
-    const d = dueInfo(t.due, now), key = `tk|${t.uid}__${t.id}`;
-    return `<button type="button" class="pl-item task ${d.cls}${sel===key?" sel":""}" data-pick="${key}">
-      <span class="pl-check" aria-hidden="true"></span>
-      <span class="pl-body"><b>${esc(t.title)}</b>${admin?`<small>${esc(nameOf(S.ps,t.uid))}</small>`:""}</span>
-      <span class="sema ${d.cls}"><i></i>${t.due < now ? esc(d.txt) : `Antes de ${hm(t.due)}`}</span></button>${expand(key, t.uid, t.id, t.m)}`;
-  }).join("") + (tks.length > PL_LIM ? `<button type="button" class="more" data-plmore="1">${MORE.plan ? "Ver menos" : `Ver los ${tks.length}`}</button>` : "")
+  // pendientes agrupados por tipo de acción ("Manda el skeleton · 4"), cada uno en una línea
+  const grpKey = t => { const p = (t.m && t.m.prospect) || ""; return (p ? t.title.replace(p, "").replace(/\s+(a|con|de|el)\s*$/i, "").replace(/\s+:/, ":").trim() : t.title).replace(/:\s*$/, "") || t.title; };
+  const groups = []; tks.forEach(t => { const k = grpKey(t); let g = groups.find(x => x.k===k); if (!g) groups.push(g = {k, items:[]}); g.items.push(t); });
+  groups.sort((a,b) => a.items[0].due - b.items[0].due);
+  const shortDue = t => { if (t.due >= now) return `antes de ${hm(t.due)}`; const h = Math.round((now - t.due)/HR); return h < 24 ? `${Math.max(1,h)} h tarde` : `${Math.round(h/24)} d tarde`; };
+  const todo = groups.map(g => { const late = g.items.filter(t => t.due < now).length, open = MORE["g:"+g.k], lim = open ? g.items.length : 3;
+    return `<div class="pg"><div class="pg-h"><b>${esc(g.k)}</b><span class="pg-n${late?" late":""}">${g.items.length}${late?` · ${late} tarde`:""}</span></div>
+      ${g.items.slice(0, lim).map(t => { const d = dueInfo(t.due, now), key = `tk|${t.uid}__${t.id}`;
+        return `<button type="button" class="pg-row ${d.cls}${sel===key?" sel":""}" data-pick="${key}"><span class="pl-check" aria-hidden="true"></span><span class="pg-who"><b>${esc((t.m && t.m.prospect) || t.title)}</b>${admin?`<small>${esc(String(nameOf(S.ps,t.uid)).split(" ")[0])}</small>`:""}</span><span class="pg-due ${d.cls}">${esc(shortDue(t))}</span></button>${expand(key, t.uid, t.id, t.m)}`; }).join("")}
+      ${g.items.length > 3 ? `<button type="button" class="pg-more" data-pgmore="${esc(g.k)}">${open ? "Ver menos" : `+${g.items.length - 3} más`}</button>` : ""}</div>`; }).join("")
     + waToday.slice(0, 5).map(([id,l]) => { const d = dueInfo((l.assignedAt||0)+24*HR, now); return `<button type="button" class="pl-item task ${d.cls}" data-gowa="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Agenda el meet con ${esc(l.name)}</b><small>Interesado de WhatsApp</small></span><span class="sema ${d.cls}"><i></i>${l.assignedAt+24*HR < now ? esc(d.txt) : `Antes de ${hm(l.assignedAt+24*HR)}`}</span></button>`; }).join("")
     + (waToday.length > 5 ? `<button type="button" class="more" data-gowa="1">+${waToday.length-5} interesados de WhatsApp</button>` : "")
     + (admin ? "" : Object.values(vipItems(meId())).filter(x => (x.status==="interesado" || x.status==="agendo") && x.statusAt && now - x.statusAt < 3*864e5).slice(0, 3).map(x => `<button type="button" class="pl-item task ok" data-gotab="perf"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b>${PICON[3]} ${esc(x.prospect)} ${x.status==="agendo" ? "ya agendó meet con Mich" : "está interesado"}</b><small>Una de tus propuestas para Mich</small></span><span class="sema ok"><i></i>Nuevo</span></button>`).join(""))
@@ -3132,11 +3151,11 @@ function renderPlan(){
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
   const late = tks.filter(t => t.due < now).length;
   box.innerHTML = `<section class="plan">
-    <div class="pl-head"><div class="pl-ttl"><span class="eyb">Tu plan de hoy</span><h2>${DOWL[dd.getUTCDay()].replace(/^./, c => c.toUpperCase())} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</h2></div>
-      <div class="pl-sum"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}${evs.length?` · ${past} ya pasaron`:""}</span><span><b>${tks.length}</b> pendiente${tks.length===1?"":"s"}${late?` · <em>${late} atrasado${late===1?"":"s"}</em>`:""}</span></div></div>
+    <div class="pl-head"><div class="pl-ttl"><h2>Hoy</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span></div>
+      <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
     <div class="pl-cols">
-      <div class="pl-col"><h3>Agenda</h3>${line || `<p class="pl-empty">Hoy no tienes meets agendados.</p>`}</div>
-      <div class="pl-col"><h3>Por hacer hoy</h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
+      <div class="pl-col"><h3>Meets</h3>${line || `<p class="pl-empty">Hoy no tienes meets agendados.</p>`}</div>
+      <div class="pl-col"><h3>Pendientes</h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
     </div>
   </section>`;
 }
@@ -3146,6 +3165,7 @@ $("dayPlan").addEventListener("click", e => {
   if (e.target.closest("[data-gowa]")){ showTab("msgs"); return; setTimeout(() => $("myWaLeads").scrollIntoView({behavior:"smooth", block:"start"}), 60); return; }
   if (e.target.closest("[data-plpast]")){ MORE.planPast = !MORE.planPast; schedule(); return; }
   if (e.target.closest("[data-plmore]")){ MORE.plan = !MORE.plan; schedule(); return; }
+  const gm = e.target.closest("[data-pgmore]"); if (gm){ const k = "g:" + gm.dataset.pgmore; MORE[k] = !MORE[k]; schedule(); return; }
   const j = e.target.closest("[data-journey]");
   if (j){ PICK.dayPlan = null; PICK.myPath = j.dataset.journey; schedule(); setTimeout(() => $("pathWrap").scrollIntoView({behavior:"smooth", block:"start"}), 80); return; }
   const p = e.target.closest("[data-pick]");
