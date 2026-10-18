@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 16:39:11 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 16:43:29 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792341551">
+<link rel="stylesheet" href="/auth.css?v=1792341809">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792341551"></script>
+<script src="/claude-shim.js?v=1792341809"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -16,12 +16,16 @@
 @keyframes spIn{from{opacity:0;transform:scale(.85) rotate(-6deg)}to{opacity:1;transform:none}}
 @keyframes spPulse{0%,100%{opacity:1}50%{opacity:.55}}
 @media (prefers-reduced-motion:reduce){#splash svg{animation:none}}
-#view-flow .tf-kpis{margin:10px 0 22px;grid-template-columns:repeat(4,1fr)}
-@media (max-width:600px){#view-flow .tf-kpis{grid-template-columns:repeat(2,1fr)}}
-#view-flow .tf-k{font:inherit;text-align:left;color:var(--fg);cursor:pointer}
-#view-flow .tf-k span{line-height:1.25}
+#view-flow .tf-kpis{display:grid;grid-template-columns:repeat(4,1fr);margin:6px 0 24px;background:var(--surface);border:1px solid var(--line2);border-radius:16px;overflow:hidden}
+#view-flow .tf-k{font:inherit;text-align:left;color:var(--fg);cursor:pointer;background:none;border:0;border-left:1px solid var(--line);padding:11px 12px 10px;display:grid;gap:1px;min-width:0}
+#view-flow .tf-k:first-child{border-left:0}
+#view-flow .tf-k b{font-size:21px;font-weight:800;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
+#view-flow .tf-k b small{font-size:13px;color:var(--muted);font-weight:700}
+#view-flow .tf-k span{font-size:11.5px;color:var(--muted);font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#view-flow .tf-k.on b{display:inline-flex;align-items:center;gap:6px}
+#view-flow .tf-k.on b::after{content:"";width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
 #view-flow .tf-k.bad b{display:inline-flex;align-items:center;gap:7px}
-#view-flow .tf-k.bad b::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--bad);opacity:.85}
+#view-flow .tf-k.bad b::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--bad);opacity:.85}
 #view-flow .tt{margin:0 0 26px}
 #view-flow .tt .pg2-h{font-size:18px;font-weight:800;letter-spacing:-.01em;text-transform:none;color:var(--fg);margin:0 2px 10px}
 #view-flow .tt .pg2-h b{font-size:12px}
@@ -2950,7 +2954,7 @@ $("view-flow").addEventListener("click", e => {
   else if (l){ $("flowLate").checked = !$("flowLate").checked; schedule(); }
   else if (g){ const go = g.dataset.tfgo;
     if (go==="late" || go==="act"){ $("flowLate").checked = go==="late"; $("flowPerson").value = ""; schedule(); $("tfLate").scrollIntoView({behavior:"smooth", block:"start"}); }
-    else $(go==="tasks" ? "teamTasks" : "teamChart").scrollIntoView({behavior:"smooth", block:"start"}); }
+    else $(go==="pres" ? "teamLoad" : go==="tasks" ? "teamTasks" : "teamChart").scrollIntoView({behavior:"smooth", block:"start"}); }
 });
 ["flowList","myPath","teamPath"].forEach(id => $(id).addEventListener("focusout", () => setTimeout(schedule, 50)));
 
@@ -4100,12 +4104,19 @@ function teamLateBy(now){
 function renderTeamLate(){
   const box = $("teamLate"); if (!box || !adminMode() || busyIn(box)) return;
   const now = Date.now(), late = Object.values(teamLateBy(now)).reduce((a, l) => a + l.length, 0);
-  const open = taskAssignedByMe().filter(([,,x]) => tkSt(x)!=="done").length;
-  const s = weeklySeries(Object.keys(S.team||{}), S.all||{}), pit = (s.tom||[]).slice(-1)[0] || 0;
   const actSteps = new Set(STEPS.filter(x => !x.goal).map(x => x.n));
-  let act = 0; Object.values(S.all||{}).forEach(o => Object.entries(o||{}).forEach(([id,m]) => { const st = stepOf(id,m); if (actSteps.has(st==="rejected" && !m.cancelled ? 1 : st)) act++; }));
-  const k = (go, n, l, cls) => `<button type="button" class="mi-kpi tf-k ${cls||""}" data-tfgo="${go}"><b>${n}</b><span>${l}</span></button>`;
-  const h = `<div class="mi-kpis tf-kpis">${k("act", act, act===1?"prospecto activo":"prospectos activos")}${k("late", late, late===1?"prospecto atrasado":"prospectos atrasados", late?"bad":"")}${k("tasks", open, open===1?"tarea abierta":"tareas abiertas")}${k("chart", pit, "pitches esta semana")}</div>`;
+  // pitches de esta semana (lunes a domingo): agendados y cuántos ya se tomaron
+  const todayStr = new Date(now - OFF).toISOString().slice(0,10), t0 = new Date(todayStr + "T00:00:00Z"), dow = (t0.getUTCDay()+6)%7;
+  const from = Date.parse(new Date(t0.getTime() - dow*DAY).toISOString().slice(0,10) + "T00:00:00-05:00"), to = from + 7*DAY;
+  let act = 0, pAg = 0, pTom = 0;
+  Object.values(S.all||{}).forEach(o => Object.entries(o||{}).forEach(([id,m]) => {
+    const st = stepOf(id,m); if (actSteps.has(st==="rejected" && !m.cancelled ? 1 : st)) act++;
+    const k = statusOf(id), t = meetTs(effAt(m));
+    if (k!=="rejected" && !(m.flow||{}).lostAt && t >= from && t < to){ pAg++; if (k==="attended") pTom++; }
+  }));
+  const on = presOnline().length;
+  const k = (go, n, l, cls) => `<button type="button" class="tf-k ${cls||""}" data-tfgo="${go}"><b>${n}</b><span>${l}</span></button>`;
+  const h = `<div class="tf-kpis">${k("act", act, "activos")}${k("late", late, "atrasados", late?"bad":"")}${k("chart", `${pTom}<small>/${pAg}</small>`, "pitches")}${k("pres", on, "en línea", on?"on":"")}</div>`;
   if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
 }
 /* Equipo: todas las tareas asignadas (abiertas y completadas recientes); en Pendientes solo salen las que esperan tu aprobación */
