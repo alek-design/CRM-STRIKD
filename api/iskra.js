@@ -261,6 +261,22 @@ module.exports = async (req, res) => {
         await c.query("update public.iskra_owner set last_sender=$2, last_sent_at=now() where conversation_id=$1", [String(input.conversation_id), me.id]);
         return {data:j, ...(media ? {media:mediaInfo, mediaErr} : {})};
       }
+      if (op === "explore"){ // solo Head: busca en la API de ISKRA cómo mandar archivos (sin mandar mensajes: POST vacíos)
+        if (me.role !== "head") throw Object.assign(new Error("Solo el Head."), {status:403});
+        const conv = String(input.conversation_id || "");
+        const tries = [
+          ["GET","/"],["GET","/v1"],["GET","/openapi.json"],["GET","/v1/openapi.json"],["GET","/docs"],["GET","/v1/docs"],["GET","/v1/whoami"],
+          ["GET","/v1/templates"],["GET","/v1/media"],["GET","/v1/uploads"],["GET","/v1/files"],["GET","/v1/webhooks"],["GET","/v1/followups"],
+          ["POST","/v1/messages/media"],["POST","/v1/messages/send"],["POST","/v1/messages"],["POST","/v1/messages/image"],["POST","/v1/messages/document"],
+          ["POST","/v1/messages/attachment"],["POST","/v1/media"],["POST","/v1/uploads"],["POST","/v1/files"],["POST","/v1/messages/reply-media"],
+          ["POST","/v1/messages/reply"], ...(conv ? [["POST", `/v1/conversations/${enc(conv)}/messages`], ["POST", `/v1/conversations/${enc(conv)}/media`]] : []),
+        ];
+        const out = await Promise.all(tries.map(async ([m, path]) => {
+          try{ const j = await iskra(m, path, m === "POST" ? {} : null, 6000); return {m, path, status:200, body:JSON.stringify(j).slice(0, 700)}; }
+          catch(e){ return {m, path, status:e.status || 0, body:(e.detail ? JSON.stringify(e.detail) : String(e.message)).slice(0, 400)}; }
+        }));
+        return {data:out};
+      }
       if (op === "mediaprobe"){ // solo Head/Manager: manda el mismo archivo en cada formato posible, uno por mensaje
         if (!lead) throw Object.assign(new Error("Solo el Head o el Manager."), {status:403});
         const media = input.media && input.media.url ? input.media : null;

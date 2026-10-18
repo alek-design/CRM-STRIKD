@@ -677,6 +677,9 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+.exp-r{display:grid;gap:4px;max-height:260px;overflow:auto}.exp-i{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:11.5px;padding:5px 8px;border-radius:8px;background:var(--raised)}
+.exp-i span{font-weight:700}.exp-i.s2 span{color:var(--ok-fg)}.exp-i.s4 span{color:var(--wait)}.exp-i.s5 span{color:var(--bad)}.exp-i code{grid-column:1/-1;font-size:10.5px;word-break:break-all;color:var(--muted2)}
+
 .tk-thread{display:grid;gap:6px}.tk-c{background:var(--raised);border-radius:10px;padding:7px 10px}.tk-c b{font-size:12.5px}.tk-c span{font-size:11px;color:var(--muted);margin-left:6px}.tk-c p{margin:2px 0 0;font-size:13.5px;white-space:pre-wrap}
 
 .tk-st{flex:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--raised);color:var(--muted);white-space:nowrap}
@@ -4630,6 +4633,7 @@ async function iskMock(op, input){
   if (op==="conversations") return {configured:true, mode:(S.config && S.config.iskAssign)==="best" ? "best" : "load",
     data:{data:ISK_DEMO.convs.filter(c => lead || c._strikd.owner===me)}};
   if (op==="messages") return {configured:true, data:{data:(ISK_DEMO.msgs[input.id]||[]).slice().reverse()}, sent:ISK_DEMO.sent[input.id]||[]};
+  if (op==="explore") return {data:[{m:"GET", path:"/v1/templates", status:200, body:"(ejemplo)"}]};
   if (op==="mediaprobe") return {data:Array.from({length:8}, (_,i) => ({n:i+1, ok:true, respuesta:"{}"}))};
   if (op==="reply"){ const m = {text:input.text||"", direction:"outbound", created_at:new Date().toISOString(), ...(input.media ? {media_url:input.media.url, media_type:input.media.type, filename:input.media.name} : {})}; (ISK_DEMO.msgs[input.conversation_id] ||= []).push(m);
     (ISK_DEMO.sent[input.conversation_id] ||= []).push({by:me, text:input.text, at:Date.now()});
@@ -4814,7 +4818,9 @@ function renderIskra(){
         </div></div>
       <div class="cv-thread cw-t" id="iskThread">${iskBubbles(c)}</div>
       ${lead && ISK.diag ? `<div class="isk-diag">
-        <div class="probe"><b>Archivos por WhatsApp</b><p class="mut small">ISKRA solo acepta texto o una plantilla aprobada. Para que un PDF o foto llegue como archivo, crea en ISKRA una plantilla con ese archivo de encabezado y conéctala en Mensajes → Plantillas ("Plantilla de ISKRA con archivo"). Lo que adjuntas con 📎 llega como link.</p></div>
+        <div class="probe"><b>Archivos por WhatsApp</b><p class="mut small">ISKRA solo acepta texto o una plantilla aprobada. Para que un PDF o foto llegue como archivo, crea en ISKRA una plantilla con ese archivo de encabezado y conéctala en Mensajes → Plantillas ("Plantilla de ISKRA con archivo"). Lo que adjuntas con 📎 llega como link.</p>
+          ${S.isOwner ? `<button type="button" class="btn small" data-iskexp="1"${ISK.exploring?" disabled":""}>${ISK.exploring ? "Explorando…" : "Explorar API de ISKRA (no manda mensajes)"}</button>
+          ${ISK.explore ? `<div class="exp-r">${ISK.explore.map(r => `<div class="exp-i s${String(r.status)[0]}"><b>${esc(r.m)} ${esc(r.path)}</b><span>${r.status||"—"}</span><code>${esc(r.body)}</code></div>`).join("")}</div><button type="button" class="btn small" data-iskexpcp="1">Copiar resultados</button>` : ""}` : ""}</div>
         <b>Diagnóstico</b> <span class="mut small">mándame captura de esto</span><pre>${esc(JSON.stringify({ultimo_envio:ISK.lastReply||ISK.lastErr||null, mensajes_iskra:(ISK.raw3||{})[c.id]||null}, null, 1).slice(0, 4000))}</pre></div>` : ""}
       ${canSend ? `<div class="cw-c">
         ${recent ? `<p class="cw-warn">${esc(iskWho(c.lastSender))} contestó hace ${esc(ago(c.lastSentAt))}</p>` : ""}
@@ -4936,6 +4942,10 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-iskbook]") && ISK.sel){ const c = ISK.convs.find(x => x.id===ISK.sel); if (c) openBook(c); return; }
   if (e.target.closest("[data-iskfile]")){ $("iskFile").click(); return; }
   if (e.target.closest("[data-iskdiag]")){ ISK.diag = !ISK.diag; return schedule(); }
+  if (e.target.closest("[data-iskexp]")){ ISK.exploring = true; schedule();
+    try{ const r = await iskFn()("explore", {conversation_id:ISK.sel || ""}); ISK.explore = r.data || []; }catch(err){ ISK.err = "No se pudo explorar: " + err.message; }
+    ISK.exploring = false; return schedule(); }
+  const ec = e.target.closest("[data-iskexpcp]"); if (ec){ try{ await navigator.clipboard.writeText(JSON.stringify(ISK.explore, null, 1)); ec.textContent = "✓ Copiado"; }catch(_){ ec.textContent = "No se pudo copiar"; } return; }
   const shp = e.target.closest("[data-iskshape]");
   if (shp && S.isOwner){ const n = Number(shp.dataset.iskshape);
     try{ await db.doc("config/main").set({...(S.config||{}), iskMediaShape:n, updatedAt:Date.now()}); ISK.probeMsg = n ? `Listo: desde ahora fotos y PDF se mandan como archivo (formato ${n}).` : "Entendido: seguimos mandándolos como link. Necesito la guía de ISKRA para mandarlos directo."; ISK.probe = null; }
