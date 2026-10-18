@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 16:22:48 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 16:39:11 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792340568">
+<link rel="stylesheet" href="/auth.css?v=1792341551">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792340568"></script>
+<script src="/claude-shim.js?v=1792341551"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -42,6 +42,14 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+.island .on-bd{position:absolute;top:17px;left:calc(50% + 8px);min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#16a34a;color:#fff;font-size:9.5px;font-weight:800;display:grid;place-items:center;font-style:normal;border:2px solid var(--surface);box-sizing:content-box;cursor:pointer}
+#view-flow .pres{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--muted);white-space:nowrap}
+#view-flow .pres::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
+#view-flow .pres.on{color:#16a34a}#view-flow .pres.on::before{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+#view-flow .pres.rc{color:#b7791f}#view-flow .pres.rc::before{background:#eab308}
+#view-flow .tld-top .pres{margin-right:2px}
+#view-flow .pres-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:13px;color:var(--fg2);margin:0 4px 10px}
+#view-flow .pres-sep{width:1px;height:12px;background:var(--line2);margin:0 4px}
 #view-flow .tld{margin:0 0 26px}
 #view-flow .tld .pg2-h{font-size:18px;font-weight:800;letter-spacing:-.01em;text-transform:none;color:var(--fg);margin:0 2px 10px}
 #view-flow .tld-nav{margin-left:auto;display:inline-flex;align-items:center;gap:2px;font-size:13px;font-weight:600;color:var(--muted)}
@@ -1777,11 +1785,12 @@ function renderIsland(){
   if ($("mCd")){ $("mCd").textContent = $("countdown").textContent; $("mLb").innerHTML = `<span class="mut small">${esc($("closeLabel").textContent)}</span>${$("miniLb").innerHTML}`; }
   const {main, more} = islandItems(), inMore = more.some(([t]) => t===S.tab || (t==="funnel" && S.tab==="wa"));
   nav.style.gridTemplateColumns = `repeat(${main.length},1fr)`; nav.style.width = main.length < 4 ? "min(240px,calc(100% - 24px))" : "";
-  nav.innerHTML = main.map(([t,ic,l,n]) => `<button type="button" data-isl="${t}" class="${(t===S.tab || (t==="board" && (S.tab==="flow" || S.tab==="perf")) || (t==="more" && inMore))?"on":""}" aria-label="${l}">${svg(ic)}<span>${l}</span>${n?`<i class="bd">${n>99?"99+":n}</i>`:""}</button>`).join("");
+  nav.innerHTML = main.map(([t,ic,l,n]) => `<button type="button" data-isl="${t}" class="${(t===S.tab || (t==="board" && (S.tab==="flow" || S.tab==="perf")) || (t==="more" && inMore))?"on":""}" aria-label="${l}">${svg(ic)}<span>${l}</span>${n?`<i class="bd">${n>99?"99+":n}</i>`:""}${t==="board" && adminMode() && presOnline().length ? `<i class="on-bd" data-gopres="1" title="Conectados ahora">${presOnline().length}</i>` : ""}</button>`).join("");
   if (!$("moreSheet").hidden) $("moreIn").innerHTML = vaHtml() + `<div class="more-t">${esc($("closeLabel").textContent)}<b>${esc($("countdown").textContent)}</b></div>` + more.map(([t,ic,l,n]) => `<button type="button" data-islm="${t}" class="${t===S.tab?"on":""}">${svg(ic)}${l}${n?`<span class="n">${n}</span>`:""}</button>`).join("");
 }
 $("mTimer").addEventListener("click", () => $("mTimer").classList.toggle("open"));
 $("island").addEventListener("click", e => {
+  if (e.target.closest("[data-gopres]")){ $("moreSheet").hidden = true; showTab("board"); setTimeout(() => { const l = $("teamLoad"); if (l) l.scrollIntoView({behavior:"smooth", block:"start"}); }, 120); return; }
   const b = e.target.closest("[data-isl]"); if (!b) return;
   const t = b.dataset.isl;
   if (t==="more"){ const sh = $("moreSheet"); sh.hidden = !sh.hidden; return renderIsland(); }
@@ -1871,6 +1880,7 @@ function fillWeekSelect(sel, value, withAll){
 
 async function render(){
   if (!S.boardWeek) S.boardWeek = S.currentKey;
+  if (document.visibilityState==="visible") presBeat(false);
   computeTeam();
   const ids = Object.keys(S.team);
   const ps = await profiles([...new Set(Object.keys(S.members).concat((S.config && S.config.headId) ? [S.config.headId] : []))]); S.ps = ps;
@@ -4106,8 +4116,34 @@ function renderTeamTasks(){
     <div class="pg2-card${open.length?"":" tt-0"}">${open.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("") || `<p class="tt-none">Sin tareas abiertas</p>`}
     ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>`;
 }
+/* Conectados: cada quien marca members/{uid}.seenAt cada minuto mientras tiene la app abierta y visible.
+   Verde = abierta ahora (último latido < 2.5 min). Amarillo = la cerró hace menos de 15 min. */
+const PRES_ON = 150e3, PRES_RECENT = 15*60e3;
+function presOf(u){
+  const m = (S.members||{})[u] || {}, t = Number(m.seenAt)||0, ago = Date.now() - t;
+  if (!t) return {st:""};
+  if (!m.away && ago < PRES_ON) return {st:"on", ago};
+  if (ago < PRES_RECENT) return {st:"recent", ago, min:Math.max(1, Math.round(ago/60e3))};
+  return {st:"", ago};
+}
+function presOnline(){ return Object.keys(S.team||{}).filter(u => u!==S.uid && presOf(u).st==="on"); }
+let PRES_LAST = 0;
+function presBeat(away){
+  if (!S.uid || !db || S.canWrite === false) return;
+  const now = Date.now(); if (!away && now - PRES_LAST < 50e3) return; PRES_LAST = away ? 0 : now;
+  db.doc(`members/${S.uid}`).update({seenAt:now, away:!!away}).catch(() => {});
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState==="hidden") presBeat(true); else { PRES_LAST = 0; presBeat(false); schedule(); } });
+window.addEventListener("pagehide", () => presBeat(true));
+setInterval(() => { if (document.visibilityState==="visible") presBeat(false); if (adminMode && adminMode()) schedule(); }, 60e3);
 /* Equipo: carga de la semana por persona (meets en agenda, pendientes que vencen y tareas), lunes a domingo */
 let LOAD_W = 0;
+function presTag(u){ if (u===S.uid) return ""; const p = presOf(u); return p.st==="on" ? `<span class="pres on">en línea</span>` : p.st==="recent" ? `<span class="pres rc">hace ${p.min} min</span>` : ""; }
+function presLine(us){
+  us = us.filter(u => u!==S.uid);
+  const on = us.filter(u => presOf(u).st==="on"), rc = us.filter(u => presOf(u).st==="recent"), nm = u => esc(String(nameOf(S.ps||{}, u)).split(" (")[0].split(" ")[0]);
+  return `<div class="pres-line">${on.length ? `<span class="pres on">${on.length} en línea</span>${on.map(nm).join(", ")}` : `<span class="pres off">Nadie en línea</span>`}${rc.length ? `<span class="pres-sep"></span><span class="pres rc">hace poco</span>${rc.map(nm).join(", ")}` : ""}</div>`;
+}
 function renderTeamLoad(){
   const box = $("teamLoad"); if (!box || !adminMode() || busyIn(box)) return;
   const now = Date.now(), todayStr = new Date(now - OFF).toISOString().slice(0,10);
@@ -4131,8 +4167,8 @@ function renderTeamLoad(){
   const kind = {pitch:"Pitch", skel:"Skeleton", build:"Lanzamiento"};
   const lab = LOAD_W===0 ? "Esta semana" : LOAD_W===1 ? "Próxima semana" : LOAD_W===-1 ? "Semana pasada" : `${Number(days[0].slice(8))} ${MONTHS[Number(days[0].slice(5,7))-1]}`;
   const h = `<section class="pg2 tld"><div class="pg2-h"><span>Carga semanal</span><span class="tld-nav"><button type="button" data-ldw="-1" aria-label="Semana anterior">‹</button><em>${lab}</em><button type="button" data-ldw="1" aria-label="Semana siguiente">›</button></span></div>
-    <div class="pg2-card">${rows.map(r => { const [c, l] = lvl(r); return `<details class="tld-p"><summary>
-      <div class="tld-top"><b>${esc(first(r.u))}</b><span class="tld-lv ${c}">${l}</span><span class="pr-chev">›</span></div>
+    ${presLine(rows.map(r => r.u))}<div class="pg2-card">${rows.map(r => { const [c, l] = lvl(r); return `<details class="tld-p"><summary>
+      <div class="tld-top"><b>${esc(first(r.u))}</b>${presTag(r.u)}<span class="tld-lv ${c}">${l}</span><span class="pr-chev">›</span></div>
       <div class="tld-bar"><i style="width:${Math.round(r.load/max*100)}%"></i></div>
       <div class="tld-n"><span><b>${r.meets}</b> meet${r.meets===1?"":"s"}</span><span><b>${r.pend}</b> pendiente${r.pend===1?"":"s"}${r.late?` <em>${r.late} tarde</em>`:""}</span><span><b>${r.tk}</b> tarea${r.tk===1?"":"s"}</span></div>
       <div class="tld-days">${r.perDay.map((n,i) => `<span class="${n?"on":""}${days[i]===todayStr?" today":""}" style="${n?`--a:${Math.min(1, .25 + n*.25)}`:""}"><small>${D[i]}</small>${n||""}</span>`).join("")}</div></summary>
