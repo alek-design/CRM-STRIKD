@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 07:13:13 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 07:15:38 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792307593">
+<link rel="stylesheet" href="/auth.css?v=1792307738">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792307593"></script>
+<script src="/claude-shim.js?v=1792307738"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -674,6 +674,26 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* Journey más tranquilo: columnas limpias, prospectos en filas con un punto de color */
+.steps{gap:10px}
+.step{border-radius:14px;padding:12px 12px 8px;gap:6px;border-color:var(--line)}
+.step header{align-items:baseline}
+.step .sname{font-size:12.5px;letter-spacing:0;text-transform:none;color:var(--fg);font-weight:700}
+.step .cnt{font-size:15px;color:var(--muted)}
+.step.goal{background:var(--surface);border-color:var(--line)}.step.goal .cnt{color:var(--ok-fg)}
+.step .lights{font-size:11px;gap:6px;opacity:.85}
+.minis{gap:0}
+.mini{background:none!important;border:0!important;border-top:1px solid var(--line)!important;border-radius:0;padding:7px 2px 7px 14px;position:relative;gap:0}
+.mini::before{content:"";position:absolute;left:2px;top:13px;width:7px;height:7px;border-radius:50%;background:var(--line2)}
+.mini.ok::before{background:var(--ok)}.mini.soon::before{background:var(--wait)}.mini.late::before,.mini.crit::before{background:var(--bad)}
+.mini .mn{font-size:13px;font-weight:600}.mini .mn .pfi{display:none}.mini .mc{font-size:11.5px;color:var(--muted)}
+.mini .mt{font-size:11px;font-weight:700;color:var(--bad)}
+.mini:hover{background:var(--raised)!important}
+.mini.sel{background:var(--raised)!important;color:var(--fg)}.mini.sel .mc{color:var(--muted)}
+.minis .more{border-top:1px solid var(--line);padding-top:7px}
+#teamLegend{display:none}
+
+
 .mi-act{display:flex;align-items:center;gap:8px;width:100%;font:inherit;text-align:left;background:var(--surface);border:1px dashed var(--line2);border-radius:12px;padding:9px 12px;margin:-2px 0 10px;color:var(--fg);cursor:pointer}
 .mi-act b{font-size:13.5px}.mi-act span{font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mi-act em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--muted)}
 .mi-act:not(.none){border-style:solid;border-color:var(--ok-line);background:var(--ok-soft2)}
@@ -1184,7 +1204,7 @@ body.mob-open header.top{z-index:31}
 
   <div hidden><select id="adminWeek"></select><select id="adminPerson"></select><select id="adminStatus"><option value="todo"></option></select><div id="adminList"></div><span id="pendingCount"></span><span id="tabAdmin"></span></div>
   <section class="view" id="view-flow" hidden>
-    <div class="row"><h2>Pipeline del equipo</h2><div class="spacer"></div><span class="mono" id="flowSum"></span></div>
+    <div class="row"><h2>Equipo</h2><div class="spacer"></div><span class="mono" id="flowSum"></span></div>
     <div id="teamChart"></div>
     <div class="row">
       <select class="inline" id="flowPerson" aria-label="Persona"></select>
@@ -1365,8 +1385,9 @@ tick(); setInterval(tick, 30000);
 
 /* ---------- tabs ---------- */
 function showTab(t){
+  if (t==="board" && adminMode()) t = "flow"; // Head/Manager: Equipo es el pipeline del equipo
   S.tab = t;
-  const navT = t==="wa" ? "funnel" : t;
+  const navT = t==="wa" ? "funnel" : t==="flow" ? "board" : t;
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab===navT)));
   document.querySelectorAll(".subnav [data-go]").forEach(b => b.classList.toggle("on", b.dataset.go===t));
   closeAcct();
@@ -1552,10 +1573,10 @@ function islandItems(){
   const msgN = unread || (Number($("msgCount").textContent)||0) * ($("msgCount").hidden ? 0 : 1);
   const main = am
     ? [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","trophy","Ranking"],["more","more","Más"]]
-    : [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","home","Equipo"],["more","more","Más"]];
+    : [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","home","Equipo",Number($("lateCount").textContent)||0],["more","more","Más"]];
   const more = am
     ? [["perf","trophy","Mi desempeño"],["settings","gear","Ajustes"]]
-    : [["flow","cols","Pipeline",Number($("lateCount").textContent)||0],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
+    : [["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
        ["settings","gear","Ajustes"]];
   return {main, more};
 }
@@ -1564,7 +1585,7 @@ function renderIsland(){
   if ($("mCd")){ $("mCd").textContent = $("countdown").textContent; $("mLb").innerHTML = `<span class="mut small">${esc($("closeLabel").textContent)}</span>${$("miniLb").innerHTML}`; }
   const {main, more} = islandItems(), inMore = more.some(([t]) => t===S.tab || (t==="funnel" && S.tab==="wa"));
   nav.style.gridTemplateColumns = `repeat(${main.length},1fr)`; nav.style.width = main.length < 4 ? "min(240px,calc(100% - 24px))" : "";
-  nav.innerHTML = main.map(([t,ic,l,n]) => `<button type="button" data-isl="${t}" class="${(t===S.tab || (t==="more" && inMore))?"on":""}" aria-label="${l}">${svg(ic)}<span>${l}</span>${n?`<i class="bd">${n>99?"99+":n}</i>`:""}</button>`).join("");
+  nav.innerHTML = main.map(([t,ic,l,n]) => `<button type="button" data-isl="${t}" class="${(t===S.tab || (t==="board" && S.tab==="flow") || (t==="more" && inMore))?"on":""}" aria-label="${l}">${svg(ic)}<span>${l}</span>${n?`<i class="bd">${n>99?"99+":n}</i>`:""}</button>`).join("");
   if (!$("moreSheet").hidden) $("moreIn").innerHTML = vaHtml() + `<div class="more-t">${esc($("closeLabel").textContent)}<b>${esc($("countdown").textContent)}</b></div>` + more.map(([t,ic,l,n]) => `<button type="button" data-islm="${t}" class="${t===S.tab?"on":""}">${svg(ic)}${l}${n?`<span class="n">${n}</span>`:""}</button>`).join("");
 }
 $("mTimer").addEventListener("click", () => $("mTimer").classList.toggle("open"));
@@ -2609,7 +2630,7 @@ function pathHtml(owners, isAdmin, cid){
   const mini = ([uid,id,m,t]) => {
     const d = t ? dueInfo(t.due, now) : null, key = `${uid}__${id}`;
     const toCancel = statusOf(id)==="rejected" && !m.cancelled;
-    const tag = toCancel ? `Cancelar · ${d ? SEMA[d.cls] : ""}` : (d ? SEMA[d.cls] : "");
+    const tag = toCancel ? "Cancelar" : "";
     return `<button class="mini ${d?d.cls:""}${sel===key?" sel":""}" data-pick="${key}" title="${esc(m.prospect)}">
       <span class="mn">${perfilIcon(m)}${esc(m.prospect)}</span>
       <span class="mc">${isAdmin?esc(nameOf(S.ps,uid)):esc(m.role||m.channel||"")}</span>
@@ -2623,8 +2644,7 @@ function pathHtml(owners, isAdmin, cid){
     const red = cnt.crit + cnt.late;
     const open = MORE[cid+s.n], shown = open ? arr : arr.slice(0, LIMIT);
     return `<section class="step${s.goal?" goal":""}" title="${esc(s.sub)}">
-      <header><span class="num">${s.goal?"★":s.n}</span><span class="cnt">${arr.length}</span></header>
-      <b class="sname">${esc(s.name)}</b>
+      <header><b class="sname">${s.goal?"★ ":""}${esc(s.name)}</b><span class="cnt">${arr.length}</span></header>
       ${arr.length && !s.goal ? `<div class="lights" title="Atrasados · vencen en menos de 24 h · a tiempo">${red?`<span class="sema late"><i></i>${red}</span>`:""}${cnt.soon?`<span class="sema soon"><i></i>${cnt.soon}</span>`:""}${cnt.ok?`<span class="sema ok"><i></i>${cnt.ok}</span>`:""}</div>` : ""}
       <div class="minis">${shown.map(mini).join("") || `<span class="pc-empty">—</span>`}
       ${arr.length>LIMIT?`<button class="more" data-more="${cid+s.n}">${open?"Ver menos":`+${arr.length-LIMIT} más`}</button>`:""}</div>
@@ -3078,7 +3098,8 @@ function renderAgenda(){
   dp.classList.toggle("seg-meets", phone && AG_SEG==="meets"); dp.classList.toggle("seg-tasks", phone && AG_SEG==="tasks");
   const h = document.querySelector("#view-agenda .ag-top h2");
   if (h){ const d = AG_DAY || todayStr, [y,mm] = d.split("-").map(Number); h.textContent = phone ? MONTHS_L[mm-1].replace(/^./, c => c.toUpperCase()) + (y !== new Date().getFullYear() ? " " + y : "") : "Agenda"; }
-  const tb = $("tabBoard"); if (tb) tb.textContent = adminMode() ? "Equipo" : "Ranking";
+  const tb = $("tabBoard"); if (tb){ const lc = $("lateCount"), show = adminMode() && !lc.hidden && Number(lc.textContent);
+    const h = (adminMode() ? "Equipo" : "Ranking") + (show ? `<span class="count late">${esc(lc.textContent)}</span>` : ""); if (tb.innerHTML !== h) tb.innerHTML = h; }
 }
 const MONTHS_L = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 let AG_SEG = "meets";
@@ -3594,7 +3615,7 @@ function applyRole(saved){
   S.isLead = lead; S.roleApplied = true;
   const set = (id, show) => { const el = $(id); if (el) el.hidden = !show; };
   if (!S.viewAs){
-    ["tabFlow","tabFunnel","tabVip","tabWa"].forEach(id => set(id, lead));
+    ["tabFunnel","tabVip","tabWa"].forEach(id => set(id, lead)); set("tabFlow", false);
     set("tabAgenda", true); set("adminActs", lead); set("viewAsBtn", S.isOwner); set("tabMine", false); set("tabPerf", !lead);
   }
   $("tabOrg").hidden = !S.isOwner || !!S.viewAs;
@@ -4969,7 +4990,7 @@ function enterViewAs(uid){
 function exitViewAs(){
   S.viewAs = null; S.viewMgr = null; setFormEnabled(true);
   $("viewAsBar").hidden = true; $("adminActs").hidden = false; $("viewAsBtn").hidden = !S.isOwner; Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]});
-  $("tabMine").hidden = true; $("tabPerf").hidden = true; if (S.tab==="perf") showTab("board"); $("tabOrg").hidden = !S.isOwner; $("tabAdmin").hidden = false; $("tabFlow").hidden = false; $("tabAgenda").hidden = false; $("tabFunnel").hidden = false; $("tabVip").hidden = false; $("tabWa").hidden = false;
+  $("tabMine").hidden = true; $("tabPerf").hidden = true; if (S.tab==="perf") showTab("board"); $("tabOrg").hidden = !S.isOwner; $("tabAdmin").hidden = false; $("tabFlow").hidden = true; $("tabAgenda").hidden = false; $("tabFunnel").hidden = false; $("tabVip").hidden = false; $("tabWa").hidden = false;
   S._mm = undefined; syncMichUi(); vaFixTab(); schedule();
 }
 /* Vista de usuario por rol: Account Manager, Manager o Influencer Outreach.
