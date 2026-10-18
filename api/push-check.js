@@ -59,6 +59,9 @@ module.exports = async (req, res) => {
           const r = await auto.maybeAuto(c, cv, {get, post, owner:(o && o.owner) || headId, origin});
           if (r){ autos.push(r); if (!r.error) continue; } // era un bot: no avisamos
         }catch(e){ autos.push({conv:id, error:String(e.message || e)}); }
+        // ya le mandamos el segundo intento y no ha contestado una persona (p. ej. su WhatsApp volvió a responder solo): no avisamos
+        try{ const au = (await c.query("select replied_at from public.iskra_auto where conversation_id=$1", [id])).rows[0];
+          if (au && !au.replied_at) continue; }catch(_){}
         // al dueño y siempre al Head y al Manager (ellos ven todas las conversaciones)
         const to = [...new Set([...(o && o.owner ? [o.owner] : []), ...leads])]; if (!to.length) continue;
         const name = cv.contact_name || (cv.lead && cv.lead.full_name) || cv.contact_phone || "WhatsApp";

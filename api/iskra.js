@@ -68,6 +68,7 @@ alter table public.iskra_owner add column if not exists replied_at timestamptz;
 alter table public.iskra_owner add column if not exists discarded_at timestamptz;
 alter table public.iskra_owner add column if not exists discarded_by uuid;
 create table if not exists public.iskra_seen (conversation_id text primary key, last_at timestamptz, last_dir text, replied boolean default false, checked_at timestamptz);
+alter table public.iskra_seen add column if not exists real boolean;
 alter table public.iskra_seen enable row level security;
 create table if not exists public.iskra_sent (id bigserial primary key, conversation_id text, user_id uuid, text text, at timestamptz default now());
 alter table public.iskra_owner enable row level security; alter table public.iskra_sent enable row level security;`;
@@ -143,14 +144,20 @@ module.exports = async (req, res) => {
         const list = await iskList(); T.iskra = Date.now() - t0;
         const ids = list.map(convId).filter(Boolean), byId = {};
         list.forEach(cv => { const id = convId(cv); if (id) byId[id] = cv; });
-        const known = {}, seen = {};
+        const known = {}, seen = {}, autoS = {};
         if (ids.length){
+          await c.query("alter table public.iskra_seen add column if not exists real boolean").catch(() => {});
+          (await c.query("select conversation_id, sent_at, replied_at from public.iskra_auto where conversation_id = any($1)", [ids]).catch(() => ({rows:[]}))).rows.forEach(o => autoS[o.conversation_id] = o);
           (await c.query("select * from public.iskra_owner where conversation_id = any($1)", [ids])).rows.forEach(o => known[o.conversation_id] = o);
           (await c.query("select * from public.iskra_seen where conversation_id = any($1)", [ids])).rows.forEach(o => seen[o.conversation_id] = o);
         }
         const lastAt = cv => cv.last_message_at || (cv.last_message && cv.last_message.created_at) || cv.updated_at || "";
         const stale = id => { const sn = seen[id]; return !sn || !sn.last_at || Date.parse(lastAt(byId[id])) > new Date(sn.last_at).getTime() + 1000; };
-        const toCheck = ids.filter(id => stale(id) && !(Number(byId[id].unread_count || 0) > 0 && known[id] && known[id].replied_at)).slice(0, 8);
+        // "real": contestó una persona. No cuenta la respuesta automática de su WhatsApp Business (llega en ≤ 90 s
+        // después de nuestro primer mensaje o de nuestro segundo intento automático).
+        const needReal = id => seen[id] && seen[id].replied && seen[id].real == null;
+        const toCheck = ids.filter(id => (stale(id) || needReal(id)) && !(seen[id] && seen[id].real && Number(byId[id].unread_count || 0) > 0 && known[id] && known[id].replied_at))
+          .sort((a, b) => (stale(b) ? 1 : 0) - (stale(a) ? 1 : 0)).slice(0, 12);
         await Promise.all(toCheck.map(async id => {
           try{
             const ms = arr(await iskra("GET", `/v1/conversations/${enc(id)}/messages?limit=30`));
@@ -158,14 +165,26 @@ module.exports = async (req, res) => {
             const at = m => Date.parse(m.created_at || m.sent_at || m.timestamp || "") || 0;
             const sorted = ms.slice().sort((x, y) => at(y) - at(x));
             const replied = ms.some(isIn), lastDir = sorted[0] ? (isIn(sorted[0]) ? "in" : "out") : null;
-            seen[id] = {conversation_id:id, last_at:lastAt(byId[id]) || null, last_dir:lastDir, replied};
-            await c.query(`insert into public.iskra_seen (conversation_id, last_at, last_dir, replied, checked_at) values ($1,$2,$3,$4,now())
-              on conflict (conversation_id) do update set last_at=excluded.last_at, last_dir=excluded.last_dir, replied=public.iskra_seen.replied or excluded.replied, checked_at=now()`,
-              [id, lastAt(byId[id]) || null, lastDir, replied]);
+            const asc = sorted.slice().reverse(), first = asc[0];
+            const o1 = first && !isIn(first) ? at(first) : 0, a1 = autoS[id] ? new Date(autoS[id].sent_at).getTime() : 0, W = 90e3;
+            const isAutoIn = m => { const t = at(m); return (o1 && t >= o1 && t - o1 <= W) || (a1 && t >= a1 - 5e3 && t - a1 <= W); };
+            const real = ms.some(m => isIn(m) && !isAutoIn(m)) || !!(autoS[id] && autoS[id].replied_at);
+            seen[id] = {conversation_id:id, last_at:lastAt(byId[id]) || null, last_dir:lastDir, replied, real};
+            await c.query(`insert into public.iskra_seen (conversation_id, last_at, last_dir, replied, real, checked_at) values ($1,$2,$3,$4,$5,now())
+              on conflict (conversation_id) do update set last_at=excluded.last_at, last_dir=excluded.last_dir, replied=public.iskra_seen.replied or excluded.replied, real=coalesce(public.iskra_seen.real,false) or excluded.real, checked_at=now()`,
+              [id, lastAt(byId[id]) || null, lastDir, replied, real]);
           }catch(_){ /* se reintenta en la siguiente vuelta */ }
         }));
         T.mensajes = Date.now() - t0;
-        const replied = id => !!((known[id] && known[id].replied_at) || (seen[id] && seen[id].replied) || Number(byId[id].unread_count || 0) > 0);
+        // Solo conversaciones reales: si ya sabemos que la única "respuesta" fue automática, no sale en Mensajes
+        const replied = id => {
+          const sn = seen[id], au = autoS[id];
+          if (au && au.replied_at) return true;
+          if (sn && sn.real === true) return true;
+          if (sn && sn.real === false) return false;
+          if (au) return false; // tuvo respuesta automática y nadie ha contestado de verdad
+          return !!((known[id] && known[id].replied_at) || (sn && sn.replied) || Number(byId[id].unread_count || 0) > 0);
+        };
         const cfg = (await c.query("select data from public.docs where path='config/main'")).rows[0];
         const mode = cfg && cfg.data && cfg.data.iskAssign === "best" ? "best" : "load";
         const out = [], pick = makePicker(c, mode);
