@@ -271,6 +271,12 @@ module.exports = async (req, res) => {
           ["POST","/v1/messages/attachment"],["POST","/v1/media"],["POST","/v1/uploads"],["POST","/v1/files"],["POST","/v1/messages/reply-media"],
           ["POST","/v1/messages/reply"], ...(conv ? [["POST", `/v1/conversations/${enc(conv)}/messages`], ["POST", `/v1/conversations/${enc(conv)}/media`]] : []),
         ];
+        if (input.deep){ // 2a vuelta: lista completa de endpoints y qué pide /v1/messages/send (sin destinatario: no se envía nada)
+          const who = await iskra("GET", "/v1/whoami").catch(e => ({error:e.message}));
+          const probes = [{idempotency_key:"probe-" + Date.now()}, {idempotency_key:"probe2-" + Date.now(), type:"image"}, {idempotency_key:"probe3-" + Date.now(), media_url:"https://example.com/x.png"}];
+          const send = await Promise.all(probes.map(async b => { try{ return {b, r:await iskra("POST", "/v1/messages/send", b, 6000)}; }catch(e){ return {b, status:e.status, r:e.detail || e.message}; } }));
+          return {data:{endpoints:who.endpoints || who, send}};
+        }
         const out = await Promise.all(tries.map(async ([m, path]) => {
           try{ const j = await iskra(m, path, m === "POST" ? {} : null, 6000); return {m, path, status:200, body:JSON.stringify(j).slice(0, 700)}; }
           catch(e){ return {m, path, status:e.status || 0, body:(e.detail ? JSON.stringify(e.detail) : String(e.message)).slice(0, 400)}; }

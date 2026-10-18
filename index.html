@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 07:57:53 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 07:59:27 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792310273">
+<link rel="stylesheet" href="/auth.css?v=1792310367">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792310273"></script>
+<script src="/claude-shim.js?v=1792310367"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -685,6 +685,7 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+.exp-pre{max-height:260px;overflow:auto;font-size:10.5px;white-space:pre-wrap;word-break:break-all;background:var(--raised);padding:8px;border-radius:8px}
 .exp-r{display:grid;gap:4px;max-height:260px;overflow:auto}.exp-i{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:11.5px;padding:5px 8px;border-radius:8px;background:var(--raised)}
 .exp-i span{font-weight:700}.exp-i.s2 span{color:var(--ok-fg)}.exp-i.s4 span{color:var(--wait)}.exp-i.s5 span{color:var(--bad)}.exp-i code{grid-column:1/-1;font-size:10.5px;word-break:break-all;color:var(--muted2)}
 
@@ -4827,7 +4828,7 @@ function renderIskra(){
       <div class="cv-thread cw-t" id="iskThread">${iskBubbles(c)}</div>
       ${lead && ISK.diag ? `<div class="isk-diag">
         <div class="probe"><b>Archivos por WhatsApp</b><p class="mut small">ISKRA solo acepta texto o una plantilla aprobada. Para que un PDF o foto llegue como archivo, crea en ISKRA una plantilla con ese archivo de encabezado y conéctala en Mensajes → Plantillas ("Plantilla de ISKRA con archivo"). Lo que adjuntas con 📎 llega como link.</p>
-          ${S.isOwner ? `<button type="button" class="btn small" data-iskexp="1"${ISK.exploring?" disabled":""}>${ISK.exploring ? "Explorando…" : "Explorar API de ISKRA (no manda mensajes)"}</button>
+          ${S.isOwner ? `<button type="button" class="btn small primary" data-iskexp2="1"${ISK.exploring?" disabled":""}>Explorar a fondo (lista completa)</button>${ISK.explore2 ? `<pre class="exp-pre">${esc(JSON.stringify(ISK.explore2, null, 1))}</pre><button type="button" class="btn small" data-iskexpcp="2">Copiar resultados</button>` : ""}<button type="button" class="btn small" data-iskexp="1"${ISK.exploring?" disabled":""}>${ISK.exploring ? "Explorando…" : "Explorar API de ISKRA (no manda mensajes)"}</button>
           ${ISK.explore ? `<div class="exp-r">${ISK.explore.map(r => `<div class="exp-i s${String(r.status)[0]}"><b>${esc(r.m)} ${esc(r.path)}</b><span>${r.status||"—"}</span><code>${esc(r.body)}</code></div>`).join("")}</div><button type="button" class="btn small" data-iskexpcp="1">Copiar resultados</button>` : ""}` : ""}</div>
         <b>Diagnóstico</b> <span class="mut small">mándame captura de esto</span><pre>${esc(JSON.stringify({ultimo_envio:ISK.lastReply||ISK.lastErr||null, mensajes_iskra:(ISK.raw3||{})[c.id]||null}, null, 1).slice(0, 4000))}</pre></div>` : ""}
       ${canSend ? `<div class="cw-c">
@@ -4953,7 +4954,10 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-iskexp]")){ ISK.exploring = true; schedule();
     try{ const r = await iskFn()("explore", {conversation_id:ISK.sel || ""}); ISK.explore = r.data || []; }catch(err){ ISK.err = "No se pudo explorar: " + err.message; }
     ISK.exploring = false; return schedule(); }
-  const ec = e.target.closest("[data-iskexpcp]"); if (ec){ try{ await navigator.clipboard.writeText(JSON.stringify(ISK.explore, null, 1)); ec.textContent = "✓ Copiado"; }catch(_){ ec.textContent = "No se pudo copiar"; } return; }
+  if (e.target.closest("[data-iskexp2]")){ ISK.exploring = true; schedule();
+    try{ const r = await iskFn()("explore", {deep:true}); ISK.explore2 = r.data || {}; }catch(err){ ISK.err = "No se pudo explorar: " + err.message; }
+    ISK.exploring = false; return schedule(); }
+  const ec = e.target.closest("[data-iskexpcp]"); if (ec){ try{ await navigator.clipboard.writeText(JSON.stringify(ec.dataset.iskexpcp==="2" ? ISK.explore2 : ISK.explore, null, 1)); ec.textContent = "✓ Copiado"; }catch(_){ ec.textContent = "No se pudo copiar"; } return; }
   const shp = e.target.closest("[data-iskshape]");
   if (shp && S.isOwner){ const n = Number(shp.dataset.iskshape);
     try{ await db.doc("config/main").set({...(S.config||{}), iskMediaShape:n, updatedAt:Date.now()}); ISK.probeMsg = n ? `Listo: desde ahora fotos y PDF se mandan como archivo (formato ${n}).` : "Entendido: seguimos mandándolos como link. Necesito la guía de ISKRA para mandarlos directo."; ISK.probe = null; }
