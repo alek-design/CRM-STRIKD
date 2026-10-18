@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 07:47:00 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 07:49:03 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792309620">
+<link rel="stylesheet" href="/auth.css?v=1792309743">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792309620"></script>
+<script src="/claude-shim.js?v=1792309743"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1630,7 +1630,7 @@ const ICO = {
 };
 const svg = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
 function islandItems(){
-  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["more","more","Más"]], more:[["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["settings","gear","Ajustes"]], more:[]};
+  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["more","more","Más"]], more:[["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["settings","gear","Ajustes"]], more:[]};
   const lead = adminMode(), am = !lead;
   const unread = ISK.convs.filter(c => c.lastDir==="in" && !c.disc && (lead ? true : c.owner===meId())).length;
   const msgN = unread || (Number($("msgCount").textContent)||0) * ($("msgCount").hidden ? 0 : 1);
@@ -1748,7 +1748,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !(adminMode() && !S.viewAs)); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !(adminMode() && !S.viewAs)); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode()); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -3092,8 +3092,11 @@ function gcalNote(mondayStr){
   if (!g.events) return `<span class="mut small">Leyendo Google Calendar…</span>`;
   return `<span class="gc-note"><span class="cal-ev gcal">Tu calendario</span> actualizado ${esc(fmtLocal(g.at).split(", ").pop())}</span>`;
 }
+function michEvents(){ // meets que agendó Mich (vienen de su lista; ella no ve los journeys de los AM)
+  return michRows().filter(([,,x]) => x.meetId && x.meetAt).map(([u,,x]) => ({at:x.meetAt, kind:"pitch", label:`Pitch · ${x.prospect}`, who:u, mich:true}));
+}
 function calEvents(){
-  const ev = [];
+  const ev = michMode() ? michEvents() : [];
   (adminMode() ? Object.entries(S.all) : [[meId(), myItems()]]).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
     const st = statusOf(id), f = m.flow || {}, v = S.validations[id];
     if (f.lostAt || st==="rejected") return;
@@ -3257,6 +3260,8 @@ function renderPlan(){
       evs.push({ts, end:e.endTs > ts ? e.endTs : ts+MEET_MIN, kind:"gcal", label:e.label.replace(/^Calendario · /,""), gcal:true});
     }));
   }
+  if (michMode()) michEvents().forEach(e => { const ts = meetTs(e.at); if (!isNaN(ts) && ts >= t0 && ts <= eod) evs.push({ts, end:ts+MEET_MIN, kind:"pitch", label:"Pitch", gcal:true, label2:e.label, sub:`Cuenta para ${String(nameOf(S.ps||{}, e.who)).split(" (")[0]}`}); });
+  evs.forEach(e => { if (e.label2) e.label = e.label2; });
   evs.sort((a,b) => a.ts - b.ts);
   // untimed: what you have to do today (overdue first)
   const tks = [];
@@ -3294,7 +3299,7 @@ function renderPlan(){
     const tag = state==="live" ? `<span class="pl-tag live">En curso</span>` : state==="past" ? (t ? `<span class="pl-tag ${d.cls}">Falta: ${esc(t.title.split(" ").slice(0,3).join(" "))}…</span>` : `<span class="pl-tag done">✓ Pasó</span>`) : (!e.gcal && e.kind==="pitch") ? (((e.m.flow||{}).confirmedFor===effAt(e.m)) ? `<span class="pl-tag done">✓ Confirmó</span>` : `<span class="pl-tag soon">Por confirmar</span>`) : (t ? `<span class="pl-tag ${d.cls}">${esc(SEMA[d.cls])}</span>` : "");
     const inner = `<span class="pl-time">${hm(e.ts)}</span><span class="pl-dot ${e.kind}"></span>
       <span class="pl-body"><b>${e.gcal ? esc(e.label) : `${perfilIcon(e.m)}${esc(e.label)} · ${esc(e.m.prospect)}`}</b>
-      ${(() => { const sub = e.gcal ? "Tu calendario" : [admin ? nameOf(S.ps,e.uid) : "", t ? t.title : ""].filter(Boolean).join(" · "); return sub ? `<small>${esc(sub)}</small>` : ""; })()}</span>${tag}`;
+      ${(() => { const sub = e.gcal ? (e.sub || "Tu calendario") : [admin ? nameOf(S.ps,e.uid) : "", t ? t.title : ""].filter(Boolean).join(" · "); return sub ? `<small>${esc(sub)}</small>` : ""; })()}</span>${tag}`;
     line += e.gcal ? `<div class="pl-item ${state} gcal">${inner}</div>`
       : `<button type="button" class="pl-item ${state}${sel===key?" sel":""}" data-pick="${key}">${inner}</button>${expand(key, e.uid, e.id, e.m)}`;
   });
@@ -3420,7 +3425,7 @@ function syncMichUi(){
       MICH.subs[u] = db.collection(`meets/${u}/vip`).onSnapshot(s => { S.vip[u] = {}; s.docs.forEach(d => S.vip[u][d.id] = d.data()); schedule(); }, () => {}); });
   }
   if (mm === S._mm) return; S._mm = mm;
-  if (mm){ document.querySelectorAll("#tabs button").forEach(b => b.hidden = b.id!=="tabMich"); if (S.tab!=="mich" && S.tab!=="settings") showTab("mich"); }
+  if (mm){ document.querySelectorAll("#tabs button").forEach(b => b.hidden = b.id!=="tabMich" && b.id!=="tabAgenda"); if (!["mich","agenda","settings"].includes(S.tab)) showTab("mich"); }
   else {
     $("tabMich").hidden = true; document.querySelector('#tabs [data-tab="board"]').hidden = false; $("tabMsgs").hidden = false;
     if (S.viewAs){ $("tabAgenda").hidden = false; $("tabPerf").hidden = true; }
@@ -3707,7 +3712,7 @@ function michBookOpen(k){
       <label class="f">Teléfono / WhatsApp<input type="tel" id="mbkPhone" autocomplete="off"></label>
       <label class="f">Fecha y hora <em>*</em><input type="datetime-local" id="mbkAt"></label>
     </div>
-    <div class="guests"><span class="g-l">Invitados</span><span class="g-c pros">Influencer</span><span class="g-c">${esc(String(am).split(" (")[0])} <small>AM</small></span>${ld ? `<span class="g-c">${esc(String(nameOf(S.ps||{}, ld)).split(" (")[0])} <small>líder</small></span>` : leaderEmail(u) ? `<span class="g-c">${esc(leaderEmail(u))} <small>líder</small></span>` : ""}</div>
+    <div class="guests"><span class="g-l">Invitados</span><span class="g-c pros">Influencer</span><span class="g-c">Tú</span><span class="g-c">${esc(String(am).split(" (")[0])} <small>AM</small></span>${ld ? `<span class="g-c">${esc(String(nameOf(S.ps||{}, ld)).split(" (")[0])} <small>líder</small></span>` : leaderEmail(u) ? `<span class="g-c">${esc(leaderEmail(u))} <small>líder</small></span>` : ""}</div>
     ${mcp ? `<p class="mut small">Se crea en tu Google Calendar (45 min) con link de Meet y les llega la invitación.</p>` : `<p class="mut small">Conecta tu Google Calendar en Ajustes para mandar la invitación con link de Meet.</p>`}
     <div class="row"><span class="err" id="mbkErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="mbkGo">Agendar meet</button></div></div>`;
   document.body.appendChild(w);
@@ -3721,7 +3726,7 @@ async function michBookSave(w){
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "Revisa el email."; return; }
   if (!meetAt || isNaN(meetTs(meetAt))){ err.textContent = "Pon la fecha y hora."; return; }
   MBK.busy = true; $("mbkGo").disabled = true; $("mbkGo").textContent = "Agendando…"; err.textContent = "";
-  const now = Date.now(), ld = leaderOf(u), guests = [u].concat(ld ? [ld] : leaderEmail(u) ? ["__lead"] : []);
+  const now = Date.now(), ld = leaderOf(u), guests = [meId(), u].concat(ld ? [ld] : leaderEmail(u) ? ["__lead"] : []);
   const o = {perfil:3, prospect:x.prospect, profile:x.profile, followers:x.followers||0, notes:x.notes||"", channel:"Mich (contacto directo)", email, phone, meetAt, link:"", source:"mich", createdAt:now, updatedAt:now, week:weekKey(now), vipId:id, guests};
   let mid;
   try{
@@ -3729,9 +3734,9 @@ async function michBookSave(w){
     else {
       const ref = db.collection(`meets/${u}/items`).doc(); mid = ref.id;
       await ref.set({...o, bookedBy:S.uid}); await db.doc(`validations/${mid}`).set({uid:u, week:meetWeek(o), status:"valid", reason:"", decidedAt:now, perfil:3});
-      await db.doc(`meets/${u}/vip/${id}`).update({status:"agendo", statusAt:now, meetId:mid});
+      await db.doc(`meets/${u}/vip/${id}`).update({status:"agendo", statusAt:now, meetId:mid, meetAt});
     }
-    Object.assign(x, {status:"agendo", statusAt:now, meetId:mid});
+    Object.assign(x, {status:"agendo", statusAt:now, meetId:mid, meetAt});
   }catch(e){ MBK.busy = false; $("mbkGo").disabled = false; $("mbkGo").textContent = "Agendar meet"; err.textContent = e.message || "No se pudo guardar."; return; }
   w.remove(); schedule();
   let note = `Listo: el meet con ${x.prospect} quedó en el journey de ${first(nameOf(S.ps||{}, u))}.`;
@@ -5231,7 +5236,7 @@ function exitViewAs(){
 /* Vista de usuario por rol: Account Manager, Manager o Influencer Outreach.
    Se elige desde Más (celular) o el menú de tu cuenta (computadora); te quedas en la misma pestaña. */
 function vaFixTab(){
-  const allowed = michMode() ? ["mich","settings"] : adminMode() ? ["agenda","board","msgs","flow","funnel","wa","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["agenda","board","msgs","perf","settings"];
+  const allowed = michMode() ? ["mich","agenda","settings"] : adminMode() ? ["agenda","board","msgs","flow","funnel","wa","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["agenda","board","msgs","perf","settings"];
   showTab(allowed.includes(S.tab) ? S.tab : allowed[0]);
 }
 function vaCur(){ return S.viewMgr ? "manager" : S.viewAs ? (roleOf(S.viewAs)==="influencer" ? "influencer" : "am") : "admin"; }

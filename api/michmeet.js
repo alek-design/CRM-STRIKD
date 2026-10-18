@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
         guests:Array.isArray(m.guests) ? m.guests.map(String).slice(0, 10) : []};
       await c.query("insert into public.docs (path, data) values ($1,$2)", [`meets/${uid}/items/${mid}`, item]);
       await c.query("insert into public.docs (path, data) values ($1,$2) on conflict (path) do nothing", [`validations/${mid}`, {uid, week:String(m.valWeek||m.week||""), status:"valid", reason:"", decidedAt:now, perfil:3}]);
-      await c.query("update public.docs set data = data || $2::jsonb, version=version+1, updated_at=now() where path=$1", [vpath, JSON.stringify({status:"agendo", statusAt:now, meetId:mid})]);
+      await c.query("update public.docs set data = data || $2::jsonb, version=version+1, updated_at=now() where path=$1", [vpath, JSON.stringify({status:"agendo", statusAt:now, meetId:mid, meetAt})]);
       return {ok:true, mid, uid};
     });
     res.status(out.status || 200).json(out);
