@@ -5010,17 +5010,33 @@ function renderAccess(){
       <select id="accRole"><option value="am">Account Manager</option><option value="manager">Creator Partnerships Manager</option><option value="influencer">Influencer Outreach</option></select>
       <button type="button" class="btn small primary" id="accGo"${ACC.busy?" disabled":""}>${ACC.busy?"Creando…":"Dar de alta"}</button></div>
     ${ACC.msg ? `<p class="small ${ACC.ok?"okmsg":"err"}">${esc(ACC.msg)}</p>` : ""}
-    ${ACC.cred ? `<div class="acc-cred"><b>Mándale esto por WhatsApp:</b><textarea rows="4" readonly>${esc(ACC.cred)}</textarea></div>` : ""}
+    ${ACC.cred ? `<div class="acc-cred"><div class="row"><b>Mándale esto por WhatsApp:</b><div class="spacer"></div><button type="button" class="btn small primary" data-acccopy="1">Copiar mensaje</button></div><textarea rows="12" readonly>${esc(ACC.cred)}</textarea></div>` : ""}
     <div class="acc-list">${users.map(u => `<div class="acc-row"><b>${esc(u.name||u.email)}</b><span class="mut small">${esc(u.email)}</span><span class="chip ${u.role==="none"?"muted":"info"}">${esc(RL[u.role]||u.role)}</span>${window.STRIKD_GOOGLE_USERS ? (gset.has(u.id) ? `<span class="chip valid">✓ Google Calendar</span>` : `<span class="chip muted">Sin Google Calendar</span>`) : ""}</div>`).join("")}
       ${inv.map(i => `<div class="acc-row pend"><b>${esc(i.name||i.email)}</b><span class="mut small">${esc(i.email)}</span><span class="chip muted">Invitación enviada · ${esc(RL[i.role])}</span></div>`).join("")}</div>`;
 }
 document.addEventListener("click", async e => {
+  const cp = e.target.closest("[data-acccopy]"); if (cp){ try{ await navigator.clipboard.writeText(ACC.cred || ""); cp.textContent = "✓ Copiado"; }catch(_){ cp.textContent = "Selecciona y copia"; } setTimeout(() => { cp.textContent = "Copiar mensaje"; }, 1800); return; }
   if (!e.target.closest("#accGo")) return;
   const email = $("accEmail").value.trim(), name = $("accName").value.trim(), role = $("accRole").value;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ ACC.msg = "Revisa el correo."; ACC.ok = false; return schedule(); }
   ACC.busy = true; ACC.msg = ""; schedule();
   try{ const r = await window.STRIKD_INVITE(email, name, role); ACC.ok = true; ACC.msg = r.already ? `${email} ya tenía cuenta; se le asignó el rol.` : `Listo: ${email} ya tiene cuenta.`;
-    ACC.cred = r.tempPassword ? `¡Hola${name?" "+name.split(" ")[0]:""}! Ya tienes acceso a STRIKD Growth.\nEntra a ${location.origin}\nCorreo: ${email}\nContraseña temporal: ${r.tempPassword}\nAl entrar, cámbiala en "Cambiar contraseña".` : "";
+    ACC.cred = r.tempPassword ? [
+      `¡Hola${name?" "+name.split(" ")[0]:""}! 👋 Ya tienes acceso a STRIKD Growth, donde agendamos meets, vemos pendientes y contestamos WhatsApp.`,
+      ``,
+      `1️⃣ Abre este link desde tu celular:`,
+      `${location.origin}`,
+      ``,
+      `2️⃣ Guárdala como app:`,
+      `• iPhone (en Safari): toca Compartir ⬆️ → "Agregar a pantalla de inicio" → Agregar.`,
+      `• Android (en Chrome): toca el menú ⋮ → "Instalar app" o "Agregar a pantalla principal".`,
+      ``,
+      `3️⃣ Abre la app STRIKD desde tu pantalla de inicio e inicia sesión:`,
+      `Correo: ${email}`,
+      `Contraseña temporal: ${r.tempPassword}`,
+      ``,
+      `4️⃣ Al entrar te va a pedir conectar tu Google Calendar (para los links de Meet), activar notificaciones y elegir modo claro u oscuro. Después cambia tu contraseña en Ajustes → Contraseña.`
+    ].join("\n") : "";
     ACC.list = null; ACC.loading = false; }
   catch(ex){ ACC.ok = false; ACC.msg = ex.message || "No se pudo invitar."; }
   ACC.busy = false; schedule();
