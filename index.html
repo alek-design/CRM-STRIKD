@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 03:32:26 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 03:55:43 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792294346">
+<link rel="stylesheet" href="/auth.css?v=1792295743">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792294346"></script>
+<script src="/claude-shim.js?v=1792295743"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -799,6 +799,8 @@ body.mob-open header.top{z-index:31}
 .ck-av{flex:none;width:28px;height:28px;font-size:12px!important;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:1px solid var(--line2);font-weight:700;font-size:13px;color:var(--muted2)}
 .ck-av{position:relative;overflow:hidden}.ck-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:var(--raised)}
 .cw-av{width:34px!important;height:34px!important}
+.tpl-auto{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line2);border-radius:12px;background:var(--raised);margin:4px 0 10px;font-size:13px}.tpl-auto input{margin-top:3px}
+.tpl-autocta{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-style:dashed}
 .ck.rep .ck-av{border-color:var(--wait);color:var(--wait)}.ck.mgr .ck-av{border-color:var(--bad);color:var(--bad)}
 .ck-m{flex:1;min-width:0;display:grid;gap:1px}
 .ck-1{display:flex;gap:6px;align-items:baseline}.ck-1 b{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ck-1 time{font-size:11px;color:var(--muted);flex:none}
@@ -3701,11 +3703,14 @@ function tplStats(){
 }
 function pickVariant(tid){
   const t = S.tpls[tid]; if (!t) return "a";
-  if (!(t.variants||{}).b || !t.variants.b.text) return "a";
+  const ks = ["a","b","c"].filter(k => ((t.variants||{})[k]||{}).text); if (ks.length < 2) return "a";
   const mine = Object.values((S.tplLog||{})[S.uid] || S.myTplLog || {}).filter(l => l.tpl===tid);
-  const a = mine.filter(l => l.v==="a").length, b = mine.filter(l => l.v==="b").length;
-  return a <= b ? "a" : "b";
+  return ks.map(k => [k, mine.filter(l => l.v===k).length]).sort((x,y) => x[1]-y[1])[0][0];
 }
+const AUTO_DRAFT = {
+  atext:"¡Hola {nombre}! Sé que andas a mil, así que te lo dejo corto: en STRIKD te ayudamos a lanzar tu propia app de entrenamiento con tu marca, para que tu comunidad entrene contigo y generes ingresos cada mes. ¿Te late que te muestre cómo se vería la tuya en una llamada corta?",
+  btext:"{nombre}, para que lo tengas a la mano cuando lo veas: coaches y nutriólogos como tú ya venden sus programas en su propia app con STRIKD, sin depender solo de las consultas. Te armamos una propuesta para tu perfil sin costo. ¿Qué día te queda bien esta semana?",
+  ctext:"{nombre}, pregunta rápida: ¿hoy vendes tus planes de entrenamiento o nutrición en línea? Con un sí o no te mando la idea que tenemos para ti 👀"};
 const fillVars = (txt, name) => String(txt||"").replace(/\{nombre\}/gi, first(name));
 function astTargets(){
   const out = [];
@@ -3723,23 +3728,27 @@ function renderTpl(){
   const draft = AST.text ?? (res ? res.respuesta : "");
   const wa = tg && draft ? waLink(tg.phone, draft) : "";
   const f = TPLF.cur || {};
-  const vIn = (vk) => `<div class="tpl-v"><b>Variante ${vk.toUpperCase()}${vk==="b"?" (opcional)":""}</b>
+  const vIn = (vk) => `<div class="tpl-v"><b>Variante ${vk.toUpperCase()}${vk!=="a"?" (opcional)":""}</b>
       <textarea rows="3" data-tplf="${vk}text" placeholder="Usa {nombre} para su nombre">${esc(f[vk+"text"]||"")}</textarea>
       <label class="filepick small"><input type="file" accept="application/pdf,image/*" data-tplfile="${vk}"><span>${esc(f[vk+"fileName"] || "Adjuntar PDF (opcional)")}</span></label></div>`;
   const form = TPL_FORM ? `<div class="wa-form"><h3>${f.id?"Editar":"Nueva"} plantilla</h3>
       <label class="f">Nombre<input data-tplf="name" value="${esc(f.name||"")}" placeholder="Ej. Respuesta a automático con PDF"></label>
       <label class="f">¿Cuándo se usa?<select data-tplf="trigger">${Object.entries(TRIG).map(([k,l]) => `<option value="${k}"${(f.trigger||"auto")===k?" selected":""}>${l}</option>`).join("")}</select></label>
-      ${vIn("a")}${vIn("b")}
+      ${(f.trigger||"auto")==="auto" ? `<label class="tpl-auto"><input type="checkbox" data-tplf="autoSend"${f.autoSend?" checked":""}><span><b>Mandar sola</b> cuando detecte respuesta automática (contestan en menos de 90 s a nuestro primer mensaje). Alterna A/B/C.</span></label>` : ""}
+      ${vIn("a")}${vIn("b")}${vIn("c")}
       <div class="row"><span class="err" id="tplErr"></span><div class="spacer"></div><button type="button" class="btn small" data-tplcancel="1">Cancelar</button><button type="button" class="btn small primary" data-tplsave="1">Guardar</button></div></div>` : "";
-  const rows = list.map(([id,t]) => { const sa = st[`${id}_a`]||{sent:0,rep:0}, sb = st[`${id}_b`]||{sent:0,rep:0}, hasB = t.variants && t.variants.b && t.variants.b.text;
-    const win = hasB && sa.sent>=10 && sb.sent>=10 ? (sa.rep/sa.sent >= sb.rep/sb.sent ? "a" : "b") : null;
+  const rows = list.map(([id,t]) => { const sa = st[`${id}_a`]||{sent:0,rep:0}, sb = st[`${id}_b`]||{sent:0,rep:0}, sc = st[`${id}_c`]||{sent:0,rep:0}, hasB = t.variants && t.variants.b && t.variants.b.text, hasC = t.variants && t.variants.c && t.variants.c.text;
+    const used = [["a",sa],...(hasB?[["b",sb]]:[]),...(hasC?[["c",sc]]:[])];
+    const win = used.length > 1 && used.every(([,x]) => x.sent >= 10) ? used.slice().sort((x,y) => y[1].rep/y[1].sent - x[1].rep/x[1].sent)[0][0] : null;
     const vrow = (k, s) => `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span><p>${esc((t.variants[k]||{}).text||"")}</p>${(t.variants[k]||{}).fileId?`<span class="chip muted">📎 ${esc(t.variants[k].fileName||"PDF")}</span>`:""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`;
-    return `<div class="tpl-card${t.active===false?" off":""}"><div class="msg-top"><b>${esc(t.name)}</b><span class="chip info">${esc(TRIG[t.trigger]||t.trigger)}</span>${t.active===false?`<span class="chip muted">Pausada</span>`:""}<div class="spacer"></div>
+    return `<div class="tpl-card${t.active===false?" off":""}"><div class="msg-top"><b>${esc(t.name)}</b><span class="chip info">${esc(TRIG[t.trigger]||t.trigger)}</span>${t.autoSend?`<span class="chip ok">🤖 Se manda sola</span>`:""}${t.active===false?`<span class="chip muted">Pausada</span>`:""}<div class="spacer"></div>
       ${lead ? `<button type="button" class="linkbtn" data-tpledit="${id}">Editar</button><button type="button" class="linkbtn" data-tpltoggle="${id}">${t.active===false?"Activar":"Pausar"}</button>` : ""}</div>
-      ${vrow("a", sa)}${hasB ? vrow("b", sb) : ""}</div>`; }).join("");
+      ${vrow("a", sa)}${hasB ? vrow("b", sb) : ""}${hasC ? vrow("c", sc) : ""}</div>`; }).join("");
+  const hasAuto = Object.values(S.tpls).some(t => t.autoSend);
+  const autoCard = lead && !hasAuto && !TPL_FORM ? `<div class="tpl-card tpl-autocta"><div><b>🤖 Segundo intento automático</b><p class="mut small">Cuando contestan en menos de 90 s a nuestro primer mensaje (su respuesta automática de WhatsApp Business), sale solo un segundo mensaje. Prueba A/B/C: alterna 3 versiones y mide cuál contesta más.</p></div><button type="button" class="btn small primary" data-tplautonew="1">Configurar con 3 propuestas</button></div>` : "";
   box.innerHTML = `<section class="fn-card"><div class="fn-h"><h3>Plantillas de WhatsApp</h3>${lead?`<button type="button" class="btn small" data-tplnew="1">+ Plantilla</button>`:""}</div>
-    <p class="mut small">Cada plantilla puede tener variante A y B; el sistema las alterna y mide cuál contesta más. Con 10+ envíos de cada una se marca la ganadora 🏆.</p>
-    ${form}${rows || `<p class="mut small">Aún no hay plantillas.${lead?" Crea la primera, por ejemplo la respuesta a mensajes automáticos con tu PDF.":""}</p>`}</section>`;
+    <p class="mut small">Cada plantilla puede tener hasta 3 variantes (A/B/C); el sistema las alterna y mide cuál contesta más. Con 10+ envíos de cada una se marca la ganadora 🏆.</p>
+    ${autoCard}${form}${rows || `<p class="mut small">Aún no hay plantillas.${lead?" Crea la primera, por ejemplo la respuesta a mensajes automáticos con tu PDF.":""}</p>`}</section>`;
 }
 async function astRun(){
   const tg = astTargets().find(x => x.k===AST.pick);
@@ -3765,7 +3774,8 @@ Responde SOLO con JSON: {"tipo": uno de los tipos, "resumen": "qué quiere en un
   }catch(e){ AST.err = e && e.code==="not_granted" ? "Necesitas permitir que la página use Claude para sugerir respuestas." : e && e.code==="rate_limited" ? "Muchas consultas seguidas; espera un momento." : "No se pudo interpretar. Intenta de nuevo."; }
   AST.busy = false; schedule();
 }
-$("tplBox").addEventListener("input", e => { const d = e.target.dataset||{}; if (d.ast){ AST[d.ast] = e.target.value; } if (d.tplf) (TPLF.cur = TPLF.cur || {})[d.tplf] = e.target.value; });
+$("tplBox").addEventListener("input", e => { const d = e.target.dataset||{}; if (d.ast){ AST[d.ast] = e.target.value; } if (d.tplf) (TPLF.cur = TPLF.cur || {})[d.tplf] = e.target.type==="checkbox" ? e.target.checked : e.target.value; });
+$("tplBox").addEventListener("change", e => { const d = e.target.dataset||{}; if (d.tplf==="autoSend") (TPLF.cur = TPLF.cur || {}).autoSend = e.target.checked; if (d.tplf==="trigger"){ (TPLF.cur = TPLF.cur || {}).trigger = e.target.value; schedule(); } });
 $("tplBox").addEventListener("change", async e => {
   const d = e.target.dataset||{};
   if (d.ast==="pick"){ AST.pick = e.target.value; AST.res = null; AST.text = null; e.target.blur(); schedule(); }
@@ -3799,15 +3809,19 @@ $("tplBox").addEventListener("click", async e => {
   }
   if (q("[data-tplnew]")){ TPL_FORM = !TPL_FORM; TPLF.cur = {trigger:"auto"}; return schedule(); }
   if (q("[data-tplcancel]")){ TPL_FORM = null; TPLF.cur = null; return schedule(); }
-  if (q("[data-tpledit]")){ const id = q("[data-tpledit]").dataset.tpledit, t = S.tpls[id]; const va = (t.variants||{}).a||{}, vb = (t.variants||{}).b||{};
-    TPLF.cur = {id, name:t.name, trigger:t.trigger, atext:va.text, afileId:va.fileId, afileName:va.fileName, btext:vb.text, bfileId:vb.fileId, bfileName:vb.fileName}; TPL_FORM = true; return schedule(); }
+  if (q("[data-tpledit]")){ const id = q("[data-tpledit]").dataset.tpledit, t = S.tpls[id]; const va = (t.variants||{}).a||{}, vb = (t.variants||{}).b||{}, vc = (t.variants||{}).c||{};
+    TPLF.cur = {id, name:t.name, trigger:t.trigger, autoSend:!!t.autoSend, atext:va.text, afileId:va.fileId, afileName:va.fileName, btext:vb.text, bfileId:vb.fileId, bfileName:vb.fileName, ctext:vc.text, cfileId:vc.fileId, cfileName:vc.fileName}; TPL_FORM = true; return schedule(); }
+  if (q("[data-tplautonew]")){ TPL_FORM = true; TPLF.cur = {trigger:"auto", autoSend:true, name:"Segundo intento (respuesta automática)", ...AUTO_DRAFT}; return schedule(); }
   if (q("[data-tpltoggle]")){ const id = q("[data-tpltoggle]").dataset.tpltoggle; return db.doc(`waTemplates/${id}`).update({active: S.tpls[id].active===false}).catch(()=>{}); }
   if (q("[data-tplsave]")){
     const f = TPLF.cur || {}, err = $("tplErr");
     if (!f.name || !f.atext){ if (err) err.textContent = "Ponle nombre y el texto de la variante A."; return; }
-    const doc = {name:f.name.trim(), trigger:f.trigger||"auto", active:true, updatedAt:Date.now(),
-      variants:{a:{text:f.atext.trim(), fileId:f.afileId||"", fileName:f.afileName||""}, b:{text:(f.btext||"").trim(), fileId:f.bfileId||"", fileName:f.bfileName||""}}};
-    try{ if (f.id) await db.doc(`waTemplates/${f.id}`).update(doc); else await db.collection("waTemplates").doc().set({...doc, createdAt:Date.now()}); TPL_FORM = null; TPLF.cur = null; schedule(); }
+    const trig = f.trigger||"auto", autoSend = trig==="auto" && !!f.autoSend;
+    const doc = {name:f.name.trim(), trigger:trig, active:true, autoSend, updatedAt:Date.now(),
+      variants:{a:{text:f.atext.trim(), fileId:f.afileId||"", fileName:f.afileName||""}, b:{text:(f.btext||"").trim(), fileId:f.bfileId||"", fileName:f.bfileName||""}, c:{text:(f.ctext||"").trim(), fileId:f.cfileId||"", fileName:f.cfileName||""}}};
+    try{
+      if (autoSend) for (const [oid, o] of Object.entries(S.tpls)) if (oid !== f.id && o.autoSend) await db.doc(`waTemplates/${oid}`).update({autoSend:false}); // solo una a la vez
+      if (f.id) await db.doc(`waTemplates/${f.id}`).update(doc); else await db.collection("waTemplates").doc().set({...doc, createdAt:Date.now()}); TPL_FORM = null; TPLF.cur = null; schedule(); }
     catch(ex){ if (err) err.textContent = "No se pudo guardar."; }
   }
 });
