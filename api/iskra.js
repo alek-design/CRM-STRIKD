@@ -4,6 +4,7 @@
 //  · Conversación nueva → se asigna sola: opción "load" (menos carga) u opción "best" (mejores resultados, 4 semanas).
 //  · Cada envío queda registrado con quién lo mandó. Envíos siempre por clic de una persona, con idempotency_key.
 const { withPg, userFromReq } = require("../lib/google");
+const { publicMedia, mediaPayload } = require("../lib/iskmedia");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const enc = encodeURIComponent;
 const digits = x => String(x || "").replace(/\D/g, "").slice(-10);
@@ -222,18 +223,22 @@ module.exports = async (req, res) => {
         if (!input.conversation_id || (!input.text && !media) || !input.idempotency_key) throw Object.assign(new Error("Faltan datos"), {status:400});
         await mustOwn(input.conversation_id);
         const text = String(input.text || "").slice(0, 4000);
-        const payload = {conversation_id:input.conversation_id, idempotency_key:input.idempotency_key};
-        if (text) payload.text = text;
-        if (media){ // foto, PDF o nota de voz: ISKRA la descarga del link público
-          const kind = /^image\//.test(media.type) ? "image" : /^audio\//.test(media.type) ? "audio" : "document";
-          Object.assign(payload, {type:kind, media_url:media.url, media_type:media.type, filename:media.name || undefined});
-          if (text) payload.caption = text;
-        }
-        const j = await iskra("POST", "/v1/messages/reply", payload); LIST_CACHE.at = 0; delete MSG_CACHE[input.conversation_id];
+        const base = {conversation_id:input.conversation_id, idempotency_key:input.idempotency_key};
+        let j, mediaErr = null, mediaInfo = null;
+        if (media){ // foto, PDF o nota de voz: ISKRA la descarga del link público. El texto va como pie del archivo.
+          try{
+            const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type};
+            j = await iskra("POST", "/v1/messages/reply", {...base, ...mediaPayload(pm, text)});
+          }catch(e){ mediaErr = String(e.message || e) + (e.detail ? " · " + JSON.stringify(e.detail).slice(0, 300) : ""); }
+          // si el archivo no pasó, que al menos llegue el texto
+          if (mediaErr && text) j = await iskra("POST", "/v1/messages/reply", {...base, idempotency_key:base.idempotency_key + "-t", text});
+          if (mediaErr && !text) throw Object.assign(new Error("ISKRA no aceptó el archivo: " + mediaErr), {status:502});
+        } else j = await iskra("POST", "/v1/messages/reply", {...base, text});
+        LIST_CACHE.at = 0; delete MSG_CACHE[input.conversation_id];
         const label = media ? `${text ? text + " " : ""}[${media.type && media.type.startsWith("audio/") ? "nota de voz" : media.name || "archivo"}]` : text;
         await c.query("insert into public.iskra_sent (conversation_id, user_id, text) values ($1,$2,$3)", [String(input.conversation_id), me.id, label]);
         await c.query("update public.iskra_owner set last_sender=$2, last_sent_at=now() where conversation_id=$1", [String(input.conversation_id), me.id]);
-        return {data:j};
+        return {data:j, ...(media ? {media:mediaInfo, mediaErr} : {})};
       }
       if (op === "discard"){ // descartar (o regresar) una conversación: deja de salir en la bandeja
         await mustOwn(input.id);

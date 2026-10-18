@@ -673,6 +673,16 @@ label.f em{color:var(--bad);font-style:normal}
   main.wrap{padding-top:calc(14px + env(safe-area-inset-top,0px))}
   body::before{background:var(--bg)}
   footer.foot{display:none}
+  /* chat abierto en iPhone: sin título ni pestañas, nombre visible, acciones en segunda línea, texto a lo ancho */
+  #view-msgs:has(.cv2.has-sel) .msgs-head{display:none}
+  #view-msgs:has(.cv2.has-sel) .cv2{height:calc(100dvh - 140px - env(safe-area-inset-bottom,0px) - env(safe-area-inset-top,0px))!important}
+  .cw-h{flex-wrap:wrap;row-gap:8px;padding:10px 12px!important}
+  .cw-h .cw-who{flex:1 1 0;min-width:0}.cw-h .cw-who b{font-size:16px}
+  .cw-h .cw-acts{flex:1 1 100%;order:5;display:flex;gap:6px}
+  .cw-h .cw-acts .cw-own{flex:1;max-width:none!important}
+  .cw-bar{flex-wrap:wrap}
+  .cw-bar textarea{order:-1;flex:1 1 100%!important;width:100%}
+  .cw-bar .cw-send{margin-left:auto}
   main.wrap .view h2{font-size:24px;letter-spacing:-.01em}
   main.wrap .view .sub{font-size:13.5px}
   #msgSeg{display:grid!important;grid-template-columns:repeat(3,1fr);width:100%;box-sizing:border-box}
@@ -4081,7 +4091,7 @@ function renderIskra(){
       ${canSend ? `<div class="cw-c">
         ${recent ? `<p class="cw-warn">${esc(iskWho(c.lastSender))} contestó hace ${esc(ago(c.lastSentAt))}</p>` : ""}
         ${ISK.att && ISK.att.id===c.id ? `<div class="isk-att">${ISK.att.kind==="image" ? `<img src="${esc(ISK.att.preview)}" alt="">` : ISK.att.kind==="audio" ? `<audio controls src="${esc(ISK.att.preview)}"></audio>` : `<span class="isk-doc">PDF</span>`}<span>${esc(ISK.att.name)} · ${Math.max(1,Math.round(ISK.att.blob.size/1024))} KB</span><button type="button" class="linkbtn" data-iskattx="1">Quitar</button></div>` : ""}
-        ${ISK.tplMedia && ISK.tplMedia.conv===c.id ? `<div class="isk-att"><span class="isk-doc">PDF</span><span>${esc(ISK.tplMedia.name)} · de la plantilla</span><button type="button" class="linkbtn" data-isktplx="1">Quitar</button></div>` : ""}
+        ${ISK.tplMedia && ISK.tplMedia.conv===c.id ? `<div class="isk-att"><span class="isk-doc">${ISK.tplMedia.type.startsWith("image/") ? "FOTO" : "PDF"}</span><span>${esc(ISK.tplMedia.name)} · de la plantilla</span><button type="button" class="linkbtn" data-isktplx="1">Quitar</button></div>` : ""}
         ${ISK.err ? `<p class="cw-err">${esc(ISK.err)}</p>` : ""}
         <div class="cw-bar"><input type="file" id="iskFile" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
           <button type="button" class="cw-ic" data-iskfile="1" title="Foto o PDF" aria-label="Adjuntar foto o PDF">📎</button>
@@ -4155,7 +4165,8 @@ document.addEventListener("click", async e => {
     const nombre = ((mt ? mt.name : c && c.name) || "").split(" ")[0];
     ISK.draft[ISK.sel] = String(vf.text||"").replace(/\{nombre\}/g, nombre && !/^\d/.test(nombre) ? nombre : "").replace(/\s+([!,.?])/g, "$1");
     ISK.tplUsed = {id:tp.dataset.isktpl, v, conv:ISK.sel};
-    ISK.tplMedia = vf.fileId ? {conv:ISK.sel, url:location.origin + "/_blob/" + vf.fileId, type:"application/pdf", name:vf.fileName || "STRIKD.pdf"} : null;
+    const fx = String(vf.fileName||"").toLowerCase().split(".").pop(), ftype = {jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"}[fx] || "application/pdf";
+    ISK.tplMedia = vf.fileId ? {conv:ISK.sel, url:location.origin + "/_blob/" + vf.fileId, type:ftype, name:vf.fileName || "STRIKD.pdf"} : null;
     const d = tp.closest("details"); if (d) d.removeAttribute("open");
     // al instante: si el cuadro de texto tenía el foco, el render normal se saltaba el chat hasta que lo soltaras
     const ta0 = document.querySelector("[data-iskin]"); if (ta0) ta0.value = ISK.draft[ISK.sel];
@@ -4211,7 +4222,9 @@ document.addEventListener("click", async e => {
       let media = null;
       if (!att && tm) media = {url:tm.url, type:tm.type, name:tm.name};
       if (att){ const up = window.STRIKD_UPLOAD ? await window.STRIKD_UPLOAD(att.blob, att.name) : {url:att.preview, type:att.blob.type, name:att.name}; media = {url:up.url, type:up.type || att.blob.type, name:att.name}; bub.st = "enviando…"; schedule(); }
-      await iskFn()("reply", {conversation_id:id, text, idempotency_key:key, ...(media ? {media} : {})}); bub.st = "enviado";
+      const rr = await iskFn()("reply", {conversation_id:id, text, idempotency_key:key, ...(media ? {media} : {})}); bub.st = "enviado";
+      if (rr && rr.mediaErr){ bub.st = "solo se envió el texto"; ISK.err = "El archivo no se pudo mandar: " + rr.mediaErr; }
+      ISK.lastReply = rr;
       if (tu) db.doc(`meets/${meId()}/tpllog/${key}`).set({tpl:tu.id, v:tu.v, at:Date.now(), conv:id}).catch(() => {}); ISK.idem = null; setTimeout(() => iskTail(id), 1200); }
     catch(err){ bub.st = "no se envió"; bub.failed = true; ISK.draft[id] = text; if (att) ISK.att = att; ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : "") + " · Tu texto sigue en la caja, dale Enviar otra vez."; }
     finally{ schedule(); }
