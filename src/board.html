@@ -677,6 +677,13 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+.tk-ring{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--line2);display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;margin-left:2px}
+.tk-ring.st-progress{border-color:#3b82f6;background:linear-gradient(90deg,#3b82f6 50%,transparent 50%)}
+.tk-ring.st-review{border-color:var(--wait);border-style:dashed}
+.tk-ring.st-changes{border-color:var(--bad)}
+.tk-ring.st-done{border-color:var(--ok-fg);background:var(--ok-fg)}
+.tkr{gap:14px}.tkr .pr-m b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
 /* Prospectos activos: etapas como acordeón, cerradas de inicio */
 .steps.accs{display:grid!important;grid-template-columns:1fr!important;gap:8px}
 .step.acc{padding:0;gap:0;border-radius:14px}
@@ -3359,7 +3366,8 @@ function renderPlan(){
     const mins = Math.round((e.ts - now)/60e3), link = !e.gcal && e.m ? safeUrl(e.m.link) : "", isPitch = !e.gcal && e.kind==="pitch";
     const rel = mins > 60 ? `en ${Math.round(mins/60)} h` : mins > 0 ? `en ${mins} min` : "";
     let tag = "";
-    if (!e.gcal){
+    if (!e.gcal && headLite) tag = state==="live" ? `<span class="ma-rel">en curso</span>` : rel ? `<span class="ma-rel">${esc(rel)}</span>` : "";
+    else if (!e.gcal){
       const ph = e.m.phone, firstN = String(e.m.prospect||"").split(" ")[0];
       if ((state==="live" || (state==="next" && mins <= 15)) && link) tag = `<a class="ma join" href="${esc(link)}" target="_blank" rel="noopener">Unirse</a>`;
       else if (state==="next"){
@@ -3401,15 +3409,16 @@ function renderPlan(){
     + waToday.slice(0, 5).map(([id,l]) => { const d = dueInfo((l.assignedAt||0)+24*HR, now); return `<button type="button" class="pl-item task ${d.cls}" data-gowa="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Agenda el meet con ${esc(l.name)}</b><small>Interesado de WhatsApp</small></span><span class="sema ${d.cls}"><i></i>${l.assignedAt+24*HR < now ? esc(d.txt) : `Antes de ${hm(l.assignedAt+24*HR)}`}</span></button>`; }).join("")
     + (waToday.length > 5 ? `<button type="button" class="more" data-gowa="1">+${waToday.length-5} interesados de WhatsApp</button>` : "")
     + (admin ? "" : Object.values(vipItems(meId())).filter(x => (x.status==="interesado" || x.status==="agendo") && x.statusAt && now - x.statusAt < 3*864e5).slice(0, 3).map(x => `<button type="button" class="pl-item task ok" data-gotab="perf"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b>${PICON[3]} ${esc(x.prospect)} ${x.status==="agendo" ? "ya agendó meet con Mich" : "está interesado"}</b><small>Una de tus propuestas para Mich</small></span><span class="sema ok"><i></i>Nuevo</span></button>`).join(""))
-    + (iskOpen ? `<button type="button" class="pl-item task soon" data-gomsgs="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Tienes ${iskOpen} chat${iskOpen===1?"":"s"} de WhatsApp sin responder</b><small>Contéstalos en Mensajes</small></span><span class="sema soon"><i></i>Hoy</span></button>` : "");
+    + (iskOpen ? `<section class="pg2"><div class="pg2-card"><div class="pr" role="button" tabindex="0" data-gomsgs="1"><span class="wa-b">WA</span><span class="pr-m"><b>${iskOpen} chat${iskOpen===1?"":"s"} sin responder</b><small>Contéstalos en Mensajes</small></span><span class="pr-chev" aria-hidden="true">›</span></div></div></section>` : "");
   // tareas que asignan el Head o el Manager: salen todos los días hasta que se marcan como hechas
   const myT = taskList(meId()).filter(([,x]) => tkSt(x)!=="done"); // todas las abiertas, aunque sean para otro día
   const tLate = myT.filter(([,x]) => x.dueAt && x.dueAt < now && tkSt(x)!=="review").length;
   const assigned = admin && !S.viewAs ? taskAssignedByMe().filter(([,,x]) => !headLite || x.by===S.uid) : [];
   const nRev = assigned.filter(([,,x]) => tkSt(x)==="review").length;
-  const taskHtml = (myT.length ? `<section class="pg2"><div class="pg2-h"><span>Tareas</span><b>${myT.length}</b>${tLate?`<em>${tLate} tarde</em>`:""}</div><div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
+  const onlyTasks = !groups.length && !nRev;
+  const taskHtml = (myT.length ? `<section class="pg2">${onlyTasks ? "" : `<div class="pg2-h"><span>Tareas</span><b>${myT.length}</b></div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
     + (assigned.some(([,,x]) => tkSt(x)==="review") ? `<section class="pg2"><div class="pg2-h"><span>Por aprobar</span><b>${nRev}</b></div><div class="pg2-card">${assigned.filter(([,,x]) => tkSt(x)==="review").map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
-  if (headLite) todo += `<p class="lite-note">Lo operativo del equipo (validar, resultados, skeletons) lo lleva ${esc(headLiteMgrs())}. Los atrasos de cada quien los ves en <button type="button" class="linkbtn" data-gotab="board">Equipo</button>.</p>`;
+  if (headLite) todo += `<p class="lite-note">Lo operativo lo lleva ${esc(headLiteMgrs())} · <button type="button" class="linkbtn" data-gotab="board">ver Equipo</button></p>`;
   todo = taskHtml + todo + (totalPend > PEND_CAP ? `<button type="button" class="pend-all" data-allpend="1">${allPend ? "Ver menos" : `Ver todos los pendientes (${totalPend})`}</button>` : "");
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
   { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length + nRev, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
@@ -3629,7 +3638,7 @@ const tkSt = x => x.status || (x.doneAt ? "done" : "todo");
 const TKD = {}; let TK_OPEN = "";
 function taskRow(u, id, x, lead, now){
   const k = `${u}/${id}`, st = tkSt(x), late = x.dueAt && x.dueAt < now && st!=="done" && st!=="review", open = TK_OPEN===k;
-  const sub = lead ? [String(nameOf(S.ps||{}, u)).split(" (")[0], x.dueAt ? fmtLocal(x.dueAt).split(",")[0] : ""].filter(Boolean).join(" · ") : [x.byName ? "de " + x.byName : "", x.dueAt ? (late ? "tarde" : "para " + fmtLocal(x.dueAt).split(",")[0]) : ""].filter(Boolean).join(" · ");
+  const sub = lead ? [String(nameOf(S.ps||{}, u)).split(" (")[0], x.dueAt ? fmtLocal(x.dueAt).split(",")[0] : ""].filter(Boolean).join(" · ") : [x.byName && x.by !== u ? "de " + x.byName : "", x.dueAt ? (late ? "tarde" : "para " + fmtLocal(x.dueAt).split(",")[0]) : ""].filter(Boolean).join(" · ");
   const files = (x.files||[]).map(f => `<a class="tk-file" href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name||"archivo")}</a>`).join("");
   const d = TKD[k] || {};
   const det = !open ? "" : `<div class="tk-det" data-tkbox="${k}">
@@ -3640,10 +3649,10 @@ function taskRow(u, id, x, lead, now){
           <div class="tk-acts"><button class="btn small" data-tkcmt="${k}">Comentar</button><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button><button class="pr-x" data-tdel="${k}">Borrar</button></div>`
         : `<label class="f">Tu avance o entrega<textarea rows="3" data-tkrep="${k}" placeholder="Escribe lo que hiciste, links, dudas…">${esc(d.rep ?? x.reply ?? "")}</textarea></label>
           <div class="tk-files">${files}<label class="tk-up">${d.up ? "Subiendo…" : "📎 Subir archivo"}<input type="file" data-tkfile="${k}" hidden></label></div>
-          <div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button></div>`}
+          <div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}${x.by === u ? `<button class="btn small primary" data-tkst="${k}|done">✓ Completar</button>` : `<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button>`}</div>`}
     </div>`;
   return `<div class="pr tkr st-${st}${late?" late":""}${open?" sel":""}" role="button" tabindex="0" data-tkopen="${k}">
-      <span class="pr-av tk">${st==="done" ? "✓" : st==="review" ? "⏳" : st==="changes" ? "↺" : st==="progress" ? "…" : "○"}</span>
+      <span class="tk-ring st-${st}" aria-hidden="true">${st==="done" ? "✓" : ""}</span>
       <span class="pr-m"><b>${esc(x.title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</span>
       <span class="tk-st st-${st}">${esc(TK_ST[st])}</span>
     </div>${det}`;
@@ -3696,7 +3705,7 @@ function taskOpen(){
         await ref.set(data); ((S.tasks ||= {})[u] ||= {})[ref.id] = data;
         tkNotify([u], `Nueva tarea de ${data.byName}`, title + (note ? ` · ${note}` : ""), `${u}/${ref.id}`, u); } schedule();
       w.remove(); taskSubs(); if (to.includes(meId())){ AG_DAY = null; showTab("agenda"); }
-      quickToast(to.length > 1 ? `✓ Tarea asignada a ${to.length}` : `✓ Tarea asignada a ${String(nameOf(S.ps||{}, to[0])).split(" (")[0]}`); }
+      quickToast(to.length > 1 ? `✓ Tarea asignada a ${to.length}` : to[0]===S.uid ? "✓ Tarea creada" : `✓ Tarea asignada a ${String(nameOf(S.ps||{}, to[0])).split(" (")[0]}`); }
     catch(_){ $("tkGo").disabled = false; $("tkErr").textContent = "No se pudo guardar."; }
   });
   setTimeout(() => $("tkTitle").focus(), 50);
