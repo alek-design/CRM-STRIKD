@@ -3118,7 +3118,7 @@ function calEvents(){
   // add the admin's real Google Calendar, skipping the ones that are the same meet as a panel event
   const mails = {}; Object.values(S.all).forEach(o => Object.values(o||{}).forEach(m => { if (m.email) mails[m.email.toLowerCase()] = 1; }));
   const starts = new Set(ev.map(e => e.at));
-  Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
+  if (!S.viewAs) Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
     if (starts.has(e.at) || e.emails.some(x => mails[x])) return;
     ev.push({at:e.at, endTs:e.endTs, kind:"gcal", label:e.label, who:null});
   }));
@@ -5276,6 +5276,7 @@ function vaPeople(r){
   return all.filter(u => roleOf(u)==="am" && u!==S.uid);
 }
 function enterVA(role, uid){
+  if (!S.isOwner) return; // solo el Head puede ver como otra persona
   VA.role = role;
   uid = uid || vaPeople(role)[0];
   if (!uid){ alert(role==="influencer" ? "Aún no hay nadie con el rol Influencer Outreach. Asígnalo en el Organigrama." : "Aún no hay nadie con ese rol."); return schedule(); }
