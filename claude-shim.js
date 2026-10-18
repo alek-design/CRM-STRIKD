@@ -320,6 +320,14 @@
   };
   window.STRIKD_GOOGLE_USERS = async () => { const t = (await sb.auth.getSession()).data.session.access_token; const r = await fetch("/api/google/status?all=1", {headers:{authorization:"Bearer " + t}}); return r.ok ? (await r.json()).users || [] : []; };
 
+  /* ---------- Mich agenda el meet de un influencer a nombre del AM que lo propuso ---------- */
+  window.STRIKD_MICHMEET = async (payload) => {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch("/api/michmeet", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify(payload)});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "No se pudo guardar");
+    return j;
+  };
   /* ---------- invitaciones (Head) ---------- */
   window.STRIKD_INVITE = async (email, name, role) => {
     const { data } = await sb.auth.getSession();

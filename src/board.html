@@ -666,6 +666,9 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+.mi-plus{font-size:20px!important;font-weight:600;background:var(--fg)!important;color:var(--bg)!important;border-color:var(--fg)!important}
+.mbk{max-width:520px}.mbk-who{margin:0 6px 12px;font-size:13px;color:var(--muted)}.mbk .grid{margin:0 6px}.mbk .guests{margin:10px 6px}.mbk .row{margin:8px 6px 4px}.mbk .mut{margin:0 6px}
+
 .guests{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 6px}
 .g-l{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
 .g-c{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;padding:5px 6px 5px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--line2)}
@@ -1965,10 +1968,10 @@ let rsT = null;
 function showResult(state, title, text, detail){
   clearTimeout(rsT);
   let w = $("rsWrap"); if (!w){ w = document.createElement("div"); w.id = "rsWrap"; w.className = "rs-wrap"; document.body.appendChild(w);
-    w.addEventListener("click", e => { if (e.target===w || e.target.closest("[data-rsclose]")) hideResult(); if (e.target.closest("[data-rsgo]")){ hideResult(); showTab("board"); } }); }
+    w.addEventListener("click", e => { if (e.target===w || e.target.closest("[data-rsclose]")) hideResult(); if (e.target.closest("[data-rsgo]")){ hideResult(); showTab("agenda"); } }); }
   w.hidden = false;
   w.innerHTML = `<div class="rs ${state}" role="${state==="err"?"alert":"status"}" aria-live="polite"><div class="rs-ic">${RS_IC[state]||""}</div><h3>${esc(title)}</h3><p>${esc(text||"")}</p>${detail?`<p class="rs-d">${esc(detail)}</p>`:""}
-    ${state==="loading" ? "" : `<div class="rs-acts">${state==="err" ? `<button type="button" class="btn primary" data-rsclose="1">Entendido</button>` : `<button type="button" class="btn" data-rsgo="1">Ver en Hoy</button><button type="button" class="btn primary" data-rsclose="1">Agendar otro</button>`}</div>`}</div>`;
+    ${state==="loading" ? "" : `<div class="rs-acts">${state==="err" || state==="warn" || michMode() ? `<button type="button" class="btn primary" data-rsclose="1">Entendido</button>` : `<button type="button" class="btn" data-rsgo="1">Ver en Agenda</button><button type="button" class="btn primary" data-rsclose="1">Agendar otro</button>`}</div>`}</div>`;
   if (state==="ok") rsT = setTimeout(hideResult, 6000);
 }
 function hideResult(){ clearTimeout(rsT); const w = $("rsWrap"); if (w) w.hidden = true; }
@@ -1980,6 +1983,7 @@ $("meetForm").addEventListener("submit", async e => {
   $("formErr").hidden = true; $("submitBtn").disabled = true;
   o.perfil = Number(o.perfil)||0; o.followers = o.followers ? Number(o.followers) : "";
   if (o.perfil===3 && !S.editingId && !$("f_p3meet").checked){
+    { const dm = await dupCheck(o.profile, ""); if (dm){ showResult("warn", "Ese perfil ya está registrado", dm + " No se envió."); $("submitBtn").disabled = false; return; } }
     try{ await saveVip(o); resetForm(); if (BOOK.open) closeBook(); showResult("ok", "Agregado a la lista de Mich", `${o.prospect} ya está en la lista; Mich hace el primer contacto.`); }
     catch(ex){ showResult(ex && ex.dup ? "warn" : "err", ex && ex.dup ? "Ya estaba en la lista" : "No se guardó", ex && ex.dup ? ex.msg : "Revisa tu conexión e intenta de nuevo. Tus datos siguen en el formulario."); }
     finally{ $("submitBtn").disabled = false; }
@@ -1998,6 +2002,7 @@ $("meetForm").addEventListener("submit", async e => {
       if (mk) o.link = "";
       // auto-validation: complete data, a future date and nobody else already has this prospect
       const pkey = igKey(o.profile) || (o.email ? "email:" + o.email.toLowerCase().replace(/[^a-z0-9._@+-]/g,"") : "");
+      { const dmsg = await dupCheck(o.profile, o.email); if (dmsg){ showResult("warn", "Ese prospecto ya está registrado", dmsg + " No se envió."); $("submitBtn").disabled = false; return; } }
       let auto = !!((safeUrl(o.profile) || (o.canal==="whatsapp" && !o.profile)) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email) && meetTs(o.meetAt) > now && pkey), dupOf = "";
       if (auto){
         try{
@@ -3316,7 +3321,7 @@ function renderMich(){
     return `<a class="mi-row${done(x)?" done":""}" href="${esc(url||"#")}" target="_blank" rel="noopener" data-mgo="${k}">
       <span class="ck-av mi-av">${ini(x.prospect)}${h?`<img src="https://unavatar.io/instagram/${encodeURIComponent(h)}?fallback=false" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>
       <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · de ${esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}</span>
-      ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span><button type="button" class="mi-ic" data-mundo="${k}" aria-label="Regresar a por contactar" title="Regresar a por contactar">↺</button>`
+      ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
         : `<span class="mi-ig">Abrir</span>${MICH.on ? "" : `<button type="button" class="mi-ic" data-mdone="${k}" aria-label="Marcar como contactado" title="Marcar como contactado">✓</button>`}`}
     </a>`; }).join("")}</div>`
     : `<div class="empty">${rows.length ? (MICH.f==="nuevo" ? "🎉 No hay pendientes. Cuando el equipo proponga más influencers aparecen aquí." : "Nada por aquí.") : "Todavía no hay influencers en la lista. Aparecen cuando el equipo registra un Perfil 3 (35K+)."}</div>`;
@@ -3335,6 +3340,7 @@ $("miPill").addEventListener("click", () => { MICH.on = !MICH.on; try{ localStor
 $("miSeg").addEventListener("click", e => { const b = e.target.closest("[data-mif]"); if (b){ MICH.f = b.dataset.mif; schedule(); } });
 $("miQ").addEventListener("input", e => { MICH.q = e.target.value; renderMich(); });
 $("view-mich").addEventListener("click", e => {
+  const bk = e.target.closest("[data-mbook]"); if (bk){ e.preventDefault(); e.stopPropagation(); return michBookOpen(bk.dataset.mbook); }
   const dn = e.target.closest("[data-mdone]"), un = e.target.closest("[data-mundo]"), tu = e.target.closest("[data-mtundo]");
   if (dn){ e.preventDefault(); e.stopPropagation(); return michMark(dn.dataset.mdone, "contactado"); }
   if (un){ e.preventDefault(); e.stopPropagation(); return michMark(un.dataset.mundo, "nuevo"); }
@@ -3345,6 +3351,60 @@ $("view-mich").addEventListener("click", e => {
   const [u,id] = go.dataset.mgo.split("/"), x = (S.vip[u]||{})[id];
   if (MICH.on && x && (x.status||"nuevo")==="nuevo") setTimeout(() => michMark(go.dataset.mgo, "contactado"), 0); // el link abre Instagram; aquí solo se marca
 });
+
+/* Mich agenda el meet: queda en el journey del AM que propuso al influencer (su conexión y sus puntos) */
+const MBK = {k:null, busy:false, err:""};
+function michBookOpen(k){
+  const [u, id] = k.split("/"), x = (S.vip[u]||{})[id]; if (!x) return;
+  MBK.k = k; MBK.err = ""; MBK.busy = false;
+  const am = nameOf(S.ps||{}, u), ld = leaderOf(u);
+  const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "mbkWrap";
+  w.innerHTML = `<div class="bk mbk" role="dialog" aria-modal="true" aria-label="Agendar meet"><div class="bk-grab"></div>
+    <div class="bk-h"><b>Agendar meet con ${esc(x.prospect||"el influencer")}</b><div class="spacer"></div><button type="button" class="btn small" data-mbkx="1">Cerrar</button></div>
+    <p class="mbk-who">Cuenta para <b>${esc(am)}</b>: queda en su journey, ya validado, y suma su conexión y sus puntos.</p>
+    <div class="grid">
+      <label class="f full">Email del influencer <em>*</em><input type="email" id="mbkEmail" autocomplete="off"></label>
+      <label class="f">Teléfono / WhatsApp<input type="tel" id="mbkPhone" autocomplete="off"></label>
+      <label class="f">Fecha y hora <em>*</em><input type="datetime-local" id="mbkAt"></label>
+    </div>
+    <div class="guests"><span class="g-l">Invitados</span><span class="g-c pros">Influencer</span><span class="g-c">${esc(String(am).split(" (")[0])} <small>AM</small></span>${ld ? `<span class="g-c">${esc(String(nameOf(S.ps||{}, ld)).split(" (")[0])} <small>líder</small></span>` : leaderEmail(u) ? `<span class="g-c">${esc(leaderEmail(u))} <small>líder</small></span>` : ""}</div>
+    ${mcp ? `<p class="mut small">Se crea en tu Google Calendar (45 min) con link de Meet y les llega la invitación.</p>` : `<p class="mut small">Conecta tu Google Calendar en Ajustes para mandar la invitación con link de Meet.</p>`}
+    <div class="row"><span class="err" id="mbkErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="mbkGo">Agendar meet</button></div></div>`;
+  document.body.appendChild(w);
+  w.addEventListener("click", e => { if (e.target===w || e.target.closest("[data-mbkx]")) w.remove(); if (e.target.closest("#mbkGo")) michBookSave(w); });
+  setTimeout(() => $("mbkEmail").focus(), 50);
+}
+async function michBookSave(w){
+  if (MBK.busy) return;
+  const [u, id] = MBK.k.split("/"), x = (S.vip[u]||{})[id]; if (!x) return w.remove();
+  const email = $("mbkEmail").value.trim(), phone = $("mbkPhone").value.trim(), meetAt = $("mbkAt").value, err = $("mbkErr");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "Revisa el email."; return; }
+  if (!meetAt || isNaN(meetTs(meetAt))){ err.textContent = "Pon la fecha y hora."; return; }
+  MBK.busy = true; $("mbkGo").disabled = true; $("mbkGo").textContent = "Agendando…"; err.textContent = "";
+  const now = Date.now(), ld = leaderOf(u), guests = [u].concat(ld ? [ld] : leaderEmail(u) ? ["__lead"] : []);
+  const o = {perfil:3, prospect:x.prospect, profile:x.profile, followers:x.followers||0, notes:x.notes||"", channel:"Mich (contacto directo)", email, phone, meetAt, link:"", source:"mich", createdAt:now, updatedAt:now, week:weekKey(now), vipId:id, guests};
+  let mid;
+  try{
+    if (window.STRIKD_MICHMEET && !S.isOwner){ const r = await window.STRIKD_MICHMEET({vip:MBK.k, meet:{email, phone, meetAt, week:o.week, valWeek:meetWeek(o), guests}}); mid = r.mid; }
+    else {
+      const ref = db.collection(`meets/${u}/items`).doc(); mid = ref.id;
+      await ref.set({...o, bookedBy:S.uid}); await db.doc(`validations/${mid}`).set({uid:u, week:meetWeek(o), status:"valid", reason:"", decidedAt:now, perfil:3});
+      await db.doc(`meets/${u}/vip/${id}`).update({status:"agendo", statusAt:now, meetId:mid});
+    }
+    Object.assign(x, {status:"agendo", statusAt:now, meetId:mid});
+  }catch(e){ MBK.busy = false; $("mbkGo").disabled = false; $("mbkGo").textContent = "Agendar meet"; err.textContent = e.message || "No se pudo guardar."; return; }
+  w.remove(); schedule();
+  let note = `Listo: el meet con ${x.prospect} quedó en el journey de ${first(nameOf(S.ps||{}, u))}.`;
+  if (mcp){
+    const prev = S.bookFor; S.bookFor = u;
+    try{ const ev = await createInvite(o); note += " La invitación ya les llegó.";
+      if (window.STRIKD_MICHMEET && !S.isOwner) await window.STRIKD_MICHMEET({op:"link", uid:u, mid, link:ev.link, gcalEventId:ev.id, gcalHtml:ev.html});
+      else await db.doc(`meets/${u}/items/${mid}`).update({link:ev.link, gcalEventId:ev.id, gcalHtml:ev.html, invitedAt:Date.now()}); }
+    catch(e){ note += " No se pudo crear la invitación de Google."; }
+    S.bookFor = prev;
+  }
+  showResult("ok", "Meet agendado", note);
+}
 
 /* ---------- Organigrama y roles ---------- */
 const ROLES = {
@@ -3560,6 +3620,27 @@ function igKey(link){
     return user && /^[A-Za-z0-9._-]+$/.test(user) ? `${site}:${user.toLowerCase()}` : "";
   }catch(e){ return ""; }
 }
+/* ¿Ya lo registró alguien? (mismo usuario de redes o mismo email) → se avisa y no se envía */
+async function dupCheck(profile, email){
+  const keys = [igKey(profile||""), email ? "email:" + String(email).toLowerCase().replace(/[^a-z0-9._@+-]/g,"") : ""].filter(Boolean);
+  const who = u => u===bookUid() ? "tú" : nameOf(S.ps||{}, u);
+  for (const k of keys){
+    try{ const d = await db.doc(`prospectIndex/${k}`).get(); const v = d.exists ? d.data() : null;
+      if (v && v.uid) return `${k.startsWith("email:") ? "Ese email" : "@" + k.split(":")[1]} ya lo registró ${who(v.uid)}${v.at ? ` el ${fmtLocal(v.at).split(",")[0]}` : ""}.`; }catch(_){}
+  }
+  const ik = igKey(profile||"");
+  if (ik){ try{ const d = await db.doc(`vipIndex/${ik}`).get(); const v = d.exists ? d.data() : null;
+    if (v && v.uid) return `@${ik.split(":")[1]} ya está en la lista de Mich (lo propuso ${who(v.uid)}).`; }catch(_){} }
+  // también contra lo que ya se ve en el tablero (por si el índice no lo tiene)
+  for (const [u, items] of Object.entries(S.all && Object.keys(S.all).length ? S.all : {[meId()]: myItems()})) for (const m of Object.values(items||{})){
+    if (ik && igKey(m.profile||"")===ik) return `@${ik.split(":")[1]} ya lo registró ${who(u)}.`;
+    if (email && m.email && m.email.toLowerCase()===String(email).toLowerCase()) return `Ese email ya lo registró ${who(u)}.`;
+  }
+  return "";
+}
+let DUPT = 0;
+document.addEventListener("change", e => { if (e.target.id!=="f_profile" && e.target.id!=="f_email") return; const t = ++DUPT;
+  dupCheck($("f_profile").value.trim(), $("f_email").value.trim()).then(msg => { if (t!==DUPT) return; const er = $("formErr"); if (msg){ er.textContent = msg + " No lo puedes registrar otra vez."; er.hidden = false; } else if (/No lo puedes registrar otra vez/.test(er.textContent)) er.hidden = true; }); });
 async function claimVip(key, uid, vipId){
   const ref = db.doc(`vipIndex/${key}`);
   const lease = await ref.acquire({holder:S.uid, ttlMs:8000});
