@@ -864,7 +864,7 @@ body.mob-open header.top{z-index:31}
 .probe{display:grid;gap:6px;padding-bottom:10px;margin-bottom:8px;border-bottom:1px dashed var(--line2)}.probe p{margin:0}
 .probe-r,.probe-pick{display:flex;gap:6px;flex-wrap:wrap}.probe-r span{font-weight:700;font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid var(--line2)}.probe-r .ok{color:var(--ok-fg);border-color:var(--ok-line)}.probe-r .bad{color:var(--bad)}
 .isk-diag{border-top:1px solid var(--line2);padding:8px 12px;max-height:340px;overflow:auto;font-size:12px}.isk-diag pre{white-space:pre-wrap;word-break:break-all;font-size:11px;margin:6px 0 0}
-.tpl-auto{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line2);border-radius:12px;background:var(--raised);margin:4px 0 10px;font-size:13px}.tpl-auto input{margin-top:3px}
+.tpl-auto{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line2);border-radius:12px;background:var(--raised);margin:4px 0 10px;font-size:13px}.tpl-auto input{margin-top:3px;width:auto!important;flex:none}
 .tpl-autocta{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-style:dashed}
 .ck.rep .ck-av{border-color:var(--wait);color:var(--wait)}.ck.mgr .ck-av{border-color:var(--bad);color:var(--bad)}
 .ck-m{flex:1;min-width:0;display:grid;gap:1px}
@@ -3876,6 +3876,21 @@ const AUTO_DRAFT = {
   atext:"¡Hola {nombre}! Sé que andas a mil, así que te lo dejo corto: en STRIKD te ayudamos a lanzar tu propia app de entrenamiento con tu marca, para que tu comunidad entrene contigo y generes ingresos cada mes. ¿Te late que te muestre cómo se vería la tuya en una llamada corta?",
   btext:"{nombre}, para que lo tengas a la mano cuando lo veas: coaches y nutriólogos como tú ya venden sus programas en su propia app con STRIKD, sin depender solo de las consultas. Te armamos una propuesta para tu perfil sin costo. ¿Qué día te queda bien esta semana?",
   ctext:"{nombre}, pregunta rápida: ¿hoy vendes tus planes de entrenamiento o nutrición en línea? Con un sí o no te mando la idea que tenemos para ti 👀"};
+/* Plantillas aprobadas en ISKRA: la única forma de que el PDF o la foto lleguen como archivo (ISKRA solo manda texto o plantilla) */
+const ISKT = {list:null, loading:false, err:""};
+async function iskTplLoad(){
+  if (ISKT.loading || ISKT.list) return; const fn = iskFn(); if (!fn) return;
+  if (fn===iskMock){ ISKT.list = [{id:"demo_pdf", name:"strikd_info_pdf (ejemplo)", status:"APPROVED"}]; return; }
+  ISKT.loading = true;
+  try{ const j = await fn("templates", {}); ISKT.list = iskArr(j.data || j).map(t => ({id:String(t.id || t.template_id || t.name), name:String(t.name || t.title || t.id), status:String(t.status || ""), lang:t.language || t.lang || ""})); }
+  catch(e){ ISKT.err = e.message; ISKT.list = []; }
+  ISKT.loading = false; schedule();
+}
+function iskTplOpts(sel){
+  iskTplLoad();
+  const l = ISKT.list || [];
+  return `<option value="">${ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : l.length ? "Ninguna (mandar como texto)" : "No hay plantillas en ISKRA"}</option>` + l.map(t => `<option value="${esc(t.id)}"${t.id===sel?" selected":""}>${esc(t.name)}${t.status?` · ${esc(t.status.toLowerCase())}`:""}${t.lang?` · ${esc(t.lang)}`:""}</option>`).join("");
+}
 const fillVars = (txt, name) => String(txt||"").replace(/\{nombre\}/gi, first(name));
 function astTargets(){
   const out = [];
@@ -3895,7 +3910,8 @@ function renderTpl(){
   const f = TPLF.cur || {};
   const vIn = (vk) => `<div class="tpl-v"><b>Variante ${vk.toUpperCase()}${vk!=="a"?" (opcional)":""}</b>
       <textarea rows="3" data-tplf="${vk}text" placeholder="Usa {nombre} para su nombre">${esc(f[vk+"text"]||"")}</textarea>
-      <label class="filepick small"><input type="file" accept="application/pdf,image/*" data-tplfile="${vk}"><span>${esc(f[vk+"fileName"] || "Adjuntar PDF (opcional)")}</span></label></div>`;
+      <label class="filepick small"><input type="file" accept="application/pdf,image/*" data-tplfile="${vk}"><span>${esc(f[vk+"fileName"] || "Adjuntar PDF (opcional, va como link)")}</span></label>
+      <label class="f small">Plantilla de ISKRA con archivo (opcional)<select data-tplf="${vk}isk">${iskTplOpts(f[vk+"isk"])}</select></label></div>`;
   const form = TPL_FORM ? `<div class="wa-form"><h3>${f.id?"Editar":"Nueva"} plantilla</h3>
       <label class="f">Nombre<input data-tplf="name" value="${esc(f.name||"")}" placeholder="Ej. Respuesta a automático con PDF"></label>
       <label class="f">¿Cuándo se usa?<select data-tplf="trigger">${Object.entries(TRIG).map(([k,l]) => `<option value="${k}"${(f.trigger||"auto")===k?" selected":""}>${l}</option>`).join("")}</select></label>
@@ -3905,7 +3921,7 @@ function renderTpl(){
   const rows = list.map(([id,t]) => { const sa = st[`${id}_a`]||{sent:0,rep:0}, sb = st[`${id}_b`]||{sent:0,rep:0}, sc = st[`${id}_c`]||{sent:0,rep:0}, hasB = t.variants && t.variants.b && t.variants.b.text, hasC = t.variants && t.variants.c && t.variants.c.text;
     const used = [["a",sa],...(hasB?[["b",sb]]:[]),...(hasC?[["c",sc]]:[])];
     const win = used.length > 1 && used.every(([,x]) => x.sent >= 10) ? used.slice().sort((x,y) => y[1].rep/y[1].sent - x[1].rep/x[1].sent)[0][0] : null;
-    const vrow = (k, s) => `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span><p>${esc((t.variants[k]||{}).text||"")}</p>${(t.variants[k]||{}).fileId?`<span class="chip muted">📎 ${esc(t.variants[k].fileName||"PDF")}</span>`:""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`;
+    const vrow = (k, s) => `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span><p>${esc((t.variants[k]||{}).text||"")}</p>${(t.variants[k]||{}).iskTplId?`<span class="chip ok">📄 ISKRA: ${esc(t.variants[k].iskTplName||t.variants[k].iskTplId)}</span>`:(t.variants[k]||{}).fileId?`<span class="chip muted">📎 ${esc(t.variants[k].fileName||"PDF")} · link</span>`:""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`;
     return `<div class="tpl-card${t.active===false?" off":""}"><div class="msg-top"><b>${esc(t.name)}</b><span class="chip info">${esc(TRIG[t.trigger]||t.trigger)}</span>${t.autoSend?`<span class="chip ok">🤖 Se manda sola</span>`:""}${t.active===false?`<span class="chip muted">Pausada</span>`:""}<div class="spacer"></div>
       ${lead ? `<button type="button" class="linkbtn" data-tpledit="${id}">Editar</button><button type="button" class="linkbtn" data-tpltoggle="${id}">${t.active===false?"Activar":"Pausar"}</button>` : ""}</div>
       ${vrow("a", sa)}${hasB ? vrow("b", sb) : ""}${hasC ? vrow("c", sc) : ""}</div>`; }).join("");
@@ -3975,7 +3991,7 @@ $("tplBox").addEventListener("click", async e => {
   if (q("[data-tplnew]")){ TPL_FORM = !TPL_FORM; TPLF.cur = {trigger:"auto"}; return schedule(); }
   if (q("[data-tplcancel]")){ TPL_FORM = null; TPLF.cur = null; return schedule(); }
   if (q("[data-tpledit]")){ const id = q("[data-tpledit]").dataset.tpledit, t = S.tpls[id]; const va = (t.variants||{}).a||{}, vb = (t.variants||{}).b||{}, vc = (t.variants||{}).c||{};
-    TPLF.cur = {id, name:t.name, trigger:t.trigger, autoSend:!!t.autoSend, atext:va.text, afileId:va.fileId, afileName:va.fileName, btext:vb.text, bfileId:vb.fileId, bfileName:vb.fileName, ctext:vc.text, cfileId:vc.fileId, cfileName:vc.fileName}; TPL_FORM = true; return schedule(); }
+    TPLF.cur = {id, name:t.name, trigger:t.trigger, autoSend:!!t.autoSend, atext:va.text, afileId:va.fileId, afileName:va.fileName, aisk:va.iskTplId||"", btext:vb.text, bfileId:vb.fileId, bfileName:vb.fileName, bisk:vb.iskTplId||"", ctext:vc.text, cfileId:vc.fileId, cfileName:vc.fileName, cisk:vc.iskTplId||""}; TPL_FORM = true; return schedule(); }
   if (q("[data-tplautonew]")){ TPL_FORM = true; TPLF.cur = {trigger:"auto", autoSend:true, name:"Segundo intento (respuesta automática)", ...AUTO_DRAFT}; return schedule(); }
   if (q("[data-tpltoggle]")){ const id = q("[data-tpltoggle]").dataset.tpltoggle; return db.doc(`waTemplates/${id}`).update({active: S.tpls[id].active===false}).catch(()=>{}); }
   if (q("[data-tplsave]")){
@@ -3983,7 +3999,8 @@ $("tplBox").addEventListener("click", async e => {
     if (!f.name || !f.atext){ if (err) err.textContent = "Ponle nombre y el texto de la variante A."; return; }
     const trig = f.trigger||"auto", autoSend = trig==="auto" && !!f.autoSend;
     const doc = {name:f.name.trim(), trigger:trig, active:true, autoSend, updatedAt:Date.now(),
-      variants:{a:{text:f.atext.trim(), fileId:f.afileId||"", fileName:f.afileName||""}, b:{text:(f.btext||"").trim(), fileId:f.bfileId||"", fileName:f.bfileName||""}, c:{text:(f.ctext||"").trim(), fileId:f.cfileId||"", fileName:f.cfileName||""}}};
+      variants:Object.fromEntries(["a","b","c"].map(k => { const t = ISKT.list && ISKT.list.find(x => x.id===f[k+"isk"]);
+        return [k, {text:(f[k+"text"]||"").trim(), fileId:f[k+"fileId"]||"", fileName:f[k+"fileName"]||"", iskTplId:f[k+"isk"]||"", iskTplName:t ? t.name : ""}]; }))};
     try{
       if (autoSend) for (const [oid, o] of Object.entries(S.tpls)) if (oid !== f.id && o.autoSend) await db.doc(`waTemplates/${oid}`).update({autoSend:false}); // solo una a la vez
       if (f.id) await db.doc(`waTemplates/${f.id}`).update(doc); else await db.collection("waTemplates").doc().set({...doc, createdAt:Date.now()}); TPL_FORM = null; TPLF.cur = null; schedule(); }
@@ -4260,18 +4277,13 @@ function renderIskra(){
         </div></div>
       <div class="cv-thread cw-t" id="iskThread">${iskBubbles(c)}</div>
       ${lead && ISK.diag ? `<div class="isk-diag">
-        <div class="probe"><b>Mandar archivos directo (no como link)</b>
-          <p class="mut small">Ahora se mandan ${(S.config||{}).iskMediaShape ? `como archivo (formato ${S.config.iskMediaShape})` : "como link"}. Para encontrar el formato que acepta ISKRA: en un chat con <b>tu propio número</b>, adjunta una foto con 📎 y toca el botón. Llegan 8 mensajes "Prueba 1…8"; dime cuál llegó con la foto.</p>
-          <button type="button" class="btn small" data-iskprobe="1"${ISK.probing?" disabled":""}>${ISK.probing ? "Mandando pruebas…" : "Mandar 8 pruebas a este chat"}</button>
-          ${ISK.probe ? `<div class="probe-r">${ISK.probe.map(r => `<span class="${r.ok?"ok":"bad"}" title="${esc(r.error||r.respuesta||"")}">${r.n}${r.ok?"✓":"✗"}</span>`).join("")}</div>
-            ${S.isOwner ? `<p class="small">¿Cuál llegó con la foto en tu WhatsApp?</p><div class="probe-pick">${ISK.probe.filter(r => r.ok).map(r => `<button type="button" class="btn small" data-iskshape="${r.n}">Prueba ${r.n}</button>`).join("")}<button type="button" class="btn small" data-iskshape="0">Ninguna</button></div>` : ""}` : ""}
-          ${ISK.probeMsg ? `<p class="small okmsg">${esc(ISK.probeMsg)}</p>` : ""}
-        </div>
+        <div class="probe"><b>Archivos por WhatsApp</b><p class="mut small">ISKRA solo acepta texto o una plantilla aprobada. Para que un PDF o foto llegue como archivo, crea en ISKRA una plantilla con ese archivo de encabezado y conéctala en Mensajes → Plantillas ("Plantilla de ISKRA con archivo"). Lo que adjuntas con 📎 llega como link.</p></div>
         <b>Diagnóstico</b> <span class="mut small">mándame captura de esto</span><pre>${esc(JSON.stringify({ultimo_envio:ISK.lastReply||ISK.lastErr||null, mensajes_iskra:(ISK.raw3||{})[c.id]||null}, null, 1).slice(0, 4000))}</pre></div>` : ""}
       ${canSend ? `<div class="cw-c">
         ${recent ? `<p class="cw-warn">${esc(iskWho(c.lastSender))} contestó hace ${esc(ago(c.lastSentAt))}</p>` : ""}
         ${ISK.att && ISK.att.id===c.id ? `<div class="isk-att">${ISK.att.kind==="image" ? `<img src="${esc(ISK.att.preview)}" alt="">` : ISK.att.kind==="audio" ? `<audio controls src="${esc(ISK.att.preview)}"></audio>` : `<span class="isk-doc">PDF</span>`}<span>${esc(ISK.att.name)} · ${Math.max(1,Math.round(ISK.att.blob.size/1024))} KB</span><button type="button" class="linkbtn" data-iskattx="1">Quitar</button></div>` : ""}
-        ${ISK.tplMedia && ISK.tplMedia.conv===c.id ? `<div class="isk-att"><span class="isk-doc">${ISK.tplMedia.type.startsWith("image/") ? "FOTO" : "PDF"}</span><span>${esc(ISK.tplMedia.name)} · de la plantilla</span><button type="button" class="linkbtn" data-isktplx="1">Quitar</button></div>` : ""}
+        ${ISK.tplIsk && ISK.tplIsk.conv===c.id ? `<div class="isk-att"><span class="isk-doc">ISKRA</span><span>Se manda la plantilla aprobada <b>${esc(ISK.tplIsk.name)}</b> tal cual, con su archivo (el texto de abajo es solo vista previa)</span><button type="button" class="linkbtn" data-isktplix="1">Quitar</button></div>` : ""}
+        ${ISK.tplMedia && ISK.tplMedia.conv===c.id && !(ISK.tplIsk && ISK.tplIsk.conv===c.id) ? `<div class="isk-att"><span class="isk-doc">${ISK.tplMedia.type.startsWith("image/") ? "FOTO" : "PDF"}</span><span>${esc(ISK.tplMedia.name)} · de la plantilla</span><button type="button" class="linkbtn" data-isktplx="1">Quitar</button></div>` : ""}
         ${ISK.err ? `<p class="cw-err">${esc(ISK.err)}</p>` : ""}
         <div class="cw-bar"><input type="file" id="iskFile" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
           <button type="button" class="cw-ic" data-iskfile="1" title="Foto o PDF" aria-label="Adjuntar foto o PDF">📎</button>
@@ -4337,6 +4349,7 @@ document.addEventListener("change", async e => {
 document.addEventListener("click", async e => {
   if (e.target.closest("[data-iskback]")){ ISK.sel = null; return schedule(); }
   if (e.target.closest("[data-isktplx]")){ ISK.tplMedia = null; return schedule(); }
+  if (e.target.closest("[data-isktplix]")){ ISK.tplIsk = null; return schedule(); }
   const tp = e.target.closest("[data-isktpl]");
   if (tp && ISK.sel){
     const t = S.tpls[tp.dataset.isktpl]; if (!t) return;
@@ -4345,6 +4358,7 @@ document.addEventListener("click", async e => {
     const nombre = ((mt ? mt.name : c && c.name) || "").split(" ")[0];
     ISK.draft[ISK.sel] = String(vf.text||"").replace(/\{nombre\}/g, nombre && !/^\d/.test(nombre) ? nombre : "").replace(/\s+([!,.?])/g, "$1");
     ISK.tplUsed = {id:tp.dataset.isktpl, v, conv:ISK.sel};
+    ISK.tplIsk = vf.iskTplId ? {conv:ISK.sel, id:vf.iskTplId, name:vf.iskTplName || vf.iskTplId} : null;
     const fx = String(vf.fileName||"").toLowerCase().split(".").pop(), ftype = {jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"}[fx] || "application/pdf";
     ISK.tplMedia = vf.fileId ? {conv:ISK.sel, url:location.origin + "/_blob/" + vf.fileId, type:ftype, name:vf.fileName || "STRIKD.pdf"} : null;
     const d = tp.closest("details"); if (d) d.removeAttribute("open");
@@ -4405,6 +4419,16 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-iskrec]")){ return iskRecToggle(); }
   if (e.target.closest("[data-isksend]")){
     const id = ISK.sel, text = (ISK.draft[id]||"").trim(), att = ISK.att && ISK.att.id===id ? ISK.att : null;
+    const ti = ISK.tplIsk && ISK.tplIsk.conv===id ? ISK.tplIsk : null;
+    if (ti && !ISK.busy){
+      ISK.tplIsk = null; ISK.tplMedia = null; const tu0 = ISK.tplUsed && ISK.tplUsed.conv===id ? ISK.tplUsed : null; ISK.tplUsed = null;
+      const key = "strikd-t-" + id + "-" + Date.now().toString(36), bub = {d:"out", t:text || ("Plantilla " + ti.name), at:Date.now(), st:"enviando…", local:key};
+      (ISK.msgs[id] ||= []).push(bub); ISK.draft[id] = ""; ISK.err = ""; (ISK.sent[id] ||= []).push({by:meId(), text:bub.t, at:bub.at}); schedule();
+      try{ const rr = await iskFn()("reply", {conversation_id:id, template_id:ti.id, label:ti.name, idempotency_key:key}); bub.st = "enviado"; ISK.lastReply = rr;
+        if (tu0) db.doc(`meets/${meId()}/tpllog/${key}`).set({tpl:tu0.id, v:tu0.v, at:Date.now(), conv:id}).catch(() => {}); setTimeout(() => iskTail(id), 1200); }
+      catch(err){ ISK.lastErr = {error:err.message, detail:err.detail||null}; bub.st = "no se envió"; bub.failed = true; ISK.err = "No se envió la plantilla de ISKRA: " + err.message; }
+      return schedule();
+    }
     const tm = ISK.tplMedia && ISK.tplMedia.conv===id ? ISK.tplMedia : null, tu = ISK.tplUsed && ISK.tplUsed.conv===id ? ISK.tplUsed : null;
     if (!id || (!text && !att && !tm) || ISK.busy) return;
     ISK.tplMedia = null; ISK.tplUsed = null;

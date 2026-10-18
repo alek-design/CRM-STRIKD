@@ -220,6 +220,15 @@ module.exports = async (req, res) => {
       }
       if (op === "reply"){
         const media = input.media && input.media.url ? input.media : null;
+        if (input.template_id){ // plantilla aprobada de ISKRA (puede traer PDF o foto como encabezado): llega como archivo real
+          if (!input.conversation_id || !input.idempotency_key) throw Object.assign(new Error("Faltan datos"), {status:400});
+          await mustOwn(input.conversation_id);
+          const j = await iskra("POST", "/v1/messages/reply", {conversation_id:input.conversation_id, idempotency_key:input.idempotency_key, template_id:String(input.template_id)});
+          LIST_CACHE.at = 0; delete MSG_CACHE[input.conversation_id];
+          await c.query("insert into public.iskra_sent (conversation_id, user_id, text) values ($1,$2,$3)", [String(input.conversation_id), me.id, "[plantilla ISKRA] " + String(input.label || "")]);
+          await c.query("update public.iskra_owner set last_sender=$2, last_sent_at=now() where conversation_id=$1", [String(input.conversation_id), me.id]);
+          return {data:j};
+        }
         if (!input.conversation_id || (!input.text && !media) || !input.idempotency_key) throw Object.assign(new Error("Faltan datos"), {status:400});
         await mustOwn(input.conversation_id);
         const text = String(input.text || "").slice(0, 4000);
@@ -227,7 +236,7 @@ module.exports = async (req, res) => {
         let j, mediaErr = null, mediaInfo = null;
         const origin = "https://" + (req.headers["x-forwarded-host"] || req.headers.host || "growth.strikd.ai");
         const cfg = media ? ((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data || {} : {};
-        const shapeN = Number(cfg.iskMediaShape) || 0;
+        const shapeN = 0; // ISKRA confirmó (prueba de 8 formatos): /v1/messages/reply solo acepta text o template_id; ignora archivos
         if (media && shapeN){ // formato de archivo confirmado con la prueba
           const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type, como:"adjunto " + shapeN};
           j = await iskra("POST", "/v1/messages/reply", {...base, ...shapes(pm, text, shapeN)});
