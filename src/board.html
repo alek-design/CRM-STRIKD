@@ -4157,7 +4157,11 @@ document.addEventListener("click", async e => {
     ISK.tplUsed = {id:tp.dataset.isktpl, v, conv:ISK.sel};
     ISK.tplMedia = vf.fileId ? {conv:ISK.sel, url:location.origin + "/_blob/" + vf.fileId, type:"application/pdf", name:vf.fileName || "STRIKD.pdf"} : null;
     const d = tp.closest("details"); if (d) d.removeAttribute("open");
-    schedule(); setTimeout(() => { const ta = document.querySelector("[data-iskin]"); if (ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 50);
+    // al instante: si el cuadro de texto tenía el foco, el render normal se saltaba el chat hasta que lo soltaras
+    const ta0 = document.querySelector("[data-iskin]"); if (ta0) ta0.value = ISK.draft[ISK.sel];
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    try{ renderIskra(); }catch(_){ schedule(); }
+    const ta = document.querySelector("[data-iskin]"); if (ta){ ta.value = ISK.draft[ISK.sel]; ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
     return;
   }
   const mi = e.target.closest(".cw-menu button"); if (mi){ const d = mi.closest("details"); if (d) setTimeout(() => d.removeAttribute("open"), 0); }
