@@ -816,6 +816,7 @@ label.f em{color:var(--bad);font-style:normal}
 #teamLegend{display:none}
 
 
+.mi-q{width:100%;box-sizing:border-box;margin:0 0 10px}
 .mi-act{display:flex;align-items:center;gap:8px;width:100%;font:inherit;text-align:left;background:var(--surface);border:1px dashed var(--line2);border-radius:12px;padding:9px 12px;margin:-2px 0 10px;color:var(--fg);cursor:pointer}
 .mi-act b{font-size:13.5px}.mi-act span{font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mi-act em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--muted)}
 .mi-act:not(.none){border-style:solid;border-color:var(--ok-line);background:var(--ok-soft2)}
@@ -1382,6 +1383,7 @@ body.mob-open header.top{z-index:31}
     <div class="mi-kpis" id="miKpis"></div>
     <p class="mi-hint" id="miHint" hidden></p>
     <div class="mi-bar"><div class="subnav" id="miSeg"><button type="button" data-mif="nuevo" class="on">Pendientes</button><button type="button" data-mif="contactado">Contactados</button><button type="button" data-mif="tpl">Plantillas</button></div></div>
+    <input type="search" id="miQ" class="mi-q" placeholder="Buscar nombre o @usuario" hidden>
     <div id="miTplBar"></div>
     <div id="miBox"></div>
     <div class="mi-toast" id="miToast" hidden></div>
@@ -3552,7 +3554,8 @@ function renderMich(){
     : qt.left <= 5 && MICH.f==="nuevo" ? `<div class="mi-warn">Te quedan <b>${qt.left}</b> contactos antes de la pausa de ${MI_COOL/HR} h.</div>` : "";
   $("miTplBar").innerHTML = cool + (MICH.f==="nuevo" && !qt.until ? `<button type="button" class="mi-act${act?"":" none"}" data-mif="tpl">${act ? `📋 <b>${esc(act.name)}</b><span>se copia al tocar cada perfil</span>` : `📋 <b>Elige una plantilla</b><span>para copiarla y medir cuál convierte</span>`}<em>Cambiar</em></button>` : "");
   if (MICH.f==="tpl"){ box.innerHTML = michTplHtml(rows); return; }
-  const q = "";
+  $("miQ").hidden = MICH.f!=="contactado";
+  const q = MICH.f==="contactado" ? (MICH.q||"").trim().toLowerCase().replace(/^@/,"") : "";
   const list = rows.filter(([,,x]) => MICH.f==="nuevo" ? !done(x) : done(x))
     .filter(([,,x]) => !q || (String(x.prospect||"")+" "+igUser(x.profile)).toLowerCase().includes(q))
     .sort((a,b) => MICH.f==="nuevo" ? (b[2].followers||0) - (a[2].followers||0) : (b[2].statusAt||b[2].createdAt||0) - (a[2].statusAt||a[2].createdAt||0));
@@ -3586,6 +3589,7 @@ async function michStatsLoad(){
   try{ MICH.st = await window.STRIKD_MICHMEET({op:"stats"}); MICH.stAt = Date.now(); schedule(); }catch(_){ MICH.stAt = Date.now(); }
   MICH.stLoading = false;
 }
+$("miQ").addEventListener("input", e => { MICH.q = e.target.value; renderMich(); });
 $("miSeg").addEventListener("click", e => { const b = e.target.closest("[data-mif]"); if (b){ MICH.f = b.dataset.mif; schedule(); } });
 $("view-mich").addEventListener("click", e => {
   const bk = e.target.closest("[data-mbook]"); if (bk){ e.preventDefault(); e.stopPropagation(); return michBookOpen(bk.dataset.mbook); }
