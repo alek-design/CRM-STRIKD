@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 07:18:06 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 07:19:25 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792307886">
+<link rel="stylesheet" href="/auth.css?v=1792307965">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792307886"></script>
+<script src="/claude-shim.js?v=1792307965"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1391,6 +1391,7 @@ tick(); setInterval(tick, 30000);
 /* ---------- tabs ---------- */
 function showTab(t){
   if (t==="board" && adminMode()) t = "flow"; // Head/Manager: Equipo es el pipeline del equipo
+  if (t==="vip" && !(S.isOwner && !S.viewMgr)) t = "agenda"; // la Lista Mich es solo del Head
   S.tab = t;
   const navT = t==="wa" ? "funnel" : t==="flow" ? "board" : t;
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab===navT)));
@@ -3640,7 +3641,7 @@ function applyRole(saved){
   S.isLead = lead; S.roleApplied = true;
   const set = (id, show) => { const el = $(id); if (el) el.hidden = !show; };
   if (!S.viewAs){
-    ["tabFunnel","tabVip","tabWa"].forEach(id => set(id, lead)); set("tabFlow", false);
+    ["tabFunnel","tabWa"].forEach(id => set(id, lead)); set("tabFlow", false); set("tabVip", S.isOwner); // la Lista Mich solo la ve el Head
     set("tabAgenda", true); set("adminActs", lead); set("viewAsBtn", S.isOwner); set("tabMine", false); set("tabPerf", !lead);
   }
   $("tabOrg").hidden = !S.isOwner || !!S.viewAs;
@@ -5021,7 +5022,7 @@ function exitViewAs(){
 /* Vista de usuario por rol: Account Manager, Manager o Influencer Outreach.
    Se elige desde Más (celular) o el menú de tu cuenta (computadora); te quedas en la misma pestaña. */
 function vaFixTab(){
-  const allowed = michMode() ? ["mich","settings"] : adminMode() ? ["agenda","board","msgs","flow","funnel","vip","wa","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["agenda","board","msgs","perf","settings"];
+  const allowed = michMode() ? ["mich","settings"] : adminMode() ? ["agenda","board","msgs","flow","funnel","wa","settings"].concat(S.isOwner && !S.viewMgr ? ["org","vip"] : []) : ["agenda","board","msgs","perf","settings"];
   showTab(allowed.includes(S.tab) ? S.tab : allowed[0]);
 }
 function vaCur(){ return S.viewMgr ? "manager" : S.viewAs ? (roleOf(S.viewAs)==="influencer" ? "influencer" : "am") : "admin"; }
@@ -5049,7 +5050,7 @@ function enterVA(role, uid){
   if (!uid){ alert(role==="influencer" ? "Aún no hay nadie con el rol Influencer Outreach. Asígnalo en el Organigrama." : "Aún no hay nadie con ese rol."); return schedule(); }
   if (role==="manager"){
     if (S.viewAs) exitViewAs();
-    S.viewMgr = uid; $("viewAsBtn").hidden = true; $("tabOrg").hidden = true;
+    S.viewMgr = uid; $("viewAsBtn").hidden = true; $("tabOrg").hidden = true; $("tabVip").hidden = true;
     vaFixTab(); return schedule();
   }
   if (S.viewMgr){ S.viewMgr = null; }
