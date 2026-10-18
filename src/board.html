@@ -1,5 +1,16 @@
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
+<style>
+#splash{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:#000;transition:opacity .35s ease,visibility .35s}
+#splash svg{width:min(26vw,104px);height:auto;fill:#fff;animation:spIn .5s cubic-bezier(.2,.8,.2,1) both,spPulse 1.6s ease-in-out .5s infinite}
+:root[data-theme="light"] #splash{background:#fff}:root[data-theme="light"] #splash svg{fill:#0a0a0a}
+#splash.out{opacity:0;visibility:hidden}#splash.out svg{transform:scale(1.12);transition:transform .35s ease}
+@keyframes spIn{from{opacity:0;transform:scale(.85) rotate(-6deg)}to{opacity:1;transform:none}}
+@keyframes spPulse{0%,100%{opacity:1}50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){#splash svg{animation:none}}
+</style>
+<div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
+<script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,800;125,900&display=swap">
 <style>
@@ -5327,7 +5338,7 @@ async function boot(){
   if (!db || !user){ $("bootMsg").textContent = "Abre esta página con tu sesión de claude.ai iniciada para ver el tablero."; return; }
   S.uid = await user.id(); S.isOwner = await user.isOwner(); S.canWrite = await user.can("data.write");
   if (!S.uid){ $("bootMsg").textContent = "No pudimos identificar tu cuenta. Inicia sesión en claude.ai y vuelve a abrir el link."; return; }
-  $("bootMsg").hidden = true;
+  $("bootMsg").hidden = true; if (window.STRIKD_SPLASH_HIDE) window.STRIKD_SPLASH_HIDE();
 
   db.collection("members").onSnapshot(s => { S.members={}; s.docs.forEach(d=>S.members[d.id]=d.data()); schedule(); syncAdminSubs(); syncPointSubs(); }, snapErr);
   db.collection("validations").onSnapshot(s => { S.validations={}; s.docs.forEach(d=>S.validations[d.id]=d.data()); schedule(); }, snapErr);

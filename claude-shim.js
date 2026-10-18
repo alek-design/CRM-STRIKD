@@ -35,6 +35,7 @@
     let el = document.getElementById("sgAuth");
     if (!el){ el = document.createElement("div"); el.id = "sgAuth"; document.body.appendChild(el); }
     el.innerHTML = `<div class="sg-card"><div class="sg-brand">OUTREACH <span>x</span> STRIKD</div>${inner}</div>`;
+    if (window.STRIKD_SPLASH_HIDE) window.STRIKD_SPLASH_HIDE(); // pantalla de acceso: quitamos el splash
     return el;
   }
   function loginScreen(){
