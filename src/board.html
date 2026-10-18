@@ -672,6 +672,30 @@ label.f em{color:var(--bad);font-style:normal}
   header.top{display:none!important}
   main.wrap{padding-top:calc(14px + env(safe-area-inset-top,0px))}
   body::before{background:var(--bg)}
+  footer.foot{display:none}
+  main.wrap .view h2{font-size:24px;letter-spacing:-.01em}
+  main.wrap .view .sub{font-size:13.5px}
+  #msgSeg{display:grid!important;grid-template-columns:repeat(3,1fr);width:100%;box-sizing:border-box}
+  #msgSeg > *{justify-content:center;text-align:center;padding-inline:6px}
+  .ag-head .sub{display:none}
+  .cv2{height:calc(100dvh - 222px - env(safe-area-inset-bottom,0px) - env(safe-area-inset-top,0px))!important}
+  .ap{display:grid;gap:14px}
+  .ap-top{display:flex;align-items:center;justify-content:space-between}.ap-top b{font-size:15px}
+  .ap-nav{width:36px;height:36px;border-radius:50%;border:1px solid var(--line2);background:var(--surface);color:var(--fg);font-size:20px;line-height:1;cursor:pointer}
+  .ap-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .ap-d{display:grid;justify-items:center;gap:2px;padding:8px 0 6px;border-radius:14px;border:0;background:none;color:var(--fg);font:inherit;cursor:pointer}
+  .ap-d span{font-size:11px;color:var(--muted)}.ap-d b{font-size:17px}.ap-d i{font-style:normal;font-size:12px;line-height:8px;height:8px;letter-spacing:1px;color:var(--muted)}.ap-d i.x{color:var(--bad,#d33)}
+  .ap-d.today b{color:var(--ok-fg)}
+  .ap-d.on{background:var(--fg)}.ap-d.on span,.ap-d.on b,.ap-d.on i{color:var(--bg)}
+  .ap-h{font-size:17px;margin:4px 0 0;display:flex;align-items:baseline;gap:8px}.ap-h span{font-size:12.5px;font-weight:500;color:var(--muted)}
+  .ap-list{display:grid;gap:8px}
+  .ap-ev{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line2);border-left:4px solid var(--line2)}
+  .ap-ev.skel{border-left-color:var(--fg)}.ap-ev.build{border-left-color:var(--ok-fg)}.ap-ev.gcal{border-left-color:var(--cal-fg)}
+  .ap-ev.clash{border-color:color-mix(in srgb,#e5484d 45%,transparent);border-left-color:#e5484d}.ap-ev em{font-style:normal;color:#e5484d}
+  .ap-ev.past{opacity:.55}
+  .ap-t{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+  .ap-b{display:grid;gap:2px;min-width:0}.ap-b b{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ap-b span{font-size:12.5px;color:var(--muted)}
+  .ap-empty{color:var(--muted);text-align:center;padding:28px 0;margin:0}
   main.wrap{padding-top:calc(20px + env(safe-area-inset-top,0px))!important}
   #view-board .plan{background:none;border:0;border-radius:0;padding:0;gap:12px;margin-bottom:28px}
   #view-board .plan .pl-head h2{font-size:22px!important;letter-spacing:-.01em}
@@ -988,7 +1012,7 @@ body.mob-open header.top{z-index:31}
   </section>
 
   <section class="view" id="view-agenda" hidden>
-    <div><h2>Agenda</h2><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
+    <div class="ag-head"><h2>Agenda</h2><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
     <div id="agendaCal"></div>
   </section>
 
@@ -2824,12 +2848,43 @@ function calHtml(offset, pickKey, selected){
     <div class="cal-scroll"><div class="cal-grid">${grid}</div></div>
   </div>`;
 }
-let AG_OFF = 0;
+let AG_OFF = 0, AG_DAY = null;
+const isPhone = () => matchMedia("(max-width:640px)").matches;
 function renderAgenda(){
   if (!S.isLead) return;
   const box = $("agendaCal"); if (!box) return;
-  box.innerHTML = calHtml(AG_OFF, null, null);
+  box.innerHTML = isPhone() ? agendaPhone(AG_OFF) : calHtml(AG_OFF, null, null);
 }
+// iPhone: tira de 7 días + lista del día elegido (la cuadrícula semanal no cabe)
+function agendaPhone(offset){
+  const todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
+  const t0 = new Date(todayStr + "T00:00:00Z"), dow = (t0.getUTCDay()+6)%7;
+  const monday = new Date(t0.getTime() - dow*DAY + offset*7*DAY);
+  const days = Array.from({length:7}, (_,i) => new Date(monday.getTime() + i*DAY).toISOString().slice(0,10));
+  gcalWatch(monday.toISOString().slice(0,10));
+  if (!AG_DAY || !days.includes(AG_DAY)) AG_DAY = days.includes(todayStr) ? todayStr : days[0];
+  const evs = calEvents().map(e => { const ts = meetTs(e.at); return {...e, ts, end:(e.endTs && e.endTs > ts ? e.endTs : ts + MEET_MIN)}; }).filter(e => !isNaN(e.ts)).sort((a,b) => a.ts - b.ts);
+  for (let i = 0; i < evs.length; i++) for (let j = i+1; j < evs.length && evs[j].ts < evs[i].end + 10*60e3; j++){ evs[i].clash = true; evs[j].clash = true; }
+  const by = {}; evs.forEach(e => (by[e.at.slice(0,10)] = by[e.at.slice(0,10)] || []).push(e));
+  const [,m1,d1] = days[0].split("-").map(Number), [,m7,d7] = days[6].split("-").map(Number);
+  const KIND = {pitch:"Pitch", skel:"Meet de skeleton", build:"Lanzamiento", gcal:"Tu calendario"};
+  const strip = days.map((d,i) => { const n = (by[d]||[]).length, c = (by[d]||[]).some(e => e.clash);
+    return `<button type="button" class="ap-d${d===AG_DAY?" on":""}${d===todayStr?" today":""}" data-agday="${d}"><span>${DOW[i]}</span><b>${Number(d.slice(8))}</b><i class="${c?"x":""}">${n?"•".repeat(Math.min(n,3)):""}</i></button>`; }).join("");
+  const list = (by[AG_DAY]||[]), nowTs = Date.now();
+  const [ay,am,ad] = AG_DAY.split("-").map(Number), wd = DOWL[new Date(AG_DAY+"T00:00:00Z").getUTCDay()];
+  const rows = list.length ? list.map(e => `<div class="ap-ev ${e.kind}${e.clash?" clash":""}${e.end < nowTs?" past":""}">
+      <span class="ap-t">${esc(e.at.split("T")[1])}</span>
+      <span class="ap-b"><b>${esc(e.label.split(" · ")[1] || e.label)}</b><span>${esc(KIND[e.kind]||"")}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""}${e.clash?` · <em>encimado</em>`:""}</span></span></div>`).join("")
+    : `<p class="ap-empty">Sin meets este día</p>`;
+  return `<div class="ap">
+    <div class="ap-top"><button type="button" class="ap-nav" data-k="__tab" data-calnav="-1" aria-label="Semana anterior">‹</button><b>${d1} ${MONTHS[m1-1]} – ${d7} ${MONTHS[m7-1]}</b><button type="button" class="ap-nav" data-k="__tab" data-calnav="1" aria-label="Semana siguiente">›</button></div>
+    <div class="ap-strip">${strip}</div>
+    <h3 class="ap-h">${wd.replace(/^./, c => c.toUpperCase())} ${ad} de ${MONTHS[am-1]} <span>${list.length} ${list.length===1?"meet":"meets"}</span></h3>
+    <div class="ap-list">${rows}</div>
+  </div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-agday]"); if (b){ AG_DAY = b.dataset.agday; renderAgenda(); } });
+addEventListener("resize", () => { if (S.tab === "agenda") renderAgenda(); });
 document.addEventListener("click", e => {
   const ga = e.target.closest("[data-gcask]");
   if (ga && mcp){
