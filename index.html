@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 17:02:22 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 17:04:07 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792342942">
+<link rel="stylesheet" href="/auth.css?v=1792343047">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792342942"></script>
+<script src="/claude-shim.js?v=1792343047"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -64,6 +64,7 @@
 #view-flow .tld-p summary::-webkit-details-marker{display:none}
 #view-flow .tld-top{display:flex;align-items:center;gap:8px}
 #view-flow .tld-top b{flex:1;font-size:15px;font-weight:700}
+#view-flow .tld-role{font-size:11px;font-weight:700;color:var(--muted);margin-left:4px}
 #view-flow .tld-p[open] .pr-chev{transform:rotate(90deg)}
 #view-flow .tld-lv{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--raised);color:var(--muted2)}
 #view-flow .tld-lv.hi{background:var(--fg);color:var(--bg)}
@@ -4170,7 +4171,21 @@ function renderTeamLoad(){
   const from = Date.parse(days[0] + "T00:00:00-05:00"), to = from + 7*DAY;
   const inW = ts => ts >= from && ts < to;
   const ev = calEvents().filter(e => e.who && e.kind!=="gcal");
-  const rows = Object.keys(S.team||{}).map(u => {
+  // el Head también ve la carga del Manager (los meets que lidera y lo que le toca de su equipo) y de Influencer Outreach (los meets donde va)
+  const extra = S.isOwner && !teamScoped() ? Object.keys(S.members||{}).filter(u => u!==S.uid && (roleOf(u)==="manager" || roleOf(u)==="influencer")) : [];
+  const meetOfE = e => { const [o, id] = String(e.key||"").split("__"); return ((S.all||{})[o]||{})[id] || null; };
+  const rows = Object.keys(S.team||{}).concat(extra).map(u => {
+    const role = roleOf(u);
+    if (role==="manager" || role==="influencer"){
+      const mine = ev.filter(e => { if (!inW(meetTs(e.at))) return false; const m = meetOfE(e) || {};
+        return role==="manager" ? (leaderOf(e.who)===u || (m.guests||[]).includes(u)) : ((m.guests||[]).includes(u) || m.bookedBy===u); });
+      const perDay = days.map(d => mine.filter(e => String(e.at).slice(0,10)===d).length);
+      const pend = [];
+      if (role==="manager") Object.entries(S.all||{}).forEach(([o, items]) => { if (leaderOf(o)!==u) return; Object.entries(items||{}).forEach(([id,m]) => tasksFor(o,id,m,now).forEach(t => { if (t.who==="admin" && t.due < to && (LOAD_W===0 || t.due >= from)) pend.push(t); })); });
+      const late = pend.filter(t => t.due < now).length;
+      const tk = taskList(u).filter(([,x]) => tkSt(x)!=="done" && (!x.dueAt || x.dueAt < to)).length;
+      return {u, role, mine, perDay, meets:mine.length, pend:pend.length, late, tk, load:mine.length*2 + pend.length + tk*2};
+    }
     const mine = ev.filter(e => e.who===u && inW(meetTs(e.at)));
     const perDay = days.map(d => mine.filter(e => String(e.at).slice(0,10)===d).length);
     const pend = []; Object.entries((S.all||{})[u]||{}).forEach(([id,m]) => tasksFor(u,id,m,now).forEach(t => { if (t.who==="member" && (t.due < to) && (LOAD_W===0 || t.due >= from)) pend.push(t); }));
@@ -4185,7 +4200,7 @@ function renderTeamLoad(){
   const lab = LOAD_W===0 ? "Esta semana" : LOAD_W===1 ? "Próxima semana" : LOAD_W===-1 ? "Semana pasada" : `${Number(days[0].slice(8))} ${MONTHS[Number(days[0].slice(5,7))-1]}`;
   const h = `<section class="pg2 tld"><div class="pg2-h"><span>Carga semanal</span><span class="tld-nav"><button type="button" data-ldw="-1" aria-label="Semana anterior">‹</button><em>${lab}</em><button type="button" data-ldw="1" aria-label="Semana siguiente">›</button></span></div>
     ${presLine(presPeople())}<div class="pg2-card">${rows.map(r => { const [c, l] = lvl(r); return `<details class="tld-p"><summary>
-      <div class="tld-top"><b>${esc(first(r.u))}</b>${presTag(r.u)}<span class="tld-lv ${c}">${l}</span><span class="pr-chev">›</span></div>
+      <div class="tld-top"><b>${esc(first(r.u))}${r.role ? ` <small class="tld-role">${r.role==="manager" ? "Manager" : "Influencer"}</small>` : ""}</b>${presTag(r.u)}<span class="tld-lv ${c}">${l}</span><span class="pr-chev">›</span></div>
       <div class="tld-bar"><i style="width:${Math.round(r.load/max*100)}%"></i></div>
       <div class="tld-n"><span><b>${r.meets}</b> meet${r.meets===1?"":"s"}</span><span><b>${r.pend}</b> pendiente${r.pend===1?"":"s"}${r.late?` <em>${r.late} tarde</em>`:""}</span><span><b>${r.tk}</b> tarea${r.tk===1?"":"s"}</span></div>
       <div class="tld-days">${r.perDay.map((n,i) => `<span class="${n?"on":""}${days[i]===todayStr?" today":""}" style="${n?`--a:${Math.min(1, .25 + n*.25)}`:""}"><small>${D[i]}</small>${n||""}</span>`).join("")}</div></summary>
