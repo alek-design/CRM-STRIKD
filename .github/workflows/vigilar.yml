@@ -1,0 +1,46 @@
+# Vigila el repo de Vercel (Alexalfaro009/CRM-STRIKD). La versión buena es SIEMPRE la de este repo.
+# Si alguien cambia algo directo allá, cada 15 min se detecta, se regresa a esta versión y se abre un aviso (issue) aquí
+# con qué archivos tocó y qué commits hizo, para que el Head se entere.
+name: Vigilar cambios en el repo de Vercel
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  vigilar:
+    if: github.repository == 'alek-design/CRM-STRIKD'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Revisar y regresar cambios ajenos
+        env:
+          TOKEN: ${{ secrets.MIRROR_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "Falta el secreto MIRROR_TOKEN; no se puede vigilar."; exit 0; fi
+          TOKEN=$(printf "%s" "$TOKEN" | tr -d '[:space:]')
+          REMOTE="https://x-access-token:${TOKEN}@github.com/Alexalfaro009/CRM-STRIKD.git"
+          OURS=$(git rev-parse HEAD)
+          THEIRS=$(git ls-remote "$REMOTE" refs/heads/main 2>/dev/null | cut -f1)
+          if [ -z "$THEIRS" ]; then echo "::warning::No se pudo leer el repo de Vercel"; exit 0; fi
+          if [ "$OURS" = "$THEIRS" ]; then echo "Sin cambios: el repo de Vercel tiene exactamente esta versión."; exit 0; fi
+          git fetch -q "$REMOTE" "refs/heads/main:refs/remotes/vercel/main" 2>/dev/null || true
+          # Si allá solo está una versión anterior nuestra (la publicación no ha corrido), solo se sincroniza, sin aviso
+          if git merge-base --is-ancestor "$THEIRS" "$OURS" 2>/dev/null && [ -z "$(git log --format=%H "$OURS..$THEIRS" 2>/dev/null)" ]; then
+            git push -q --force "$REMOTE" HEAD:refs/heads/main 2>&1 | sed "s/${TOKEN}/***/g"; echo "Sincronizado."; exit 0
+          fi
+          FILES=$(git diff --name-only "$OURS" "$THEIRS" 2>/dev/null | head -40)
+          LOG=$(git log --format='- %h · %an · %s · %ci' "$OURS..$THEIRS" 2>/dev/null | head -20)
+          OUT=$(git push --force "$REMOTE" HEAD:refs/heads/main 2>&1); RC=$?
+          OUT="${OUT//$TOKEN/***}"
+          if [ $RC -ne 0 ]; then STATUS="⚠️ No se pudo regresar a la versión buena: $OUT"; else STATUS="✅ Ya se regresó a la versión buena ($(git rev-parse --short HEAD))."; fi
+          BODY=$(printf "Alguien cambió el código directo en el repo de Vercel (Alexalfaro009/CRM-STRIKD).\n\n%s\n\n**Commits que hizo allá:**\n%s\n\n**Archivos que tocó:**\n\`\`\`\n%s\n\`\`\`\n\nLa versión que manda es la de este repo. Si alguno de esos cambios sí se quería, hay que hacerlo aquí." "$STATUS" "${LOG:-(sin commits visibles)}" "${FILES:-(no se pudo comparar)}")
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Se detectaron y regresaron cambios en el repo de Vercel" --body "$BODY" || echo "$BODY"
+          echo "::warning::Cambios ajenos detectados y regresados"
