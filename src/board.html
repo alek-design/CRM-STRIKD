@@ -677,6 +677,9 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+.tt{margin:0 0 18px}.tt .pg2-h{align-items:center}.tt-new{margin-left:auto;font:inherit;font-size:12.5px;font-weight:700;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:4px 12px;cursor:pointer;text-transform:none;letter-spacing:0}
+.tt-done summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--muted);padding:10px 14px;border-top:1px solid var(--line);list-style:none}.tt-done summary::-webkit-details-marker{display:none}
+
 /* Agenda y Pendientes en la misma pantalla, cada uno con su título */
 #view-agenda .sec-h,.sec-h{display:flex;align-items:center;gap:8px;margin:0 2px 10px!important;font-size:18px!important;font-weight:800;letter-spacing:-.01em;text-transform:none!important;color:var(--fg)!important}
 .sec-h b{font-size:12px;font-weight:700;color:var(--muted);background:var(--raised);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
@@ -1278,6 +1281,7 @@ body.mob-open header.top{z-index:31}
   <div hidden><select id="adminWeek"></select><select id="adminPerson"></select><select id="adminStatus"><option value="todo"></option></select><div id="adminList"></div><span id="pendingCount"></span><span id="tabAdmin"></span></div>
   <section class="view" id="view-flow" hidden>
     <div class="row"><h2>Equipo</h2><div class="spacer"></div><span class="mono" id="flowSum"></span></div>
+    <div id="teamTasks"></div>
     <div id="teamChart"></div>
     <div class="row">
       <select class="inline" id="flowPerson" aria-label="Persona"></select>
@@ -3349,7 +3353,7 @@ function renderPlan(){
   const assigned = admin && !S.viewAs ? taskAssignedByMe() : [];
   const nRev = assigned.filter(([,,x]) => tkSt(x)==="review").length;
   const taskHtml = (myT.length ? `<section class="pg2"><div class="pg2-h"><span>Tareas</span><b>${myT.length}</b>${tLate?`<em>${tLate} tarde</em>`:""}</div><div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
-    + (assigned.length ? `<section class="pg2"><div class="pg2-h"><span>Asignadas a tu equipo</span><b>${assigned.filter(([,,x]) => tkSt(x)!=="done").length}</b>${nRev?`<em class="rev">${nRev} por aprobar</em>`:""}</div><div class="pg2-card">${assigned.slice(0, 10).map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
+    + (assigned.some(([,,x]) => tkSt(x)==="review") ? `<section class="pg2"><div class="pg2-h"><span>Por aprobar</span><b>${nRev}</b></div><div class="pg2-card">${assigned.filter(([,,x]) => tkSt(x)==="review").map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
   todo = taskHtml + todo + (totalPend > PEND_CAP ? `<button type="button" class="pend-all" data-allpend="1">${allPend ? "Ver menos" : `Ver todos los pendientes (${totalPend})`}</button>` : "");
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
   { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length + nRev, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
@@ -3908,7 +3912,16 @@ function weeklySeries(uids, itemsByUid){
   const cut = a => a.slice(st);
   return {weeks:cut(weeks), meets:cut(meets), pts:cut(pts), tom:cut(tom), T:cut(T)};
 }
+/* Equipo: todas las tareas asignadas (abiertas y completadas recientes); en Pendientes solo salen las que esperan tu aprobación */
+function renderTeamTasks(){
+  const box = $("teamTasks"); if (!box || !adminMode() || busyIn(box)) return;
+  const list = taskAssignedByMe(), now = Date.now(), open = list.filter(([,,x]) => tkSt(x)!=="done"), done = list.filter(([,,x]) => tkSt(x)==="done");
+  box.innerHTML = list.length ? `<section class="pg2 tt"><div class="pg2-h"><span>Tareas del equipo</span><b>${open.length}</b><button type="button" class="tt-new" data-tasknew="1">+ Tarea</button></div>
+    <div class="pg2-card">${open.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("") || `<p class="pl-empty" style="margin:12px">Sin tareas abiertas.</p>`}
+    ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>` : "";
+}
 function renderTeamChart(){
+  renderTeamTasks();
   const box = $("teamChart"); if (!box || !adminMode()) return;
   const pick = $("flowPerson") && $("flowPerson").value, one = pick && S.team[pick];
   const uids = one ? [pick] : Object.keys(S.team);
