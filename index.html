@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 06:46:24 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 06:48:29 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792305984">
+<link rel="stylesheet" href="/auth.css?v=1792306109">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792305984"></script>
+<script src="/claude-shim.js?v=1792306109"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -674,6 +674,10 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+.ap-h2{margin-top:10px}.ap-ev.task{border-left-color:var(--wait)}
+#view-agenda #dayPlan{margin-top:16px}
+@media (max-width:640px){#view-agenda #dayPlan{margin-top:8px}#view-agenda .plan .pl-head h2{font-size:20px!important}}
+
 #viewAsBar{display:none!important}#viewAsBtn{display:none!important}
 .va-box{display:grid;gap:8px;padding:10px 12px 12px;border-bottom:1px solid var(--line);margin-bottom:4px}
 .va-t{display:flex;gap:8px;align-items:baseline;font-size:12px;color:var(--muted)}.va-t b{color:var(--fg);font-size:13px}
@@ -786,9 +790,9 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
   .ap-b{display:grid;gap:2px;min-width:0}.ap-b b{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ap-b span{font-size:12.5px;color:var(--muted)}
   .ap-empty{color:var(--muted);text-align:center;padding:28px 0;margin:0}
   main.wrap{padding-top:calc(20px + env(safe-area-inset-top,0px))!important}
-  #view-board .plan{background:none;border:0;border-radius:0;padding:0;gap:12px;margin-bottom:28px}
-  #view-board .plan .pl-head h2{font-size:22px!important;letter-spacing:-.01em}
-  #view-board .plan .pl-head .eyb{font-size:12px}
+  #view-agenda .plan{background:none;border:0;border-radius:0;padding:0;gap:12px;margin-bottom:28px}
+  #view-agenda .plan .pl-head h2{font-size:22px!important;letter-spacing:-.01em}
+  #view-agenda .plan .pl-head .eyb{font-size:12px}
   body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(96px + env(safe-area-inset-bottom,0px));background:linear-gradient(to bottom,transparent,var(--bg) 55%);pointer-events:none;z-index:30}
   .m-timer{display:none!important;align-items:center;gap:10px;width:100%;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line2);border-radius:16px;padding:10px 14px;text-align:left;cursor:pointer}
   .m-timer .m-tl{font-size:12px;color:var(--muted)}.m-timer b{font-size:16px;font-variant-numeric:tabular-nums;margin-left:auto}
@@ -958,12 +962,12 @@ body.mob-open header.top{z-index:31}
   </div>
   <div class="wrap tabrow">
     <nav class="tabs" role="tablist" id="tabs">
-      <button role="tab" data-tab="board" aria-selected="true">Hoy</button>
+      <button role="tab" data-tab="agenda" id="tabAgenda">Agenda</button>
+      <button role="tab" data-tab="board" id="tabBoard">Equipo</button>
       <button role="tab" data-tab="mine" id="tabMine" hidden>Agendar</button>
       <button role="tab" data-tab="mich" id="tabMich" hidden>Mi lista</button>
       <button role="tab" data-tab="msgs" id="tabMsgs">Mensajes<span class="count" id="msgCount" hidden>0</span></button>
       <button role="tab" data-tab="flow" id="tabFlow" hidden>Pipeline<span class="count late" id="lateCount" hidden>0</span></button>
-      <button role="tab" data-tab="agenda" id="tabAgenda" hidden>Agenda</button>
       <button role="tab" data-tab="funnel" id="tabFunnel" hidden>Resultados</button>
       <button role="tab" data-tab="perf" id="tabPerf" hidden>Mi desempeño</button>
     </nav>
@@ -1014,7 +1018,6 @@ body.mob-open header.top{z-index:31}
 
   <section class="view" id="view-board">
     <button type="button" class="m-timer" id="mTimer"><span class="m-tl">Corte del viernes</span><b id="mCd">—</b><span class="m-lb" id="mLb"></span></button>
-    <div id="dayPlan"></div>
     <div id="lbHomeBoard"><div id="lbBlock">
     <div class="row">
       <div>
@@ -1119,6 +1122,7 @@ body.mob-open header.top{z-index:31}
   <section class="view" id="view-agenda" hidden>
     <div class="ag-head"><div class="ag-top"><h2>Agenda</h2><button type="button" class="btn primary ag-new" data-agnew="1">+ Agendar meet</button></div><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
     <div id="agendaCal"></div>
+    <div id="dayPlan"></div>
   </section>
 
   <section class="view" id="view-funnel" hidden>
@@ -1469,8 +1473,8 @@ function islandItems(){
   const unread = ISK.convs.filter(c => c.lastDir==="in" && !c.disc && (lead ? true : c.owner===meId())).length;
   const msgN = unread || (Number($("msgCount").textContent)||0) * ($("msgCount").hidden ? 0 : 1);
   const main = am
-    ? [["board","home","Hoy"],["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["more","more","Más"]]
-    : [["board","home","Hoy"],["msgs","chat","Mensajes",msgN],["agenda","cal","Agenda"],["more","more","Más"]];
+    ? [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","trophy","Ranking"],["more","more","Más"]]
+    : [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","home","Equipo"],["more","more","Más"]];
   const more = am
     ? [["perf","trophy","Mi desempeño"],["settings","gear","Ajustes"]]
     : [["flow","cols","Pipeline",Number($("lateCount").textContent)||0],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
@@ -2973,6 +2977,9 @@ const isPhone = () => matchMedia("(max-width:640px)").matches;
 function renderAgenda(){
   const box = $("agendaCal"); if (!box) return;
   box.innerHTML = isPhone() ? agendaPhone(AG_OFF) : calHtml(AG_OFF, null, null);
+  const todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
+  $("dayPlan").hidden = isPhone() && AG_DAY && AG_DAY !== todayStr; // en celular: hoy = tu plan (meets + pendientes); otro día = su lista
+  const tb = $("tabBoard"); if (tb) tb.textContent = adminMode() ? "Equipo" : "Ranking";
 }
 // iPhone: tira de 7 días + lista del día elegido (la cuadrícula semanal no cabe)
 function agendaPhone(offset){
@@ -2990,16 +2997,24 @@ function agendaPhone(offset){
   const strip = days.map((d,i) => { const n = (by[d]||[]).length, c = (by[d]||[]).some(e => e.clash);
     return `<button type="button" class="ap-d${d===AG_DAY?" on":""}${d===todayStr?" today":""}" data-agday="${d}"><span>${DOW[i]}</span><b>${Number(d.slice(8))}</b><i class="${c?"x":""}">${n?"•".repeat(Math.min(n,3)):""}</i></button>`; }).join("");
   const list = (by[AG_DAY]||[]), nowTs = Date.now();
+  const top = `<div class="ap-top"><button type="button" class="ap-nav" data-k="__tab" data-calnav="-1" aria-label="Semana anterior">‹</button><b>${d1} ${MONTHS[m1-1]} – ${d7} ${MONTHS[m7-1]}</b><button type="button" class="ap-nav" data-k="__tab" data-calnav="1" aria-label="Semana siguiente">›</button></div>`;
+  if (AG_DAY === todayStr) return `<div class="ap">${top}<div class="ap-strip">${strip}</div></div>`;
+  // pendientes que vencen ese día (separados de los meets)
+  const d0 = Date.parse(AG_DAY + "T00:00:00-05:00"), d1e = d0 + DAY;
+  const tks = []; planOwners().forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
+    tasksFor(uid, id, m, nowTs).filter(t => ownTask(t) && t.due >= d0 && t.due < d1e).slice(0,1).forEach(t => tks.push({...t, m})); }));
+  tks.sort((a,b) => a.due - b.due);
+  const tkHtml = tks.length ? `<h3 class="ap-h ap-h2">Pendientes <span>${tks.length}</span></h3><div class="ap-list">${tks.map(t => `<div class="ap-ev task"><span class="ap-t">${esc(fmtLocal(t.due).split(", ")[1]||"")}</span><span class="ap-b"><b>${esc(t.title)}</b><span>${esc((t.m && t.m.prospect) || "")}${adminMode() ? ` · ${esc(nameOf(S.ps||{}, t.uid))}` : ""}</span></span></div>`).join("")}</div>` : "";
   const [ay,am,ad] = AG_DAY.split("-").map(Number), wd = DOWL[new Date(AG_DAY+"T00:00:00Z").getUTCDay()];
   const rows = list.length ? list.map(e => `<div class="ap-ev ${e.kind}${e.clash?" clash":""}${e.end < nowTs?" past":""}">
       <span class="ap-t">${esc(e.at.split("T")[1])}</span>
       <span class="ap-b"><b>${esc(e.label.split(" · ")[1] || e.label)}</b><span>${esc(KIND[e.kind]||"")}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""}${e.clash?` · <em>encimado</em>`:""}</span></span></div>`).join("")
     : `<p class="ap-empty">Sin meets este día</p>`;
-  return `<div class="ap">
-    <div class="ap-top"><button type="button" class="ap-nav" data-k="__tab" data-calnav="-1" aria-label="Semana anterior">‹</button><b>${d1} ${MONTHS[m1-1]} – ${d7} ${MONTHS[m7-1]}</b><button type="button" class="ap-nav" data-k="__tab" data-calnav="1" aria-label="Semana siguiente">›</button></div>
+  return `<div class="ap">${top}
     <div class="ap-strip">${strip}</div>
     <h3 class="ap-h">${wd.replace(/^./, c => c.toUpperCase())} ${ad} de ${MONTHS[am-1]} <span>${list.length} ${list.length===1?"meet":"meets"}</span></h3>
     <div class="ap-list">${rows}</div>
+    ${tkHtml}
   </div>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-agday]"); if (b){ AG_DAY = b.dataset.agday; renderAgenda(); } if (e.target.closest("[data-agnew]")) openBook(null); });
@@ -3206,7 +3221,7 @@ function syncMichUi(){
   else {
     $("tabMich").hidden = true; document.querySelector('#tabs [data-tab="board"]').hidden = false; $("tabMsgs").hidden = false;
     if (S.viewAs){ $("tabAgenda").hidden = false; $("tabPerf").hidden = false; }
-    if (S.tab==="mich") showTab("board");
+    if (S.tab==="mich") showTab("agenda");
   }
 }
 const igUser = u => { const k = igKey(u||""); return k && k.startsWith("ig:") ? k.slice(3) : ""; };
@@ -3360,11 +3375,11 @@ function applyRole(saved){
     if (!downloads) claude.use("downloads").then(d => { downloads = d; $("xlsBtn").hidden = !d; });
     syncAdminSubs();
     if (first) showTab(["msgs","flow","agenda","funnel","vip","wa","org","board"].includes(saved) ? saved : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
-    else showTab("board");
+    else showTab("agenda");
   } else {
     startMemberSide();
     if (first) showTab(["agenda","msgs","perf","board"].includes(saved) ? saved : saved==="mine" ? "agenda" : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
-    else showTab("board");
+    else showTab("agenda");
   }
   schedule();
 }
@@ -4711,7 +4726,7 @@ function exitViewAs(){
 /* Vista de usuario por rol: Account Manager, Manager o Influencer Outreach.
    Se elige desde Más (celular) o el menú de tu cuenta (computadora); te quedas en la misma pestaña. */
 function vaFixTab(){
-  const allowed = michMode() ? ["mich","settings"] : adminMode() ? ["board","msgs","agenda","flow","funnel","vip","wa","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["board","agenda","msgs","perf","settings"];
+  const allowed = michMode() ? ["mich","settings"] : adminMode() ? ["agenda","board","msgs","flow","funnel","vip","wa","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["agenda","board","msgs","perf","settings"];
   showTab(allowed.includes(S.tab) ? S.tab : allowed[0]);
 }
 function vaCur(){ return S.viewMgr ? "manager" : S.viewAs ? (roleOf(S.viewAs)==="influencer" ? "influencer" : "am") : "admin"; }
