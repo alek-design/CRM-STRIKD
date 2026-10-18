@@ -2641,6 +2641,10 @@ function actsHtml(t){
       const first = (t.m.prospect||"").split(" ")[0], at = effAt(t.m), link = safeUrl(t.m.link);
       const auto = `¡Hola ${first}! Te recuerdo nuestra sesión de hoy a las ${(at||"").split("T")[1]||""}.${link?` Aquí el link: ${link}`:""} ¡Nos vemos!`;
       const text = dr.msgEdited ? dr.msg : auto, wa = waLink(t.m.phone, text);
+      // agendado desde una conversación de ISKRA: el recordatorio sale por ISKRA, en esa misma conversación
+      if (t.m.iskConvId) return `<div class="msgbox"><div class="msg-h"><span class="eyb">Recordatorio de hoy · por ISKRA</span>${dr.msgEdited?`<button type="button" class="linkbtn" data-k="${k}" data-msgreset="1">Volver al sugerido</button>`:""}</div>
+        <textarea rows="3" data-k="${k}" data-msg="1">${esc(text)}</textarea>
+        <div class="msg-acts"><button type="button" class="btn small primary" data-remisk="1" data-uid="${t.uid}" data-id="${t.id}">Enviar por ISKRA</button><button type="button" class="btn small" data-k="${k}" data-copy="1">Copiar mensaje</button></div></div>`;
       return `<div class="msgbox"><div class="msg-h"><span class="eyb">Recordatorio de hoy</span>${dr.msgEdited?`<button type="button" class="linkbtn" data-k="${k}" data-msgreset="1">Volver al sugerido</button>`:""}</div>
         <textarea rows="3" data-k="${k}" data-msg="1">${esc(text)}</textarea>
         <div class="msg-acts"><button type="button" class="btn small" data-k="${k}" data-copy="1">Copiar mensaje</button>${wa?`<a class="btn ghost" href="${esc(wa)}" target="_blank" rel="noopener">Abrir en WhatsApp</a>`:`<span class="mut">Sin teléfono registrado</span>`}</div>
@@ -3441,7 +3445,7 @@ function renderPlan(){
       if ((state==="live" || (state==="next" && mins <= 15)) && link) tag = `<a class="ma join" href="${esc(link)}" target="_blank" rel="noopener">Unirse</a>`;
       else if (state==="next"){
         const conf = (e.m.flow||{}).confirmedFor===effAt(e.m);
-        tag = `<span class="ma-rel">${esc(rel)}${isPitch && conf ? " · ✓ confirmó" : ""}</span>${ph ? `<a class="ma" href="${esc(waLink(ph, `¡Hola ${firstN}! Te recuerdo nuestro meet de hoy a las ${hm(e.ts)}.${link ? ` Aquí el link: ${link}` : ""}`))}" target="_blank" rel="noopener">Recordar</a>` : ""}`;
+        tag = `<span class="ma-rel">${esc(rel)}${isPitch && conf ? " · ✓ confirmó" : ""}</span>${e.m.iskConvId ? ((e.m.flow||{}).remindedFor===effAt(e.m) ? `<span class="ma-rel">✓ recordado</span>` : `<button type="button" class="ma" data-remisk="1" data-confirm="1" data-uid="${e.uid}" data-id="${e.id}">Recordar</button>`) : ph ? `<a class="ma" href="${esc(waLink(ph, `¡Hola ${firstN}! Te recuerdo nuestro meet de hoy a las ${hm(e.ts)}.${link ? ` Aquí el link: ${link}` : ""}`))}" target="_blank" rel="noopener">Recordar</a>` : ""}`;
       } else if (state==="past" && isPitch && admin && statusOf(e.id)==="valid") tag = `<span class="ma-rel">¿Se conectó?</span><button class="ma" data-act="att-yes" data-uid="${e.uid}" data-id="${e.id}">Sí</button><button class="ma" data-act="att-no" data-uid="${e.uid}" data-id="${e.id}">No</button>`;
       else if (state==="past") tag = `<span class="ma-rel">${t ? "falta un paso" : "✓ pasó"}</span>`;
     } else tag = state==="live" ? `<span class="ma-rel">en curso</span>` : rel ? `<span class="ma-rel">${esc(rel)}</span>` : "";
@@ -4591,6 +4595,21 @@ function renderMsgs(){
       ${later.length ? `<details class="msg-later"${S.msgLaterOpen?" open":""}><summary>Próximos (${later.length})</summary>${later.map(card).join("")}</details>` : ""}`
     : `<div class="empty">Sin mensajes pendientes. Cuando una tarea necesite un WhatsApp, aparece aquí ya redactado.</div>`;
 }
+/* Recordatorio por ISKRA (solo meets agendados desde una conversación de ISKRA). Sale únicamente con el clic de la persona. */
+async function remindViaIsk(b){
+  if (b.dataset.confirm==="1" && b.dataset.armed!=="1"){ b.dataset.armed = "1"; b.textContent = "¿Enviar por ISKRA?"; setTimeout(() => { if (b.isConnected && !b.disabled){ b.dataset.armed = ""; b.textContent = "Recordar"; } }, 4000); return; }
+  const uid = b.dataset.uid, id = b.dataset.id, m = ((S.all||{})[uid]||{})[id] || (uid===meId() ? myItems()[id] : null); if (!m || !m.iskConvId) return;
+  const at = effAt(m), link = safeUrl(m.link), ta = b.closest(".msgbox") && b.closest(".msgbox").querySelector("textarea[data-msg]");
+  const text = String(ta ? ta.value : `¡Hola ${first(m.prospect)}! Te recuerdo nuestra sesión de hoy a las ${(at||"").split("T")[1]||""}.${link?` Aquí el link: ${link}`:""} ¡Nos vemos!`).trim(); if (!text) return;
+  const fn = iskFn(); if (!fn){ quickToast("ISKRA no está conectado"); return; }
+  b.disabled = true; b.textContent = "Enviando…";
+  try{
+    await fn("reply", {conversation_id:m.iskConvId, text, idempotency_key:"rem-" + id + "-" + String(at||"").replace(/\W/g, "")});
+    await db.doc(`meets/${uid}/items/${id}`).update({flow:{remindedFor:at, remindedAt:Date.now()}});
+    ((m.flow ||= {})).remindedFor = at; b.textContent = "✓ Enviado"; quickToast("Recordatorio enviado por ISKRA"); schedule();
+  }catch(err){ b.disabled = false; b.dataset.armed = ""; b.textContent = "No se envió, reintenta"; b.title = (err && err.message) || ""; }
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-remisk]"); if (!b) return; e.preventDefault(); e.stopPropagation(); remindViaIsk(b); }, true);
 function iskConvForPhone(phone){ const d = iskDigits(phone); return d ? ISK.convs.find(c => iskDigits(c.phone)===d && !c.disc) : null; }
 $("msgBox").addEventListener("click", async e => {
   const b = e.target.closest("[data-msendisk]"); if (!b) return;
