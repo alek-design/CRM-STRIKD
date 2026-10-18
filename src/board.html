@@ -8,6 +8,31 @@
 @keyframes spIn{from{opacity:0;transform:scale(.85) rotate(-6deg)}to{opacity:1;transform:none}}
 @keyframes spPulse{0%,100%{opacity:1}50%{opacity:.55}}
 @media (prefers-reduced-motion:reduce){#splash svg{animation:none}}
+#view-flow .tf-kpis{margin:10px 0 22px}
+#view-flow .tf-k{font:inherit;text-align:left;color:var(--fg);cursor:pointer}
+#view-flow .tf-k span{line-height:1.25}
+#view-flow .tf-k.bad b{display:inline-flex;align-items:center;gap:7px}
+#view-flow .tf-k.bad b::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--bad);opacity:.85}
+#view-flow .tt{margin:0 0 26px}
+#view-flow .tt .pg2-h{font-size:18px;font-weight:800;letter-spacing:-.01em;text-transform:none;color:var(--fg);margin:0 2px 10px}
+#view-flow .tt .pg2-h b{font-size:12px}
+#view-flow .tt-none{margin:0;padding:13px 14px;font-size:14px;color:var(--muted)}
+#view-flow .tt-0 .tt-done summary{display:flex;justify-content:space-between}
+#view-flow .tt-0 .tt-done summary::after{content:"›";font-size:15px}
+#view-flow .tt-0 .tt-done[open] summary::after{transform:rotate(90deg)}
+#view-flow .tf-h{display:flex;align-items:center;gap:10px;margin:4px 0 10px}
+#view-flow .tf-h .sec-h{margin:0!important;flex:1}
+#view-flow .tf-late{font:inherit;font-size:12.5px;font-weight:700;border:1px solid var(--line2);background:var(--surface);color:var(--fg2);border-radius:999px;padding:5px 12px;cursor:pointer;white-space:nowrap}
+#view-flow .tf-late.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+#view-flow .tf-ppl{display:flex;gap:6px;overflow-x:auto;margin:0 0 14px;padding-bottom:2px;scrollbar-width:none}
+#view-flow .tf-ppl::-webkit-scrollbar{display:none}
+#view-flow .tf-p{font:inherit;font-size:13.5px;font-weight:600;border:1px solid var(--line2);background:var(--surface);color:var(--fg2);border-radius:999px;padding:6px 13px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;flex:none}
+#view-flow .tf-p.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+#view-flow .tf-p i{font-style:normal;font-size:11.5px;font-weight:700;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+#view-flow .tf-p i::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--bad);opacity:.85}
+#view-flow .tf-p.on i{color:var(--bg);opacity:.8}
+#view-flow #teamPath>.acc-h{display:none}
+#view-flow #teamChart{margin-top:26px}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -1326,18 +1351,17 @@ body.mob-open header.top{z-index:31}
 
   <div hidden><select id="adminWeek"></select><select id="adminPerson"></select><select id="adminStatus"><option value="todo"></option></select><div id="adminList"></div><span id="pendingCount"></span><span id="tabAdmin"></span></div>
   <section class="view" id="view-flow" hidden>
-    <div class="row"><h2>Equipo</h2><div class="spacer"></div><span class="mono" id="flowSum"></span></div>
+    <div class="row"><h2>Equipo</h2><div class="spacer"></div><span class="mono" id="flowSum" hidden></span></div>
     <div id="teamLate"></div>
     <div id="teamTasks"></div>
-    <div id="teamChart"></div>
-    <div class="row">
-      <select class="inline" id="flowPerson" aria-label="Persona"></select>
-      <label class="row" style="gap:6px;font-size:14px"><input type="checkbox" id="flowLate" style="width:auto"> Solo atrasados</label>
-    </div>
+    <div class="tf-h"><h3 class="sec-h">Prospectos activos <b id="tfN"></b></h3><button type="button" class="tf-late" id="tfLate" aria-pressed="false">Solo atrasados</button></div>
+    <div class="tf-ppl" id="teamPeople"></div>
+    <div hidden><select id="flowPerson" aria-label="Persona"></select><input type="checkbox" id="flowLate"></div>
     <div class="row" id="flowWhoRow" hidden><h3 id="flowWho"></h3><div class="spacer"></div><button class="btn small" id="flowAll">Ver todo el equipo</button></div>
     <div id="teamLegend"></div>
     <div id="teamPath"></div>
     <div class="tasks" id="flowList" hidden></div>
+    <div id="teamChart"></div>
   </section>
 
   <section class="view" id="view-agenda" hidden>
@@ -2850,7 +2874,7 @@ function renderFlow(ps){
   if (S.flowPick !== undefined){ pSel.value = S.flowPick; S.flowPick = undefined; }
   const who = pSel.value;
   const single = who && who!=="__admin";
-  $("flowWhoRow").hidden = !single;
+  $("flowWhoRow").hidden = true;
   if (single) $("flowWho").textContent = `Journey de ${nameOf(ps, who)}`;
   let pathOwners = who && who!=="__admin" ? owners.filter(([u]) => u===who) : owners;
   if (who==="__admin") pathOwners = pathOwners.map(([u,o]) => [u, Object.fromEntries(Object.entries(o||{}).filter(([id,m]) => tasksFor(u,id,m,now).some(t => t.who==="admin")))]);
@@ -2859,10 +2883,24 @@ function renderFlow(ps){
   if (!busyIn($("teamPath")) && Date.now() > HOLD_UNTIL) $("teamPath").innerHTML = pathHtml(pathOwners, true, "teamPath");
   if (busyIn($("flowList"))) return;
   const list = all.filter(t => (!who || (who==="__admin" ? t.who==="admin" : (t.uid===who && t.who==="member"))) && (!onlyLate || t.due < now));
-  $("flowSum").textContent = `${all.length} pendientes · ${late} atrasados`;
+  $("flowSum").textContent = "";
+  { const m = $("teamPath").innerHTML.match(/Prospectos activos <b>(\d+)<\/b>/); $("tfN").textContent = m ? m[1] : ""; }
+  $("tfLate").classList.toggle("on", onlyLate); $("tfLate").setAttribute("aria-pressed", String(onlyLate));
+  { const lb = teamLateBy(now), first = u => String(nameOf(ps, u)).split(" (")[0].split(" ")[0];
+    const chip = (v, lab, n) => `<button type="button" class="tf-p${(who||"")===v?" on":""}" data-fp="${v}">${esc(lab)}${n?`<i>${n}</i>`:""}</button>`;
+    const h = chip("", "Todos") + Object.keys(S.team).map(u => chip(u, first(u), (lb[u]||[]).length)).join("");
+    if ($("teamPeople").dataset.h !== h){ $("teamPeople").innerHTML = h; $("teamPeople").dataset.h = h; } }
   $("flowList").innerHTML = list.length ? list.map(t => taskHtml(t, true)).join("") : `<div class="empty">Nada pendiente con estos filtros.</div>`;
 }
 ["flowPerson","flowLate"].forEach(id => $(id).addEventListener("change", () => schedule()));
+$("view-flow").addEventListener("click", e => {
+  const p = e.target.closest("[data-fp]"), l = e.target.closest("#tfLate"), g = e.target.closest("[data-tfgo]");
+  if (p){ $("flowPerson").value = p.dataset.fp; schedule(); }
+  else if (l){ $("flowLate").checked = !$("flowLate").checked; schedule(); }
+  else if (g){ const go = g.dataset.tfgo;
+    if (go==="late"){ $("flowLate").checked = true; schedule(); $("tfLate").scrollIntoView({behavior:"smooth", block:"start"}); }
+    else $(go==="tasks" ? "teamTasks" : "teamChart").scrollIntoView({behavior:"smooth", block:"start"}); }
+});
 ["flowList","myPath","teamPath"].forEach(id => $(id).addEventListener("focusout", () => setTimeout(schedule, 50)));
 
 async function uploadSkeleton(file, now){
@@ -3988,22 +4026,30 @@ function weeklySeries(uids, itemsByUid){
 function headIsLite(){ return S.isOwner && !S.viewAs && !S.viewMgr && Object.keys(S.members||{}).some(u => roleOf(u)==="manager"); }
 function headLiteMgrs(){ return Object.keys(S.members||{}).filter(u => roleOf(u)==="manager").map(u => String(nameOf(S.ps||{}, u)).split(" (")[0]).join(" y ") || "el Manager"; }
 /* Equipo: atrasados de cada AM (sus propios pendientes), para saber a quién empujar */
+function teamLateBy(now){
+  const out = {};
+  Object.keys(S.team||{}).forEach(u => { const late = [];
+    Object.entries((S.all||{})[u]||{}).forEach(([id,m]) => { const t = tasksFor(u,id,m,now).filter(x => x.due < now)[0]; if (t) late.push(t); });
+    if (late.length) out[u] = late; });
+  return out;
+}
+/* Equipo: tres números arriba (atrasados, tareas abiertas, pitches de la semana); cada uno lleva a su sección */
 function renderTeamLate(){
   const box = $("teamLate"); if (!box || !adminMode() || busyIn(box)) return;
-  const now = Date.now();
-  const rows = Object.keys(S.team||{}).map(u => { const late = [];
-    Object.entries((S.all||{})[u]||{}).forEach(([id,m]) => { const t = tasksFor(u,id,m,now).filter(x => x.who==="member" && x.due < now)[0]; if (t) late.push(t); });
-    return [u, late.sort((a,b) => a.due - b.due)]; }).filter(([,l]) => l.length).sort((a,b) => b[1].length - a[1].length);
-  box.innerHTML = rows.length ? `<section class="pg2 tl"><div class="pg2-h"><span>Atrasados del equipo</span><b>${rows.reduce((a,[,l]) => a + l.length, 0)}</b></div><div class="pg2-card">${rows.map(([u,l]) => `<details class="tl-p"><summary><b>${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</b><span class="tl-n">${l.length} atrasado${l.length===1?"":"s"}</span><span class="pr-chev">›</span></summary>
-      ${l.map(t => { const h = Math.round((now - t.due)/HR); return `<div class="tl-i"><span>${esc(t.title)}</span><small>${h < 24 ? h + " h" : Math.round(h/24) + " d"}</small></div>`; }).join("")}</details>`).join("")}</div></section>` : "";
+  const now = Date.now(), late = Object.values(teamLateBy(now)).reduce((a, l) => a + l.length, 0);
+  const open = taskAssignedByMe().filter(([,,x]) => tkSt(x)!=="done").length;
+  const s = weeklySeries(Object.keys(S.team||{}), S.all||{}), pit = (s.tom||[]).slice(-1)[0] || 0;
+  const k = (go, n, l, cls) => `<button type="button" class="mi-kpi tf-k ${cls||""}" data-tfgo="${go}"><b>${n}</b><span>${l}</span></button>`;
+  const h = `<div class="mi-kpis tf-kpis">${k("late", late, late===1?"prospecto atrasado":"prospectos atrasados", late?"bad":"")}${k("tasks", open, open===1?"tarea abierta":"tareas abiertas")}${k("chart", pit, "pitches esta semana")}</div>`;
+  if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
 }
 /* Equipo: todas las tareas asignadas (abiertas y completadas recientes); en Pendientes solo salen las que esperan tu aprobación */
 function renderTeamTasks(){
   const box = $("teamTasks"); if (!box || !adminMode() || busyIn(box)) return;
   const list = taskAssignedByMe(), now = Date.now(), open = list.filter(([,,x]) => tkSt(x)!=="done"), done = list.filter(([,,x]) => tkSt(x)==="done");
-  box.innerHTML = list.length ? `<section class="pg2 tt"><div class="pg2-h"><span>Tareas del equipo</span><b>${open.length}</b><button type="button" class="tt-new" data-tasknew="1">+ Tarea</button></div>
-    <div class="pg2-card">${open.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("") || `<p class="pl-empty" style="margin:12px">Sin tareas abiertas.</p>`}
-    ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>` : "";
+  box.innerHTML = `<section class="pg2 tt"><div class="pg2-h"><span>Tareas del equipo</span>${open.length?`<b>${open.length}</b>`:""}<button type="button" class="tt-new" data-tasknew="1">+ Tarea</button></div>
+    <div class="pg2-card${open.length?"":" tt-0"}">${open.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("") || `<p class="tt-none">Sin tareas abiertas</p>`}
+    ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>`;
 }
 function renderTeamChart(){
   renderTeamLate(); renderTeamTasks();
