@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 15:42:55 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 15:47:14 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792338175">
+<link rel="stylesheet" href="/auth.css?v=1792338434">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792338175"></script>
+<script src="/claude-shim.js?v=1792338434"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -3172,7 +3172,7 @@ function michEvents(){ // meets que agendó Mich (vienen de su lista; ella no ve
 }
 function calEvents(){
   const ev = michMode() ? michEvents() : [];
-  (adminMode() ? Object.entries(S.all) : [[meId(), myItems()]]).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
+  (adminMode() ? Object.entries(S.all) : michMode() ? [] : [[meId(), myItems()]]).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
     const st = statusOf(id), f = m.flow || {}, v = S.validations[id];
     if (f.lostAt || st==="rejected") return;
     const at = effAt(m);
@@ -3268,7 +3268,7 @@ function agendaPhone(offset){
   } else {
     const list = by[AG_DAY] || [];
     const d0 = Date.parse(AG_DAY + "T00:00:00-05:00"), d1e = d0 + DAY;
-    const tks = []; planOwners().forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
+    const tks = []; (michMode() ? [] : planOwners()).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
       tasksFor(uid, id, m, nowTs).filter(t => ownTask(t) && t.due >= d0 && t.due < d1e).slice(0,1).forEach(t => tks.push({...t, m})); }));
     tks.sort((a,b) => a.due - b.due);
     nMeets = list.length; nTasks = tks.length;
@@ -3313,7 +3313,7 @@ function renderPlan(){
   const todayStr = new Date(now-OFF).toISOString().slice(0,10);
   const t0 = Date.parse(todayStr+"T00:00:00-05:00"), eod = t0 + DAY - 1;
   if (admin){ const d = new Date(todayStr+"T00:00:00Z"), dow = (d.getUTCDay()+6)%7; gcalWatch(new Date(d.getTime()-dow*DAY).toISOString().slice(0,10)); }
-  const owners = planOwners(), sel = PICK.dayPlan;
+  const owners = michMode() ? [] : planOwners(), sel = PICK.dayPlan; // Influencer: su agenda es solo lo de su lista y sus tareas
   const first = (uid,id,m) => tasksFor(uid,id,m,now).filter(ownTask)[0];
   // timed: meets of today
   const evs = [];
