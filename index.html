@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 07:27:55 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 07:37:07 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792308475">
+<link rel="stylesheet" href="/auth.css?v=1792309027">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792308475"></script>
+<script src="/claude-shim.js?v=1792309027"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -674,6 +674,13 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+.ag-btns{display:flex;gap:8px;align-items:center}
+.pr:has(.pr-av.tk) .pr-m b,.pr:has(.pr-x) .pr-m b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.pr-av.tk{background:var(--fg);color:var(--bg);border-color:var(--fg);font-size:13px}
+.pr-x{flex:none;font:inherit;font-size:12px;font-weight:700;border:0;background:none;color:var(--muted);cursor:pointer;padding:4px 6px}
+.pr.done{opacity:.6}.pr-due.ok{background:var(--ok-soft2);color:var(--ok-fg)}
+@media (max-width:640px){.ag-btns .ag-task{padding:8px 12px;font-size:14px;white-space:nowrap}.ag-btns .ag-new{white-space:nowrap}.ag-btns .ag-task:not([hidden]) ~ .ag-new .ag-l{display:none}#view-agenda .ag-top h2{font-size:24px}}
+
 /* Ranking (AM): sin texto largo ni sugerencias; propuestas de Mich fuera */
 #view-perf #myVip{display:none!important}
 .lb-how{margin-top:4px}.lb-how summary{cursor:pointer;font-size:13px;color:var(--muted);font-weight:600;list-style:none}.lb-how summary::-webkit-details-marker{display:none}
@@ -1247,7 +1254,7 @@ body.mob-open header.top{z-index:31}
   </section>
 
   <section class="view" id="view-agenda" hidden>
-    <div class="ag-head"><div class="ag-top"><h2>Agenda</h2><button type="button" class="btn primary ag-new" data-agnew="1">+ Agendar meet</button></div><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
+    <div class="ag-head"><div class="ag-top"><h2>Agenda</h2><div class="ag-btns"><button type="button" class="btn ag-task" data-tasknew="1" hidden>+ Tarea</button><button type="button" class="btn primary ag-new" data-agnew="1">+ <span class="ag-l">Agendar </span>meet</button></div></div><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
     <div id="agendaCal"></div>
     <div id="dayPlan"></div>
   </section>
@@ -1717,7 +1724,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !(adminMode() && !S.viewAs)); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -3276,7 +3283,7 @@ function renderPlan(){
   const groups = []; tks.forEach(t => { const k = grpKey(t); let g = groups.find(x => x.k===k); if (!g) groups.push(g = {k, items:[]}); g.items.push(t); });
   groups.sort((a,b) => a.items[0].due - b.items[0].due);
   const shortDue = t => { if (t.due >= now) return `antes de ${hm(t.due)}`; const h = Math.round((now - t.due)/HR); return h < 24 ? `${Math.max(1,h)} h tarde` : `${Math.round(h/24)} d tarde`; };
-  const todo = groups.map(g => { const late = g.items.filter(t => t.due < now).length, open = MORE["g:"+g.k], lim = open ? g.items.length : 4;
+  let todo = groups.map(g => { const late = g.items.filter(t => t.due < now).length, open = MORE["g:"+g.k], lim = open ? g.items.length : 4;
     return `<section class="pg2"><div class="pg2-h"><span>${esc(g.k)}</span><b>${g.items.length}</b>${late?`<em>${late} tarde</em>`:""}</div><div class="pg2-card">
       ${g.items.slice(0, lim).map(t => { const d = dueInfo(t.due, now), key = `tk|${t.uid}__${t.id}`, nm = (t.m && t.m.prospect) || t.title;
         const quick = (t.acts||[]).find(a => !a.input), sub = [admin ? String(nameOf(S.ps,t.uid)).split(" (")[0] : "", t.m ? stageOf(t.id, t.m).t : ""].filter(Boolean).join(" · ");
@@ -3291,12 +3298,21 @@ function renderPlan(){
     + (waToday.length > 5 ? `<button type="button" class="more" data-gowa="1">+${waToday.length-5} interesados de WhatsApp</button>` : "")
     + (admin ? "" : Object.values(vipItems(meId())).filter(x => (x.status==="interesado" || x.status==="agendo") && x.statusAt && now - x.statusAt < 3*864e5).slice(0, 3).map(x => `<button type="button" class="pl-item task ok" data-gotab="perf"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b>${PICON[3]} ${esc(x.prospect)} ${x.status==="agendo" ? "ya agendó meet con Mich" : "está interesado"}</b><small>Una de tus propuestas para Mich</small></span><span class="sema ok"><i></i>Nuevo</span></button>`).join(""))
     + (iskOpen ? `<button type="button" class="pl-item task soon" data-gomsgs="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Tienes ${iskOpen} chat${iskOpen===1?"":"s"} de WhatsApp sin responder</b><small>Contéstalos en Mensajes</small></span><span class="sema soon"><i></i>Hoy</span></button>` : "");
+  // tareas que asignan el Head o el Manager: salen todos los días hasta que se marcan como hechas
+  const myT = taskList(meId()).filter(([,x]) => !x.doneAt && (!x.dueAt || x.dueAt <= eod));
+  const tLate = myT.filter(([,x]) => x.dueAt && x.dueAt < now).length;
+  const assigned = admin && !S.viewAs ? taskAssignedByMe() : [];
+  const taskHtml = (myT.length ? `<section class="pg2"><div class="pg2-h"><span>Tareas</span><b>${myT.length}</b>${tLate?`<em>${tLate} tarde</em>`:""}</div><div class="pg2-card">${myT.map(([id,x]) => { const late = x.dueAt && x.dueAt < now;
+      return `<div class="pr${late?" late":""}"><span class="pr-av tk">✓</span><span class="pr-m"><b>${esc(x.title)}</b><small>${esc([x.byName ? "de " + x.byName : "", x.note || ""].filter(Boolean).join(" · "))}</small></span>${x.dueAt ? `<span class="pr-due ${late?"late":""}">${esc(late ? "tarde" : "hoy")}</span>` : ""}<button class="pr-go" data-tdone="${meId()}/${id}">✓ Hecho</button></div>`; }).join("")}</div></section>` : "")
+    + (assigned.length ? `<section class="pg2"><div class="pg2-h"><span>Asignadas a tu equipo</span><b>${assigned.filter(([,,x]) => !x.doneAt).length}</b></div><div class="pg2-card">${assigned.slice(0, 8).map(([u,id,x]) => { const late = !x.doneAt && x.dueAt && x.dueAt < now;
+      return `<div class="pr${x.doneAt?" done":late?" late":""}"><span class="pr-av">${esc((String(nameOf(S.ps||{}, u)).trim()[0]||"?").toUpperCase())}</span><span class="pr-m"><b>${esc(x.title)}</b><small>${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}${x.dueAt ? " · " + esc(fmtLocal(x.dueAt).split(",")[0]) : ""}</small></span><span class="pr-due ${x.doneAt?"ok":late?"late":""}">${x.doneAt ? "✓ hecha" : late ? "tarde" : "pendiente"}</span><button class="pr-x" data-tdel="${u}/${id}" aria-label="Borrar tarea">×</button></div>`; }).join("")}</div></section>` : "");
+  todo = taskHtml + todo;
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
-  { const late0 = tks.filter(t => t.due < now).length, pc = {meets:evs.length, tasks:tks.length, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
+  { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
   const late = tks.filter(t => t.due < now).length;
   box.innerHTML = `<section class="plan">
     <div class="pl-head"><div class="pl-ttl"><h2>Hoy</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span></div>
-      <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
+      <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length + myT.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
     <div class="pl-cols">
       <div class="pl-col"><h3>Meets</h3>${line || `<p class="pl-empty">Hoy no tienes meets agendados.</p>`}</div>
       <div class="pl-col"><h3>Pendientes</h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
@@ -3491,6 +3507,53 @@ function michQuota(){
   return {used:n, left:MI_MAX - n, until: until > now ? until : 0};
 }
 const fmtLeft = ms => { const t = Math.max(1, Math.ceil(ms/60e3)), h = Math.floor(t/60), m = t % 60; return h ? `${h} h${m ? ` ${m} min` : ""}` : `${m} min`; };
+
+/* ---------- Tareas manuales: el Head o el Manager se las asignan a alguien; salen en sus pendientes hasta que las termina ---------- */
+const TSUB = {};
+function taskSubs(){
+  const ids = adminMode() && !S.viewAs ? Object.keys(S.members||{}).concat(S.uid ? [S.uid] : []) : [meId()];
+  ids.forEach(u => { if (!u || TSUB[u]) return; TSUB[u] = db.collection(`meets/${u}/tasks`).onSnapshot(sn => { (S.tasks ||= {})[u] = {}; sn.docs.forEach(d => S.tasks[u][d.id] = d.data()); schedule(); }, () => {}); });
+}
+function taskList(u){ return Object.entries((S.tasks||{})[u] || {}).sort((a,b) => (a[1].dueAt||9e15) - (b[1].dueAt||9e15)); }
+function taskAssignedByMe(){ const out = []; Object.entries(S.tasks||{}).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,x]) => { if (x.by===S.uid && u!==S.uid) out.push([u,id,x]); }));
+  return out.sort((a,b) => (!!a[2].doneAt - !!b[2].doneAt) || (b[2].createdAt||0) - (a[2].createdAt||0)).filter(([,,x]) => !x.doneAt || Date.now() - x.doneAt < 3*864e5); }
+function taskOpen(){
+  const ppl = Object.keys(S.members||{}).concat(S.config && S.config.headId ? [S.config.headId] : []).filter((u,i,a) => a.indexOf(u)===i);
+  const today = new Date(Date.now()-OFF).toISOString().slice(0,10);
+  const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "tkWrap";
+  w.innerHTML = `<div class="bk mbk" role="dialog" aria-modal="true" aria-label="Nueva tarea"><div class="bk-grab"></div>
+    <div class="bk-h"><b>Nueva tarea</b><div class="spacer"></div><button type="button" class="btn small" data-tkx="1">Cerrar</button></div>
+    <div class="grid">
+      <label class="f full">¿Qué hay que hacer? <em>*</em><input id="tkTitle" placeholder="Ej. Trabajar 3 plantillas de email" autocomplete="off"></label>
+      <label class="f full">Detalle (opcional)<textarea id="tkNote" rows="2" placeholder="Contexto, links, cómo debe quedar"></textarea></label>
+      <label class="f">Para <em>*</em><select id="tkWho"><option value="">Elige</option><option value="__team">Todo el equipo</option>${ppl.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (tú)":""}</option>`).join("")}</select></label>
+      <label class="f">Para cuándo<input type="date" id="tkDue" value="${today}"></label>
+    </div>
+    <p class="mut small" style="margin:8px 6px 0">Le sale en sus pendientes del día hasta que la marque como hecha.</p>
+    <div class="row"><span class="err" id="tkErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="tkGo">Asignar tarea</button></div></div>`;
+  document.body.appendChild(w);
+  w.addEventListener("click", async e => {
+    if (e.target===w || e.target.closest("[data-tkx]")) return w.remove();
+    if (!e.target.closest("#tkGo")) return;
+    const title = $("tkTitle").value.trim(), who = $("tkWho").value, due = $("tkDue").value, note = $("tkNote").value.trim();
+    if (!title || !who){ $("tkErr").textContent = "Escribe la tarea y elige para quién."; return; }
+    const to = who==="__team" ? Object.keys(S.team||{}) : [who];
+    const dueAt = due ? Date.parse(due + "T18:00:00-05:00") : 0, now = Date.now();
+    $("tkGo").disabled = true;
+    try{ for (const u of to){ const ref = db.collection(`meets/${u}/tasks`).doc(), data = {title, note, dueAt, by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], createdAt:now};
+        await ref.set(data); ((S.tasks ||= {})[u] ||= {})[ref.id] = data; } schedule();
+      w.remove(); taskSubs(); showResult("ok", "Tarea asignada", to.length > 1 ? `Les sale a ${to.length} personas en sus pendientes.` : `Le sale a ${String(nameOf(S.ps||{}, to[0])).split(" (")[0]} en sus pendientes hasta que la termine.`); }
+    catch(_){ $("tkGo").disabled = false; $("tkErr").textContent = "No se pudo guardar."; }
+  });
+  setTimeout(() => $("tkTitle").focus(), 50);
+}
+document.addEventListener("click", async e => {
+  if (e.target.closest("[data-tasknew]")) return taskOpen();
+  const d = e.target.closest("[data-tdone]"); if (d){ e.stopPropagation(); const [u,id] = d.dataset.tdone.split("/"), x = ((S.tasks||{})[u]||{})[id]; if (!x) return;
+    x.doneAt = Date.now(); schedule(); try{ await db.doc(`meets/${u}/tasks/${id}`).update({doneAt:x.doneAt, doneBy:S.uid}); }catch(_){ x.doneAt = 0; schedule(); } return; }
+  const r = e.target.closest("[data-tdel]"); if (r){ e.stopPropagation(); if (r.dataset.armed!=="1"){ r.dataset.armed = "1"; r.textContent = "¿Borrar?"; return; } const [u,id] = r.dataset.tdel.split("/");
+    try{ await db.doc(`meets/${u}/tasks/${id}`).delete(); delete S.tasks[u][id]; schedule(); }catch(_){} }
+});
 
 /* Plantillas de Mich: tocar una la copia y la deja activa; cada perfil que contacte queda con esa plantilla */
 const MICH_DEF = [
