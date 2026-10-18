@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 17:45:39 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 18:00:24 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792345539">
+<link rel="stylesheet" href="/auth.css?v=1792346424">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792345539"></script>
+<script src="/claude-shim.js?v=1792346424"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -46,6 +46,13 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+.xc{display:grid;gap:10px;padding:12px 14px;border-top:1px solid var(--line)}
+.xc-h{display:grid;gap:2px}.xc-h b{font-size:14px}.xc-h span{font-size:12.5px;color:var(--muted)}
+.xc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--line2);border-radius:12px}
+.xc-row>div{display:grid;gap:1px;min-width:0}.xc-row b{font-size:14px}.xc-row small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.xc-ok{font-size:12px;font-weight:700;color:#16a34a}.xc-bad{font-size:12px;font-weight:700;color:var(--wait,#b45309)}
+.xc-form{display:grid;gap:10px}.xc-steps{margin:0;padding-left:18px;font-size:13px;color:var(--fg2);display:grid;gap:4px}
+.xc>.btn{justify-self:start}
 #view-report .rp{display:grid;gap:22px}
 #view-report .rp-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 #view-report .tld-nav{display:inline-flex;align-items:center;gap:2px;font-size:13px;font-weight:600;color:var(--muted)}
@@ -1712,8 +1719,36 @@ $("mobSheet").addEventListener("click", e => {
 window.addEventListener("resize", () => { if (innerWidth > 640 && !$("mobSheet").hidden) mobToggle(false); });
 /* ---------- Ajustes: todo lo de la cuenta en un solo lugar ---------- */
 function setRow(icon, title, sub, right){ return `<div class="set-row"><span class="set-ic">${icon}</span><div class="set-tx"><b>${title}</b>${sub?`<span>${sub}</span>`:""}</div><div class="set-r">${right||""}</div></div>`; }
+/* Otro calendario (de otra cuenta de Google): se comparte con el correo conectado y aquí se agrega; sale en tu agenda y cuenta como ocupado */
+const XC = {open:false, err:""};
+function xcalHtml(g){
+  const list = (((S.members||{})[S.uid]||{}).extraCals) || [], mail = (g && g.email) || "tu correo de STRIKD";
+  const stOf = c => { const x = (GCX||[]).find(y => y.id===c.id); return !x ? `<span class="mut">revisando…</span>` : x.ok ? `<span class="xc-ok">✓ se ve en tu agenda</span>` : `<span class="xc-bad">${esc(x.error)}</span>`; };
+  return `<div class="xc">
+    <div class="xc-h"><b>Otros calendarios</b><span>Por ejemplo tu agenda de otro trabajo: sale en tu agenda y cuenta como ocupado al agendar.</span></div>
+    ${list.map((c,i) => `<div class="xc-row"><div><b>${esc(c.name || c.id)}</b><small>${esc(c.id)}</small>${stOf(c)}</div><button type="button" class="pr-x" data-xcdel="${i}">Quitar</button></div>`).join("")}
+    ${XC.open ? `<div class="xc-form">
+        <ol class="xc-steps"><li>Entra a Google Calendar con la otra cuenta (en computadora).</li><li>Configuración → en "Mis calendarios" elige tu calendario → <b>Compartir con personas específicas</b>.</li><li>Agrega <b>${esc(mail)}</b> con permiso <b>"Ver todos los detalles de los eventos"</b>.</li><li>Escribe aquí el correo de esa cuenta.</li></ol>
+        <label class="f">Correo de la otra cuenta<input id="xcId" type="email" placeholder="tu@otraempresa.com" autocomplete="off"></label>
+        <label class="f">Nombre corto (así sale en tu agenda)<input id="xcName" placeholder="Ej. Tacos" maxlength="16"></label>
+        <div class="tk-acts"><span class="err">${esc(XC.err)}</span><button type="button" class="btn small" data-xc="cancel">Cancelar</button><button type="button" class="btn small primary" data-xc="add">Agregar</button></div></div>`
+      : `<button type="button" class="btn small" data-xc="open">+ Agregar otro calendario</button>`}</div>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-xc]"), del = e.target.closest("[data-xcdel]"); if (!b && !del) return;
+  const cur = ((((S.members||{})[S.uid]||{}).extraCals) || []).slice();
+  const save = async list => { try{ await db.doc(`members/${S.uid}`).update({extraCals:list}).catch(() => db.doc(`members/${S.uid}`).set({...((S.members||{})[S.uid]||{}), extraCals:list})); ((S.members||{})[S.uid] ||= {}).extraCals = list; GCX = null; gcalReset(); schedule(); return true; }catch(_){ quickToast("No se guardó, intenta otra vez"); return false; } };
+  if (del){ cur.splice(Number(del.dataset.xcdel), 1); if (await save(cur)) quickToast("Calendario quitado"); return; }
+  const k = b.dataset.xc;
+  if (k==="open"){ XC.open = true; XC.err = ""; schedule(); return; }
+  if (k==="cancel"){ XC.open = false; XC.err = ""; schedule(); return; }
+  if (k==="add"){ const id = $("xcId").value.trim().toLowerCase(), name = $("xcName").value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id)){ XC.err = "Revisa el correo"; schedule(); return; }
+    if (cur.some(c => c.id===id)){ XC.err = "Ya está agregado"; schedule(); return; }
+    cur.push({id, name:name || id.split("@")[0]}); if (await save(cur)){ XC.open = false; XC.err = ""; quickToast("✓ Agregado · revisando acceso…"); } }
+});
 function renderSettings(){
-  const box = $("setBox"); if (!box || S.tab!=="settings") return;
+  const box = $("setBox"); if (!box || S.tab!=="settings" || busyIn(box)) return;
   const A = window.STRIKD_ACT, me = window.STRIKD_ME ? window.STRIKD_ME() : null;
   const nm = (me && (me.name || me.email)) || nameOf(S.ps||{}, S.uid);
   const role = S.isOwner ? "Head" : S.isLead ? "Creator Partnerships Manager" : "Account Manager";
@@ -1732,6 +1767,7 @@ function renderSettings(){
     <h3 class="set-h">Para trabajar</h3>
     <section class="set-card">
       ${setRow("📅", "Google Calendar y Meet", gOn ? `Conectado${g && g.email ? " · " + esc(g.email) : ""}: los meets crean su link solos` : "Necesario para agendar: genera el link de Meet y la invitación", gRight)}
+      ${gOn && S.isLead && !S.viewAs ? xcalHtml(g) : ""}
       ${pushRow}
     </section>
     <h3 class="set-h">Apariencia</h3>
@@ -3221,6 +3257,8 @@ const DOW = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 const pad2 = n => String(n).padStart(2,"0");
 /* ---------- Google Calendar del admin: horarios ocupados reales ---------- */
 const GCAL = "Google Calendar", GC = {}, GCW = [];
+let GCX = null; // estado de los calendarios extra (otra cuenta compartida)
+function gcalReset(){ while (GCW.length){ const [k, u] = GCW.shift(); try{ u(); }catch(e){} delete GC[k]; } Object.keys(GC).forEach(k => delete GC[k]); }
 let mcp = null, mcpTried = false;
 function gcalLocal(dt){ const t = Date.parse(dt); return isNaN(t) ? null : new Date(t - OFF).toISOString().slice(0,16); }
 function gcalWatch(mondayStr){
@@ -3233,10 +3271,11 @@ function gcalWatch(mondayStr){
       const g = GC[mondayStr]; if (!g) return;
       if (ev.type==="data"){
         const p = ev.result.payload || {};
+        if (Array.isArray(p.extras)) GCX = p.extras;
         g.events = (Array.isArray(p.events) ? p.events : []).filter(e => e && e.status!=="cancelled" && e.start && e.start.dateTime
           && !(e.attendees||[]).some(a => a.self && a.responseStatus==="declined"))
           .map(e => ({at:gcalLocal(e.start.dateTime), endTs:Date.parse(e.end && e.end.dateTime || e.start.dateTime),
-            label:`Calendario · ${e.summary || "Ocupado"}`, emails:(e.attendees||[]).filter(a => !a.self).map(a => (a.email||"").toLowerCase())}))
+            label:`${e.calName ? e.calName : "Calendario"} · ${e.summary || "Ocupado"}`, emails:(e.attendees||[]).filter(a => !a.self).map(a => (a.email||"").toLowerCase())}))
           .filter(e => e.at);
         g.err = null; g.at = (ev.result.cache && ev.result.cache.storedAt) || Date.now();
       } else {
