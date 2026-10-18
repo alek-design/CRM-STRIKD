@@ -14,6 +14,19 @@ module.exports = async (req, res) => {
     const out = await withPg(async c => {
       const role = ((await c.query("select data from public.docs where path=$1", ["roles/" + me.id])).rows[0] || {}).data || {};
       if (me.role !== "head" && role.role !== "influencer") return {status:403, error:"Solo Influencer Outreach o el Head."};
+      if (body.op === "stats"){ // avance de lo que consiguió Mich: pitcheados (se conectaron) y publicados
+        const vips = (await c.query("select path, data from public.docs where path like 'meets/%/vip/%' and data ? 'meetId'")).rows;
+        let pitched = 0, published = 0, booked = 0;
+        for (const v of vips){
+          const uid = v.path.split("/")[1], mid = String(v.data.meetId || ""); if (!ID.test(mid)) continue; booked++;
+          const it = (await c.query("select data from public.docs where path=$1", [`meets/${uid}/items/${mid}`])).rows[0];
+          const val = (await c.query("select data from public.docs where path=$1", [`validations/${mid}`])).rows[0];
+          const f = (it && it.data.flow) || {};
+          if ((val && val.data.status === "attended") || f.interestedAt || f.skeletonAt || f.launchedAt) pitched++;
+          if (f.launchedAt) published++;
+        }
+        return {ok:true, booked, pitched, published};
+      }
       if (body.op === "link"){
         const {uid, mid} = body; if (!ID.test(uid||"") || !ID.test(mid||"")) return {status:400, error:"Datos incompletos"};
         const it = (await c.query("select data from public.docs where path=$1", [`meets/${uid}/items/${mid}`])).rows[0];

@@ -666,6 +666,17 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* Mi lista: encabezado compacto, toggle arriba a la derecha y 3 indicadores */
+#view-mich .mi-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap}#view-mich .mi-head .sub{margin:2px 0 0}
+.mi-pill{flex:none;padding:6px 6px 6px 12px;font-size:13px;gap:8px}
+.mi-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 12px}
+.mi-kpi{background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:10px 12px;display:grid;gap:2px}
+.mi-kpi b{font-size:24px;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.mi-kpi span{font-size:12px;color:var(--muted);font-weight:600}
+.mi-kpi.pub b{color:var(--ok-fg)}
+#view-mich .mi-bar{gap:8px}#view-mich .mi-bar .subnav{flex:1 1 100%;display:grid!important;grid-template-columns:repeat(3,1fr)}.mi-bar .subnav button{justify-content:center;text-align:center}
+#view-mich .mi-bar input{flex:1 1 100%}#view-mich .mi-bar .subnav button{white-space:nowrap;padding-inline:6px}
+@media (max-width:640px){.mi-row{padding:10px 12px;gap:10px}.mi-av{width:40px!important;height:40px!important}.mi-m small{font-size:12px}}
+
 .mi-plus{font-size:20px!important;font-weight:600;background:var(--fg)!important;color:var(--bg)!important;border-color:var(--fg)!important}
 .mbk{max-width:520px}.mbk-who{margin:0 6px 12px;font-size:13px;color:var(--muted)}.mbk .grid{margin:0 6px}.mbk .guests{margin:10px 6px}.mbk .row{margin:8px 6px 4px}.mbk .mut{margin:0 6px}
 
@@ -1202,9 +1213,10 @@ body.mob-open header.top{z-index:31}
 
   <section class="view" id="view-mich" hidden>
     <div class="mi-head"><div><h2>Mi lista</h2><p class="sub" id="miSum"></p></div>
-      <button type="button" class="mi-pill" id="miPill" aria-pressed="false"><i></i><span>Modo contactar</span></button></div>
-    <p class="mi-hint" id="miHint"></p>
-    <div class="mi-bar"><div class="subnav" id="miSeg"><button type="button" data-mif="nuevo" class="on">Por contactar</button><button type="button" data-mif="contactado">Contactados</button><button type="button" data-mif="todos">Todos</button></div>
+      <button type="button" class="mi-pill" id="miPill" aria-pressed="false" title="Modo contactar: al tocar un perfil se abre su Instagram y pasa a Contactados"><span>Contactar</span><i></i></button></div>
+    <div class="mi-kpis" id="miKpis"></div>
+    <p class="mi-hint" id="miHint" hidden></p>
+    <div class="mi-bar"><div class="subnav" id="miSeg"><button type="button" data-mif="nuevo" class="on">Pendientes</button><button type="button" data-mif="contactado">Contactados</button><button type="button" data-mif="todos">Todos</button></div>
       <input type="search" id="miQ" placeholder="Buscar nombre o @usuario"></div>
     <div id="miBox"></div>
     <div class="mi-toast" id="miToast" hidden></div>
@@ -3308,9 +3320,16 @@ function renderMich(){
   const rows = michRows(), done = x => (x.status||"nuevo")!=="nuevo";
   const today0 = Date.parse(new Date(Date.now()-OFF).toISOString().slice(0,10) + "T00:00:00-05:00");
   const nPend = rows.filter(r => !done(r[2])).length, nDone = rows.length - nPend, nHoy = rows.filter(r => (r[2].contactedAt||r[2].statusAt||0) >= today0 && r[2].status==="contactado").length;
-  $("miSum").textContent = `${nPend} por contactar · ${nDone} contactados · ${nHoy} hoy`;
+  $("miSum").textContent = `${nPend} pendiente${nPend===1?"":"s"} · ${nHoy} hoy`;
+  // avance: contactados → pitcheados (se conectaron al pitch) → publicados
+  let pit = 0, pub = 0;
+  if (window.STRIKD_MICHMEET && !S.isOwner){ michStatsLoad(); pit = MICH.st ? MICH.st.pitched : 0; pub = MICH.st ? MICH.st.published : 0; }
+  else rows.forEach(([u,,x]) => { if (!x.meetId) return; const m = (S.all[u]||{})[x.meetId], f = (m && m.flow) || {};
+    if (statusOf(x.meetId)==="attended" || f.interestedAt || f.skeletonAt || f.launchedAt) pit++; if (f.launchedAt) pub++; });
+  const kp = (n, l, cls) => `<div class="mi-kpi ${cls||""}"><b>${n}</b><span>${l}</span></div>`;
+  $("miKpis").innerHTML = kp(nDone, "Contactados") + kp(pit, "Pitcheados") + kp(pub, "Publicados", "pub");
   $("miPill").classList.toggle("on", MICH.on); $("miPill").setAttribute("aria-pressed", String(MICH.on));
-  $("miHint").textContent = MICH.on ? "Activado: al tocar un perfil se abre su Instagram y pasa a Contactados." : "Desactivado: tocar un perfil solo abre su Instagram. Márcalo con ✓ cuando lo contactes.";
+
   document.querySelectorAll("#miSeg [data-mif]").forEach(b => b.classList.toggle("on", b.dataset.mif===MICH.f));
   const q = MICH.q.trim().toLowerCase().replace(/^@/,"");
   const list = rows.filter(([,,x]) => MICH.f==="todos" ? true : MICH.f==="nuevo" ? !done(x) : done(x))
@@ -3336,7 +3355,13 @@ async function michMark(k, status){
   MICH.tT = setTimeout(() => { t.hidden = true; MICH.undo = null; }, 5000);
   try{ await db.doc(`meets/${u}/vip/${id}`).update(patch); }catch(e){ Object.assign(x, prev); t.innerHTML = `<span>No se guardó. Revisa tu conexión.</span>`; schedule(); }
 }
-$("miPill").addEventListener("click", () => { MICH.on = !MICH.on; try{ localStorage.setItem("strikd_mich_on", MICH.on ? "1" : "0"); }catch(_){} schedule(); });
+$("miPill").addEventListener("click", () => { MICH.on = !MICH.on; try{ localStorage.setItem("strikd_mich_on", MICH.on ? "1" : "0"); }catch(_){}
+  const t = $("miToast"); clearTimeout(MICH.tT); t.hidden = false; t.innerHTML = `<span>${MICH.on ? "Contactar activado: al tocar un perfil se marca como contactado" : "Contactar desactivado: márcalos con ✓"}</span>`; MICH.tT = setTimeout(() => { t.hidden = true; }, 3000); schedule(); });
+async function michStatsLoad(){
+  if (MICH.stLoading || (MICH.st && Date.now() - MICH.stAt < 60e3)) return; MICH.stLoading = true;
+  try{ MICH.st = await window.STRIKD_MICHMEET({op:"stats"}); MICH.stAt = Date.now(); schedule(); }catch(_){ MICH.stAt = Date.now(); }
+  MICH.stLoading = false;
+}
 $("miSeg").addEventListener("click", e => { const b = e.target.closest("[data-mif]"); if (b){ MICH.f = b.dataset.mif; schedule(); } });
 $("miQ").addEventListener("input", e => { MICH.q = e.target.value; renderMich(); });
 $("view-mich").addEventListener("click", e => {
