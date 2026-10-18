@@ -91,6 +91,7 @@ begin
       when 'vipIndex'      then 2
       when 'prospectIndex' then 2
       when 'waCampaigns'   then 3
+      when 'taskRules'     then 3
       when 'waTemplates'   then case when op = 'read' then 2 else 3 end
       when 'config'        then case when op = 'read' then 1 else 4 end
       else 4 end;

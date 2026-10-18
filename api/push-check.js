@@ -5,6 +5,7 @@ const { cronKey, sendTo, init } = require("../lib/push");
 const auto = require("../lib/autofollow");
 const { migrate } = require("../lib/migrate");
 const report = require("../lib/report");
+const taskrules = require("../lib/taskrules");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const arr = j => Array.isArray(j) ? j : (j && (j.data || j.items || j.conversations || j.messages || j.results)) || [];
 async function get(path, ms){
@@ -28,6 +29,8 @@ module.exports = async (req, res) => {
       if ((req.headers["x-strikd-cron"] || req.query.k) !== key) return {status:403, error:"no autorizado"};
       // reporte diario de las 9 pm (una vez por día y por persona)
       let reporte = null; try{ reporte = await report.maybeSend(c); }catch(e){ reporte = {error:String(e.message || e)}; }
+      // tareas que se repiten cada semana
+      let semanales = null; try{ await migrate(c).catch(() => {}); semanales = await taskrules.run(c); }catch(e){ semanales = {error:String(e.message || e)}; }
       const list = arr(await get("/v1/conversations?limit=100"));
       const since = new Date(Date.now() - 15*60e3).toISOString();
       try{ arr(await get(`/v1/messages/whatsapp?direction=inbound&limit=50&from=${encodeURIComponent(since)}&since=${encodeURIComponent(since)}`, 4000)).forEach(m => {
@@ -75,7 +78,7 @@ module.exports = async (req, res) => {
           errs.push(...(sendTo.lastErrors || []));
         }
       }
-      return {ok:true, ...(reporte ? {reporte} : {}), revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(autos.length ? {automaticos:autos} : {}), ...(errs.length ? {errores:errs.slice(0,3)} : {})};
+      return {ok:true, ...(reporte ? {reporte} : {}), ...(semanales ? {semanales} : {}), revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(autos.length ? {automaticos:autos} : {}), ...(errs.length ? {errores:errs.slice(0,3)} : {})};
     });
     res.status(out.status || 200).json(out);
   }catch(err){ res.status(500).json({error:String(err.message || err)}); }
