@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 07:19:25 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 07:21:05 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792307965">
+<link rel="stylesheet" href="/auth.css?v=1792308065">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792307965"></script>
+<script src="/claude-shim.js?v=1792308065"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1391,7 +1391,7 @@ tick(); setInterval(tick, 30000);
 /* ---------- tabs ---------- */
 function showTab(t){
   if (t==="board" && adminMode()) t = "flow"; // Head/Manager: Equipo es el pipeline del equipo
-  if (t==="vip" && !(S.isOwner && !S.viewMgr)) t = "agenda"; // la Lista Mich es solo del Head
+  if (t==="vip") t = "agenda"; // la Lista Mich ya no se usa como pestaña
   S.tab = t;
   const navT = t==="wa" ? "funnel" : t==="flow" ? "board" : t;
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab===navT)));
@@ -3641,7 +3641,7 @@ function applyRole(saved){
   S.isLead = lead; S.roleApplied = true;
   const set = (id, show) => { const el = $(id); if (el) el.hidden = !show; };
   if (!S.viewAs){
-    ["tabFunnel","tabWa"].forEach(id => set(id, lead)); set("tabFlow", false); set("tabVip", S.isOwner); // la Lista Mich solo la ve el Head
+    ["tabFunnel","tabWa"].forEach(id => set(id, lead)); set("tabFlow", false); set("tabVip", false); // la Lista Mich ya no sale: Mich la trabaja en Mi lista
     set("tabAgenda", true); set("adminActs", lead); set("viewAsBtn", S.isOwner); set("tabMine", false); set("tabPerf", !lead);
   }
   $("tabOrg").hidden = !S.isOwner || !!S.viewAs;
@@ -3675,11 +3675,11 @@ function growthChart(o){
   const lines = o.lines.map(l => { const pts = l.vals.map((v,i) => [L + i*cw + cw/2, y(v,lm)]);
     return `<polyline points="${pts.map(p => p.map(z => z.toFixed(1)).join(",")).join(" ")}" class="gc-line ${l.cls}"/>` + pts.map((p,i) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" class="gc-dot ${l.cls}"><title>${wkShort(o.weeks[i])}: ${Math.round(l.vals[i]*10)/10} ${l.label.toLowerCase()}</title></circle>`).join(""); }).join("");
   const xl = o.weeks.map((k,i) => `<text x="${L + i*cw + cw/2}" y="${H-B+16}" class="gc-ax${i===n-1?" cur":""}" text-anchor="middle">${wkShort(k)}</text>`).join("");
-  const sum = a => a.reduce((x,y)=>x+y,0), h1 = sum(o.bars.vals.slice(0,5)), h2 = sum(o.bars.vals.slice(5));
-  const trend = h1 ? Math.round((h2-h1)/h1*100) : null;
+  const half = Math.floor(n/2), sum = a => a.reduce((x,y)=>x+y,0), h1 = sum(o.bars.vals.slice(n - 2*half, n - half)), h2 = sum(o.bars.vals.slice(n - half));
+  const trend = half >= 2 && h1 ? Math.round((h2-h1)/h1*100) : null;
   return `<section class="gc">
-    <div class="gc-h"><div><h3>${esc(o.title)}</h3><p class="sub">Últimas 10 semanas · cada semana cierra el viernes 6:00 pm</p></div>
-      ${trend===null ? "" : `<span class="gc-tr ${trend>=0?"up":"down"}">${trend>=0?"▲":"▼"} ${Math.abs(trend)}% ${esc(o.bars.label.toLowerCase())}<small>últimas 5 vs. 5 anteriores</small></span>`}</div>
+    <div class="gc-h"><div><h3>${esc(o.title)}</h3><p class="sub">${o.weeks.length < 10 ? `Desde que hay historial · ${o.weeks.length} semanas` : "Últimas 10 semanas"} · cada semana cierra el viernes 6:00 pm</p></div>
+      ${trend===null ? "" : `<span class="gc-tr ${trend>=0?"up":"down"}">${trend>=0?"▲":"▼"} ${Math.abs(trend)}% ${esc(o.bars.label.toLowerCase())}<small>últimas ${half} vs. ${half} anteriores</small></span>`}</div>
     <div class="gc-leg"><span><i class="sw bar"></i>${esc(o.bars.label)} <small>(eje izq.)</small></span>${o.lines.map(l => `<span><i class="sw ${l.cls}"></i>${esc(l.label)} <small>(eje der.)</small></span>`).join("")}</div>
     <svg viewBox="0 0 ${W} ${H}" class="gc-svg" role="img" aria-label="${esc(o.title)}">${g}${bars}${lines}${xl}</svg>
   </section>`;
@@ -3691,7 +3691,10 @@ function weeklySeries(uids, itemsByUid){
   const T = weeks.map(k => tally(k));
   const pts = T.map(t => uids.reduce((a,u) => a + ((t[u]||{}).pts||0), 0));
   const tom = T.map(t => uids.reduce((a,u) => a + ((t[u]||{}).tom||0), 0));
-  return {weeks, meets, pts, tom, T};
+  // solo las semanas con historial (desde la primera con actividad), máximo 10
+  let st = weeks.findIndex((_, i) => meets[i] || pts[i] || tom[i]); if (st < 0) st = weeks.length - 1; st = Math.min(st, weeks.length - 2);
+  const cut = a => a.slice(st);
+  return {weeks:cut(weeks), meets:cut(meets), pts:cut(pts), tom:cut(tom), T:cut(T)};
 }
 function renderTeamChart(){
   const box = $("teamChart"); if (!box || !adminMode()) return;
@@ -5016,13 +5019,13 @@ function enterViewAs(uid){
 function exitViewAs(){
   S.viewAs = null; S.viewMgr = null; setFormEnabled(true);
   $("viewAsBar").hidden = true; $("adminActs").hidden = false; $("viewAsBtn").hidden = !S.isOwner; Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]});
-  $("tabMine").hidden = true; $("tabPerf").hidden = true; if (S.tab==="perf") showTab("board"); $("tabOrg").hidden = !S.isOwner; $("tabAdmin").hidden = false; $("tabFlow").hidden = true; $("tabAgenda").hidden = false; $("tabFunnel").hidden = false; $("tabVip").hidden = false; $("tabWa").hidden = false;
+  $("tabMine").hidden = true; $("tabPerf").hidden = true; if (S.tab==="perf") showTab("board"); $("tabOrg").hidden = !S.isOwner; $("tabAdmin").hidden = false; $("tabFlow").hidden = true; $("tabAgenda").hidden = false; $("tabFunnel").hidden = false; $("tabVip").hidden = true; $("tabWa").hidden = false;
   S._mm = undefined; syncMichUi(); vaFixTab(); schedule();
 }
 /* Vista de usuario por rol: Account Manager, Manager o Influencer Outreach.
    Se elige desde Más (celular) o el menú de tu cuenta (computadora); te quedas en la misma pestaña. */
 function vaFixTab(){
-  const allowed = michMode() ? ["mich","settings"] : adminMode() ? ["agenda","board","msgs","flow","funnel","wa","settings"].concat(S.isOwner && !S.viewMgr ? ["org","vip"] : []) : ["agenda","board","msgs","perf","settings"];
+  const allowed = michMode() ? ["mich","settings"] : adminMode() ? ["agenda","board","msgs","flow","funnel","wa","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["agenda","board","msgs","perf","settings"];
   showTab(allowed.includes(S.tab) ? S.tab : allowed[0]);
 }
 function vaCur(){ return S.viewMgr ? "manager" : S.viewAs ? (roleOf(S.viewAs)==="influencer" ? "influencer" : "am") : "admin"; }
