@@ -38,6 +38,18 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+#perfBox .pf-row.worst{border-color:var(--line2)}
+#perfBox .pf-row.down .pf-bar.me i{background:var(--fg);opacity:.55}
+#perfBox .pf-row.down .pf-n b{color:var(--fg)}
+#perfBox .pf-row.down .pf-n b::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--wait,#d97706);margin-left:5px;vertical-align:middle}
+#perfBox .pf-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:var(--surface);border:1px solid var(--line2);border-radius:16px;overflow:hidden}
+#perfBox .pf-strip span{background:none;border:0;border-left:1px solid var(--line);border-radius:0;padding:11px 12px 10px;font-size:11.5px;font-weight:600;color:var(--muted);gap:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#perfBox .pf-strip span:first-child{border-left:0}
+#perfBox .pf-strip b{font-family:inherit;font-size:21px;font-weight:800;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
+#perfBox .pf-focus{border-color:var(--line2);background:var(--surface)}
+#perfBox .pf-focus .eyb{display:inline-flex;align-items:center;gap:6px}
+#perfBox .pf-focus:not(.good) .eyb::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--wait,#d97706)}
+#perfBox .pf-focus.good .eyb::before{content:"";width:6px;height:6px;border-radius:50%;background:#22c55e}
 .island .on-bd{position:absolute;top:17px;left:calc(50% + 8px);min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#16a34a;color:#fff;font-size:9.5px;font-weight:800;display:grid;place-items:center;font-style:normal;border:2px solid var(--surface);box-sizing:content-box;cursor:pointer}
 #view-flow .pres{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--muted);white-space:nowrap}
 #view-flow .pres::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
@@ -3538,7 +3550,7 @@ setInterval(() => schedule(), 60e3);
 /* ---------- Mi desempeño: leaderboard + dónde mejorar (solo con datos que el equipo puede ver) ---------- */
 const PERF_STEPS = [
   {k:"val", label:"Pasan la validación", tip:"Antes de registrarlo, revisa su perfil: que sea nutriólogo o coach activo y que tenga audiencia. Llena bien el link de perfil."},
-  {k:"att", label:"Se conectan al pitch", tip:"Confírmale un día antes y mándale un recordatorio corto el mismo día con el link."},
+  {k:"att", label:"Se conectan al pitch", tip:"Mándale el recordatorio con el link el mismo día, unas horas antes, y agenda en horarios que le acomoden."},
   {k:"gus", label:"Les gusta en el pitch", tip:"Llega con su perfil revisado y aterriza el pitch en su caso: cuántos usuarios podría tener en su app."},
   {k:"apr", label:"Aprueban su skeleton", tip:"Mándalo dentro de las primeras 24 h y pregunta qué le ajustarías; si pide cambios, reenvíalo el mismo día."},
   {k:"pw",  label:"Terminan programa y web", tip:"Agenda el meet de programa y web en cuanto aprueba, y usa los 3 follow-ups para acompañarlo."},
@@ -3563,7 +3575,7 @@ function renderPerf(){
   const mine = perfRates(perfCounts([me])), team = perfRates(perfCounts(all));
   const pct = ([a,b]) => b ? Math.round(a/b*100) : null;
   let worst = null;
-  PERF_STEPS.forEach(s => { const m = mine[s.k], t = team[s.k]; if (m[1] < 2 || pct(t)===null) return; const gap = pct(t) - pct(m); if (!worst || gap > worst.gap) worst = {s, gap, m:pct(m), t:pct(t)}; });
+  PERF_STEPS.filter(s => s.k==="val" || s.k==="att").forEach(s => { const m = mine[s.k], t = team[s.k]; if (m[1] < 2 || pct(t)===null) return; const gap = pct(t) - pct(m); if (!worst || gap > worst.gap) worst = {s, gap, m:pct(m), t:pct(t)}; });
   const rows = PERF_STEPS.map(s => {
     const m = mine[s.k], t = team[s.k], pm = pct(m), pt = pct(t);
     const cls = pm===null || pt===null ? "" : pm >= pt ? "up" : pm >= pt-10 ? "eq" : "down";
@@ -3581,7 +3593,7 @@ function renderPerf(){
     : `<div class="pf-focus good"><span class="eyb">Vas parejo o arriba del equipo</span><b>Sigue así.</b><p>Cuando tengas más prospectos en cada paso, aquí verás dónde se te caen más.</p></div>`;
   box.innerHTML = `<section class="pf">
     <div class="row"><div><h2>Tu avance</h2><p class="sub">Desde que empezaste</p></div></div>
-    <div class="pf-kpis"><span><b>${c.att}</b>pitch tomados</span><span><b>${c.gus}</b>les gustó</span><span><b>${c.apr}</b>skeleton aprobados</span><span><b>${c.pub}</b>publicados</span></div>
+    <div class="pf-kpis pf-strip"><span><b>${c.att}</b>pitches</span><span><b>${c.gus}</b>les gustó</span><span><b>${c.apr}</b>skeleton ok</span><span><b>${c.pub}</b>publicados</span></div>
     ${perfChart()}
     ${focus}
     <div class="pf-tbl"><div class="pf-row pf-h"><span>Paso</span><span><i class="lg me"></i>Tú <i class="lg tm"></i>Equipo</span><span>Tú</span><span>Equipo</span></div>${rows}</div>
@@ -4213,8 +4225,8 @@ function perfChart(){
   const me = meId(), team = Object.keys(S.team), mine = S.viewAs ? (S.all[me]||{}) : S.mine;
   const s = weeklySeries([me], {[me]:mine});
   const avg = s.T.map(t => team.length ? team.reduce((a,u) => a + ((t[u]||{}).pts||0), 0) / team.length : 0);
-  return growthChart({title:"Tu crecimiento", weeks:s.weeks, bars:{label:"Tus meets agendados", vals:s.meets},
-    lines:[{label:"Tus puntos", vals:s.pts, cls:"pts"}, {label:"Promedio del equipo (puntos)", vals:avg, cls:"avg"}]});
+  // igual que la del equipo: solo pitches tomados
+  return growthChart({title:"Tus pitches tomados", weeks:s.weeks, bars:{label:"Pitch tomados", vals:s.tom}, lines:[]});
 }
 
 /* ---------- Perfiles de prospecto ---------- */
