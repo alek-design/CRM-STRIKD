@@ -204,7 +204,7 @@
       const real = (ids||[]).filter(x => /^[0-9a-f-]{36}$/.test(x));
       if (!real.length) return {};
       const { data } = await sb.from("app_users").select("id,name,email").in("id", real);
-      return Object.fromEntries((data||[]).map(u => [u.id, {name:u.name || u.email, avatarUrl:""}]));
+      return Object.fromEntries((data||[]).map(u => [u.id, {name:u.name || u.email, avatarUrl:"", email:u.email || ""}]));
     },
     role: () => me.role
   };

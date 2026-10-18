@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 06:55:56 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 06:57:18 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792306556">
+<link rel="stylesheet" href="/auth.css?v=1792306638">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792306556"></script>
+<script src="/claude-shim.js?v=1792306638"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -674,6 +674,14 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+.guests{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 6px}
+.g-l{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
+.g-c{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;padding:5px 6px 5px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--line2)}
+.g-c.pros{padding-right:11px;color:var(--muted)}.g-c small{font-weight:600;font-size:11px;color:var(--muted)}.g-c small.warn{color:var(--wait)}
+.g-c button{width:20px;height:20px;border-radius:50%;border:0;background:var(--raised);color:var(--muted);cursor:pointer;line-height:1;font-size:14px;padding:0}
+.g-add{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;border:1px dashed var(--line2);font-weight:700;font-size:18px;color:var(--fg);cursor:pointer}
+.g-add select{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%!important;margin:0!important}
+
 /* Agenda en iPhone: una sola fecha, semana con flechas, pestañas Meets / Pendientes */
 @media (max-width:640px){
   #view-agenda .ag-top h2{font-size:28px;letter-spacing:-.02em}
@@ -1128,6 +1136,7 @@ body.mob-open header.top{z-index:31}
             <label class="chk on" id="mkInvL" hidden><input type="checkbox" id="f_mkinv" checked><span class="box"></span><span>Crear la invitación con link de Google Meet y mandársela al prospecto</span></label>
             <p class="mut small" id="invHint" hidden></p>
             <div class="notice warn inv-need" id="invNeed" hidden><span>Para agendar, conecta tu Google Calendar: el link de Meet y la invitación se generan solos.</span><button type="button" class="btn small primary" id="invNeedBtn">Conectar Google Calendar</button></div>
+            <div class="guests" id="guestBox"></div>
             <label class="f" id="linkWrap">Link de la invitación o del meet <em>*</em><input id="f_link" type="url" placeholder="https://" autocomplete="off"></label>
           </div>
         </div></div>
@@ -1626,7 +1635,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -1829,7 +1838,8 @@ function syncInvUi(){
   $("invNeed").hidden = !(isMeet && !mcp && !S.editingId);
   const inv = leaderEmail(bookUid()), ln = leaderOf(bookUid());
   $("invHint").hidden = !on;
-  $("invHint").textContent = `Se crea en tu Google Calendar a la hora del meet (45 min), con tu link de Meet, y le llega la invitación al prospecto${inv?` y a tu team leader${ln?` (${nameOf(S.ps||{}, ln)})`:""}: ${inv}`:""}.`;
+  $("invHint").textContent = "Se crea en tu Google Calendar (45 min) con link de Meet y le llega la invitación a todos los invitados.";
+  renderGuests();
 }
 $("f_mkinv").addEventListener("change", syncInvUi);
 $("invNeedBtn").addEventListener("click", () => {
@@ -1839,11 +1849,24 @@ $("invNeedBtn").addEventListener("click", () => {
 });
 // Team leader de quien agenda: su Creator Partnerships Manager (Organigrama), o el primero; si no tiene email, el de respaldo.
 function leaderOf(uid){ const mgrs = Object.keys(S.members).filter(u => roleOf(u)==="manager"); return mgrOf(uid) || mgrs[0] || ""; }
+/* Invitados del meet: el líder va solo; con + se suma a alguien más del equipo */
+function guestUids(){ const l = leaderOf(bookUid()); return (S.bkGuests || (l && l!==bookUid() ? [l] : leaderEmail(bookUid()) ? ["__lead"] : [])).filter(u => u && u!==bookUid()); }
+function guestEmail(u){ if (u==="__lead" || u===leaderOf(bookUid())) return leaderEmail(bookUid()); return (((S.ps||{})[u]||{}).email || (S.roles[u]||{}).inviteEmail || "").trim(); }
+function renderGuests(){
+  const box = $("guestBox"); if (!box || busyIn(box)) return;
+  const g = guestUids(), l = leaderOf(bookUid());
+  const pool = Object.keys(S.members||{}).concat(S.config && S.config.headId ? [S.config.headId] : []).filter((u,i,a) => a.indexOf(u)===i && u!==bookUid() && !g.includes(u) && roleOf(u)!=="influencer");
+  const h = `<span class="g-l">Invitados</span><span class="g-c pros">Prospecto</span>${g.map(u => `<span class="g-c">${u==="__lead" ? esc(leaderEmail(bookUid())) : esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}${u===l || u==="__lead"?` <small>líder</small>`:""}${guestEmail(u)?"":` <small class="warn">sin correo</small>`}<button type="button" data-gdel="${u}" aria-label="Quitar">×</button></span>`).join("")}
+    ${pool.length ? `<label class="g-add">+<select data-gadd="1" aria-label="Agregar a alguien del equipo"><option value="">Agregar</option>${pool.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}</option>`).join("")}</select></label>` : ""}`;
+  if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
+}
+document.addEventListener("click", e => { const d = e.target.closest("[data-gdel]"); if (d){ S.bkGuests = guestUids().filter(u => u!==d.dataset.gdel); renderGuests(); } });
+document.addEventListener("change", e => { const a = e.target.closest("[data-gadd]"); if (a && a.value){ S.bkGuests = guestUids().concat([a.value]); a.blur(); renderGuests(); } });
 function leaderEmail(uid){ const l = leaderOf(uid); return ((l && S.roles[l] && S.roles[l].inviteEmail) || (S.config && S.config.inviteEmail) || "").trim(); }
 async function createInvite(o){
   const end = new Date(meetTs(o.meetAt) + MEET_MIN - OFF).toISOString().slice(0,16);
-  const inv = leaderEmail(bookUid());
-  const attendees = [{email:o.email}].concat(inv && inv.toLowerCase()!==o.email.toLowerCase() ? [{email:inv}] : []);
+  const mails = (o.guests ? o.guests.map(guestEmail) : [leaderEmail(bookUid())]).map(x => String(x||"").trim().toLowerCase()).filter(Boolean);
+  const attendees = [{email:o.email}].concat([...new Set(mails)].filter(x => x!==o.email.toLowerCase()).map(email => ({email})));
   const r = await mcp.callTool(GCAL, "create_event", {summary:`${o.prospect} x STRIKD`, startTime:`${o.meetAt}:00`, endTime:`${end}:00`, timeZone:"America/Cancun",
     addGoogleMeetUrl:true, attendees, description:`Meet con ${o.prospect}${o.notes?`\n\n${o.notes}`:""}`, notificationLevel:"ALL"});
   let p = r && r.payload; if (p && p.event) p = p.event;
@@ -1942,7 +1965,7 @@ function validate(o){
   if (o.link && !safeUrl(o.link)) return "El link debe empezar con https://";
   return "";
 }
-function resetForm(){ S.waPrefill = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Enviar a validación"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
+function resetForm(){ S.waPrefill = null; S.bkGuests = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Enviar a validación"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
 $("cancelEdit").addEventListener("click", resetForm);
 /* ---------- resultado claro al registrar: cargando → listo / con aviso / error ---------- */
 const RS_IC = {ok:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>', warn:'<svg viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"/></svg>', err:'<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>', loading:""};
@@ -1979,6 +2002,7 @@ $("meetForm").addEventListener("submit", async e => {
       resetForm(); showResult("ok", "Cambios guardados", `${o.prospect} quedó actualizado.`);
     } else {
       const mk = autoInv(), ref = col.doc();
+      o.guests = guestUids();
       if (mk) o.link = "";
       // auto-validation: complete data, a future date and nobody else already has this prospect
       const pkey = igKey(o.profile) || (o.email ? "email:" + o.email.toLowerCase().replace(/[^a-z0-9._@+-]/g,"") : "");
