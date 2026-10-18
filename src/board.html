@@ -2451,12 +2451,9 @@ function tasksFor(uid, id, m, now){
   } else if (st==="valid" || reschedPending(m,v)){
     const at = effAt(m), t = meetTs(at);
     if (now < t){
-      if (f.confirmedFor === at && f.remindedFor !== at && now >= t - 5*HR)
+      if (f.remindedFor !== at && now >= t - 5*HR) // ya no hay paso de "confirmar": el recordatorio sale siempre
         add({title:`Mándale el recordatorio a ${p}`, detail:`Su pitch es hoy a las ${at.split("T")[1]}. Mándale el link 2 h antes para que no se le pase.`, due:t-1*HR,
           acts:[{label:"Ya se lo mandé", act:"reminded", input:"remind", kind:"primary"}]});
-      if (f.confirmedFor !== at && now >= t - 3*DAY)
-        add({title:`Confirma el meet con ${p}`, detail:`Meet: ${fmtMeetAt(at)}. Escríbele un día antes para que te confirme. Si no puede, reagéndalo.`, due:t-2*HR,
-          acts:[{label:"Ya me confirmó el meet", act:"confirmed", kind:"ok"}, {label:"Reagendar", act:"resched", input:"dt"}]});
     } else {
       add({who:"admin", title:`Resultado del pitch con ${p}`, detail:`Era el ${fmtMeetAt(at)}. Contesta: ¿se conectó?, ¿le gustó? y adjunta el skeleton que armaron en vivo (queda como enviado).`, due:t+2*HR,
         acts:[{label:"Guardar resultado", act:"meet3", input:"meet3", kind:"primary"}]});
