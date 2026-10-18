@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 07:25:11 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 07:27:55 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792308311">
+<link rel="stylesheet" href="/auth.css?v=1792308475">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792308311"></script>
+<script src="/claude-shim.js?v=1792308475"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -674,6 +674,13 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* Ranking (AM): sin texto largo ni sugerencias; propuestas de Mich fuera */
+#view-perf #myVip{display:none!important}
+.lb-how{margin-top:4px}.lb-how summary{cursor:pointer;font-size:13px;color:var(--muted);font-weight:600;list-style:none}.lb-how summary::-webkit-details-marker{display:none}
+.lb-how summary::before{content:"ⓘ ";}.lb-how p{font-size:12.5px;color:var(--muted);margin:6px 0 0;max-width:640px}
+#view-perf .dl{font-size:11px;opacity:.8}
+#view-perf .lb.mine{background:color-mix(in srgb,var(--ok-fg) 8%,var(--surface))}
+
 /* Pendientes: sección por acción, filas con inicial, fecha en pastilla y acción rápida */
 .pg2{margin-bottom:16px}
 .pg2-h{display:flex;align-items:center;gap:8px;margin:0 4px 6px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
@@ -1140,8 +1147,8 @@ body.mob-open header.top{z-index:31}
     <div id="lbHomeBoard"><div id="lbBlock">
     <div class="row">
       <div>
-        <h2>Leaderboard</h2>
-        <p class="sub">Esta semana · cada paso vale más conforme el prospecto se acerca a publicar: pitch tomado 1 · le gustó 2 · aprobó skeleton 3 · lanzamiento 4 · publicado 5. Por perfil: 🍎 ×1 · 📷 ×2.5 · 👑 ×5.</p>
+        <h2>Ranking de la semana</h2>
+        <details class="lb-how"><summary>¿Cómo se ganan puntos?</summary><p>Cada paso vale más conforme el prospecto se acerca a publicar: pitch tomado 1 · le gustó 2 · aprobó skeleton 3 · lanzamiento 4 · publicado 5. Por perfil: 🍎 ×1 · 📷 ×2.5 · 👑 ×5. Se reinicia cada viernes a las 6 pm.</p></details>
       </div>
       <div class="spacer"></div>
 
@@ -1409,9 +1416,10 @@ tick(); setInterval(tick, 30000);
 /* ---------- tabs ---------- */
 function showTab(t){
   if (t==="board" && adminMode()) t = "flow"; // Head/Manager: Equipo es el pipeline del equipo
+  else if (t==="board") t = "perf"; // AM: Ranking = leaderboard + su avance
   if (t==="vip") t = "agenda"; // la Lista Mich ya no se usa como pestaña
   S.tab = t;
-  const navT = t==="wa" ? "funnel" : t==="flow" ? "board" : t;
+  const navT = t==="wa" ? "funnel" : (t==="flow" || t==="perf") ? "board" : t;
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab===navT)));
   document.querySelectorAll(".subnav [data-go]").forEach(b => b.classList.toggle("on", b.dataset.go===t));
   closeAcct();
@@ -1599,7 +1607,7 @@ function islandItems(){
     ? [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","trophy","Ranking"],["more","more","Más"]]
     : [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","home","Equipo",Number($("lateCount").textContent)||0],["more","more","Más"]];
   const more = am
-    ? [["perf","trophy","Mi desempeño"],["settings","gear","Ajustes"]]
+    ? [["settings","gear","Ajustes"]]
     : [["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
        ["settings","gear","Ajustes"]];
   return {main, more};
@@ -1609,7 +1617,7 @@ function renderIsland(){
   if ($("mCd")){ $("mCd").textContent = $("countdown").textContent; $("mLb").innerHTML = `<span class="mut small">${esc($("closeLabel").textContent)}</span>${$("miniLb").innerHTML}`; }
   const {main, more} = islandItems(), inMore = more.some(([t]) => t===S.tab || (t==="funnel" && S.tab==="wa"));
   nav.style.gridTemplateColumns = `repeat(${main.length},1fr)`; nav.style.width = main.length < 4 ? "min(240px,calc(100% - 24px))" : "";
-  nav.innerHTML = main.map(([t,ic,l,n]) => `<button type="button" data-isl="${t}" class="${(t===S.tab || (t==="board" && S.tab==="flow") || (t==="more" && inMore))?"on":""}" aria-label="${l}">${svg(ic)}<span>${l}</span>${n?`<i class="bd">${n>99?"99+":n}</i>`:""}</button>`).join("");
+  nav.innerHTML = main.map(([t,ic,l,n]) => `<button type="button" data-isl="${t}" class="${(t===S.tab || (t==="board" && (S.tab==="flow" || S.tab==="perf")) || (t==="more" && inMore))?"on":""}" aria-label="${l}">${svg(ic)}<span>${l}</span>${n?`<i class="bd">${n>99?"99+":n}</i>`:""}</button>`).join("");
   if (!$("moreSheet").hidden) $("moreIn").innerHTML = vaHtml() + `<div class="more-t">${esc($("closeLabel").textContent)}<b>${esc($("countdown").textContent)}</b></div>` + more.map(([t,ic,l,n]) => `<button type="button" data-islm="${t}" class="${t===S.tab?"on":""}">${svg(ic)}${l}${n?`<span class="n">${n}</span>`:""}</button>`).join("");
 }
 $("mTimer").addEventListener("click", () => $("mTimer").classList.toggle("open"));
@@ -1799,7 +1807,7 @@ function boardHtml(ps, ids, week, live){
   }
   // personal nudge for a team member
   let nudge = "";
-  if (live && !adminMode()){
+  if (false && live && !adminMode()){
     const mine = rows.find(r => r.id===meId()), lead = rows[0];
     if (mine){
       if (mine.rank===1 && mine.pts>0) nudge = `<p class="nudge">Vas en primer lugar con ${fmtPts(mine.pts)} punto${mine.pts===1?"":"s"}. Sigue así hasta el viernes.</p>`;
@@ -1833,6 +1841,7 @@ function renderBoard(ps, ids){
   renderMiniLb(ps, ids);
   const home = $(adminMode() ? "lbHomeFunnel" : "lbHomePerf"), blk = $("lbBlock");
   if (blk.parentNode !== home) home.appendChild(blk);
+  { const pw = $("pathWrap"), ph = adminMode() ? $("lbHomeBoard").parentNode : $("view-perf"); if (pw && pw.parentNode !== ph) ph.appendChild(pw); } // AM: su journey vive en Ranking
   $("board").innerHTML = boardHtml(ps, ids, S.currentKey, true);
   // past weeks live on their own page
   const past = allWeeks().filter(k => k < S.currentKey);
@@ -3353,7 +3362,7 @@ function renderPerf(){
     ? `<div class="pf-focus"><span class="eyb">Dónde puedes mejorar</span><b>${esc(worst.s.label)}: tú ${worst.m}% vs. equipo ${worst.t}%</b><p>${esc(worst.s.tip)}</p></div>`
     : `<div class="pf-focus good"><span class="eyb">Vas parejo o arriba del equipo</span><b>Sigue así.</b><p>Cuando tengas más prospectos en cada paso, aquí verás dónde se te caen más.</p></div>`;
   box.innerHTML = `<section class="pf">
-    <div class="row"><div><h2>Tus números</h2><p class="sub">Desde que empezaste. Comparamos cada paso contra el promedio del equipo para que sepas dónde enfocarte.</p></div></div>
+    <div class="row"><div><h2>Tu avance</h2><p class="sub">Desde que empezaste</p></div></div>
     <div class="pf-kpis"><span><b>${c.att}</b>pitch tomados</span><span><b>${c.gus}</b>les gustó</span><span><b>${c.apr}</b>skeleton aprobados</span><span><b>${c.pub}</b>publicados</span></div>
     ${perfChart()}
     ${focus}
@@ -3375,7 +3384,7 @@ function syncMichUi(){
   if (mm){ document.querySelectorAll("#tabs button").forEach(b => b.hidden = b.id!=="tabMich"); if (S.tab!=="mich" && S.tab!=="settings") showTab("mich"); }
   else {
     $("tabMich").hidden = true; document.querySelector('#tabs [data-tab="board"]').hidden = false; $("tabMsgs").hidden = false;
-    if (S.viewAs){ $("tabAgenda").hidden = false; $("tabPerf").hidden = false; }
+    if (S.viewAs){ $("tabAgenda").hidden = false; $("tabPerf").hidden = true; }
     if (S.tab==="mich") showTab("agenda");
   }
 }
@@ -3666,7 +3675,7 @@ function applyRole(saved){
   const set = (id, show) => { const el = $(id); if (el) el.hidden = !show; };
   if (!S.viewAs){
     ["tabFunnel","tabWa"].forEach(id => set(id, lead)); set("tabFlow", false); set("tabVip", false); // la Lista Mich ya no sale: Mich la trabaja en Mi lista
-    set("tabAgenda", true); set("adminActs", lead); set("viewAsBtn", S.isOwner); set("tabMine", false); set("tabPerf", !lead);
+    set("tabAgenda", true); set("adminActs", lead); set("viewAsBtn", S.isOwner); set("tabMine", false); set("tabPerf", false);
   }
   $("tabOrg").hidden = !S.isOwner || !!S.viewAs;
   $("mgrNeedsEdit").hidden = !(roleOf(S.uid)==="manager" && !lead && !S.isOwner);
@@ -5036,7 +5045,7 @@ function enterViewAs(uid){
   if (!uid || !S.isOwner) return; // solo el Head puede usar la Vista de usuario
   S.viewAs = uid; resetForm(); setFormEnabled(true);
   $("viewAsBar").hidden = false; $("adminActs").hidden = true; $("viewAsBtn").hidden = true; Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]});
-  $("tabAdmin").hidden = true; $("tabFlow").hidden = true; $("tabAgenda").hidden = false; $("tabFunnel").hidden = true; $("tabVip").hidden = true; $("tabWa").hidden = true; $("tabMine").hidden = true; $("tabPerf").hidden = false; $("tabOrg").hidden = true;
+  $("tabAdmin").hidden = true; $("tabFlow").hidden = true; $("tabAgenda").hidden = false; $("tabFunnel").hidden = true; $("tabVip").hidden = true; $("tabWa").hidden = true; $("tabMine").hidden = true; $("tabPerf").hidden = true; $("tabOrg").hidden = true;
   syncMichUi(); vaFixTab();
   schedule();
 }
@@ -5081,7 +5090,7 @@ function enterVA(role, uid){
     vaFixTab(); return schedule();
   }
   if (S.viewMgr){ S.viewMgr = null; }
-  if (S.viewAs){ S.viewAs = uid; resetForm(); Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]}); iskLoad(true); $("tabMine").hidden = true; $("tabAgenda").hidden = false; $("tabPerf").hidden = false; S._mm = undefined; syncMichUi(); vaFixTab(); return schedule(); }
+  if (S.viewAs){ S.viewAs = uid; resetForm(); Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]}); iskLoad(true); $("tabMine").hidden = true; $("tabAgenda").hidden = false; $("tabPerf").hidden = true; S._mm = undefined; syncMichUi(); vaFixTab(); return schedule(); }
   enterViewAs(uid);
 }
 $("viewAsBtn").addEventListener("click", () => enterVA(VA.role, null));
