@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 03:18:32 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 03:32:26 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792293512">
+<link rel="stylesheet" href="/auth.css?v=1792294346">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792293512"></script>
+<script src="/claude-shim.js?v=1792294346"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -797,6 +797,8 @@ body.mob-open header.top{z-index:31}
 .ck{display:flex;gap:9px;align-items:center;width:100%;text-align:left;font:inherit;color:var(--fg);background:none;border:0;border-bottom:1px solid var(--line);padding:7px 10px;cursor:pointer;position:relative}
 .ck:hover{background:var(--raised)}.ck.sel{background:var(--raised);box-shadow:inset 3px 0 0 var(--fg)}
 .ck-av{flex:none;width:28px;height:28px;font-size:12px!important;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:1px solid var(--line2);font-weight:700;font-size:13px;color:var(--muted2)}
+.ck-av{position:relative;overflow:hidden}.ck-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:var(--raised)}
+.cw-av{width:34px!important;height:34px!important}
 .ck.rep .ck-av{border-color:var(--wait);color:var(--wait)}.ck.mgr .ck-av{border-color:var(--bad);color:var(--bad)}
 .ck-m{flex:1;min-width:0;display:grid;gap:1px}
 .ck-1{display:flex;gap:6px;align-items:baseline}.ck-1 b{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ck-1 time{font-size:11px;color:var(--muted);flex:none}
@@ -3924,9 +3926,19 @@ function iskConv(c){
 }
 function iskMatch(phone){
   const d = iskDigits(phone); if (!d) return null;
-  for (const [uid, items] of Object.entries(S.all||{})) for (const [id, m] of Object.entries(items||{})) if (iskDigits(m.phone)===d) return {name:m.prospect, uid};
+  for (const [uid, items] of Object.entries(S.all||{})) for (const [id, m] of Object.entries(items||{})) if (iskDigits(m.phone)===d) return {name:m.prospect, uid, profile:m.profile||""};
   for (const [u, id, l] of waLeadsAll()) if (iskDigits(l.phone)===d) return {name:l.name, uid:u};
   return null;
+}
+/* foto del prospecto: WhatsApp no comparte la foto de perfil, así que usamos la de su Instagram si lo tenemos */
+function iskIg(x){
+  const mt = iskMatch(x.phone), src = String((x.raw && x.raw.instagram) || (mt && mt.profile) || "").trim();
+  const m = src.match(/instagram\.com\/([A-Za-z0-9_.]{2,30})/i) || src.match(/^@?([A-Za-z0-9_.]{2,30})$/);
+  return m ? m[1] : "";
+}
+function iskAv(x, n, cls){
+  const ig = iskIg(x), ini = esc((n||"?").trim()[0]||"?").toUpperCase();
+  return `<span class="${cls}">${ini}${ig?`<img src="https://unavatar.io/instagram/${encodeURIComponent(ig)}?fallback=false" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>`;
 }
 const iskWho = uid => uid ? (uid===S.uid && !S.viewAs ? "Tú" : nameOf(S.ps||{}, uid)) : "Sin dueño";
 async function iskLoad(force){
@@ -4041,7 +4053,7 @@ function renderIskra(){
   const q = (ISK.q||"").toLowerCase();
   const item = x => { const n = nm(x), st = needs(x) ? (x.esc ? "mgr" : "rep") : "";
     return `<button type="button" class="ck${x.id===ISK.sel?" sel":""}${st?" "+st:""}" data-iskc="${esc(x.id)}" data-s="${esc((n+" "+(x.phone||"")).toLowerCase())}"${q && !(n+" "+(x.phone||"")).toLowerCase().includes(q)?" hidden":""}>
-      <span class="ck-av">${esc((n||"?").trim()[0]||"?").toUpperCase()}</span>
+      ${iskAv(x, n, "ck-av")}
       <span class="ck-m"><span class="ck-1"><b>${esc(n)}</b>${st==="mgr" ? `<em class="ck-b mgr">${lead?"Te toca":"Manager"}</em>` : ""}<time>${x.at?ago(x.at):""}</time></span>
       <span class="ck-2"><span class="ck-tx">${x.lastDir==="out"?"Tú: ":""}${esc(String(x.last).slice(0,90)) || "<i>Sin mensajes</i>"}</span>${lead?`<span class="ck-o">${x.owner ? esc(iskWho(x.owner).split(" ")[0]) : "sin dueño"}</span>`:""}</span></span>
       ${x.unread?`<span class="ck-n">${x.unread}</span>`:""}</button>`; };
@@ -4050,7 +4062,7 @@ function renderIskra(){
     const mt = iskMatch(c.phone), mine = c.owner===me, canSend = lead || mine;
     const recent = c.lastSender && c.lastSender!==me && Date.now() - c.lastSentAt < 10*60e3;
     right = `<div class="cw">
-      <div class="cw-h"><button type="button" class="cw-back" data-iskback="1" aria-label="Volver a la lista">←</button><div class="cw-who"><b>${esc(nm(c))}</b><span class="mut small">${esc(c.phone||"")}${mt?"":" · no está en el tablero"}${lead && c.by?` · ${esc(ISK_BY[c.by]||c.by)}`:""}</span></div>
+      <div class="cw-h"><button type="button" class="cw-back" data-iskback="1" aria-label="Volver a la lista">←</button>${iskAv(c, nm(c), "ck-av cw-av")}<div class="cw-who"><b>${esc(nm(c))}</b><span class="mut small">${esc(c.phone||"")}${mt?"":" · no está en el tablero"}${lead && c.by?` · ${esc(ISK_BY[c.by]||c.by)}`:""}</span></div>
         <div class="cw-acts">
           ${lead ? `<select class="inline cw-own" data-iskown="1" aria-label="Dueño">${iskOwnerOpts(c.owner)}</select>` : ""}
           ${canSend ? `<button type="button" class="btn small primary" data-iskbook="1">${mt ? "Agendar otro meet" : "Agendar meet"}</button>` : ""}
