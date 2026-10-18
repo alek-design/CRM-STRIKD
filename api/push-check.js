@@ -3,6 +3,7 @@
 const { withPg } = require("../lib/google");
 const { cronKey, sendTo, init } = require("../lib/push");
 const auto = require("../lib/autofollow");
+const { migrate } = require("../lib/migrate");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const arr = j => Array.isArray(j) ? j : (j && (j.data || j.items || j.conversations || j.messages || j.results)) || [];
 async function get(path, ms){
@@ -39,6 +40,7 @@ module.exports = async (req, res) => {
       const leadRows = (await c.query("select id, role from public.app_users where role in ('head','manager') and active")).rows;
       const leads = leadRows.map(r => r.id), headId = (leadRows.find(r => r.role === "head") || leadRows[0] || {}).id || null;
       await auto.ensure(c);
+      await migrate(c).catch(() => {});
       const origin = "https://" + (req.headers["x-forwarded-host"] || req.headers.host || "growth.strikd.ai");
       const autos = [];
       let sent = 0, n = 0, dest = 0; const errs = [];

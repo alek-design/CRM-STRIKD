@@ -75,6 +75,10 @@ language plpgsql stable security definer set search_path = public as $$
 declare seg text[] := string_to_array(p, '/'); lvl int := user_level(); me text := auth.uid()::text; need int;
 begin
   if lvl = 0 then return false; end if;
+  -- Influencer Outreach (Mich): ve y actualiza la Lista de influencers de todo el equipo
+  if seg[1] = 'meets' and seg[3] = 'vip' and exists (select 1 from docs d where d.path = 'roles/' || me and d.data->>'role' = 'influencer') then
+    return lvl >= 2;
+  end if;
   if seg[1] in ('meets','members','points') and seg[2] = me then
     need := case when op = 'read' and seg[1] in ('members','points') then 1 else 2 end;
   else
