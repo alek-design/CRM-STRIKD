@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 15:35:41 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 15:38:06 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792337741">
+<link rel="stylesheet" href="/auth.css?v=1792337886">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792337741"></script>
+<script src="/claude-shim.js?v=1792337886"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -684,6 +684,19 @@ label.f em{color:var(--bad);font-style:normal}
 .stats{display:flex;flex-wrap:wrap;gap:8px}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Prospectos activos: etapas como acordeón, cerradas de inicio */
+.steps.accs{display:grid!important;grid-template-columns:1fr!important;gap:8px}
+.step.acc{padding:0;gap:0;border-radius:14px}
+.step.acc header{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer}
+.step.acc .sname{flex:1;font-size:15px!important}
+.step.acc .cnt{font-size:15px;color:var(--fg);font-weight:700}
+.acc-late{font-size:12px;color:var(--muted2);font-weight:600;display:inline-flex;align-items:center;gap:5px}.acc-late::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--bad);opacity:.85}
+.acc-chev{color:var(--muted);font-size:20px;line-height:1;transition:transform .15s}
+.step.acc.open .acc-chev{transform:rotate(90deg)}
+.step.acc:not(.open) .lights,.step.acc:not(.open) .minis{display:none}
+.step.acc.open .lights{padding:0 16px 6px}.step.acc.open .minis{padding:0 12px 8px}
+.acc-h{margin-top:8px!important}
 
 .lite-note{font-size:12.5px;color:var(--muted);margin:6px 2px 0}.lite-note .linkbtn{font-size:12.5px}
 .tl{margin:0 0 18px}
@@ -2759,8 +2772,9 @@ function pathHtml(owners, isAdmin, cid){
     const cnt = {crit:0, late:0, soon:0, ok:0}; arr.forEach(x => { if (x[3]) cnt[dueInfo(x[3].due, now).cls]++; });
     const red = cnt.crit + cnt.late;
     const open = MORE[cid+s.n], shown = open ? arr : arr.slice(0, LIMIT);
-    return `<section class="step${s.goal?" goal":""}" title="${esc(s.sub)}">
-      <header><b class="sname">${s.goal?"★ ":""}${esc(s.name)}</b><span class="cnt">${arr.length}</span></header>
+    const acc = MORE["acc" + cid + s.n];
+    return `<section class="step acc${acc?" open":""}${s.goal?" goal":""}" title="${esc(s.sub)}">
+      <header data-acc="${cid + s.n}" role="button" tabindex="0"><b class="sname">${s.goal?"★ ":""}${esc(s.name)}</b>${arr.length && !s.goal && red ? `<span class="acc-late">${red} tarde</span>` : ""}<span class="cnt">${arr.length}</span><span class="acc-chev" aria-hidden="true">›</span></header>
       ${arr.length && !s.goal ? `<div class="lights" title="Atrasados · vencen en menos de 24 h · a tiempo">${red?`<span class="sema late"><i></i>${red}</span>`:""}${cnt.soon?`<span class="sema soon"><i></i>${cnt.soon}</span>`:""}${cnt.ok?`<span class="sema ok"><i></i>${cnt.ok}</span>`:""}</div>` : ""}
       <div class="minis">${shown.map(mini).join("") || `<span class="pc-empty">—</span>`}
       ${arr.length>LIMIT?`<button class="more" data-more="${cid+s.n}">${open?"Ver menos":`+${arr.length-LIMIT} más`}</button>`:""}</div>
@@ -2781,9 +2795,11 @@ function pathHtml(owners, isAdmin, cid){
   } else {
     detail = `<p class="mono hint">Toca un prospecto para ver qué sigue y completarlo.</p>`;
   }
-  return `<div class="steps">${cols}</div>${detail}${off}`;
+  const nAct = STEPS.filter(s => !s.goal).reduce((a,s) => a + groups[s.n].length, 0);
+  return `<h3 class="sec-h acc-h">Prospectos activos <b>${nAct}</b></h3><div class="steps accs">${cols}</div>${detail}${off}`;
 }
 ["myPath","teamPath"].forEach(cid => $(cid).addEventListener("click", e => {
+  const ac = e.target.closest("[data-acc]"); if (ac){ MORE["acc" + ac.dataset.acc] = !MORE["acc" + ac.dataset.acc]; schedule(); return; }
   const p = e.target.closest("[data-pick]"), mo = e.target.closest("[data-more]"), cl = e.target.closest("[data-close]");
   if (p){ PICK[cid] = PICK[cid]===p.dataset.pick ? null : p.dataset.pick; schedule(); }
   else if (mo){ MORE[mo.dataset.more] = !MORE[mo.dataset.more]; schedule(); }
