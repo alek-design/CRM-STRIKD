@@ -320,6 +320,11 @@
   };
   window.STRIKD_GOOGLE_USERS = async () => { const t = (await sb.auth.getSession()).data.session.access_token; const r = await fetch("/api/google/status?all=1", {headers:{authorization:"Bearer " + t}}); return r.ok ? (await r.json()).users || [] : []; };
 
+  /* ---------- avisos al celular (tareas) ---------- */
+  window.STRIKD_NOTIFY = async (payload) => {
+    try{ const { data } = await sb.auth.getSession();
+      await fetch("/api/notify", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify(payload)}); }catch(_){}
+  };
   /* ---------- Mich agenda el meet de un influencer a nombre del AM que lo propuso ---------- */
   window.STRIKD_MICHMEET = async (payload) => {
     const { data } = await sb.auth.getSession();

@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 07:44:59 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 07:47:00 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792309499">
+<link rel="stylesheet" href="/auth.css?v=1792309620">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792309499"></script>
+<script src="/claude-shim.js?v=1792309620"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1478,7 +1478,9 @@ $("tabs").addEventListener("click", e => { const b = e.target.closest("button[da
 /* ---------- menú de cuenta, tema y sub-pestañas ---------- */
 // abrir una conversación desde una notificación (?tab=msgs&conv=ID)
 function openFromUrl(u){
-  try{ const q = new URL(u, location.href).searchParams; if (q.get("tab")==="msgs"){ MSEG.v = "isk"; if (q.get("conv")){ ISK.sel = q.get("conv"); ISK.fullAt = 0; } showTab("msgs"); if (ISK.sel) iskThread(ISK.sel, true); } }catch(e){}
+  try{ const q = new URL(u, location.href).searchParams;
+    if (q.get("tab")==="agenda"){ AG_DAY = null; AG_SEG = "tasks"; if (q.get("task")) TK_OPEN = q.get("task"); showTab("agenda"); return; }
+    if (q.get("tab")==="msgs"){ MSEG.v = "isk"; if (q.get("conv")){ ISK.sel = q.get("conv"); ISK.fullAt = 0; } showTab("msgs"); if (ISK.sel) iskThread(ISK.sel, true); } }catch(e){}
 }
 window.STRIKD_OPEN = openFromUrl;
 function mobToggle(open){
@@ -3564,6 +3566,16 @@ function taskRow(u, id, x, lead, now){
       <span class="tk-st st-${st}">${esc(TK_ST[st])}</span>
     </div>${det}`;
 }
+/* Aviso al celular de quien le corresponde: el AM le avisa a quien asignó (y al revisar, también a los líderes); el líder le avisa al AM */
+function tkNotify(to, title, body, k, owner){ if (!window.STRIKD_NOTIFY) return; window.STRIKD_NOTIFY({to:[...new Set(to.filter(Boolean))], title, body, url:`/?tab=agenda&task=${encodeURIComponent(k)}`, tag:"task-" + k, taskOwner:owner}); }
+function tkWho(k, x, kind, text){
+  const [u] = k.split("/"), actor = S.uid, nm = String(nameOf(S.ps||{}, actor)).split(" (")[0];
+  const leads = Object.keys(S.members||{}).filter(m => roleOf(m)==="manager").concat(S.config && S.config.headId ? [S.config.headId] : []);
+  const fromAssignee = actor === u;
+  const to = fromAssignee ? [x.by].concat(kind==="review" ? leads : []) : [u];
+  const title = kind==="comment" ? `💬 ${nm} comentó` : `${nm}: ${TK_ST[kind]}`;
+  tkNotify(to.filter(t => t !== actor), title, x.title + (text ? ` · ${text}` : ""), k, x.by);
+}
 async function taskSave(k, patch){
   const [u, id] = k.split("/"), x = ((S.tasks||{})[u]||{})[id]; if (!x) return;
   const prev = {...x}; Object.assign(x, patch); schedule();
@@ -3598,8 +3610,9 @@ function taskOpen(){
     const to = who==="__team" ? Object.keys(S.team||{}) : [who];
     const dueAt = due ? Date.parse(due + "T18:00:00-05:00") : 0, now = Date.now();
     $("tkGo").disabled = true;
-    try{ for (const u of to){ const ref = db.collection(`meets/${u}/tasks`).doc(), data = {title, note, dueAt, by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], createdAt:now};
-        await ref.set(data); ((S.tasks ||= {})[u] ||= {})[ref.id] = data; } schedule();
+    try{ for (const u of to){ const ref = db.collection(`meets/${u}/tasks`).doc(), data = {title, note, dueAt, status:"todo", by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], createdAt:now};
+        await ref.set(data); ((S.tasks ||= {})[u] ||= {})[ref.id] = data;
+        tkNotify([u], `Nueva tarea de ${data.byName}`, title + (note ? ` · ${note}` : ""), `${u}/${ref.id}`, u); } schedule();
       w.remove(); taskSubs(); quickToast(to.length > 1 ? `✓ Tarea asignada a ${to.length}` : `✓ Tarea asignada a ${String(nameOf(S.ps||{}, to[0])).split(" (")[0]}`); }
     catch(_){ $("tkGo").disabled = false; $("tkErr").textContent = "No se pudo guardar."; }
   });
@@ -3625,10 +3638,10 @@ document.addEventListener("click", async e => {
     if ((d.fb||"").trim()) patch.comments = (x0.comments||[]).concat([{by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], text:d.fb.trim(), at:now, st}]);
     if (st==="done"){ patch.doneAt = now; patch.doneBy = S.uid; }
     if (st==="changes" && !(d.fb||"").trim()){ quickToast("Escribe qué hay que ajustar"); return; }
-    const ok = await taskSave(k, patch); if (ok){ delete TKD[k]; if (st==="done" || st==="review") TK_OPEN = ""; quickToast("✓ " + TK_ST[st]); schedule(); } return; }
+    const ok = await taskSave(k, patch); if (ok){ tkWho(k, x0, st, (d.fb||"").trim()); delete TKD[k]; if (st==="done" || st==="review") TK_OPEN = ""; quickToast("✓ " + TK_ST[st]); schedule(); } return; }
   const cm = e.target.closest("[data-tkcmt]"); if (cm){ e.stopPropagation(); const k = cm.dataset.tkcmt, d = TKD[k] || {}, x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
     if (!(d.fb||"").trim()){ quickToast("Escribe el comentario"); return; }
-    if (await taskSave(k, {comments:(x0.comments||[]).concat([{by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], text:d.fb.trim(), at:Date.now()}])})){ delete TKD[k]; quickToast("✓ Comentario enviado"); } return; }
+    if (await taskSave(k, {comments:(x0.comments||[]).concat([{by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], text:d.fb.trim(), at:Date.now()}])})){ tkWho(k, x0, "comment", d.fb.trim()); delete TKD[k]; quickToast("✓ Comentario enviado"); } return; }
   const sv = e.target.closest("[data-tksave]"); if (sv){ e.stopPropagation(); const k = sv.dataset.tksave, d = TKD[k] || {}; if (await taskSave(k, {reply:d.rep ?? ""})){ delete TKD[k]; quickToast("✓ Guardado"); } return; }
   if (e.target.closest(".tk-det")) return;
   const op = e.target.closest("[data-tkopen]"); if (op){ TK_OPEN = TK_OPEN===op.dataset.tkopen ? "" : op.dataset.tkopen; schedule(); return; }
