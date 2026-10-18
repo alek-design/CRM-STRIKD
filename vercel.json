@@ -3,6 +3,10 @@
     {
       "source": "/_blob/:id",
       "destination": "/api/blob/:id"
+    },
+    {
+      "source": "/f/:path*",
+      "destination": "/api/f?path=:path*"
     }
   ],
   "functions": {

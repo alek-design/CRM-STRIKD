@@ -4,7 +4,7 @@
 //  · Conversación nueva → se asigna sola: opción "load" (menos carga) u opción "best" (mejores resultados, 4 semanas).
 //  · Cada envío queda registrado con quién lo mandó. Envíos siempre por clic de una persona, con idempotency_key.
 const { withPg, userFromReq } = require("../lib/google");
-const { publicMedia, mediaPayload } = require("../lib/iskmedia");
+const { publicMedia, mediaPayload, asAttachment, withLink } = require("../lib/iskmedia");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const enc = encodeURIComponent;
 const digits = x => String(x || "").replace(/\D/g, "").slice(-10);
@@ -225,7 +225,11 @@ module.exports = async (req, res) => {
         const text = String(input.text || "").slice(0, 4000);
         const base = {conversation_id:input.conversation_id, idempotency_key:input.idempotency_key};
         let j, mediaErr = null, mediaInfo = null;
-        if (media){ // foto, PDF o nota de voz: ISKRA la descarga del link público. El texto va como pie del archivo.
+        const origin = "https://" + (req.headers["x-forwarded-host"] || req.headers.host || "growth.strikd.ai");
+        if (media && !asAttachment()){ // foto, PDF o nota de voz como link corto dentro del mensaje
+          const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type, como:"link"};
+          j = await iskra("POST", "/v1/messages/reply", {...base, text:withLink(text, pm, origin).slice(0, 4000)});
+        } else if (media){ // como adjunto (cuando ISKRA lo soporte). El texto va como pie del archivo.
           try{
             const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type};
             j = await iskra("POST", "/v1/messages/reply", {...base, ...mediaPayload(pm, text)});
