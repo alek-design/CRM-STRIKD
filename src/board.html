@@ -666,6 +666,17 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+#viewAsBar{display:none!important}#viewAsBtn{display:none!important}
+.va-box{display:grid;gap:8px;padding:10px 12px 12px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.va-t{display:flex;gap:8px;align-items:baseline;font-size:12px;color:var(--muted)}.va-t b{color:var(--fg);font-size:13px}
+.va-box{min-width:0}.va-box select{width:100%;box-sizing:border-box;max-width:100%}
+.more-in .va-chips button,.va-chips button{display:block;width:auto;min-width:0;font-size:12.5px!important;padding:7px 2px!important;justify-content:center;text-align:center;gap:0}
+.va-chips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:var(--raised);border-radius:12px;padding:3px}
+.va-chips button{font:inherit;font-size:12px;font-weight:600;border:0;background:none;color:var(--muted);padding:7px 2px;border-radius:9px;cursor:pointer;white-space:nowrap}
+.va-chips button.on{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.va-box select{font-size:13px;padding:7px 10px}
+#vaAcct .va-box{padding:8px 4px 10px;border-bottom:1px solid var(--line);border-top:1px solid var(--line);margin:6px 0}
+
 /* etiquetas: el asterisco junto al texto, no en otra línea */
 label.f{display:block}label.f > input,label.f > select,label.f > textarea{display:block;width:100%;margin-top:5px;box-sizing:border-box}
 .bk #meetForm > .row:first-child{display:none}
@@ -955,6 +966,7 @@ body.mob-open header.top{z-index:31}
         <div class="am-who"><b id="amName">Tu cuenta</b><span id="amRole"></span></div>
         <button type="button" data-tab="settings" id="tabSettings">⚙︎ Ajustes</button>
         <div id="amAcct"></div>
+        <div id="vaAcct"></div>
         <button type="button" class="btn small gc-chip" id="gcChip" hidden></button>
         <div class="adminacts" id="adminActs" hidden>
           <button class="btn small" id="xlsBtn" hidden style="position:absolute;left:-9999px">Descargar Excel</button>
@@ -1444,7 +1456,7 @@ const ICO = {
 };
 const svg = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
 function islandItems(){
-  if (michMode()) return {main:[["mich","crown","Mi lista"],["settings","gear","Ajustes"]], more:[]};
+  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["more","more","Más"]], more:[["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["settings","gear","Ajustes"]], more:[]};
   const lead = adminMode(), am = !lead;
   const unread = ISK.convs.filter(c => c.lastDir==="in" && !c.disc && (lead ? true : c.owner===meId())).length;
   const msgN = unread || (Number($("msgCount").textContent)||0) * ($("msgCount").hidden ? 0 : 1);
@@ -1454,7 +1466,7 @@ function islandItems(){
   const more = am
     ? [["perf","trophy","Mi desempeño"],["settings","gear","Ajustes"]]
     : [["flow","cols","Pipeline",Number($("lateCount").textContent)||0],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
-       ...(S.isOwner && !S.viewAs && !S.viewMgr ? [["viewas","eye","Vista de usuario"]] : []),["settings","gear","Ajustes"]];
+       ["settings","gear","Ajustes"]];
   return {main, more};
 }
 function renderIsland(){
@@ -1463,7 +1475,7 @@ function renderIsland(){
   const {main, more} = islandItems(), inMore = more.some(([t]) => t===S.tab || (t==="funnel" && S.tab==="wa"));
   nav.style.gridTemplateColumns = `repeat(${main.length},1fr)`; nav.style.width = main.length < 4 ? "min(240px,calc(100% - 24px))" : "";
   nav.innerHTML = main.map(([t,ic,l,n]) => `<button type="button" data-isl="${t}" class="${(t===S.tab || (t==="more" && inMore))?"on":""}" aria-label="${l}">${svg(ic)}<span>${l}</span>${n?`<i class="bd">${n>99?"99+":n}</i>`:""}</button>`).join("");
-  if (!$("moreSheet").hidden) $("moreIn").innerHTML = `<div class="more-t">${esc($("closeLabel").textContent)}<b>${esc($("countdown").textContent)}</b></div>` + more.map(([t,ic,l,n]) => `<button type="button" data-islm="${t}" class="${t===S.tab?"on":""}">${svg(ic)}${l}${n?`<span class="n">${n}</span>`:""}</button>`).join("");
+  if (!$("moreSheet").hidden) $("moreIn").innerHTML = vaHtml() + `<div class="more-t">${esc($("closeLabel").textContent)}<b>${esc($("countdown").textContent)}</b></div>` + more.map(([t,ic,l,n]) => `<button type="button" data-islm="${t}" class="${t===S.tab?"on":""}">${svg(ic)}${l}${n?`<span class="n">${n}</span>`:""}</button>`).join("");
 }
 $("mTimer").addEventListener("click", () => $("mTimer").classList.toggle("open"));
 $("island").addEventListener("click", e => {
@@ -1473,6 +1485,7 @@ $("island").addEventListener("click", e => {
   $("moreSheet").hidden = true; showTab(t); window.scrollTo({top:0});
 });
 $("moreSheet").addEventListener("click", e => {
+  if (e.target.closest(".va-box")) return; // elegir la vista no cierra el menú
   const b = e.target.closest("[data-islm]"); $("moreSheet").hidden = true;
   if (!b) return renderIsland();
   const t = b.dataset.islm;
@@ -1508,7 +1521,7 @@ $("themeBtn").addEventListener("click", () => {
 });
 const MSEG = {v:null};
 function syncMsgSeg(){
-  const isk = !!iskFn() && (!S.viewAs || iskFn()===iskMock);
+  const isk = !!iskFn();
   // con ISKRA, la bandeja es solo la de ISKRA (una sola); sin ISKRA, la bandeja manual
   $("msegIsk").hidden = !isk; $("msegInbox").hidden = isk;
   if (!MSEG.v || (MSEG.v==="isk" && !isk) || (MSEG.v==="inbox" && isk)) MSEG.v = isk ? "isk" : "inbox";
@@ -1561,7 +1574,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderIsland(); renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -4106,7 +4119,11 @@ async function iskMock(op, input){
   if (op==="escalate"){ const c = conv(input.id); if (c) c._strikd = {...c._strikd, owner:(S.config && S.config.headId) || S.uid, assignedBy:"escalado", escalatedAt:new Date().toISOString()}; return {configured:true, ok:true}; }
   return {configured:true, data:{}};
 }
-function iskFn(){ return window.STRIKD_ISKRA || (window.STRIKD_SB ? null : iskMock); }
+function iskFn(){
+  // en Vista de usuario el servidor filtra como esa persona (el Head ve exactamente su bandeja)
+  if (window.STRIKD_ISKRA) return S.viewAs ? ((op, input) => window.STRIKD_ISKRA(op, {...(input||{}), as:S.viewAs})) : window.STRIKD_ISKRA;
+  return window.STRIKD_SB ? null : iskMock;
+}
 const ISK = {st:null, who:null, convs:[], sel:null, msgs:{}, sent:{}, draft:{}, busy:false, err:"", raw:null, at:0, loading:false, timer:null, filter:"", mode:"load"};
 const iskArr = j => { const d = j && (j.data !== undefined ? j.data : j); return Array.isArray(d) ? d : (d && (d.data || d.items || d.conversations || d.messages || d.results)) || []; };
 const iskTxt = m => String(m.text || m.body || m.content || m.message || (m.template && (m.template.name || m.template)) || "");
@@ -4226,7 +4243,7 @@ function iskTplMenu(c){
 function iskBubbles(c){ const ms = ISK.msgs[c.id]; return !ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}${x.failed?" failed":""}">${iskMediaHtml(x)}${x.t?`<p>${esc(x.t)}</p>`:""}<span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`; }
 function renderIskra(){
   const box = $("iskBox"); if (!box) return;
-  const on = !!iskFn() && (!S.viewAs || iskFn()===iskMock);
+  const on = !!iskFn();
   box.hidden = !on; if (!on || S.tab!=="msgs") { clearInterval(ISK.timer); clearInterval(ISK.thT); ISK.timer = null; ISK.thT = null; return; }
   if (!ISK.timer){
     if (!ISK.st && iskFn()!==iskMock){ try{ const c0 = JSON.parse(localStorage.getItem("strikd_isk_" + meId()) || "null"); if (c0 && c0.list && Date.now() - c0.at < 7*864e5){ ISK.convs = c0.list.map(iskConv).filter(c => c.id); ISK.st = "ok"; ISK.stale = true; ISK.at = 0; } }catch(e){} }
@@ -4674,16 +4691,33 @@ function enterViewAs(uid){
   S.viewAs = uid; resetForm(); setFormEnabled(true);
   $("viewAsBar").hidden = false; $("adminActs").hidden = true; $("viewAsBtn").hidden = true; Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]});
   $("tabAdmin").hidden = true; $("tabFlow").hidden = true; $("tabAgenda").hidden = false; $("tabFunnel").hidden = true; $("tabVip").hidden = true; $("tabWa").hidden = true; $("tabMine").hidden = true; $("tabPerf").hidden = false; $("tabOrg").hidden = true;
-  showTab("board");
+  syncMichUi(); vaFixTab();
   schedule();
 }
 function exitViewAs(){
   S.viewAs = null; S.viewMgr = null; setFormEnabled(true);
   $("viewAsBar").hidden = true; $("adminActs").hidden = false; $("viewAsBtn").hidden = !S.isOwner; Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]});
   $("tabMine").hidden = true; $("tabPerf").hidden = true; if (S.tab==="perf") showTab("board"); $("tabOrg").hidden = !S.isOwner; $("tabAdmin").hidden = false; $("tabFlow").hidden = false; $("tabAgenda").hidden = false; $("tabFunnel").hidden = false; $("tabVip").hidden = false; $("tabWa").hidden = false;
-  showTab("board"); schedule();
+  S._mm = undefined; syncMichUi(); vaFixTab(); schedule();
 }
-/* Vista de usuario por rol: Account Manager, Manager o Influencer Outreach */
+/* Vista de usuario por rol: Account Manager, Manager o Influencer Outreach.
+   Se elige desde Más (celular) o el menú de tu cuenta (computadora); te quedas en la misma pestaña. */
+function vaFixTab(){
+  const allowed = michMode() ? ["mich","settings"] : adminMode() ? ["board","msgs","agenda","flow","funnel","vip","wa","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["board","agenda","msgs","perf","settings"];
+  showTab(allowed.includes(S.tab) ? S.tab : allowed[0]);
+}
+function vaCur(){ return S.viewMgr ? "manager" : S.viewAs ? (roleOf(S.viewAs)==="influencer" ? "influencer" : "am") : "admin"; }
+function vaHtml(){
+  if (!S.isOwner) return "";
+  const cur = vaCur(), ppl = cur==="admin" ? [] : vaPeople(cur), sel = S.viewAs || S.viewMgr || "";
+  const L = {admin:"Yo", am:"AM", manager:"Manager", influencer:"Influencer"};
+  return `<div class="va-box"><div class="va-t"><span>Ver como</span>${cur!=="admin" ? `<b>${esc(sel==="__mgr" ? "Manager" : nameOf(S.ps||{}, sel))}</b>` : ""}</div>
+    <div class="va-chips">${Object.entries(L).map(([k,l]) => `<button type="button" data-vapick="${k}" class="${k===cur?"on":""}">${l}</button>`).join("")}</div>
+    ${ppl.length > 1 ? `<select data-vasel="1" aria-label="Persona">${ppl.map(id => `<option value="${id}"${id===sel?" selected":""}>${id==="__mgr" ? "Manager (sin asignar)" : esc(nameOf(S.ps||{}, id))}</option>`).join("")}</select>` : ""}</div>`;
+}
+function vaPick(k){ if (k==="admin"){ if (S.viewAs || S.viewMgr) exitViewAs(); } else enterVA(k, null); }
+document.addEventListener("click", e => { const b = e.target.closest("[data-vapick]"); if (b){ e.stopPropagation(); vaPick(b.dataset.vapick); } }, true);
+document.addEventListener("change", e => { const s2 = e.target.closest("[data-vasel]"); if (s2) enterVA(vaCur(), s2.value); });
 const VA = {role:"am"};
 function vaPeople(r){
   const all = Object.keys(S.members||{});
@@ -4697,11 +4731,11 @@ function enterVA(role, uid){
   if (!uid){ alert(role==="influencer" ? "Aún no hay nadie con el rol Influencer Outreach. Asígnalo en el Organigrama." : "Aún no hay nadie con ese rol."); return schedule(); }
   if (role==="manager"){
     if (S.viewAs) exitViewAs();
-    S.viewMgr = uid; $("viewAsBar").hidden = false; $("viewAsBtn").hidden = true; $("tabOrg").hidden = true;
-    showTab("board"); return schedule();
+    S.viewMgr = uid; $("viewAsBtn").hidden = true; $("tabOrg").hidden = true;
+    vaFixTab(); return schedule();
   }
   if (S.viewMgr){ S.viewMgr = null; }
-  if (S.viewAs){ S.viewAs = uid; resetForm(); Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]}); iskLoad(true); $("tabMine").hidden = true; $("tabAgenda").hidden = false; $("tabPerf").hidden = false; showTab(role==="influencer" ? "mich" : "board"); return schedule(); }
+  if (S.viewAs){ S.viewAs = uid; resetForm(); Object.assign(ISK, {at:0, filter:"", sel:null, convs:[]}); iskLoad(true); $("tabMine").hidden = true; $("tabAgenda").hidden = false; $("tabPerf").hidden = false; S._mm = undefined; syncMichUi(); vaFixTab(); return schedule(); }
   enterViewAs(uid);
 }
 $("viewAsBtn").addEventListener("click", () => enterVA(VA.role, null));

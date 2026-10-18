@@ -109,14 +109,17 @@ module.exports = async (req, res) => {
   if (!["head", "manager", "am"].includes(me.role)) return res.status(403).json({error:"Sin acceso a WhatsApp."});
   if (!process.env.ISKRA_API_KEY) return res.json({configured:false});
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
-  const op = body.op, input = body.input || {}, lead = me.role !== "am";
+  const op = body.op, input = body.input || {};
+  // Vista de usuario: el Head puede ver WhatsApp exactamente como lo ve otra persona (solo filtra; lo que mande queda a su nombre)
+  const asId = me.role === "head" && /^[0-9a-f-]{36}$/i.test(String(input.as || "")) ? String(input.as) : null;
+  const lead = me.role !== "am" && !asId, viewId = asId || me.id;
   // Ruta rápida para el chat abierto: solo lo nuevo desde cierta hora (sin base de datos si ya sabemos que es suyo).
   if (op === "tail"){
     try{
       const id = String(input.id || ""); if (!id) return res.status(400).json({error:"Falta id"});
-      if (!lead && OWN_CACHE[id] !== me.id){
+      if (!lead && OWN_CACHE[id] !== viewId){
         const ok = await withPg(async c => (await c.query("select owner from public.iskra_owner where conversation_id=$1", [id])).rows[0]);
-        if (!ok || ok.owner !== me.id) return res.status(403).json({error:"Esta conversación es de otra persona."});
+        if (!ok || ok.owner !== viewId) return res.status(403).json({error:"Esta conversación es de otra persona."});
         OWN_CACHE[id] = ok.owner;
       }
       const since = new Date(Math.max(0, Number(input.since) || Date.now() - 600e3) - 2000).toISOString();
@@ -129,7 +132,7 @@ module.exports = async (req, res) => {
     const out = await withPg(async c => {
       if (!globalThis.__iskInit){ await c.query(SQL_INIT); globalThis.__iskInit = true; } // solo una vez por arranque
       const ownerOf = async id => (await c.query("select * from public.iskra_owner where conversation_id=$1", [String(id)])).rows[0];
-      const mustOwn = async id => { const o = await ownerOf(id); if (!lead && (!o || o.owner !== me.id)) throw Object.assign(new Error("Esta conversación es de otra persona."), {status:403}); return o; };
+      const mustOwn = async id => { const o = await ownerOf(id); if (!lead && (!o || o.owner !== viewId)) throw Object.assign(new Error("Esta conversación es de otra persona."), {status:403}); return o; };
       if (op === "whoami"){ const j = await iskra("GET", "/v1/whoami"); return {data:j, me:{id:me.id, role:me.role}}; }
       if (op === "conversations"){
         // Solo conversaciones donde el prospecto YA contestó al menos una vez.
@@ -187,7 +190,7 @@ module.exports = async (req, res) => {
             if (!o.owner){ const p = await pick(norm.phone); await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
           }
           OWN_CACHE[id] = o.owner;
-          if (lead || o.owner === me.id) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by}});
+          if (lead || o.owner === viewId) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by}});
         }
         T.total = Date.now() - t0; res.setHeader("server-timing", `iskra;dur=${T.iskra}, total;dur=${T.total}`);
         const debug = lead ? {tiempos_ms:T, lista:LIST_CACHE.info, conversaciones_en_lista:list.length, revisadas_esta_vuelta:toCheck.length, pendientes_de_revisar:ids.filter(stale).length - toCheck.length, con_respuesta:out.length, ejemplo_conversacion:list[0] || null} : undefined;
