@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 16:43:29 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 17:02:22 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792341809">
+<link rel="stylesheet" href="/auth.css?v=1792342942">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792341809"></script>
+<script src="/claude-shim.js?v=1792342942"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -4137,7 +4137,13 @@ function presOf(u){
   if (ago < PRES_RECENT) return {st:"recent", ago, min:Math.max(1, Math.round(ago/60e3))};
   return {st:"", ago};
 }
-function presOnline(){ return Object.keys(S.team||{}).filter(u => u!==S.uid && presOf(u).st==="on"); }
+// a quién ve en "en línea": el Head a todo el equipo (Manager, Influencer y AMs); un Manager solo a sus AMs
+function presPeople(){
+  const all = S.isOwner && !teamScoped() ? Object.keys(S.members||{}) : Object.keys(S.team||{});
+  const ord = {manager:0, influencer:1, am:2};
+  return [...new Set(all)].filter(u => u!==S.uid).sort((a,b) => (ord[roleOf(a)]??3) - (ord[roleOf(b)]??3));
+}
+function presOnline(){ return presPeople().filter(u => presOf(u).st==="on"); }
 let PRES_LAST = 0;
 function presBeat(away){
   if (!S.uid || !db || S.canWrite === false) return;
@@ -4178,7 +4184,7 @@ function renderTeamLoad(){
   const kind = {pitch:"Pitch", skel:"Skeleton", build:"Lanzamiento"};
   const lab = LOAD_W===0 ? "Esta semana" : LOAD_W===1 ? "Próxima semana" : LOAD_W===-1 ? "Semana pasada" : `${Number(days[0].slice(8))} ${MONTHS[Number(days[0].slice(5,7))-1]}`;
   const h = `<section class="pg2 tld"><div class="pg2-h"><span>Carga semanal</span><span class="tld-nav"><button type="button" data-ldw="-1" aria-label="Semana anterior">‹</button><em>${lab}</em><button type="button" data-ldw="1" aria-label="Semana siguiente">›</button></span></div>
-    ${presLine(rows.map(r => r.u))}<div class="pg2-card">${rows.map(r => { const [c, l] = lvl(r); return `<details class="tld-p"><summary>
+    ${presLine(presPeople())}<div class="pg2-card">${rows.map(r => { const [c, l] = lvl(r); return `<details class="tld-p"><summary>
       <div class="tld-top"><b>${esc(first(r.u))}</b>${presTag(r.u)}<span class="tld-lv ${c}">${l}</span><span class="pr-chev">›</span></div>
       <div class="tld-bar"><i style="width:${Math.round(r.load/max*100)}%"></i></div>
       <div class="tld-n"><span><b>${r.meets}</b> meet${r.meets===1?"":"s"}</span><span><b>${r.pend}</b> pendiente${r.pend===1?"":"s"}${r.late?` <em>${r.late} tarde</em>`:""}</span><span><b>${r.tk}</b> tarea${r.tk===1?"":"s"}</span></div>
