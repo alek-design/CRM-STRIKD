@@ -38,6 +38,14 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+.tk-img{display:block;width:120px;height:120px;border-radius:12px;overflow:hidden;border:1px solid var(--line2);background:var(--raised)}
+.tk-img img{width:100%;height:100%;object-fit:cover;display:block}
+.tk-files{align-items:center}
+.tk-thumb{width:34px;height:34px;border-radius:8px;object-fit:cover;border:1px solid var(--line2);flex:none}
+.tk-new-file{display:grid;gap:6px}.tk-new-file>span{font-size:13px;font-weight:600;color:var(--fg2)}
+.tk-pick{display:flex;align-items:center;justify-content:center;border:1.5px dashed var(--line2);border-radius:12px;padding:12px;font-size:14px;font-weight:600;color:var(--fg2);cursor:pointer;background:var(--surface)}
+.tk-prev{display:flex;align-items:center;gap:10px}
+.tk-prev img{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line2)}
 #perfBox .pf-row.worst{border-color:var(--line2)}
 #perfBox .pf-row.down .pf-bar.me i{background:var(--fg);opacity:.55}
 #perfBox .pf-row.down .pf-n b{color:var(--fg)}
@@ -3742,10 +3750,14 @@ function taskAssignedByMe(){ const out = []; Object.entries(S.tasks||{}).forEach
 const TK_ST = {todo:"Por hacer", progress:"En progreso", review:"Esperando aprobación", changes:"Necesita ajustes", done:"Completado"};
 const tkSt = x => x.status || (x.doneAt ? "done" : "todo");
 const TKD = {}; let TK_OPEN = "";
+const tkIsImg = f => /^image\//.test((f && f.type) || "") || /\.(png|jpe?g|gif|webp|heic|heif|avif)$/i.test((f && f.name) || "");
 function taskRow(u, id, x, lead, now){
   const k = `${u}/${id}`, st = tkSt(x), late = x.dueAt && x.dueAt < now && st!=="done" && st!=="review", open = TK_OPEN===k;
   const sub = lead ? [String(nameOf(S.ps||{}, u)).split(" (")[0], x.dueAt ? fmtLocal(x.dueAt).split(",")[0] : ""].filter(Boolean).join(" · ") : [x.byName && x.by !== u ? "de " + x.byName : "", x.dueAt ? (late ? "tarde" : "para " + fmtLocal(x.dueAt).split(",")[0]) : ""].filter(Boolean).join(" · ");
-  const files = (x.files||[]).map(f => `<a class="tk-file" href="${esc(f.url)}" target="_blank" rel="noopener">📎 ${esc(f.name||"archivo")}</a>`).join("");
+  // imágenes con vista previa; los demás archivos (PDF, etc.) como chip
+  const files = (x.files||[]).map(f => tkIsImg(f) ? `<a class="tk-img" href="${esc(f.url)}" target="_blank" rel="noopener" title="${esc(f.name||"imagen")}"><img src="${esc(f.url)}" alt="${esc(f.name||"imagen")}" loading="lazy"></a>`
+    : `<a class="tk-file" href="${esc(f.url)}" target="_blank" rel="noopener">${/pdf/i.test(f.type||f.name||"") ? "📄" : "📎"} ${esc(f.name||"archivo")}</a>`).join("");
+  const thumb = (x.files||[]).find(tkIsImg);
   const d = TKD[k] || {};
   const det = !open ? "" : `<div class="tk-det" data-tkbox="${k}">
       ${x.note ? `<p class="tk-note">${esc(x.note)}</p>` : ""}
@@ -3760,6 +3772,7 @@ function taskRow(u, id, x, lead, now){
   return `<div class="pr tkr st-${st}${late?" late":""}${open?" sel":""}" role="button" tabindex="0" data-tkopen="${k}">
       <span class="tk-ring st-${st}" aria-hidden="true">${st==="done" ? "✓" : ""}</span>
       <span class="pr-m"><b>${esc(x.title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</span>
+      ${thumb ? `<img class="tk-thumb" src="${esc(thumb.url)}" alt="" loading="lazy">` : ""}
       <span class="tk-st st-${st}">${esc(TK_ST[st])}</span>
     </div>${det}`;
 }
@@ -3795,19 +3808,34 @@ function taskOpen(){
       <label class="f full">Detalle (opcional)<textarea id="tkNote" rows="2" placeholder="Contexto, links, cómo debe quedar"></textarea></label>
       <label class="f">Para <em>*</em><select id="tkWho"><option value="">Elige</option><option value="__team">Todo el equipo</option>${ppl.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (tú)":""}</option>`).join("")}</select></label>
       <label class="f">Para cuándo<input type="date" id="tkDue" value="${today}"></label>
+      <div class="f full tk-new-file"><span>Imagen o archivo (opcional)</span>
+        <label class="tk-pick" id="tkPick"><input type="file" id="tkFile" accept="image/*,application/pdf" hidden><span id="tkPickL">📷 Agregar imagen o PDF</span></label>
+        <div id="tkPrev"></div></div>
     </div>
     <p class="mut small" style="margin:8px 6px 0">Le sale en sus pendientes del día hasta que la marque como hecha.</p>
     <div class="row"><span class="err" id="tkErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="tkGo">Asignar tarea</button></div></div>`;
   document.body.appendChild(w);
+  w.addEventListener("change", e => { if (e.target.id !== "tkFile") return; const f = e.target.files[0], pv = $("tkPrev");
+    if (!f){ pv.innerHTML = ""; return; }
+    if (f.size > 15*1024*1024){ e.target.value = ""; pv.innerHTML = `<p class="err">El archivo pesa más de 15 MB</p>`; return; }
+    pv.innerHTML = tkIsImg(f) ? `<div class="tk-prev"><img src="${URL.createObjectURL(f)}" alt=""><button type="button" class="pr-x" data-tkfx="1">Quitar</button></div>` : `<div class="tk-prev"><span class="tk-file">📄 ${esc(f.name)}</span><button type="button" class="pr-x" data-tkfx="1">Quitar</button></div>`;
+    $("tkPickL").textContent = "Cambiar archivo"; });
   w.addEventListener("click", async e => {
     if (e.target===w || e.target.closest("[data-tkx]")) return w.remove();
+    if (e.target.closest("[data-tkfx]")){ $("tkFile").value = ""; $("tkPrev").innerHTML = ""; $("tkPickL").textContent = "📷 Agregar imagen o PDF"; return; }
     if (!e.target.closest("#tkGo")) return;
     const title = $("tkTitle").value.trim(), who = $("tkWho").value, due = $("tkDue").value, note = $("tkNote").value.trim();
     if (!title || !who){ $("tkErr").textContent = "Escribe la tarea y elige para quién."; return; }
     const to = who==="__team" ? Object.keys(S.team||{}) : [who];
     const dueAt = due ? Date.parse(due + "T18:00:00-05:00") : 0, now = Date.now();
     $("tkGo").disabled = true;
-    try{ for (const u of to){ const ref = db.collection(`meets/${u}/tasks`).doc(), data = {title, note, dueAt, status:"todo", by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], createdAt:now};
+    let files = [];
+    const file = $("tkFile") && $("tkFile").files[0];
+    if (file){ $("tkGo").textContent = "Subiendo…";
+      try{ const assets = await claude.use("assets"); const up = await assets.upload(file);
+        files = [{name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || "", at:now}]; }
+      catch(_){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = "No se pudo subir el archivo. Intenta otra vez o quítalo."; return; } }
+    try{ for (const u of to){ const ref = db.collection(`meets/${u}/tasks`).doc(), data = {title, note, dueAt, status:"todo", by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], createdAt:now, ...(files.length ? {files} : {})};
         await ref.set(data); ((S.tasks ||= {})[u] ||= {})[ref.id] = data;
         tkNotify([u], `Nueva tarea de ${data.byName}`, title + (note ? ` · ${note}` : ""), `${u}/${ref.id}`, u); } schedule();
       w.remove(); taskSubs(); if (to.includes(meId())){ AG_DAY = null; showTab("agenda"); }
