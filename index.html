@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-18 07:23:38 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-18 07:25:11 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792308218">
+<link rel="stylesheet" href="/auth.css?v=1792308311">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792308218"></script>
+<script src="/claude-shim.js?v=1792308311"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -673,6 +673,24 @@ label.f em{color:var(--bad);font-style:normal}
 .stats{display:flex;flex-wrap:wrap;gap:8px}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Pendientes: sección por acción, filas con inicial, fecha en pastilla y acción rápida */
+.pg2{margin-bottom:16px}
+.pg2-h{display:flex;align-items:center;gap:8px;margin:0 4px 6px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.pg2-h b{font-size:12px;color:var(--muted);background:var(--raised);border-radius:999px;padding:1px 8px;letter-spacing:0}
+.pg2-h em{font-style:normal;letter-spacing:0;text-transform:none;color:var(--bad);font-weight:700;margin-left:auto}
+.pg2-card{background:var(--surface);border:1px solid var(--line2);border-radius:16px;overflow:hidden}
+.pr{display:flex;align-items:center;gap:12px;padding:11px 12px;border-top:1px solid var(--line);cursor:pointer;min-height:56px}
+.pr:first-child{border-top:0}.pr.sel{background:var(--raised)}
+.pr-av{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--raised);color:var(--muted2);border:1px solid var(--line2)}
+.pr.late .pr-av,.pr.crit .pr-av{background:color-mix(in srgb,var(--bad) 10%,var(--surface));color:var(--bad);border-color:color-mix(in srgb,var(--bad) 30%,transparent)}
+.pr-m{flex:1;min-width:0;display:grid;gap:1px}.pr-m b{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pr-m small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-due{flex:none;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--raised);color:var(--muted)}
+.pr-due.late,.pr-due.crit{background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--bad)}.pr-due.soon{background:color-mix(in srgb,var(--wait) 14%,transparent);color:var(--wait)}
+.pr-go{flex:none;font:inherit;font-size:12.5px;font-weight:700;padding:7px 12px;border-radius:999px;border:0;background:var(--fg);color:var(--bg);cursor:pointer}
+.pr-chev{flex:none;color:var(--muted);font-size:20px;line-height:1;margin-left:-2px}
+.pg2-card .detail{margin:0 10px 12px}
+.pg2-card .pg-more{border-top:1px solid var(--line)}
 
 .mi-cool{display:grid;gap:4px;background:color-mix(in srgb,#3b82f6 10%,var(--surface));border:1px solid color-mix(in srgb,#3b82f6 35%,var(--line2));border-radius:14px;padding:12px 14px;margin:0 0 10px}
 .mi-cool b{font-size:14px}.mi-cool span{font-size:12.5px;color:var(--muted2)}.mi-cool .mi-cool-t{font-weight:700;color:var(--fg)}
@@ -3249,11 +3267,17 @@ function renderPlan(){
   const groups = []; tks.forEach(t => { const k = grpKey(t); let g = groups.find(x => x.k===k); if (!g) groups.push(g = {k, items:[]}); g.items.push(t); });
   groups.sort((a,b) => a.items[0].due - b.items[0].due);
   const shortDue = t => { if (t.due >= now) return `antes de ${hm(t.due)}`; const h = Math.round((now - t.due)/HR); return h < 24 ? `${Math.max(1,h)} h tarde` : `${Math.round(h/24)} d tarde`; };
-  const todo = groups.map(g => { const late = g.items.filter(t => t.due < now).length, open = MORE["g:"+g.k], lim = open ? g.items.length : 3;
-    return `<div class="pg"><div class="pg-h"><b>${esc(g.k)}</b><span class="pg-n${late?" late":""}">${g.items.length}${late?` · ${late} tarde`:""}</span></div>
-      ${g.items.slice(0, lim).map(t => { const d = dueInfo(t.due, now), key = `tk|${t.uid}__${t.id}`;
-        return `<button type="button" class="pg-row ${d.cls}${sel===key?" sel":""}" data-pick="${key}"><span class="pl-check" aria-hidden="true"></span><span class="pg-who"><b>${esc((t.m && t.m.prospect) || t.title)}</b>${admin?`<small>${esc(String(nameOf(S.ps,t.uid)).split(" ")[0])}</small>`:""}</span><span class="pg-due ${d.cls}">${esc(shortDue(t))}</span></button>${expand(key, t.uid, t.id, t.m)}`; }).join("")}
-      ${g.items.length > 3 ? `<button type="button" class="pg-more" data-pgmore="${esc(g.k)}">${open ? "Ver menos" : `+${g.items.length - 3} más`}</button>` : ""}</div>`; }).join("")
+  const todo = groups.map(g => { const late = g.items.filter(t => t.due < now).length, open = MORE["g:"+g.k], lim = open ? g.items.length : 4;
+    return `<section class="pg2"><div class="pg2-h"><span>${esc(g.k)}</span><b>${g.items.length}</b>${late?`<em>${late} tarde</em>`:""}</div><div class="pg2-card">
+      ${g.items.slice(0, lim).map(t => { const d = dueInfo(t.due, now), key = `tk|${t.uid}__${t.id}`, nm = (t.m && t.m.prospect) || t.title;
+        const quick = (t.acts||[]).find(a => !a.input), sub = [admin ? String(nameOf(S.ps,t.uid)).split(" (")[0] : "", t.m ? stageOf(t.id, t.m).t : ""].filter(Boolean).join(" · ");
+        return `<div class="pr ${d.cls}${sel===key?" sel":""}" role="button" tabindex="0" data-pick="${key}">
+          <span class="pr-av">${esc((String(nm).trim()[0]||"?").toUpperCase())}</span>
+          <span class="pr-m"><b>${esc(nm)}</b>${sub?`<small>${esc(sub)}</small>`:""}</span>
+          <span class="pr-due ${d.cls}">${esc(shortDue(t))}</span>
+          ${quick ? `<button class="pr-go" data-act="${quick.act}" data-uid="${t.uid}" data-id="${t.id}">${esc(({cancelled:"✓ Cancelé", confirmed:"✓ Confirmó", reminded:"✓ Enviado", lost:"Perdido"})[quick.act] || quick.label)}</button>` : `<span class="pr-chev" aria-hidden="true">›</span>`}
+        </div>${expand(key, t.uid, t.id, t.m)}`; }).join("")}
+      ${g.items.length > 4 ? `<button type="button" class="pg-more" data-pgmore="${esc(g.k)}">${open ? "Ver menos" : `Ver ${g.items.length - 4} más`}</button>` : ""}</div></section>`; }).join("")
     + waToday.slice(0, 5).map(([id,l]) => { const d = dueInfo((l.assignedAt||0)+24*HR, now); return `<button type="button" class="pl-item task ${d.cls}" data-gowa="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Agenda el meet con ${esc(l.name)}</b><small>Interesado de WhatsApp</small></span><span class="sema ${d.cls}"><i></i>${l.assignedAt+24*HR < now ? esc(d.txt) : `Antes de ${hm(l.assignedAt+24*HR)}`}</span></button>`; }).join("")
     + (waToday.length > 5 ? `<button type="button" class="more" data-gowa="1">+${waToday.length-5} interesados de WhatsApp</button>` : "")
     + (admin ? "" : Object.values(vipItems(meId())).filter(x => (x.status==="interesado" || x.status==="agendo") && x.statusAt && now - x.statusAt < 3*864e5).slice(0, 3).map(x => `<button type="button" class="pl-item task ok" data-gotab="perf"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b>${PICON[3]} ${esc(x.prospect)} ${x.status==="agendo" ? "ya agendó meet con Mich" : "está interesado"}</b><small>Una de tus propuestas para Mich</small></span><span class="sema ok"><i></i>Nuevo</span></button>`).join(""))
