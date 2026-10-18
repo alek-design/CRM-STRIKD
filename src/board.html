@@ -1543,7 +1543,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const safeUrl = u => /^https?:\/\//i.test(u||"") ? u : "";
 const $ = id => document.getElementById(id);
 
-const S = { tpls:{}, tplLog:{}, myTplLog:{}, waCamps:{}, waLeads:{}, myWaLeads:{}, vip:{}, myVip:{}, roles:{}, team:{}, isLead:false, pts:{}, uid:null, isOwner:false, canWrite:null, members:{}, validations:{}, mine:{}, all:{}, config:null,
+const S = { tpls:{}, tplLog:{}, myTplLog:{}, waCamps:{}, waLeads:{}, myWaLeads:{}, vip:{}, myVip:{}, roles:{}, team:{}, isLead:false, pts:{}, uid:null, isOwner:false, canWrite:null, members:{}, validations:{}, mine:{}, all:{}, allEvery:{}, config:null,
   tab:"board", viewAs:null, ps:{}, boardWeek:null, rejecting:null, editingId:null, readOnly:false };
 let db=null, user=null, adminSubs={};
 var BOOK = {open:false, home:null, next:null, wrap:null};
@@ -2311,7 +2311,7 @@ function renderAdmin(ps){
 
   const byEmail = {};
   const byProf = {}, normP = u => (u||"").toLowerCase().replace(/^https?:\/\/(www\.)?/,"").replace(/[?#].*$/,"").replace(/\/+$/,"");
-  Object.values(S.all).forEach(o=>Object.values(o).forEach(m=>{ const k=(m.email||"").toLowerCase(); if(k) byEmail[k]=(byEmail[k]||0)+1; const pk=normP(m.profile); if(pk) byProf[pk]=(byProf[pk]||0)+1; }));
+  Object.values(S.allEvery).forEach(o=>Object.values(o).forEach(m=>{ const k=(m.email||"").toLowerCase(); if(k) byEmail[k]=(byEmail[k]||0)+1; const pk=normP(m.profile); if(pk) byProf[pk]=(byProf[pk]||0)+1; }));
 
   let rows = [];
   Object.entries(S.all).forEach(([uid,o]) => Object.entries(o).forEach(([id,m]) => rows.push({uid,id,m})));
@@ -2628,7 +2628,7 @@ function actsHtml(t){
         <div>${btn}</div></div>`;
     }
     if (a.input==="validate"){
-      const prof = safeUrl(t.m.profile), all = Object.values(S.all).flatMap(o => Object.entries(o||{}));
+      const prof = safeUrl(t.m.profile), all = Object.values(S.allEvery).flatMap(o => Object.entries(o||{}));
       const same = all.filter(([oid,o]) => oid!==t.id && ((t.m.email && (o.email||"").toLowerCase()===t.m.email.toLowerCase()) || (prof && o.profile===t.m.profile))).length;
       return `<div class="valbox"><div class="val-info">${prof?`<a class="btn" href="${esc(prof)}" target="_blank" rel="noopener">Ver perfil</a>`:`<span class="chip flag">Sin link de perfil</span>`}${same?`<span class="chip flag">Prospecto repetido en otro meet</span>`:""}</div>${btn}</div>`;
     }
@@ -3704,7 +3704,7 @@ function taskSubs(){
 function taskList(u){ return Object.entries((S.tasks||{})[u] || {}).sort((a,b) => (a[1].dueAt||9e15) - (b[1].dueAt||9e15)); }
 function taskAssignedByMe(){ const out = []; Object.entries(S.tasks||{}).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,x]) => { if (u===S.uid || x.by===u) return; // las tareas personales (que alguien se crea a sí mismo) no las ve nadie más
     const headU = S.config && S.config.headId;
-    if (x.by===S.uid || S.isOwner || (roleOf(S.uid)==="manager" && u!==headU)) out.push([u,id,x]); }));
+    if (x.by===S.uid || (S.isOwner && !teamScoped()) || (teamScoped() && S.team && S.team[u])) out.push([u,id,x]); }));
   const ord = {review:0, changes:1, progress:2, todo:3, done:4};
   return out.sort((a,b) => ord[tkSt(a[2])] - ord[tkSt(b[2])] || (b[2].createdAt||0) - (a[2].createdAt||0)).filter(([,,x]) => tkSt(x)!=="done" || Date.now() - (x.doneAt||0) < 3*864e5); }
 /* Estatus: Por hacer → En progreso (AM) → Esperando aprobación (AM) → Necesita ajustes / Completado (Head o Manager) */
@@ -3924,9 +3924,21 @@ const mgrOf = u => (S.roles[u] && S.roles[u].managerId) || "";
 function computeTeam(){
   const ams = Object.keys(S.members).filter(u => roleOf(u)==="am");
   let ids = ams;
-  if (S.isLead && !S.isOwner) ids = ams.filter(u => !mgrOf(u) || mgrOf(u)===S.uid);
-  if (S.viewMgr && S.viewMgr!=="__mgr") ids = ams.filter(u => !mgrOf(u) || mgrOf(u)===S.viewMgr);
+  // cada AM es de su manager; los que no tienen manager asignado son del primero (igual que en el organigrama)
+  const firstMgr = Object.keys(S.members).filter(u => roleOf(u)==="manager")[0] || "";
+  const headU = (S.config && S.config.headId) || (S.isOwner ? S.uid : "");
+  const mine = m => ams.filter(u => u!==headU && (mgrOf(u) || firstMgr)===m);
+  if (S.isLead && !S.isOwner) ids = mine(S.uid);
+  if (S.viewMgr && S.viewMgr!=="__mgr") ids = mine(S.viewMgr);
   S.team = Object.fromEntries(ids.map(u => [u, S.members[u]]));
+  scopeAll();
+}
+/* El Head ve a todos; un Manager solo los prospectos de su equipo. S.allEvery queda completo solo para detectar duplicados. */
+function teamScoped(){ return (S.isLead && !S.isOwner) || (S.viewMgr && S.viewMgr!=="__mgr"); }
+function scopeAll(){
+  if (!teamScoped()){ S.all = S.allEvery; return; }
+  const keep = new Set(Object.keys(S.team||{}).concat(S.viewAs ? [S.viewAs] : []));
+  S.all = Object.fromEntries(Object.entries(S.allEvery).filter(([u]) => keep.has(u)));
 }
 function leadNameFor(uid){
   const m = mgrOf(uid) || Object.keys(S.members).find(u => roleOf(u)==="manager");
@@ -4889,7 +4901,7 @@ function iskConv(c){
 }
 function iskMatch(phone){
   const d = iskDigits(phone); if (!d) return null;
-  for (const [uid, items] of Object.entries(S.all||{})) for (const [id, m] of Object.entries(items||{})) if (iskDigits(m.phone)===d) return {name:m.prospect, uid, profile:m.profile||""};
+  for (const [uid, items] of Object.entries(S.allEvery||{})) for (const [id, m] of Object.entries(items||{})) if (iskDigits(m.phone)===d) return {name:m.prospect, uid, profile:m.profile||""};
   for (const [u, id, l] of waLeadsAll()) if (iskDigits(l.phone)===d) return {name:l.name, uid:u};
   return null;
 }
@@ -5622,7 +5634,7 @@ function syncAdminSubs(){
   if (!waCampSub) waCampSub = db.collection("waCampaigns").onSnapshot(s => { S.waCamps={}; s.docs.forEach(d=>S.waCamps[d.id]=d.data()); schedule(); }, snapErr);
   Object.keys(S.members).filter(uid => roleOf(uid)==="am").forEach(uid => {
     if (adminSubs[uid]) return;
-    adminSubs[uid] = db.collection(`meets/${uid}/items`).onSnapshot(s => { S.all[uid]={}; s.docs.forEach(d=>S.all[uid][d.id]=d.data()); schedule(); }, snapErr);
+    adminSubs[uid] = db.collection(`meets/${uid}/items`).onSnapshot(s => { const o = {}; s.docs.forEach(d=>o[d.id]=d.data()); S.allEvery[uid] = o; scopeAll(); schedule(); }, snapErr);
     db.collection(`meets/${uid}/tpllog`).onSnapshot(s => { S.tplLog[uid]={}; s.docs.forEach(d=>S.tplLog[uid][d.id]=d.data()); schedule(); }, snapErr);
     db.collection(`meets/${uid}/waleads`).onSnapshot(s => { S.waLeads[uid]={}; s.docs.forEach(d=>S.waLeads[uid][d.id]=d.data()); schedule(); }, snapErr);
     db.collection(`meets/${uid}/vip`).onSnapshot(s => { S.vip[uid]={}; s.docs.forEach(d=>S.vip[uid][d.id]=d.data()); schedule(); }, snapErr);
