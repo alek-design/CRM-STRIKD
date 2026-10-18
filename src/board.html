@@ -677,6 +677,14 @@ label.f em{color:var(--bad);font-style:normal}
 .rules{white-space:pre-wrap;line-height:1.7;max-width:65ch;margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* Agenda y Pendientes en la misma pantalla, cada uno con su título */
+#view-agenda .sec-h,.sec-h{display:flex;align-items:center;gap:8px;margin:0 2px 10px!important;font-size:18px!important;font-weight:800;letter-spacing:-.01em;text-transform:none!important;color:var(--fg)!important}
+.sec-h b{font-size:12px;font-weight:700;color:var(--muted);background:var(--raised);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.sec-h em{font-style:normal;font-size:12px;font-weight:700;color:var(--bad);margin-left:auto}
+.pg-hid{font-size:12px;color:var(--muted);padding:8px 14px;border-top:1px solid var(--line)}
+.pend-all{display:block;width:100%;font:inherit;font-weight:700;font-size:14px;padding:12px;border-radius:14px;border:1px dashed var(--line2);background:none;color:var(--fg);cursor:pointer;margin-top:2px}
+.ap .sec-h{margin-top:6px!important}
+
 .exp-pre{max-height:260px;overflow:auto;font-size:10.5px;white-space:pre-wrap;word-break:break-all;background:var(--raised);padding:8px;border-radius:8px}
 .exp-r{display:grid;gap:4px;max-height:260px;overflow:auto}.exp-i{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:11.5px;padding:5px 8px;border-radius:8px;background:var(--raised)}
 .exp-i span{font-weight:700}.exp-i.s2 span{color:var(--ok-fg)}.exp-i.s4 span{color:var(--wait)}.exp-i.s5 span{color:var(--bad)}.exp-i code{grid-column:1/-1;font-size:10.5px;word-break:break-all;color:var(--muted2)}
@@ -813,8 +821,7 @@ label.f em{color:var(--bad);font-style:normal}
   #view-agenda #dayPlan{margin-top:-4px}
   #view-agenda #dayPlan .pl-head{display:none}
   #view-agenda #dayPlan .pl-cols{display:block}
-  #view-agenda #dayPlan .pl-col h3{display:none}
-  #view-agenda #dayPlan.seg-meets .pl-col:nth-child(2),#view-agenda #dayPlan.seg-tasks .pl-col:nth-child(1){display:none}
+  #view-agenda #dayPlan .pl-col + .pl-col{margin-top:22px}
   #view-agenda .plan{gap:0}
 }
 .pg-l .pg-row:first-child{border-top:0}
@@ -3204,12 +3211,11 @@ function agendaPhone(offset){
       tasksFor(uid, id, m, nowTs).filter(t => ownTask(t) && t.due >= d0 && t.due < d1e).slice(0,1).forEach(t => tks.push({...t, m})); }));
     tks.sort((a,b) => a.due - b.due);
     nMeets = list.length; nTasks = tks.length;
-    body = AG_SEG==="meets"
-      ? (list.length ? `<div class="ap-list">${list.map(e => `<div class="ap-ev ${e.kind}${e.clash?" clash":""}${e.end < nowTs?" past":""}"><span class="ap-t">${esc(e.at.split("T")[1])}</span><span class="ap-b"><b>${esc(e.label.split(" · ")[1] || e.label)}</b><span>${esc(KIND[e.kind]||"")}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""}${e.clash?` · <em>encimado</em>`:""}</span></span></div>`).join("")}</div>` : `<p class="ap-empty">Sin meets este día</p>`)
-      : (tks.length ? `<div class="pg"><div class="pg-l">${tks.map(t => `<div class="pg-row"><span class="pg-who"><b>${esc(t.title)}</b>${adminMode()?`<small>${esc(String(nameOf(S.ps||{}, t.uid)).split(" ")[0])}</small>`:""}</span><span class="pg-due">${esc(fmtLocal(t.due).split(", ")[1]||"")}</span></div>`).join("")}</div></div>` : `<p class="ap-empty">Nada vence este día</p>`);
+    body = `<h3 class="sec-h">Agenda <b>${list.length}</b></h3>` + (list.length ? `<div class="ap-list">${list.map(e => `<div class="ap-ev ${e.kind}${e.clash?" clash":""}${e.end < nowTs?" past":""}"><span class="ap-t">${esc(e.at.split("T")[1])}</span><span class="ap-b"><b>${esc(e.label.split(" · ")[1] || e.label)}</b><span>${esc(KIND[e.kind]||"")}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""}${e.clash?` · <em>encimado</em>`:""}</span></span></div>`).join("")}</div>` : `<p class="ap-empty">Sin meets este día</p>`)
+      + `<h3 class="sec-h">Pendientes <b>${tks.length}</b></h3>` + (tks.length ? `<div class="pg"><div class="pg-l">${tks.map(t => `<div class="pg-row"><span class="pg-who"><b>${esc(t.title)}</b>${adminMode()?`<small>${esc(String(nameOf(S.ps||{}, t.uid)).split(" ")[0])}</small>`:""}</span><span class="pg-due">${esc(fmtLocal(t.due).split(", ")[1]||"")}</span></div>`).join("")}</div></div>` : `<p class="ap-empty">Nada vence este día</p>`);
   }
   const seg = `<div class="ag-seg" role="tablist"><button type="button" data-agseg="meets" class="${AG_SEG==="meets"?"on":""}">Meets <b>${nMeets}</b></button><button type="button" data-agseg="tasks" class="${AG_SEG==="tasks"?"on":""}">Pendientes <b>${nTasks}</b>${nLate?`<i title="${nLate} atrasados">${nLate}</i>`:""}</button></div>`;
-  return `<div class="ap">${week}${seg}${body}</div>`;
+  return `<div class="ap">${week}${body}</div>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-agseg]"); if (b){ AG_SEG = b.dataset.agseg; renderAgenda(); } });
 document.addEventListener("click", e => { const b = e.target.closest("[data-agday]"); if (b){ AG_DAY = b.dataset.agday; renderAgenda(); } if (e.target.closest("[data-agnew]")) openBook(null); });
@@ -3319,7 +3325,9 @@ function renderPlan(){
   const groups = []; tks.forEach(t => { const k = grpKey(t); let g = groups.find(x => x.k===k); if (!g) groups.push(g = {k, items:[]}); g.items.push(t); });
   groups.sort((a,b) => a.items[0].due - b.items[0].due);
   const shortDue = t => { if (t.due >= now) return `antes de ${hm(t.due)}`; const h = Math.round((now - t.due)/HR); return h < 24 ? `${Math.max(1,h)} h tarde` : `${Math.round(h/24)} d tarde`; };
-  let todo = groups.map(g => { const late = g.items.filter(t => t.due < now).length, open = MORE["g:"+g.k], lim = open ? g.items.length : 4;
+  const PEND_CAP = 6, allPend = !!MORE.allPend; let budget = allPend ? 1e9 : PEND_CAP;
+  const totalPend = groups.reduce((a,g) => a + g.items.length, 0);
+  let todo = groups.map(g => { const late = g.items.filter(t => t.due < now).length, open = true, lim = Math.min(g.items.length, budget); budget -= lim; if (lim <= 0) return "";
     return `<section class="pg2"><div class="pg2-h"><span>${esc(g.k)}</span><b>${g.items.length}</b>${late?`<em>${late} tarde</em>`:""}</div><div class="pg2-card">
       ${g.items.slice(0, lim).map(t => { const d = dueInfo(t.due, now), key = `tk|${t.uid}__${t.id}`, nm = (t.m && t.m.prospect) || t.title;
         const quick = (t.acts||[]).find(a => !a.input), sub = [admin ? String(nameOf(S.ps,t.uid)).split(" (")[0] : "", t.m ? stageOf(t.id, t.m).t : ""].filter(Boolean).join(" · ");
@@ -3329,7 +3337,8 @@ function renderPlan(){
           <span class="pr-due ${d.cls}">${esc(shortDue(t))}</span>
           ${quick ? `<button class="pr-go" data-act="${quick.act}" data-uid="${t.uid}" data-id="${t.id}">${esc(({cancelled:"✓ Cancelé", confirmed:"✓ Confirmó", reminded:"✓ Enviado", lost:"Perdido"})[quick.act] || quick.label)}</button>` : `<span class="pr-chev" aria-hidden="true">›</span>`}
         </div>${expand(key, t.uid, t.id, t.m)}`; }).join("")}
-      ${g.items.length > 4 ? `<button type="button" class="pg-more" data-pgmore="${esc(g.k)}">${open ? "Ver menos" : `Ver ${g.items.length - 4} más`}</button>` : ""}</div></section>`; }).join("")
+      ${lim < g.items.length ? `<div class="pg-hid">+${g.items.length - lim} más en esta sección</div>` : ""}</div></section>`; }).join("")
+
     + waToday.slice(0, 5).map(([id,l]) => { const d = dueInfo((l.assignedAt||0)+24*HR, now); return `<button type="button" class="pl-item task ${d.cls}" data-gowa="1"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b><span class="wa-b">WA</span>Agenda el meet con ${esc(l.name)}</b><small>Interesado de WhatsApp</small></span><span class="sema ${d.cls}"><i></i>${l.assignedAt+24*HR < now ? esc(d.txt) : `Antes de ${hm(l.assignedAt+24*HR)}`}</span></button>`; }).join("")
     + (waToday.length > 5 ? `<button type="button" class="more" data-gowa="1">+${waToday.length-5} interesados de WhatsApp</button>` : "")
     + (admin ? "" : Object.values(vipItems(meId())).filter(x => (x.status==="interesado" || x.status==="agendo") && x.statusAt && now - x.statusAt < 3*864e5).slice(0, 3).map(x => `<button type="button" class="pl-item task ok" data-gotab="perf"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b>${PICON[3]} ${esc(x.prospect)} ${x.status==="agendo" ? "ya agendó meet con Mich" : "está interesado"}</b><small>Una de tus propuestas para Mich</small></span><span class="sema ok"><i></i>Nuevo</span></button>`).join(""))
@@ -3341,7 +3350,7 @@ function renderPlan(){
   const nRev = assigned.filter(([,,x]) => tkSt(x)==="review").length;
   const taskHtml = (myT.length ? `<section class="pg2"><div class="pg2-h"><span>Tareas</span><b>${myT.length}</b>${tLate?`<em>${tLate} tarde</em>`:""}</div><div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
     + (assigned.length ? `<section class="pg2"><div class="pg2-h"><span>Asignadas a tu equipo</span><b>${assigned.filter(([,,x]) => tkSt(x)!=="done").length}</b>${nRev?`<em class="rev">${nRev} por aprobar</em>`:""}</div><div class="pg2-card">${assigned.slice(0, 10).map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
-  todo = taskHtml + todo;
+  todo = taskHtml + todo + (totalPend > PEND_CAP ? `<button type="button" class="pend-all" data-allpend="1">${allPend ? "Ver menos" : `Ver todos los pendientes (${totalPend})`}</button>` : "");
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
   { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length + nRev, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
   const late = tks.filter(t => t.due < now).length;
@@ -3349,8 +3358,8 @@ function renderPlan(){
     <div class="pl-head"><div class="pl-ttl"><h2>Hoy</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span></div>
       <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length + myT.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
     <div class="pl-cols">
-      <div class="pl-col"><h3>Meets</h3>${line || `<p class="pl-empty">Hoy no tienes meets agendados.</p>`}</div>
-      <div class="pl-col"><h3>Pendientes</h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
+      <div class="pl-col"><h3 class="sec-h">Agenda <b>${evs.length}</b></h3>${line || `<p class="pl-empty">Hoy no tienes meets agendados.</p>`}</div>
+      <div class="pl-col"><h3 class="sec-h">Pendientes <b>${tks.length + myT.length}</b>${late ? `<em>${late} tarde</em>` : ""}</h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
     </div>
   </section>`;
 }
@@ -3360,6 +3369,7 @@ $("dayPlan").addEventListener("click", e => {
   if (e.target.closest("[data-gowa]")){ showTab("msgs"); return; setTimeout(() => $("myWaLeads").scrollIntoView({behavior:"smooth", block:"start"}), 60); return; }
   if (e.target.closest("[data-plpast]")){ MORE.planPast = !MORE.planPast; schedule(); return; }
   if (e.target.closest("[data-plmore]")){ MORE.plan = !MORE.plan; schedule(); return; }
+  if (e.target.closest("[data-allpend]")){ MORE.allPend = !MORE.allPend; schedule(); return; }
   const gm = e.target.closest("[data-pgmore]"); if (gm){ const k = "g:" + gm.dataset.pgmore; MORE[k] = !MORE[k]; schedule(); return; }
   const j = e.target.closest("[data-journey]");
   if (j){ PICK.dayPlan = null; PICK.myPath = j.dataset.journey; schedule(); setTimeout(() => $("pathWrap").scrollIntoView({behavior:"smooth", block:"start"}), 80); return; }
