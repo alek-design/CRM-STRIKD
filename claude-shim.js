@@ -2,7 +2,10 @@
    Implementa la misma interfaz que el tablero usaba en claude.ai (window.claude.use("db"|"user"|"assets"|"downloads"))
    para que index.html funcione igual en growth.strikd.ai, con login de STRIKD. */
 (function(){
-  const CFG = fetch("/api/config").then(r => r.json());
+  // la config pública (URL y anon key) se guarda: las siguientes veces no se espera al servidor
+  const CFG_NET = fetch("/api/config").then(r => r.json()).then(j => { try{ if (j.url && j.anonKey) localStorage.setItem("strikd_cfg", JSON.stringify(j)); }catch(_){} return j; });
+  CFG_NET.catch(() => {});
+  const CFG = (() => { try{ const c = JSON.parse(localStorage.getItem("strikd_cfg") || "null"); if (c && c.url && c.anonKey) return Promise.resolve(c); }catch(_){} return CFG_NET; })();
   let sb, session = null, me = null;
   const ready = (async () => {
     const cfg = await CFG;
@@ -22,7 +25,13 @@
     me = r.data || {id:session.user.id, email:session.user.email, role:"none"};
     if (me.role === "none" || me.active === false) { blockScreen(me.email); throw new Error("sin acceso"); }
     sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") location.reload(); });
-    try{ google = await fetch("/api/google/status", {headers:{authorization:"Bearer " + session.access_token}}).then(r => r.json()); }catch(_){ google = {}; }
+    // estado de Google: si ya lo conocemos de la vez pasada, se entra de inmediato y se actualiza en segundo plano
+    const gKey = "strikd_google_" + me.id;
+    const gFetch = fetch("/api/google/status", {headers:{authorization:"Bearer " + session.access_token}}).then(r => r.ok ? r.json() : Promise.reject())
+      .then(j => { try{ localStorage.setItem(gKey, JSON.stringify(j)); }catch(_){} return j; });
+    let gCached = null; try{ gCached = JSON.parse(localStorage.getItem(gKey) || "null"); }catch(_){}
+    if (gCached){ google = gCached; gFetch.then(j => { const was = !!google.connected; google = j; if (was !== !!j.connected) location.reload(); else headerChip(); }).catch(() => {}); }
+    else { try{ google = await Promise.race([gFetch, new Promise((_, rej) => setTimeout(rej, 4000))]); }catch(_){ google = {}; gFetch.then(j => { google = j; headerChip(); }).catch(() => {}); } }
     headerChip();
     if (me.role === "head" && localStorage.getItem("strikd_cron") !== "2"){ fetch("/api/push-cron", {method:"POST", headers:{authorization:"Bearer " + session.access_token}}).then(r => { if (r.ok) localStorage.setItem("strikd_cron", "2"); }).catch(() => {}); }
     const gq = new URLSearchParams(location.search).get("google");
