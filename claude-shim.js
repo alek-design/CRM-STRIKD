@@ -10,7 +10,11 @@
   const ready = (async () => {
     const cfg = await CFG;
     if (!cfg.url || !cfg.anonKey) throw new Error("Falta configurar Supabase en Vercel");
-    sb = window.supabase.createClient(cfg.url, cfg.anonKey, {auth:{persistSession:true, detectSessionInUrl:true}});
+    // lock propio: en iPhone (app instalada) el candado del navegador a veces se queda trabado y el inicio de sesión no avanza
+    const memLocks = {};
+    const lock = async (name, _t, fn) => { const prev = memLocks[name] || Promise.resolve(); let rel; const cur = new Promise(r => rel = r); memLocks[name] = prev.then(() => cur);
+      await Promise.race([prev, new Promise(r => setTimeout(r, 5000))]); try{ return await fn(); } finally { rel(); } };
+    sb = window.supabase.createClient(cfg.url, cfg.anonKey, {auth:{persistSession:true, detectSessionInUrl:true, lock}});
     window.STRIKD_SB = sb;
     const { data } = await sb.auth.getSession();
     session = data.session;
@@ -56,11 +60,18 @@
         <button id="sgGo" class="sg-btn">Entrar</button>
         <button id="sgForgot" class="sg-link">Olvidé mi contraseña</button>`);
       const err = t => { el.querySelector("#sgErr").textContent = t; };
-      el.querySelector("#sgGo").onclick = async () => {
+      const go = el.querySelector("#sgGo");
+      go.onclick = async () => {
         const email = el.querySelector("#sgEmail").value.trim(), password = el.querySelector("#sgPass").value;
         if (!email || !password) return err("Escribe tu correo y contraseña.");
-        const { data, error } = await sb.auth.signInWithPassword({email, password});
-        if (error) return err(error.message.includes("Invalid") ? "Correo o contraseña incorrectos." : "No se pudo entrar. Intenta de nuevo.");
+        if (go.disabled) return;
+        go.disabled = true; go.textContent = "Entrando…"; err("");
+        let res;
+        try{ res = await Promise.race([sb.auth.signInWithPassword({email, password}), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 15000))]); }
+        catch(e){ res = {error:{message: e && e.message === "timeout" ? "timeout" : "net"}}; }
+        go.disabled = false; go.textContent = "Entrar";
+        const { data, error } = res;
+        if (error) return err(error.message.includes("Invalid") ? "Correo o contraseña incorrectos." : error.message === "timeout" ? "Está tardando mucho. Revisa tu internet y vuelve a intentar." : "No se pudo entrar. Intenta de nuevo.");
         el.remove(); resolve(data.session);
       };
       el.querySelector("#sgPass").addEventListener("keydown", e => { if (e.key === "Enter") el.querySelector("#sgGo").click(); });

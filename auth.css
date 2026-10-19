@@ -3,7 +3,7 @@
 #sgAuth .sg-brand{font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:20px;letter-spacing:.02em}#sgAuth .sg-brand span{color:#8c8c8c}
 #sgAuth h2{margin:4px 0 0;font-size:18px}#sgAuth .sg-sub{margin:0;color:#8c8c8c;font-size:13px}
 #sgAuth label{display:grid;gap:4px;font-size:12px;color:#8c8c8c}
-#sgAuth input{font:inherit;font-size:14px;background:#000;color:#fff;border:1px solid #3a3a3a;border-radius:10px;padding:10px 12px}
+#sgAuth input{font:inherit;font-size:16px;background:#000;color:#fff;border:1px solid #3a3a3a;border-radius:10px;padding:10px 12px}
 #sgAuth .sg-btn{font:inherit;font-weight:700;background:#fff;color:#000;border:0;border-radius:999px;padding:10px 14px;cursor:pointer}
 #sgAuth .sg-link{font:inherit;font-size:12px;background:none;border:0;color:#8c8c8c;text-decoration:underline;cursor:pointer}
 #sgAuth .sg-err{margin:0;min-height:1em;color:#f87171;font-size:12.5px}
