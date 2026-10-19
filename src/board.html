@@ -38,6 +38,20 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+/* ===== Computadora: Agenda arranca con "Hoy" (como iPhone) y la semana va abajo; Equipo en dos columnas ===== */
+@media (min-width:900px){
+  #view-agenda:not([hidden]){display:flex;flex-direction:column}
+  #view-agenda > .ag-head{order:0}
+  #view-agenda > #dayPlan{order:1}
+  #view-agenda > #agendaCal{order:2;margin-top:28px}
+}
+@media (min-width:1100px){
+  #view-flow:not([hidden]){display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);column-gap:28px;grid-auto-flow:row dense;align-items:start}
+  #view-flow > *{grid-column:2;min-width:0}
+  #view-flow > .row:first-child, #view-flow > #teamLate, #view-flow > #teamChart{grid-column:1/-1}
+  #view-flow > #teamLoad{grid-column:1;grid-row:3 / span 12}
+}
+
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
 .org-chk{display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 2px}.org-chk input{width:18px;height:18px}
 .tkm-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 10px}.tkm-form input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);min-width:0}
@@ -1512,7 +1526,7 @@ body.mob-open header.top{z-index:31}
   </section>
 
   <section class="view" id="view-agenda" hidden>
-    <div class="ag-head"><div class="ag-top"><h2>Agenda</h2><div class="ag-btns"><button type="button" class="btn ag-task" data-tasknew="1" hidden>+ Tarea</button><button type="button" class="btn primary ag-new" data-agnew="1">+ <span class="ag-l">Agendar </span>meet</button></div></div><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
+    <div class="ag-head"><div class="ag-top"><h2>Agenda</h2><div class="ag-btns"><button type="button" class="btn ag-task" data-tasknew="1" hidden>+ Tarea</button><button type="button" class="btn primary ag-new" data-agnew="1">+ <span class="ag-l">Agendar </span>meet</button></div></div><p class="sub">Lo de hoy arriba; abajo tu semana, para ver qué espacios tienes libres.</p></div>
     <div id="agendaCal"></div>
     <div id="dayPlan"></div>
   </section>

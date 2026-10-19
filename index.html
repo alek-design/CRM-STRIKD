@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 18:16:24 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 18:37:32 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792433784">
+<link rel="stylesheet" href="/auth.css?v=1792435052">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792433784"></script>
+<script src="/claude-shim.js?v=1792435052"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -47,6 +47,20 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+/* ===== Computadora: Agenda arranca con "Hoy" (como iPhone) y la semana va abajo; Equipo en dos columnas ===== */
+@media (min-width:900px){
+  #view-agenda:not([hidden]){display:flex;flex-direction:column}
+  #view-agenda > .ag-head{order:0}
+  #view-agenda > #dayPlan{order:1}
+  #view-agenda > #agendaCal{order:2;margin-top:28px}
+}
+@media (min-width:1100px){
+  #view-flow:not([hidden]){display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);column-gap:28px;grid-auto-flow:row dense;align-items:start}
+  #view-flow > *{grid-column:2;min-width:0}
+  #view-flow > .row:first-child, #view-flow > #teamLate, #view-flow > #teamChart{grid-column:1/-1}
+  #view-flow > #teamLoad{grid-column:1;grid-row:3 / span 12}
+}
+
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
 .org-chk{display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 2px}.org-chk input{width:18px;height:18px}
 .tkm-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 10px}.tkm-form input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);min-width:0}
@@ -1521,7 +1535,7 @@ body.mob-open header.top{z-index:31}
   </section>
 
   <section class="view" id="view-agenda" hidden>
-    <div class="ag-head"><div class="ag-top"><h2>Agenda</h2><div class="ag-btns"><button type="button" class="btn ag-task" data-tasknew="1" hidden>+ Tarea</button><button type="button" class="btn primary ag-new" data-agnew="1">+ <span class="ag-l">Agendar </span>meet</button></div></div><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
+    <div class="ag-head"><div class="ag-top"><h2>Agenda</h2><div class="ag-btns"><button type="button" class="btn ag-task" data-tasknew="1" hidden>+ Tarea</button><button type="button" class="btn primary ag-new" data-agnew="1">+ <span class="ag-l">Agendar </span>meet</button></div></div><p class="sub">Lo de hoy arriba; abajo tu semana, para ver qué espacios tienes libres.</p></div>
     <div id="agendaCal"></div>
     <div id="dayPlan"></div>
   </section>
