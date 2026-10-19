@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 01:27:07 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 01:33:56 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792373227">
+<link rel="stylesheet" href="/auth.css?v=1792373636">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792373227"></script>
+<script src="/claude-shim.js?v=1792373636"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -49,7 +49,8 @@
 #dayPlan .pl-item .pl-body b svg{width:16px;height:16px;vertical-align:-3px;margin-right:4px;flex:none}
 .ag-btns .ag-rem{padding:8px 11px;font-size:16px;line-height:1}
 #dayPlan .pr.rem{cursor:default;flex-wrap:wrap}#dayPlan .pr.rem .pr-m{flex:1 1 160px;min-width:0}
-.rem-ic{font-size:16px;flex:none}.rem-acts{display:flex;gap:6px;flex-wrap:wrap}
+.rem-ic{font-size:16px;flex:none}
+.rem-hold{display:grid;gap:2px}.rem-hold span{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}.rem-hold input{width:auto}.rem-hold small{color:var(--muted);font-size:12px;margin-left:26px}.rem-acts{display:flex;gap:6px;flex-wrap:wrap}
 #dayPlan .rem-next summary{display:flex;justify-content:space-between}
 #dayPlan .pr.mconf{flex-wrap:wrap;cursor:default}#dayPlan .pr.mconf .pr-m{flex:1 1 100%}
 .mconf-acts{display:flex;flex-wrap:wrap;gap:6px}
@@ -2554,6 +2555,11 @@ function semaChip(uid, id, m, isAdmin){
 const LEGEND = `<div class="legend"><span class="sema ok"><i></i>A tiempo · más de 24 h</span><span class="sema soon"><i></i>Vence en menos de 24 h</span><span class="sema late"><i></i>Atrasado</span><span class="sema crit"><i></i>Muy atrasado · más de 48 h</span></div>`;
 const buildDone = f => !!(f.programDoneAt && f.webDoneAt && f.bankDoneAt);
 function stageOf(id, m){
+  const r = stageOf0(id, m), f = m.flow || {};
+  if (f.holdUntil && f.holdUntil > Date.now() && r.k!=="lost" && r.k!=="launched") return {...r, t:`⏸ En pausa hasta el ${fmtLocal(f.holdUntil).split(",")[0]} · ${r.t}`};
+  return r;
+}
+function stageOf0(id, m){
   const v = S.validations[id], st = statusOf(id), f = m.flow || {}, now = Date.now();
   if (f.lostAt) return {k:"lost", t: f.lostWhy ? `Perdido · ${f.lostWhy}` : "Perdido"};
   if (st==="pending") return {k:"review", t:"Por revisar"};
@@ -2574,6 +2580,7 @@ function tasksFor(uid, id, m, now){
   const v = S.validations[id], st = statusOf(id), f = m.flow || {}, p = m.prospect || "el prospecto", T = [];
   const add = o => T.push({uid, id, m, who:"member", ...o});
   if (f.lostAt) return T;
+  if (f.holdUntil && f.holdUntil > now) return T; // en pausa (p. ej. se fue de vacaciones): sin pendientes ni atrasos hasta esa fecha
   if (f.inviteDeclinedAt && (st==="pending" || st==="valid" || reschedPending(m,v))){
     add({title:`${p} rechazó la invitación: reagenda o márcalo como perdido`, detail:"Lo vimos en Google Calendar. Escríbele para buscar otra fecha; al reagendar se le manda una invitación nueva.",
       due:f.inviteDeclinedAt+24*HR, acts:[{label:"Reagendar", act:"resched", input:"dt", kind:"primary"}, {label:"Perdido", act:"lost", kind:"bad"}]});
@@ -2956,7 +2963,7 @@ function pathHtml(owners, isAdmin, cid){
   const mini = ([uid,id,m,t]) => {
     const d = t ? dueInfo(t.due, now) : null, key = `${uid}__${id}`;
     const toCancel = statusOf(id)==="rejected" && !m.cancelled;
-    const tag = toCancel ? "Cancelar" : "";
+    const tag = toCancel && d ? "Cancelar" : "";
     return `<button class="mini ${d?d.cls:""}${sel===key?" sel":""}" data-pick="${key}" title="${esc(m.prospect)}">
       <span class="mn">${perfilIcon(m)}${esc(m.prospect)}</span>
       <span class="mc">${isAdmin?esc(nameOf(S.ps,uid)):esc(m.role||m.channel||"")}</span>
@@ -3642,7 +3649,7 @@ function renderPlan(){
   const rems = remList(), remDue = rems.filter(r => !r.done && r.at <= eod).sort((a,b) => a.at - b.at), remNext = rems.filter(r => !r.done && r.at > eod).sort((a,b) => a.at - b.at);
   const remHtml = remDue.length || remNext.length ? `<section class="pg2"><div class="pg2-h"><span>Recordatorios</span>${remDue.length ? `<b>${remDue.length}</b>` : ""}</div><div class="pg2-card">
       ${remDue.map(r => `<div class="pr rem${r.at < now - 12*HR ? " late" : ""}"><span class="rem-ic">⏰</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}</small></span><span class="rem-acts"><button type="button" class="btn small" data-remsnooze="${r.id}">Mañana</button><button type="button" class="btn small primary" data-remdone="${r.id}">✓ Hecho</button></span></div>`).join("")}
-      ${remNext.length ? `<details class="tt-done rem-next"${MORE.remNext ? " open" : ""}><summary data-remnextt="1">Programados (${remNext.length})</summary>${remNext.map(r => `<div class="pr rem"><span class="rem-ic">🗓</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}</small></span><button type="button" class="pr-x" data-remdel="${r.id}">Borrar</button></div>`).join("")}</details>` : ""}
+      ${remNext.length ? `<details class="tt-done rem-next"${MORE.remNext ? " open" : ""}><summary data-remnextt="1">Programados (${remNext.length})</summary>${remNext.map(r => `<div class="pr rem"><span class="rem-ic">🗓</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}${r.hold ? " · ⏸ en pausa" : ""}</small></span><button type="button" class="pr-x" data-remdel="${r.id}">Borrar</button></div>`).join("")}</details>` : ""}
     </div></section>` : "";
   const taskHtml = remHtml + confHtml + (myT.length ? `<section class="pg2">${onlyTasks ? "" : `<div class="pg2-h"><span>Tareas</span><b>${myT.length}</b></div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
     + (assigned.some(([,,x]) => tkSt(x)==="review") ? `<section class="pg2"><div class="pg2-h"><span>Por aprobar</span><b>${nRev}</b></div><div class="pg2-card">${assigned.filter(([,,x]) => tkSt(x)==="review").map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
@@ -3869,7 +3876,9 @@ function remOpen(ref, name){
       <label class="f full">¿Qué te recuerdo? <em>*</em><input id="remText" placeholder="Ej. Se fue de vacaciones: escribirle para reagendar" autocomplete="off"></label>
       <label class="f">Día <em>*</em><input type="date" id="remDay" value="${today}"></label>
       <label class="f">Hora<input type="time" id="remTime" value="09:00"></label>
-      ${ref ? `<p class="mut small full" style="margin:0 4px">Prospecto: <b>${esc(name||"")}</b></p>` : mine.length ? `<label class="f full">Prospecto (opcional)<select id="remRef"><option value="">Ninguno</option>${mine.map(([k,n]) => `<option value="${k}">${esc(n)}</option>`).join("")}</select></label>` : ""}
+      ${ref ? `<p class="mut small full" style="margin:0 4px">Prospecto: <b>${esc(name||"")}</b></p>` : ""}
+      <label class="f full rem-hold"${ref || mine.length ? "" : " hidden"}><span><input type="checkbox" id="remHold" checked> Poner al prospecto en pausa hasta ese día</span><small>Sus pendientes no te salen ni cuentan como atrasados mientras tanto.</small></label>
+      ${ref ? "" : mine.length ? `<label class="f full">Prospecto (opcional)<select id="remRef"><option value="">Ninguno</option>${mine.map(([k,n]) => `<option value="${k}">${esc(n)}</option>`).join("")}</select></label>` : ""}
     </div>
     <p class="mut small" style="margin:8px 6px 0">Te sale en tus pendientes ese día y te llega una notificación a esa hora.</p>
     <div class="row"><span class="err" id="remErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="remGo">Guardar</button></div></div>`;
@@ -3881,8 +3890,10 @@ function remOpen(ref, name){
     if (!text || !day){ $("remErr").textContent = "Escribe el recordatorio y el día."; return; }
     const at = Date.parse(`${day}T${tm}:00-05:00`); if (isNaN(at)){ $("remErr").textContent = "Revisa la fecha."; return; }
     const r = ref || ($("remRef") && $("remRef").value) || "", nm = name || (r ? (mine.find(x => x[0]===r)||[])[1] || "" : "");
+    const hold = !!(r && $("remHold") && $("remHold").checked);
     $("remGo").disabled = true;
-    try{ const u = meId(), refd = db.collection(`meets/${u}/reminders`).doc(), data = {text, at, ref:r, name:nm, createdAt:Date.now(), done:false};
+    try{ const u = meId(), refd = db.collection(`meets/${u}/reminders`).doc(), data = {text, at, ref:r, name:nm, createdAt:Date.now(), done:false, hold};
+      if (hold){ const [ou, oid] = r.split("__"); await db.doc(`meets/${ou}/items/${oid}`).update({flow:{holdUntil:at, holdBy:S.uid, holdNote:text}}); const mm = ((S.all||{})[ou]||{})[oid] || (ou===meId() ? myItems()[oid] : null); if (mm) (mm.flow ||= {}).holdUntil = at; }
       await refd.set(data); ((REM[u] ||= {}))[refd.id] = {...data, id:refd.id}; w.remove(); schedule(); quickToast(`✓ Te lo recuerdo el ${fmtLocal(at)}`); }
     catch(_){ $("remGo").disabled = false; $("remErr").textContent = "No se pudo guardar."; }
   });
@@ -3894,9 +3905,10 @@ document.addEventListener("click", async e => {
   const dn = e.target.closest("[data-remdone]"), sn = e.target.closest("[data-remsnooze]"), dl = e.target.closest("[data-remdel]"); if (!dn && !sn && !dl) return;
   e.stopPropagation(); const u = meId(), id = (dn || sn || dl).dataset.remdone || (dn || sn || dl).dataset.remsnooze || (dn || sn || dl).dataset.remdel, r = (REM[u]||{})[id]; if (!r) return;
   try{
-    if (dn){ await db.doc(`meets/${u}/reminders/${id}`).update({done:true, doneAt:Date.now()}); r.done = true; quickToast("✓ Listo"); }
-    else if (sn){ const at = Math.max(r.at, Date.now()) + DAY; await db.doc(`meets/${u}/reminders/${id}`).update({at, notifiedAt:null}); r.at = at; quickToast(`Te lo recuerdo mañana`); }
-    else { if (dl.dataset.armed!=="1"){ dl.dataset.armed = "1"; dl.textContent = "¿Borrar?"; return; } await db.doc(`meets/${u}/reminders/${id}`).delete(); delete REM[u][id]; }
+    const setHold = async v => { if (!r.hold || !r.ref) return; const [ou, oid] = r.ref.split("__"); await db.doc(`meets/${ou}/items/${oid}`).update({flow:{holdUntil:v}}).catch(() => {}); const mm = ((S.all||{})[ou]||{})[oid] || (ou===meId() ? myItems()[oid] : null); if (mm) (mm.flow ||= {}).holdUntil = v; };
+    if (dn){ await db.doc(`meets/${u}/reminders/${id}`).update({done:true, doneAt:Date.now()}); r.done = true; await setHold(null); quickToast(r.hold ? "✓ Listo · el prospecto sale de pausa" : "✓ Listo"); }
+    else if (sn){ const at = Math.max(r.at, Date.now()) + DAY; await db.doc(`meets/${u}/reminders/${id}`).update({at, notifiedAt:null}); r.at = at; await setHold(at); quickToast(`Te lo recuerdo mañana`); }
+    else { if (dl.dataset.armed!=="1"){ dl.dataset.armed = "1"; dl.textContent = "¿Borrar?"; return; } await db.doc(`meets/${u}/reminders/${id}`).delete(); await setHold(null); delete REM[u][id]; }
     schedule();
   }catch(_){ quickToast("No se guardó, intenta otra vez"); }
 });
