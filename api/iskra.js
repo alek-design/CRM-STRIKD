@@ -82,7 +82,9 @@ function makePicker(c, mode){
       where (path like 'meets/%/items/%' or path like 'meets/%/waleads/%') and coalesce(data->>'phone','') <> ''`)).rows.forEach(r => { if (r.d && !phones[r.d]) phones[r.d] = r.uid; });
     const users = (await c.query("select id, role from public.app_users where active")).rows;
     const active = new Set(users.map(u => u.id));
-    const ams = users.filter(u => u.role === "am").map(u => u.id);
+    // la Influencer Outreach también es "am" en accesos, pero no lleva conversaciones de WhatsApp
+    const infl = new Set((await c.query("select split_part(path,'/',2) id from public.docs where parent='roles' and data->>'role'='influencer'")).rows.map(r => r.id));
+    const ams = users.filter(u => u.role === "am" && !infl.has(u.id)).map(u => u.id);
     const fallback = (users.find(u => u.role === "manager") || users.find(u => u.role === "head") || {}).id || null;
     const load = Object.fromEntries(ams.map(id => [id, 0]));
     if (ams.length) (await c.query("select owner, count(*)::int n from public.iskra_owner where owner = any($1) and replied_at is not null group by owner", [ams])).rows.forEach(x => load[x.owner] = x.n);
@@ -207,6 +209,10 @@ module.exports = async (req, res) => {
           } else if (!o.replied_at){
             await c.query("update public.iskra_owner set replied_at=now() where conversation_id=$1", [id]); o.replied_at = new Date();
             if (!o.owner){ const p = await pick(norm.phone); await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
+          } else if (!o.owner && !o.discarded_at && o.assigned_by !== "manual"){
+            // contestó pero se quedó sin dueño (p. ej. cuando llegó no había a quién asignarlo): se asigna ahora
+            const p = await pick(norm.phone);
+            if (p.owner){ await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1 and owner is null", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
           }
           OWN_CACHE[id] = o.owner;
           if (lead || o.owner === viewId) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by}});
