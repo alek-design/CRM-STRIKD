@@ -64,6 +64,10 @@
 #view-report .rp-k .on b{color:#16a34a}
 #view-report .rp-list{display:grid}#view-report .rp-list>div{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-size:14px}#view-report .rp-list>div:first-child{border-top:0}
 #view-report .rp-list span{font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted);min-width:42px}#view-report .rp-list small{margin-left:auto;color:var(--muted);font-weight:600}
+#view-report .rp-act>div{display:grid;grid-template-columns:minmax(90px,130px) 1fr auto;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-size:14px}#view-report .rp-act>div:first-child{border-top:0}
+#view-report .rp-act b small{font-size:11px;color:var(--muted);font-weight:700}
+#view-report .rp-act em{font-style:normal;font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;min-width:64px;text-align:right}
+#view-report .rp-bar{height:6px;border-radius:99px;background:var(--raised);overflow:hidden}#view-report .rp-bar i{display:block;height:100%;background:var(--fg);opacity:.7;border-radius:inherit}
 #view-report .rp-p{padding:12px 14px;border-top:1px solid var(--line);display:grid;gap:6px}#view-report .rp-p:first-child{border-top:0}
 #view-report .rp-ph{display:flex;align-items:center;gap:8px}#view-report .rp-ph b{font-size:15px}
 #view-report .rp-pn{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}#view-report .rp-pn span{display:inline-flex;gap:4px;align-items:baseline}#view-report .rp-pn b{color:var(--fg);font-variant-numeric:tabular-nums}
@@ -4338,10 +4342,24 @@ function presOnline(){ return presPeople().filter(u => presOf(u).st==="on"); }
   document.addEventListener("visibilitychange", () => { if (document.visibilityState==="visible") later(); });
 })();
 let PRES_LAST = 0;
+/* Tiempo activo en la app: cuenta un minuto por cada minuto con la app abierta y con actividad (tocar, escribir, scroll).
+   Si pasan 5 min sin actividad deja de contar. Se guarda por día en members/{uid}.activeMin["AAAA-MM-DD"]. */
+const ACT = {last:Date.now(), day:"", min:0, saved:-1};
+["pointerdown","keydown","touchstart","scroll","wheel","input"].forEach(ev => window.addEventListener(ev, () => { ACT.last = Date.now(); }, {passive:true, capture:true}));
+const actDay = () => new Date(Date.now() - OFF).toISOString().slice(0,10);
+const actOf = (u, day) => Number(((((S.members||{})[u]||{}).activeMin)||{})[day || actDay()]) || 0;
+const fmtMin = n => { n = Math.round(Number(n)||0); if (n < 60) return `${n} min`; const h = Math.floor(n/60), m = n % 60; return m ? `${h} h ${m} min` : `${h} h`; };
+setInterval(() => {
+  if (!S.uid || document.visibilityState!=="visible" || Date.now() - ACT.last > 5*60e3) return;
+  const d = actDay(); if (ACT.day !== d){ ACT.day = d; ACT.min = 0; }
+  ACT.min = Math.max(ACT.min, actOf(S.uid, d)) + 1;
+}, 60e3);
 function presBeat(away){
   if (!S.uid || !db || S.canWrite === false) return;
   const now = Date.now(); if (!away && now - PRES_LAST < 50e3) return; PRES_LAST = away ? 0 : now;
-  db.doc(`members/${S.uid}`).update({seenAt:now, away:!!away}).catch(() => {});
+  const patch = {seenAt:now, away:!!away};
+  if (ACT.day && ACT.min !== ACT.saved){ patch.activeMin = {[ACT.day]:ACT.min}; ACT.saved = ACT.min; const m = (S.members||{})[S.uid]; if (m) (m.activeMin ||= {})[ACT.day] = ACT.min; }
+  db.doc(`members/${S.uid}`).update(patch).catch(() => {});
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState==="hidden") presBeat(true); else { PRES_LAST = 0; presBeat(false); schedule(); } });
 window.addEventListener("pagehide", () => presBeat(true));
@@ -4366,7 +4384,7 @@ function renderReport(){
     return {u, reg:reg.length, wa:reg.filter(([,m]) => canalOf(m)==="whatsapp").length, tom:vs.filter(v => v.status==="attended").length, ns:vs.filter(v => v.status==="noshow").length,
       gus:n("legusto"), apr:n("aprobado"), pw:n("progweb"), pub:n("publicado"), lost:items.filter(([,m]) => inD((m.flow||{}).lostAt)).length,
       late:isToday ? (teamLateBy(now)[u]||[]).length : null, tkDone:tk.filter(([,x]) => inD(x.doneAt)).length, tkOpen:tk.filter(([,x]) => tkSt(x)!=="done").length, tkRev:tk.filter(([,x]) => tkSt(x)==="review").length,
-      seen:inD(((S.members||{})[u]||{}).seenAt) || (isToday && presOf(u).st) };
+      seen:inD(((S.members||{})[u]||{}).seenAt) || actOf(u, day) > 0 || (isToday && presOf(u).st) };
   });
   const sum = k => per.reduce((a,r) => a + (r[k]||0), 0);
   const tomorrow = new Date(to - OFF + 12*3600e3).toISOString().slice(0,10);
@@ -4378,7 +4396,7 @@ function renderReport(){
   const k = (n, l, cls) => `<span class="${cls||""}"><b>${n}</b>${l}</span>`;
   const sec = (t, body) => `<section class="rp-sec"><h3 class="sec-h">${t}</h3>${body}</section>`;
   const row = r => `<div class="rp-p"><div class="rp-ph"><b>${esc(first(r.u))}</b>${r.seen ? `<span class="pres on">${isToday && presOf(r.u).st==="on" ? "en línea" : "entró hoy"}</span>` : `<span class="pres off">no entró</span>`}</div>
-      <div class="rp-pn">${k(r.reg, "agendó")}${k(r.tom, "pitches")}${k(r.gus + r.apr + r.pw + r.pub, "avances")}${r.late!==null ? k(r.late, "atrasados", r.late ? "bad" : "") : ""}${k(r.tkDone, "tareas hechas")}${r.tkRev ? k(r.tkRev, "por aprobar") : ""}</div></div>`;
+      <div class="rp-pn">${k(fmtMin(actOf(r.u, day)), "activo")}${k(r.reg, "agendó")}${k(r.tom, "pitches")}${k(r.gus + r.apr + r.pw + r.pub, "avances")}${r.late!==null ? k(r.late, "atrasados", r.late ? "bad" : "") : ""}${k(r.tkDone, "tareas hechas")}${r.tkRev ? k(r.tkRev, "por aprobar") : ""}</div></div>`;
   const h = `<div class="rp">
     <div class="rp-top"><div><h2>Reporte del día</h2><p class="sub">${esc(dl)}${S.isOwner && !teamScoped() ? " · todo el equipo" : " · tu equipo"}</p></div>
       <div class="tld-nav"><button type="button" data-rpday="-1" aria-label="Día anterior">‹</button><em>${isToday ? "Hoy" : esc(dl.split(" ")[0])}</em><button type="button" data-rpday="1" aria-label="Día siguiente"${isToday ? " disabled" : ""}>›</button></div></div>
@@ -4386,6 +4404,8 @@ function renderReport(){
       ${next.length ? `<div class="pg2-card rp-list">${next.slice(0, 8).map(e => `<div><span>${esc(String(e.at).slice(11,16))}</span>${esc(String(e.label).replace(/^Pitch · /,""))}<small>${esc(first(e.who))}</small></div>`).join("")}${next.length > 8 ? `<div class="mut">+${next.length-8} más</div>` : ""}</div>` : ""}`)}
     ${sec("Avance del journey", `<div class="tf-kpis rp-k">${k(sum("gus"), "les gustó")}${k(sum("apr"), "skeleton aprobado")}${k(sum("pw"), "programa y web")}${k(sum("pub"), "publicados", sum("pub") ? "on" : "")}</div>${sum("lost") ? `<p class="mut small">${sum("lost")} marcado${sum("lost")===1?"":"s"} como perdido${sum("lost")===1?"":"s"}.</p>` : ""}`)}
     ${sec("Equipo", `<div class="pg2-card">${per.map(row).join("") || `<p class="tt-none">Sin equipo todavía</p>`}</div>`)}
+    ${(() => { const ppl = presPeople().map(u => [u, actOf(u, day)]).sort((a,b) => b[1] - a[1]), mx = Math.max(1, ...ppl.map(x => x[1]));
+      return sec("Tiempo activo en la app", `<div class="pg2-card rp-act">${ppl.map(([u,n]) => `<div><b>${esc(first(u))}${roleOf(u)==="manager" ? " <small>Manager</small>" : roleOf(u)==="influencer" ? " <small>Influencer</small>" : ""}</b><span class="rp-bar"><i style="width:${Math.round(n/mx*100)}%"></i></span><em>${n ? fmtMin(n) : "—"}</em></div>`).join("") || `<p class="tt-none">Sin datos</p>`}</div><p class="mut small">Cuenta solo el tiempo con la app abierta y usándola; después de 5 min sin tocar nada deja de contar.</p>`); })()}
     ${sec("WhatsApp y Mich", `<div class="tf-kpis rp-k">${wa ? k(wa.act, "chats con actividad") + k(wa.rep, "respondidos") + k(wa.open, "sin responder", wa.open ? "bad" : "") : k("—", "abre Mensajes para cargar")}${k(sum("wa"), "meets por WhatsApp")}</div>
       ${vipAll.length ? `<div class="tf-kpis rp-k k3" style="margin-top:8px">${k(mi.cont, "Mich contactó")}${k(mi.ag, "agendaron con Mich")}${k(mi.nuevos, "propuestos a Mich")}</div>` : ""}`)}
     <p class="mut small">Cada noche a las 9:00 pm te llega una notificación con este resumen. <button type="button" class="linkbtn" data-rptest="1">Mandármelo ahora para probar</button></p>
@@ -4409,7 +4429,7 @@ function renderMichReport(box){
     <div class="rp-top"><div><h2>Tu reporte</h2><p class="sub">${esc(dl)}</p></div>
       <div class="tld-nav"><button type="button" data-rpday="-1" aria-label="Día anterior">‹</button><em>${isToday ? "Hoy" : esc(dl.split(" ")[0])}</em><button type="button" data-rpday="1" aria-label="Día siguiente"${isToday ? " disabled" : ""}>›</button></div></div>
     <section class="rp-sec"><h3 class="sec-h">Tu lista</h3><div class="tf-kpis rp-k">${k(cont, "contactaste")}${k(intr, "interesados")}${k(ag, "agendaron meet", ag ? "on" : "")}${k(nuevos, "nuevos en tu lista")}</div>
-      <p class="mut small">${pend} perfil${pend===1?"":"es"} por contactar${qt ? qt.until ? ` · en pausa hasta las ${esc(fmtLocal(qt.until).split(", ")[1]||"")}` : ` · te quedan ${qt.left} de ${MI_MAX} en esta tanda` : ""}.</p></section>
+      <p class="mut small">Estuviste activa ${fmtMin(Math.max(actOf(me, day), day===actDay() ? ACT.min : 0))} en la app · ${pend} perfil${pend===1?"":"es"} por contactar${qt ? qt.until ? ` · en pausa hasta las ${esc(fmtLocal(qt.until).split(", ")[1]||"")}` : ` · te quedan ${qt.left} de ${MI_MAX} en esta tanda` : ""}.</p></section>
     <section class="rp-sec"><h3 class="sec-h">Tus meets de mañana <b>${next.length}</b></h3>${next.length ? `<div class="pg2-card rp-list">${next.map(e => `<div><span>${esc(String(e.at).slice(11,16))}</span>${esc(String(e.label).replace(/^Pitch · /,""))}</div>`).join("")}</div>` : `<p class="mut small">No tienes meets mañana.</p>`}</section>
     <p class="mut small">Cada noche a las 9:00 pm te llega una notificación con este resumen.</p>
   </div>`;
