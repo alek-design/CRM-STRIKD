@@ -26,7 +26,7 @@
     headerChip();
     if (me.role === "head" && localStorage.getItem("strikd_cron") !== "2"){ fetch("/api/push-cron", {method:"POST", headers:{authorization:"Bearer " + session.access_token}}).then(r => { if (r.ok) localStorage.setItem("strikd_cron", "2"); }).catch(() => {}); }
     const gq = new URLSearchParams(location.search).get("google");
-    if (gq){ history.replaceState(null, "", location.pathname); if (gq !== "ok") setTimeout(() => alert(gq === "cancelado" ? "No se conectó Google Calendar (cancelaste el permiso)." : "No se pudo conectar Google Calendar. Intenta de nuevo."), 300); }
+    if (gq){ history.replaceState(null, "", location.pathname); if (gq === "extra") setTimeout(() => alert("✓ Cuenta conectada. Sus eventos ya salen en tu agenda con su título y link de Meet."), 300); else if (gq !== "ok") setTimeout(() => alert(gq === "cancelado" ? "No se conectó Google Calendar (cancelaste el permiso)." : "No se pudo conectar Google Calendar. Intenta de nuevo."), 300); }
   })();
   let google = {};
 
@@ -126,6 +126,15 @@
     googleConnect: async () => {
       if (google.configured === false) return alert("Google Calendar todavía no está activado en el servidor. El Head tiene que poner las llaves de Google en Vercel.");
       const t = (await sb.auth.getSession()).data.session.access_token; location.href = "/api/google/connect?token=" + encodeURIComponent(t);
+    },
+    // otra cuenta de Google (p. ej. la de otro trabajo), conectada directo para leer su calendario completo
+    googleConnectExtra: async (name) => {
+      const t = (await sb.auth.getSession()).data.session.access_token;
+      location.href = "/api/google/connect?token=" + encodeURIComponent(t) + "&extra=" + encodeURIComponent(name || "");
+    },
+    googleForgetExtra: async (email) => {
+      const t = (await sb.auth.getSession()).data.session.access_token;
+      await fetch("/api/google/status", {method:"POST", headers:{authorization:"Bearer " + t, "content-type":"application/json"}, body:JSON.stringify({extra:email})}).catch(() => {});
     },
     googleDisconnect: async () => {
       if (!confirm("¿Desconectar tu Google Calendar? Ya no podrás agendar meets hasta volver a conectarlo.")) return;

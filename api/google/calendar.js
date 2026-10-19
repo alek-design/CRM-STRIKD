@@ -1,6 +1,6 @@
 // Calendario de quien está usando la página: listar, ver, crear (con Meet) y borrar eventos.
 const crypto = require("crypto");
-const { userFromReq, accessTokenFor, withPg } = require("../../lib/google");
+const { userFromReq, accessTokenFor, accessTokenForExtra, withPg } = require("../../lib/google");
 // Calendarios extra (p. ej. el de otra cuenta compartido con este correo): members/<uid>.extraCals = [{id, name}]
 async function extraCals(uid){
   try{ return await withPg(async c => { const r = (await c.query("select data from public.docs where path=$1", ["members/" + uid])).rows[0];
@@ -28,11 +28,19 @@ module.exports = async (req, res) => {
       if (!main.ok) return res.status(main.status === 401 ? 401 : 502).json({code: main.status === 401 ? "needs_reauth" : "tool_error", error:(mj.error && mj.error.message) || "Error de Google"});
       const out = (mj.items || []).map(x => ({...x, conferenceUrl:x.hangoutLink}));
       const st = await Promise.all(extras.map(async cal => {
-        try{ const er = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events?${q}`, {headers:H});
+        try{
+          // conectada directo: se lee con el token de esa cuenta (trae todo aunque su organización no deje compartir detalles)
+          let url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events?${q}`, hh = H;
+          if (cal.linked){
+            const xt = await accessTokenForExtra(me.id, cal.id);
+            if (!xt) return {id:cal.id, name:cal.name || "", ok:false, linked:true, error:"Se desconectó: vuelve a conectar la cuenta"};
+            url = `${API}?${q}`; hh = {authorization:`Bearer ${xt}`};
+          }
+          const er = await fetch(url, {headers:hh});
           const ej = await er.json().catch(() => ({}));
-          if (!er.ok) return {id:cal.id, name:cal.name || "", ok:false, error: er.status === 404 || er.status === 403 ? "Todavía no está compartido con este correo" : ((ej.error && ej.error.message) || "Error de Google")};
+          if (!er.ok) return {id:cal.id, name:cal.name || "", ok:false, linked:!!cal.linked, error: cal.linked ? ((ej.error && ej.error.message) || "Error de Google") : er.status === 404 || er.status === 403 ? "Todavía no está compartido con este correo" : ((ej.error && ej.error.message) || "Error de Google")};
           (ej.items || []).forEach(x => out.push({...x, conferenceUrl:x.hangoutLink, calName:cal.name || cal.id, extraCal:true}));
-          return {id:cal.id, name:cal.name || "", ok:true, n:(ej.items || []).length};
+          return {id:cal.id, name:cal.name || "", ok:true, linked:!!cal.linked, n:(ej.items || []).length};
         }catch(e){ return {id:cal.id, name:cal.name || "", ok:false, error:String(e.message || e)}; }
       }));
       return res.json({events:out, extras:st});

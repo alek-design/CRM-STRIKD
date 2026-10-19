@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 02:46:11 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 02:52:05 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792377971">
+<link rel="stylesheet" href="/auth.css?v=1792378325">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792377971"></script>
+<script src="/claude-shim.js?v=1792378325"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -47,6 +47,9 @@
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.xc-opt{padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px}.xc-opt p{margin:4px 0 8px;font-size:13px;color:var(--muted)}
+.linkish{background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:600;color:var(--fg);text-decoration:underline;cursor:pointer}
+.xc-or{font-size:12px;color:var(--muted);text-align:center;margin:6px 0 10px}
 .pl-gopen{margin-left:auto;align-self:center;flex:none;font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;background:var(--fg);color:var(--bg);text-decoration:none}
 .pl-gopen.sec{background:transparent;color:var(--fg);border:1px solid var(--line)}
 #view-msgs .mh-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:1 1 100%;width:100%}
@@ -1752,11 +1755,16 @@ function setRow(icon, title, sub, right){ return `<div class="set-row"><span cla
 const XC = {open:false, err:""};
 function xcalHtml(g){
   const list = (((S.members||{})[S.uid]||{}).extraCals) || [], mail = (g && g.email) || "tu correo de STRIKD";
-  const stOf = c => { const x = (GCX||[]).find(y => y.id===c.id); return !x ? `<span class="mut">revisando…</span>` : x.ok ? `<span class="xc-ok">✓ se ve en tu agenda</span>` : `<span class="xc-bad">${esc(x.error)}</span>`; };
+  const A = window.STRIKD_ACT, canLink = !!(A && A.googleConnectExtra);
+  const stOf = c => { const x = (GCX||[]).find(y => y.id===c.id); return !x ? `<span class="mut">revisando…</span>` : x.ok ? `<span class="xc-ok">✓ se ve en tu agenda${c.linked ? " · conectada directo" : ""}</span>` : `<span class="xc-bad">${esc(x.error)}</span>${c.linked && canLink ? ` <button type="button" class="linkish" data-xc="relink" data-n="${esc(c.name||"")}">Conectar otra vez</button>` : ""}`; };
   return `<div class="xc">
     <div class="xc-h"><b>Otros calendarios</b><span>Por ejemplo tu agenda de otro trabajo: sale en tu agenda y cuenta como ocupado al agendar.</span></div>
     ${list.map((c,i) => `<div class="xc-row"><div><b>${esc(c.name || c.id)}</b><small>${esc(c.id)}</small>${stOf(c)}</div><button type="button" class="pr-x" data-xcdel="${i}">Quitar</button></div>`).join("")}
     ${XC.open ? `<div class="xc-form">
+        ${canLink ? `<div class="xc-opt"><b>Conectar la cuenta directo</b> <span class="mut">(recomendado)</span><p>Entras con la otra cuenta de Google y listo: sale el título de cada evento y su link de Meet, aunque esa empresa no deje compartir detalles.</p>
+          <label class="f">Nombre corto (así sale en tu agenda)<input id="xcLinkName" placeholder="Ej. Chachalacos" maxlength="16"></label>
+          <div class="tk-acts"><button type="button" class="btn small primary" data-xc="link">Conectar con Google</button></div></div>
+        <div class="xc-or">o, si prefieres, compártelo</div>` : ""}
         <ol class="xc-steps"><li>Entra a Google Calendar con la otra cuenta (en computadora).</li><li>Configuración → en "Mis calendarios" elige tu calendario → <b>Compartir con personas específicas</b>.</li><li>Agrega <b>${esc(mail)}</b> con permiso <b>"Ver todos los detalles de los eventos"</b>.</li><li>Escribe aquí el correo de esa cuenta.</li></ol>
         <label class="f">Correo de la otra cuenta<input id="xcId" type="email" placeholder="tu@otraempresa.com" autocomplete="off"></label>
         <label class="f">Nombre corto (así sale en tu agenda)<input id="xcName" placeholder="Ej. Tacos" maxlength="16"></label>
@@ -1767,10 +1775,13 @@ document.addEventListener("click", async e => {
   const b = e.target.closest("[data-xc]"), del = e.target.closest("[data-xcdel]"); if (!b && !del) return;
   const cur = ((((S.members||{})[S.uid]||{}).extraCals) || []).slice();
   const save = async list => { try{ await db.doc(`members/${S.uid}`).update({extraCals:list}).catch(() => db.doc(`members/${S.uid}`).set({...((S.members||{})[S.uid]||{}), extraCals:list})); ((S.members||{})[S.uid] ||= {}).extraCals = list; GCX = null; gcalReset(); schedule(); return true; }catch(_){ quickToast("No se guardó, intenta otra vez"); return false; } };
-  if (del){ cur.splice(Number(del.dataset.xcdel), 1); if (await save(cur)) quickToast("Calendario quitado"); return; }
+  if (del){ const gone = cur.splice(Number(del.dataset.xcdel), 1)[0]; if (gone && gone.linked && window.STRIKD_ACT && window.STRIKD_ACT.googleForgetExtra) window.STRIKD_ACT.googleForgetExtra(gone.id); if (await save(cur)) quickToast("Calendario quitado"); return; }
   const k = b.dataset.xc;
   if (k==="open"){ XC.open = true; XC.err = ""; schedule(); return; }
   if (k==="cancel"){ XC.open = false; XC.err = ""; schedule(); return; }
+  if (k==="link" || k==="relink"){ const A = window.STRIKD_ACT; if (!A || !A.googleConnectExtra) return;
+    const nm = k==="link" ? ($("xcLinkName").value.trim() || "") : (b.dataset.n || "");
+    quickToast("Elige la otra cuenta en Google…"); A.googleConnectExtra(nm); return; }
   if (k==="add"){ const id = $("xcId").value.trim().toLowerCase(), name = $("xcName").value.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id)){ XC.err = "Revisa el correo"; schedule(); return; }
     if (cur.some(c => c.id===id)){ XC.err = "Ya está agregado"; schedule(); return; }
