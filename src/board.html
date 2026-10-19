@@ -4652,17 +4652,17 @@ function renderTeamLate(){
 }
 /* Equipo: todas las tareas asignadas (abiertas y completadas recientes); en Pendientes solo salen las que esperan tu aprobación */
 // Tareas del equipo agrupadas por persona (cerradas; se abren al tocar). Primero quien tiene algo por aprobar o tarde.
-const TT_OPEN = new Set();
+const TT_OPEN = new Set(), TT_SHUT = new Set(); // TT_SHUT: las que cerraste tú (no se reabren solas)
 function ttGroups(open, now){
   const by = {}; open.forEach(r => (by[r[0]] ||= []).push(r));
   const info = u => { const l = by[u], rev = l.filter(([,,x]) => tkSt(x)==="review").length, late = l.filter(([,,x]) => x.dueAt && x.dueAt < now && tkSt(x)!=="review").length; return {l, rev, late}; };
   const ppl = Object.keys(by).sort((a,b) => { const A = info(a), B = info(b); return (B.rev - A.rev) || (B.late - A.late) || (B.l.length - A.l.length); });
   return ppl.map(u => { const {l, rev, late} = info(u), nm = String(nameOf(S.ps||{}, u)).split(" (")[0];
-    const isOpen = TT_OPEN.has(u) || (TK_OPEN && TK_OPEN.startsWith(u + "/"));
+    const isOpen = TT_OPEN.has(u) || (!TT_SHUT.has(u) && TK_OPEN && TK_OPEN.startsWith(u + "/"));
     return `<details class="tt-p" data-ttp="${esc(u)}"${isOpen ? " open" : ""}><summary><span class="tt-pn">${esc(nm)}</span><span class="tt-pc">${rev ? `<em class="rev">${rev} por aprobar</em>` : ""}${late ? `<em class="late">${late} tarde</em>` : ""}<b>${l.length}</b></span></summary>
       ${l.map(([uu,id,x]) => taskRow(uu, id, x, true, now)).join("")}</details>`; }).join("");
 }
-document.addEventListener("toggle", e => { const d = e.target; if (!d || !d.matches || !d.matches("details[data-ttp]")) return; if (d.open) TT_OPEN.add(d.dataset.ttp); else TT_OPEN.delete(d.dataset.ttp); }, true);
+document.addEventListener("toggle", e => { const d = e.target; if (!d || !d.matches || !d.matches("details[data-ttp]")) return; if (d.open){ TT_OPEN.add(d.dataset.ttp); TT_SHUT.delete(d.dataset.ttp); } else { TT_OPEN.delete(d.dataset.ttp); TT_SHUT.add(d.dataset.ttp); if (TK_OPEN && TK_OPEN.startsWith(d.dataset.ttp + "/")) TK_OPEN = null; } }, true);
 function renderTeamTasks(){
   const box = $("teamTasks"); if (!box || !teamView() || busyIn(box)) return;
   const list = taskAssignedByMe(), now = Date.now(), open = list.filter(([,,x]) => tkSt(x)!=="done"), done = list.filter(([,,x]) => tkSt(x)==="done");
