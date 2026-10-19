@@ -4038,8 +4038,12 @@ document.addEventListener("click", async e => {
   }catch(_){ quickToast("No se guardó, intenta otra vez"); }
 });
 // AM con permiso del Head para asignar tareas a otros AM (Organigrama → "Puede asignar tareas")
-function tkAssigner(){ return !!(S.uid && !S.viewAs && !adminMode() && ((S.roles||{})[S.uid]||{}).canAssign); }
-function tkAssignees(){ const head = (S.config||{}).headId; return Object.keys(S.members||{}).filter(u => u!==S.uid && u!==head && (roleOf(u)==="am" || !roleOf(u))); }
+// y la Influencer Outreach (Mich): ella le puede dejar tareas a todo el equipo
+function tkInfl(){ return !!(S.uid && !S.viewAs && !adminMode() && roleOf(S.uid)==="influencer"); }
+function tkAssigner(){ return !!(S.uid && !S.viewAs && !adminMode() && (((S.roles||{})[S.uid]||{}).canAssign || roleOf(S.uid)==="influencer")); }
+function tkAssignees(all){ const head = (S.config||{}).headId;
+  if (all || tkInfl()) return Object.keys(S.members||{}).concat(head ? [head] : []).filter((u,i,a) => u && a.indexOf(u)===i && u!==S.uid);
+  return Object.keys(S.members||{}).filter(u => u!==S.uid && u!==head && (roleOf(u)==="am" || !roleOf(u))); }
 function taskSubs(){
   tkRulesSub();
   const ids = adminMode() && !S.viewAs ? Object.keys(S.members||{}).concat(S.uid ? [S.uid] : []) : tkAssigner() ? [meId()].concat(tkAssignees()) : [meId()];
@@ -4171,7 +4175,7 @@ function taskOpen(){
     <div class="grid">
       <label class="f full">¿Qué hay que hacer? <em>*</em><input id="tkTitle" placeholder="Ej. Trabajar 3 plantillas de email" autocomplete="off"></label>
       <label class="f full">Detalle (opcional)<textarea id="tkNote" rows="2" placeholder="Contexto, links, cómo debe quedar"></textarea></label>
-      <label class="f">Para <em>*</em><select id="tkWho"><option value="">Elige</option>${asg ? "" : `<option value="__team">Todo el equipo</option>`}${ppl.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (tú)":""}</option>`).join("")}</select></label>
+      <label class="f">Para <em>*</em><select id="tkWho"><option value="">Elige</option>${asg && !tkInfl() ? "" : `<option value="__team">Todo el equipo</option>`}${ppl.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (tú)":""}</option>`).join("")}</select></label>
       <label class="f">Para cuándo<input type="date" id="tkDue" value="${today}"></label>
       <label class="f"${asg ? " hidden" : ""}>Se repite<select id="tkRep"><option value="">No se repite</option><option value="w">Cada semana (mismo día de entrega)</option></select></label>
       <label class="f"${asg ? " hidden" : ""}>Meta que se mide sola<select id="tkMetric"><option value="">Ninguna</option><option value="mich">Candidatos para la Lista de Mich</option></select></label>
@@ -4194,7 +4198,7 @@ function taskOpen(){
     if (!e.target.closest("#tkGo")) return;
     const title = $("tkTitle").value.trim(), who = $("tkWho").value, due = $("tkDue").value, note = $("tkNote").value.trim();
     if (!title || !who){ $("tkErr").textContent = "Escribe la tarea y elige para quién."; return; }
-    const to = who==="__team" ? Object.keys(S.team||{}).filter(u => u!==S.uid && u!==(S.config||{}).headId) : [who];
+    const to = who==="__team" ? (tkInfl() ? tkAssignees().filter(u => u!==(S.config||{}).headId && roleOf(u)!=="manager" && roleOf(u)!=="influencer") : Object.keys(S.team||{}).filter(u => u!==S.uid && u!==(S.config||{}).headId)) : [who];
     const dueAt = due ? Date.parse(due + "T18:00:00-05:00") : 0, now = Date.now();
     $("tkGo").disabled = true;
     let files = [];

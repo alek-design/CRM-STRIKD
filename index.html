@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 18:10:31 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 18:16:24 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792433431">
+<link rel="stylesheet" href="/auth.css?v=1792433784">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792433431"></script>
+<script src="/claude-shim.js?v=1792433784"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -4047,8 +4047,12 @@ document.addEventListener("click", async e => {
   }catch(_){ quickToast("No se guardó, intenta otra vez"); }
 });
 // AM con permiso del Head para asignar tareas a otros AM (Organigrama → "Puede asignar tareas")
-function tkAssigner(){ return !!(S.uid && !S.viewAs && !adminMode() && ((S.roles||{})[S.uid]||{}).canAssign); }
-function tkAssignees(){ const head = (S.config||{}).headId; return Object.keys(S.members||{}).filter(u => u!==S.uid && u!==head && (roleOf(u)==="am" || !roleOf(u))); }
+// y la Influencer Outreach (Mich): ella le puede dejar tareas a todo el equipo
+function tkInfl(){ return !!(S.uid && !S.viewAs && !adminMode() && roleOf(S.uid)==="influencer"); }
+function tkAssigner(){ return !!(S.uid && !S.viewAs && !adminMode() && (((S.roles||{})[S.uid]||{}).canAssign || roleOf(S.uid)==="influencer")); }
+function tkAssignees(all){ const head = (S.config||{}).headId;
+  if (all || tkInfl()) return Object.keys(S.members||{}).concat(head ? [head] : []).filter((u,i,a) => u && a.indexOf(u)===i && u!==S.uid);
+  return Object.keys(S.members||{}).filter(u => u!==S.uid && u!==head && (roleOf(u)==="am" || !roleOf(u))); }
 function taskSubs(){
   tkRulesSub();
   const ids = adminMode() && !S.viewAs ? Object.keys(S.members||{}).concat(S.uid ? [S.uid] : []) : tkAssigner() ? [meId()].concat(tkAssignees()) : [meId()];
@@ -4180,7 +4184,7 @@ function taskOpen(){
     <div class="grid">
       <label class="f full">¿Qué hay que hacer? <em>*</em><input id="tkTitle" placeholder="Ej. Trabajar 3 plantillas de email" autocomplete="off"></label>
       <label class="f full">Detalle (opcional)<textarea id="tkNote" rows="2" placeholder="Contexto, links, cómo debe quedar"></textarea></label>
-      <label class="f">Para <em>*</em><select id="tkWho"><option value="">Elige</option>${asg ? "" : `<option value="__team">Todo el equipo</option>`}${ppl.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (tú)":""}</option>`).join("")}</select></label>
+      <label class="f">Para <em>*</em><select id="tkWho"><option value="">Elige</option>${asg && !tkInfl() ? "" : `<option value="__team">Todo el equipo</option>`}${ppl.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (tú)":""}</option>`).join("")}</select></label>
       <label class="f">Para cuándo<input type="date" id="tkDue" value="${today}"></label>
       <label class="f"${asg ? " hidden" : ""}>Se repite<select id="tkRep"><option value="">No se repite</option><option value="w">Cada semana (mismo día de entrega)</option></select></label>
       <label class="f"${asg ? " hidden" : ""}>Meta que se mide sola<select id="tkMetric"><option value="">Ninguna</option><option value="mich">Candidatos para la Lista de Mich</option></select></label>
@@ -4203,7 +4207,7 @@ function taskOpen(){
     if (!e.target.closest("#tkGo")) return;
     const title = $("tkTitle").value.trim(), who = $("tkWho").value, due = $("tkDue").value, note = $("tkNote").value.trim();
     if (!title || !who){ $("tkErr").textContent = "Escribe la tarea y elige para quién."; return; }
-    const to = who==="__team" ? Object.keys(S.team||{}).filter(u => u!==S.uid && u!==(S.config||{}).headId) : [who];
+    const to = who==="__team" ? (tkInfl() ? tkAssignees().filter(u => u!==(S.config||{}).headId && roleOf(u)!=="manager" && roleOf(u)!=="influencer") : Object.keys(S.team||{}).filter(u => u!==S.uid && u!==(S.config||{}).headId)) : [who];
     const dueAt = due ? Date.parse(due + "T18:00:00-05:00") : 0, now = Date.now();
     $("tkGo").disabled = true;
     let files = [];
