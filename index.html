@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 02:14:18 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 02:42:00 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792376058">
+<link rel="stylesheet" href="/auth.css?v=1792377720">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792376058"></script>
+<script src="/claude-shim.js?v=1792377720"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -3493,9 +3493,13 @@ function calEvents(){
   }));
   // add the admin's real Google Calendar, skipping the ones that are the same meet as a panel event
   const mails = {}; Object.values(S.all).forEach(o => Object.values(o||{}).forEach(m => { if (m.email) mails[m.email.toLowerCase()] = 1; }));
-  const starts = new Set(ev.map(e => e.at));
+  // mismo meet = trae el email del prospecto, o empieza a la misma hora Y su título trae el nombre del prospecto
+  const startNames = {}; ev.forEach(e => (startNames[e.at] ||= []).push(String(e.label||"").split(" · ").slice(1).join(" · ").toLowerCase()));
+  const sameMeet = (at, label) => (startNames[at]||[]).some(n => n && String(label||"").toLowerCase().includes(n));
+  const seenG = new Set();
   if (!S.viewAs) Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
-    if (starts.has(e.at) || e.emails.some(x => mails[x])) return;
+    const gk = e.at + "|" + e.label; if (seenG.has(gk)) return; seenG.add(gk);
+    if (sameMeet(e.at, e.label) || e.emails.some(x => mails[x])) return;
     ev.push({at:e.at, endTs:e.endTs, kind:"gcal", label:e.label, who:null});
   }));
   return ev;
@@ -3556,17 +3560,18 @@ let AG_SEG = "meets";
 // iPhone: mes arriba, semana con flechas a los lados, y dos pestañas: Meets / Pendientes
 function agendaPhone(offset){
   const todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
-  const t0 = new Date(todayStr + "T00:00:00Z"), dow = (t0.getUTCDay()+6)%7;
-  const monday = new Date(t0.getTime() - dow*DAY + offset*7*DAY);
-  const days = Array.from({length:7}, (_,i) => new Date(monday.getTime() + i*DAY).toISOString().slice(0,10));
-  gcalWatch(monday.toISOString().slice(0,10));
+  // semana corrida: hoy y los 6 días que siguen (así el domingo también ves el lunes); las flechas avanzan 7 días
+  const t0 = new Date(todayStr + "T00:00:00Z"), start = new Date(t0.getTime() + offset*7*DAY);
+  const days = Array.from({length:7}, (_,i) => new Date(start.getTime() + i*DAY).toISOString().slice(0,10));
+  const mondayOf = d => { const x = new Date(d + "T00:00:00Z"), w = (x.getUTCDay()+6)%7; return new Date(x.getTime() - w*DAY).toISOString().slice(0,10); };
+  [...new Set([mondayOf(days[0]), mondayOf(days[6])])].forEach(m => gcalWatch(m));
   if (!AG_DAY || !days.includes(AG_DAY)) AG_DAY = days.includes(todayStr) ? todayStr : days[0];
   const evs = calEvents().map(e => { const ts = meetTs(e.at); return {...e, ts, end:(e.endTs && e.endTs > ts ? e.endTs : ts + MEET_MIN)}; }).filter(e => !isNaN(e.ts)).sort((a,b) => a.ts - b.ts);
   for (let i = 0; i < evs.length; i++) for (let j = i+1; j < evs.length && evs[j].ts < evs[i].end + 10*60e3; j++){ evs[i].clash = true; evs[j].clash = true; }
   const by = {}; evs.forEach(e => (by[e.at.slice(0,10)] = by[e.at.slice(0,10)] || []).push(e));
   const KIND = {pitch:"Pitch", skel:"Meet de skeleton", build:"Lanzamiento", gcal:"Tu calendario"};
   const strip = days.map((d,i) => { const n = (by[d]||[]).length, c = (by[d]||[]).some(e => e.clash);
-    return `<button type="button" class="ap-d${d===AG_DAY?" on":""}${d===todayStr?" today":""}" data-agday="${d}"><span>${d===todayStr ? "Hoy" : DOW[i]}</span><b>${Number(d.slice(8))}</b><i class="${c?"x":""}">${n?"•".repeat(Math.min(n,3)):""}</i></button>`; }).join("");
+    return `<button type="button" class="ap-d${d===AG_DAY?" on":""}${d===todayStr?" today":""}" data-agday="${d}"><span>${d===todayStr ? "Hoy" : DOW[(new Date(d + "T12:00:00Z").getUTCDay()+6)%7]}</span><b>${Number(d.slice(8))}</b><i class="${c?"x":""}">${n?"•".repeat(Math.min(n,3)):""}</i></button>`; }).join("");
   const week = `<div class="ap-week"><button type="button" class="ap-nav" data-k="__tab" data-calnav="-1" aria-label="Semana anterior">‹</button><div class="ap-strip">${strip}</div><button type="button" class="ap-nav" data-k="__tab" data-calnav="1" aria-label="Semana siguiente">›</button></div>`;
   const nowTs = Date.now(), isToday = AG_DAY === todayStr;
   // conteos del día para las pestañas
@@ -3636,9 +3641,9 @@ function renderPlan(){
   }));
   if (admin){
     const mails = {}; Object.values(S.all).forEach(o => Object.values(o||{}).forEach(m => { if (m.email) mails[m.email.toLowerCase()] = 1; }));
-    const starts = new Set(evs.map(e => e.ts));
+    const startNames = {}; evs.forEach(e => (startNames[e.ts] ||= []).push(String((e.m && e.m.prospect) || "").toLowerCase()));
     Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
-      const ts = meetTs(e.at); if (isNaN(ts) || ts < t0 || ts > eod || starts.has(ts) || e.emails.some(x => mails[x])) return;
+      const ts = meetTs(e.at); if (isNaN(ts) || ts < t0 || ts > eod || (startNames[ts]||[]).some(n => n && String(e.label||"").toLowerCase().includes(n)) || e.emails.some(x => mails[x])) return;
       evs.push({ts, end:e.endTs > ts ? e.endTs : ts+MEET_MIN, kind:"gcal", label:e.label.replace(/^Calendario · /,""), gcal:true});
     }));
   }
