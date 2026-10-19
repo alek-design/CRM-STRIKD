@@ -2573,6 +2573,7 @@ function stageOf0(id, m){
   return {k:"launched", t:"Publicado"};
 }
 const MEET_LEN = 30*60e3, QUICK = 15*60e3; // los meets duran 30 min; lo del resultado del pitch se hace en los 15 min siguientes
+const SALES_FU = [7, 15, 30];
 function tasksFor(uid, id, m, now){
   const v = S.validations[id], st = statusOf(id), f = m.flow || {}, p = m.prospect || "el prospecto", T = [];
   const add = o => T.push({uid, id, m, who:"member", ...o});
@@ -2629,7 +2630,7 @@ function tasksFor(uid, id, m, now){
       } else if (!(f.skeletonApprovedAt && f.contentAt)){
         // Paso 3: skeleton approved + content received, side by side
         if (f.skeletonNeedsChanges && f.adjMode==="meet" && !f.adjMeetAt)
-          L({title:`Agenda el meet de ajustes (25 min) con ${p}`, detail:`Quiere personalizar y elegir sus ejercicios contigo.${lastNote ? ` Lo que pidió: ${lastNote.note}` : ""}`,
+          L({title:`Agenda el meet de ajustes (25 min) con ${p}`, detail:`Quiere personalizar su skeleton contigo: movimientos, sets, reps y estructura.${lastNote ? ` Lo que pidió: ${lastNote.note}` : ""}`,
             due:(f.skeletonChangesAt||now) + 24*HR, acts:[{label:"Ya lo agendé", act:"adj-booked", input:"bookadj", kind:"primary"}]});
         else if (f.skeletonNeedsChanges)
           L({title:`Ajusta el skeleton de ${p} y reenvíalo`, detail: (f.adjMode==="meet" && f.adjMeetAt ? `Meet de ajustes: ${fmtMeetAt(f.adjMeetAt)}. Reenvíalo en cuanto acabe. ` : "Lo ajustamos nosotros con base en ciencia y su disponibilidad. ") + (lastNote ? `Lo que pidió: ${lastNote.note}` : ""),
@@ -2672,6 +2673,14 @@ function tasksFor(uid, id, m, now){
         } else if (!f.launchedAt){
           L({title:`¿${p} ya publicó?`, detail:"Con su programa, su página y sus datos registrados ya puede publicar él mismo. Escríbele para que lo haga y márcalo cuando esté en vivo.", due:Math.max(f.programDoneAt, f.webDoneAt, f.bankDoneAt) + 24*HR,
             acts:[{label:"Publicado", act:"launched", kind:"ok"}]});
+        } else {
+          // Ya publicado: follow-ups de ventas a la semana, a los 15 y a los 30 días
+          const sfu = f.salesFu || {}, d = SALES_FU.find(x => !sfu[x]);
+          if (d && now >= f.launchedAt + (d - 1) * DAY){
+            const lbl = d===7 ? "1 semana" : `${d} días`;
+            L({title:`Follow-up de ventas con ${p} (${lbl})`, detail:`Publicó el ${fmtLocal(f.launchedAt).split(",")[0]}. Pregúntale cómo va vendiendo: cuántos clientes lleva, qué le funciona y si necesita ayuda para promocionarlo.`,
+              due:f.launchedAt + d * DAY, acts:[{label:"Guardar follow-up", act:"salesfu", input:"salesfu", kind:"primary", day:d}]});
+          }
         }
       }
     }
@@ -2799,14 +2808,27 @@ function actsHtml(t){
     if (a.input==="note"){
       if (a.act!=="skel-changes") return `<div class="notebox"><textarea rows="2" data-k="${k}" data-note="1" placeholder="¿Qué cambios pidió?">${esc(dr.note||"")}</textarea>${btn}</div>`;
       const first = (t.m.prospect||"").split(" ")[0], meet = dr.adj==="meet";
-      const ask = `¡Hola ${first}! Va, lo ajustamos. ¿Prefieres que personalicemos juntos tu programa y elijas tus ejercicios en una llamada de 25 min, o lo armamos nosotros con base en ciencia y en tu disponibilidad?`;
+      const ask = `¡Hola ${first}! Va, ajustamos tu skeleton. ¿Prefieres que lo personalicemos juntos en una llamada de 25 min (movimientos, sets, reps y estructura), o lo ajustamos nosotros con base en ciencia y en tu disponibilidad?`;
       return `<div class="notebox"><textarea rows="2" data-k="${k}" data-note="1" placeholder="¿Qué cambios pidió?">${esc(dr.note||"")}</textarea>
         <div class="adj-q"><span class="eyb">Pregúntale cómo lo quiere</span><p>${esc(ask)}</p><button type="button" class="btn small" data-adjcopy="${esc(ask)}">Copiar pregunta</button></div>
-        <div class="adj-pick" role="radiogroup" aria-label="Cómo se ajusta"><button type="button" class="${meet ? "" : "on"}" data-k="${k}" data-adjset="us">Lo hacemos nosotros<small>Ciencia + disponibilidad · 24 h</small></button><button type="button" class="${meet ? "on" : ""}" data-k="${k}" data-adjset="meet">Meet de 25 min<small>Personaliza y elige sus ejercicios</small></button></div>${btn}</div>`;
+        <div class="adj-pick" role="radiogroup" aria-label="Cómo se ajusta"><button type="button" class="${meet ? "" : "on"}" data-k="${k}" data-adjset="us">Lo hacemos nosotros<small>Ciencia + disponibilidad · 24 h</small></button><button type="button" class="${meet ? "on" : ""}" data-k="${k}" data-adjset="meet">Meet de 25 min<small>Personaliza movimientos, sets y reps</small></button></div>${btn}</div>`;
+    }
+    if (a.input==="salesfu"){
+      const first = (t.m.prospect||"").split(" ")[0], d = Number(a.day);
+      const auto = d===7 ? `¡Hola ${first}! ¿Cómo va tu primera semana con tu programa publicado? Cuéntame cuántos clientes llevas y cómo lo estás compartiendo; si quieres te paso ideas para promocionarlo.`
+        : d===15 ? `¡Hola ${first}! Ya van 15 días con tu programa en vivo 🙌 ¿Cómo van las ventas? ¿Qué te ha funcionado mejor para conseguir clientes?`
+        : `¡Hola ${first}! Ya cumpliste un mes con tu programa publicado 🎉 ¿Cómo te ha ido en ventas? Si quieres, vemos juntos cómo hacer crecer tus clientes este mes.`;
+      const text = dr.msgEdited ? dr.msg : auto, wa = waLink(t.m.phone, text);
+      return `<div class="msgbox"><div class="msg-h"><span class="eyb">Follow-up de ventas · día ${d}</span>${dr.msgEdited?`<button type="button" class="linkbtn" data-k="${k}" data-msgreset="1">Volver al sugerido</button>`:""}</div>
+        <textarea rows="3" data-k="${k}" data-msg="1">${esc(text)}</textarea>
+        <div class="msg-acts"><button type="button" class="btn small" data-k="${k}" data-copy="1">Copiar mensaje</button>${wa?`<a class="btn ghost" href="${esc(wa)}" target="_blank" rel="noopener">Abrir en WhatsApp</a>`:`<span class="mut">Sin teléfono registrado</span>`}</div>
+        <label class="f">¿Cuántos clientes lleva? (si te dijo)<input type="number" min="0" inputmode="numeric" data-k="${k}" data-num="sales" value="${esc(dr.sales ?? "")}"></label>
+        <textarea rows="2" data-k="${k}" data-note="1" placeholder="Cómo va, qué le funciona, en qué necesita ayuda">${esc(dr.note||"")}</textarea>
+        <div>${btn}</div></div>`;
     }
     if (a.input==="bookadj"){
       const first = (t.m.prospect||"").split(" ")[0];
-      const auto = `¡Hola ${first}! Para personalizar tu programa y elegir juntos tus ejercicios, agendemos una llamada de 25 min. ¿Qué día y hora te acomodan? Te mando la invitación en cuanto me digas.`;
+      const auto = `¡Hola ${first}! Para personalizar juntos tu skeleton (movimientos, sets, reps y estructura), agendemos una llamada de 25 min. ¿Qué día y hora te acomodan? Te mando la invitación en cuanto me digas.`;
       const text = dr.msgEdited ? dr.msg : auto, wa = waLink(t.m.phone, text);
       return `<div class="msgbox"><div class="msg-h"><span class="eyb">Mensaje para agendar</span>${dr.msgEdited?`<button type="button" class="linkbtn" data-k="${k}" data-msgreset="1">Volver al sugerido</button>`:""}</div>
         <textarea rows="3" data-k="${k}" data-msg="1">${esc(text)}</textarea>
@@ -3233,6 +3255,10 @@ async function doAct(b){
       return ref.update({flow:{trial:{log, lastCheck:day}}});
     }
     case "content-done": return ref.update({flow:{contentAt:now}});
+    case "salesfu": {
+      const d = Number(b.dataset.day) || 7, sales = dr.sales===undefined || dr.sales==="" ? null : Number(dr.sales);
+      return ref.update({flow:{salesFu:{[d]:{at:now, sales, note:(dr.note||"").trim(), msg: dr.msgEdited ? (dr.msg||"") : ""}}}});
+    }
     case "launch-fast": return ref.update({flow:{launchMode:"fast", launchModeAt:now}});
     case "launch-guided": return ref.update({flow:{launchMode:"guided", launchModeAt:now}});
     case "acct-sent": return ref.update({flow:{acctSentAt:now}});
@@ -3251,7 +3277,7 @@ async function doAct(b){
     const card = b.closest(".detail"), host = b.closest("#myPath, #teamPath, #dayPlan");
     const DONE = {reminded:"Listo: recordatorio enviado.", validate:"Listo: meet validado.", reject:"Listo: rechazado. Le pedimos que lo cancele.", cancelled:"Listo: marcado como cancelado.", confirmed:"Listo: meet confirmado.",
       lost:"Listo: marcado como perdido.", "skel-sent":"Listo: skeleton enviado. Ahora falta saber si lo aprueba.",
-      "skel-approved":"Listo: skeleton aprobado.", "skel-changes":"Listo: cambios anotados.", "adj-booked":"Listo: meet de ajustes agendado.",
+      "salesfu":"Listo: follow-up de ventas guardado.", "skel-approved":"Listo: skeleton aprobado.", "skel-changes":"Listo: cambios anotados.", "adj-booked":"Listo: meet de ajustes agendado.",
       "skel-resent":"Listo: versión ajustada enviada.", "skel-booked":"Listo: meet de skeleton agendado.", check:"Listo: follow-up guardado.",
       "program-done":"Listo: programa creado.", "web-done":"Listo: página web creada.", "bank-done":"Listo: datos de depósito ingresados.", "content-done":"Listo: contenido recibido.", launched:"¡Publicado! Meta cumplida.",
       "att-yes":"Listo: se conectó, +1 punto.", "att-no":"Listo: marcado como no conectado."};
