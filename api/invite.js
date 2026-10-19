@@ -12,6 +12,18 @@ module.exports = async (req, res) => {
   const { data: me } = await admin.from("app_users").select("role").eq("id", who.user.id).maybeSingle();
   if (!me || me.role !== "head") return res.status(403).json({error:"Solo el Head puede dar de alta personas"});
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+  // contraseña temporal nueva para alguien del equipo (no se puede ver la actual, solo reemplazarla)
+  if (body.resetFor){
+    const id = String(body.resetFor);
+    if (!/^[0-9a-f-]{36}$/i.test(id) || id === who.user.id) return res.status(400).json({error:"Usuario no válido"});
+    const { data: t } = await admin.from("app_users").select("role").eq("id", id).maybeSingle();
+    if (!t) return res.status(404).json({error:"No existe ese usuario"});
+    if (t.role === "head") return res.status(403).json({error:"No se puede cambiar la contraseña del Head"});
+    const temp = "Strikd-" + crypto.randomBytes(4).toString("hex");
+    const { error: eu } = await admin.auth.admin.updateUserById(id, {password:temp});
+    if (eu) return res.status(500).json({error:eu.message});
+    return res.status(200).json({ok:true, tempPassword:temp});
+  }
   const email = String(body.email || "").trim().toLowerCase(), name = String(body.name || "").trim(), role = body.role === "manager" ? "manager" : "am", infl = body.role === "influencer";
   const setInfl = async id => { if (infl && id) await admin.from("docs").upsert({path:"roles/" + id, data:{role:"influencer", updatedAt:Date.now()}}); };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({error:"Correo no válido"});

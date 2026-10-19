@@ -6021,7 +6021,7 @@ function renderAccess(){
       <button type="button" class="btn small primary" id="accGo"${ACC.busy?" disabled":""}>${ACC.busy?"Creando…":"Dar de alta"}</button></div>
     ${ACC.msg ? `<p class="small ${ACC.ok?"okmsg":"err"}">${esc(ACC.msg)}</p>` : ""}
     ${ACC.cred ? `<div class="acc-cred"><div class="row"><b>Mándale esto por WhatsApp:</b><div class="spacer"></div><button type="button" class="btn small primary" data-acccopy="1">Copiar mensaje</button></div><textarea rows="12" readonly>${esc(ACC.cred)}</textarea></div>` : ""}
-    <div class="acc-list">${users.map(u => `<div class="acc-row"><b>${esc(u.name||u.email)}</b><span class="mut small">${esc(u.email)}</span><span class="chip ${u.role==="none"?"muted":"info"}">${esc(RL[u.role]||u.role)}</span>${window.STRIKD_GOOGLE_USERS ? (gset.has(u.id) ? `<span class="chip valid">✓ Google Calendar</span>` : `<span class="chip muted">Sin Google Calendar</span>`) : ""}</div>`).join("")}
+    <div class="acc-list">${users.map(u => `<div class="acc-row"><b>${esc(u.name||u.email)}</b><span class="mut small">${esc(u.email)}</span><span class="chip ${u.role==="none"?"muted":"info"}">${esc(roleOf(u.id)==="influencer" && u.role!=="head" ? "Influencer Outreach" : (RL[u.role]||u.role))}</span>${window.STRIKD_GOOGLE_USERS ? (gset.has(u.id) ? `<span class="chip valid">✓ Google Calendar</span>` : `<span class="chip muted">Sin Google Calendar</span>`) : ""}${window.STRIKD_RESETPW && u.role!=="head" && u.id!==S.uid ? `<button type="button" class="btn small" data-accpw="${esc(u.id)}" data-n="${esc(u.name||"")}" data-e="${esc(u.email)}">🔑 Nueva contraseña</button>` : ""}</div>`).join("")}
       ${inv.map(i => `<div class="acc-row pend"><b>${esc(i.name||i.email)}</b><span class="mut small">${esc(i.email)}</span><span class="chip muted">Invitación enviada · ${esc(RL[i.role])}</span></div>`).join("")}</div>`;
 }
 document.addEventListener("click", async e => {
@@ -6031,7 +6031,12 @@ document.addEventListener("click", async e => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ ACC.msg = "Revisa el correo."; ACC.ok = false; return schedule(); }
   ACC.busy = true; ACC.msg = ""; schedule();
   try{ const r = await window.STRIKD_INVITE(email, name, role); ACC.ok = true; ACC.msg = r.already ? `${email} ya tenía cuenta; se le asignó el rol.` : `Listo: ${email} ya tiene cuenta.`;
-    ACC.cred = r.tempPassword ? [
+    ACC.cred = r.tempPassword ? accCred(name, email, r.tempPassword) : "";
+    ACC.list = null; ACC.loading = false; }
+  catch(ex){ ACC.ok = false; ACC.msg = ex.message || "No se pudo invitar."; }
+  ACC.busy = false; schedule();
+});
+function accCred(name, email, temp){ return [
       `¡Hola${name?" "+name.split(" ")[0]:""}! 👋 Ya tienes acceso a STRIKD Growth, donde agendamos meets, vemos pendientes y contestamos WhatsApp.`,
       ``,
       `1️⃣ Abre este link desde tu celular:`,
@@ -6043,14 +6048,18 @@ document.addEventListener("click", async e => {
       ``,
       `3️⃣ Abre la app STRIKD desde tu pantalla de inicio e inicia sesión:`,
       `Correo: ${email}`,
-      `Contraseña temporal: ${r.tempPassword}`,
+      `Contraseña temporal: ${temp}`,
       ``,
       `4️⃣ Al entrar te va a pedir conectar tu Google Calendar (para los links de Meet), activar notificaciones y elegir modo claro u oscuro. Después cambia tu contraseña en Ajustes → Contraseña.`
-    ].join("\n") : "";
-    ACC.list = null; ACC.loading = false; }
-  catch(ex){ ACC.ok = false; ACC.msg = ex.message || "No se pudo invitar."; }
-  ACC.busy = false; schedule();
-});
+    ].join("\n"); }
+// Head: contraseña temporal nueva para alguien que no puede entrar (las contraseñas no se pueden ver, solo cambiar)
+document.addEventListener("click", async e => { const b = e.target.closest("[data-accpw]"); if (!b || !window.STRIKD_RESETPW) return;
+  const name = b.dataset.n || "", email = b.dataset.e || "";
+  if (!confirm(`¿Crear una contraseña temporal nueva para ${name || email}? La de ahora deja de funcionar.`)) return;
+  b.disabled = true; b.textContent = "Creando…";
+  try{ const r = await window.STRIKD_RESETPW(b.dataset.accpw); ACC.ok = true; ACC.msg = `Nueva contraseña para ${email}. Mándale el mensaje de abajo.`; ACC.cred = accCred(name, email, r.tempPassword); }
+  catch(ex){ ACC.ok = false; ACC.msg = ex.message || "No se pudo cambiar la contraseña."; }
+  schedule(); });
 
 /* ---------- Embudo por manager ---------- */
 const FUN_STAGES = [

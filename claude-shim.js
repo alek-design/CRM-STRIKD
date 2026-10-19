@@ -384,6 +384,13 @@
     if (!r.ok) throw new Error(j.error || "No se pudo invitar");
     return j;
   };
+  window.STRIKD_RESETPW = async (uid) => {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch("/api/invite", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify({resetFor:uid})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "No se pudo cambiar la contraseña");
+    return j;
+  };
   window.STRIKD_USERS = async () => { const { data } = await sb.from("app_users").select("id,email,name,role,active"); const inv = await sb.from("invites").select("*"); return {users:data||[], invites:inv.data||[]}; };
 
   window.claude = { use: async (name) => {
