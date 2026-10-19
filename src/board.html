@@ -42,6 +42,11 @@
 .ag-btns .ag-rem{padding:8px 11px;font-size:16px;line-height:1}
 #dayPlan .pr.rem{cursor:default;flex-wrap:wrap}#dayPlan .pr.rem .pr-m{flex:1 1 160px;min-width:0}
 .rem-ic{font-size:16px;flex:none}
+.adj-q{display:grid;gap:6px;padding:10px 12px;border-radius:12px;background:var(--raised)}.adj-q p{margin:0;font-size:13.5px;color:var(--fg2)}.adj-q .btn{justify-self:start}
+.adj-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.adj-pick button{font:inherit;text-align:left;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:700;font-size:14px;display:grid;gap:2px}
+.adj-pick button small{font-weight:500;font-size:12px;color:var(--muted)}
+.adj-pick button.on{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
 .rem-hold{display:grid;gap:2px}.rem-hold span{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}.rem-hold input{width:auto}.rem-hold small{color:var(--muted);font-size:12px;margin-left:26px}.rem-acts{display:flex;gap:6px;flex-wrap:wrap}
 #dayPlan .rem-next summary{display:flex;justify-content:space-between}
 #dayPlan .pr.mconf{flex-wrap:wrap;cursor:default}#dayPlan .pr.mconf .pr-m{flex:1 1 100%}
@@ -2563,8 +2568,8 @@ function stageOf0(id, m){
   if (!f.skeletonSentAt) return {k:"send", t:"Skeleton listo · falta enviarlo"};
   if (f.skeletonNeedsChanges) return {k:"adjust", t:"Skeleton con ajustes · reenviar"};
   if (!f.skeletonApprovedAt || !f.contentAt) return {k:"approve", t: !f.skeletonApprovedAt && !f.contentAt ? "Esperando aprobación y contenido" : !f.skeletonApprovedAt ? "Contenido listo · falta aprobación" : "Skeleton aprobado · falta contenido"};
-  if (!buildDone(f)){ const n = [f.programDoneAt, f.webDoneAt, f.bankDoneAt].filter(Boolean).length; return {k:"build", t: f.buildMeetAt ? `Lanzamiento · ${n} de 3 listos` : "Falta agendar la sesión de lanzamiento"}; }
-  if (!f.launchedAt) return {k:"build", t:"Listo para publicar"};
+  if (!buildDone(f)){ const n = [f.programDoneAt, f.webDoneAt, f.bankDoneAt].filter(Boolean).length; return {k:"build", t: f.launchMode==="fast" ? (f.programDoneAt && f.webDoneAt && f.acctSentAt ? "Lanzamiento rápido · falta que registre sus datos" : "Lanzamiento rápido · enviando programa, página y cuenta") : f.buildMeetAt ? `Lanzamiento · ${n} de 3 listos` : f.launchMode==="guided" ? "Falta agendar la sesión de lanzamiento" : "Falta elegir cómo lanzar"}; }
+  if (!f.launchedAt) return {k:"build", t:"Listo · falta que publique"};
   return {k:"launched", t:"Publicado"};
 }
 const MEET_LEN = 30*60e3, QUICK = 15*60e3; // los meets duran 30 min; lo del resultado del pitch se hace en los 15 min siguientes
@@ -2623,9 +2628,12 @@ function tasksFor(uid, id, m, now){
           due:Math.max(attAt, f.skeletonAt || 0) + 24*HR, acts:[{label:"Ya se lo envié", act:"skel-sent", input:"sendskel", kind:"primary"}]});
       } else if (!(f.skeletonApprovedAt && f.contentAt)){
         // Paso 3: skeleton approved + content received, side by side
-        if (f.skeletonNeedsChanges)
-          L({title:`Ajusta el skeleton de ${p} y reenvíalo`, detail: lastNote ? `Lo que pidió: ${lastNote.note}` : "Pidió cambios al skeleton.",
-            due:(f.skeletonChangesAt||now) + 24*HR, acts:[{label:"Ya envié la versión ajustada", act:"skel-resent", input:"resend", kind:"primary"}]});
+        if (f.skeletonNeedsChanges && f.adjMode==="meet" && !f.adjMeetAt)
+          L({title:`Agenda el meet de ajustes (25 min) con ${p}`, detail:`Quiere personalizar y elegir sus ejercicios contigo.${lastNote ? ` Lo que pidió: ${lastNote.note}` : ""}`,
+            due:(f.skeletonChangesAt||now) + 24*HR, acts:[{label:"Ya lo agendé", act:"adj-booked", input:"bookadj", kind:"primary"}]});
+        else if (f.skeletonNeedsChanges)
+          L({title:`Ajusta el skeleton de ${p} y reenvíalo`, detail: (f.adjMode==="meet" && f.adjMeetAt ? `Meet de ajustes: ${fmtMeetAt(f.adjMeetAt)}. Reenvíalo en cuanto acabe. ` : "Lo ajustamos nosotros con base en ciencia y su disponibilidad. ") + (lastNote ? `Lo que pidió: ${lastNote.note}` : ""),
+            due: f.adjMode==="meet" && f.adjMeetAt ? meetTs(f.adjMeetAt) + 25*60e3 + QUICK : (f.skeletonChangesAt||now) + 24*HR, acts:[{label:"Ya envié la versión ajustada", act:"skel-resent", input:"resend", kind:"primary"}]});
         else if (!f.skeletonApprovedAt)
           L({title:`¿${p} aprobó su skeleton?`, detail:`Se lo mandaste el ${fmtLocal(f.skeletonLastSentAt||f.skeletonSentAt)}. Si pidió cambios, anótalos y ajústalo.`,
             due:(f.skeletonLastSentAt||f.skeletonSentAt) + 48*HR, acts:[{label:"Sí, lo aprobó", act:"skel-approved", kind:"ok"}, {label:"No, pidió cambios", act:"skel-changes", input:"note", kind:"bad"}]});
@@ -2635,7 +2643,22 @@ function tasksFor(uid, id, m, now){
       } else {
         // Paso 4: launch session — program, web page and deposit details, then published
         const s0 = Math.max(f.skeletonApprovedAt, f.contentAt);
-        if (!f.buildMeetAt && !f.launchedAt && !buildDone(f)){
+        // Dos formas de lanzar: rápido (le enviamos todo y él registra sus datos) o acompañado (sesión de lanzamiento juntos)
+        if (!f.launchMode && !f.buildMeetAt && !f.launchedAt && !buildDone(f)){
+          L({title:`¿Cómo quiere lanzar ${p}?`, detail:"Pregúntale si prefiere facilidad y velocidad (le enviamos su programa, su página y su cuenta de creador) o apoyo y estar muy involucrado (sesión de lanzamiento juntos).",
+            due:s0 + 24*HR, acts:[{label:"⚡ Rápido: se lo enviamos", act:"launch-fast", kind:"primary"}, {label:"🤝 Acompañado: sesión", act:"launch-guided"}]});
+        } else if (f.launchMode==="fast" && !buildDone(f)){
+          const sent = f.programDoneAt && f.webDoneAt && f.acctSentAt;
+          if (!sent){ const a = [];
+            if (!f.programDoneAt) a.push({label:"Programa enviado", act:"program-done", kind:"ok"});
+            if (!f.webDoneAt) a.push({label:"Página web enviada", act:"web-done", kind:"ok"});
+            if (!f.acctSentAt) a.push({label:"Cuenta de creador enviada", act:"acct-sent", kind:"ok"});
+            L({title:`Envíale a ${p} su programa, su página y su cuenta`, detail:`Su programa con los ejercicios seleccionados, su página web y su cuenta de creador para que registre sus datos bancarios y fiscales. ${f.programDoneAt?"✓ Programa":"○ Programa"} · ${f.webDoneAt?"✓ Página web":"○ Página web"} · ${f.acctSentAt?"✓ Cuenta":"○ Cuenta"}`,
+              due:(f.launchModeAt || s0) + 24*HR, acts:a});
+          } else
+            L({title:`¿${p} ya registró sus datos bancarios y fiscales?`, detail:`Le mandaste su cuenta de creador el ${fmtLocal(f.acctSentAt)}. Si no, recuérdaselo.`,
+              due:f.acctSentAt + 48*HR, acts:[{label:"Ya los registró", act:"bank-done", kind:"ok"}]});
+        } else if (!f.buildMeetAt && !f.launchedAt && !buildDone(f)){
           L({title:`Agenda la sesión de lanzamiento con ${p}`, detail:"En esa sesión crean su programa, su página web e ingresan sus datos de depósito en la plataforma.",
             due:s0 + 48*HR, acts:[{label:"Ya la agendé", act:"build-booked", input:"bookbuild", kind:"primary"}]});
         } else if (!buildDone(f)){
@@ -2647,7 +2670,7 @@ function tasksFor(uid, id, m, now){
           L({title:`Sesión de lanzamiento con ${p}`, detail:`${f.buildMeetAt?`Sesión: ${fmtMeetAt(f.buildMeetAt)}. `:""}${f.programDoneAt?"✓ Programa":"○ Programa"} · ${f.webDoneAt?"✓ Página web":"○ Página web"} · ${f.bankDoneAt?"✓ Datos de depósito":"○ Datos de depósito"}`,
             due:(isNaN(bt) ? s0 : bt) + 24*HR, acts:a});
         } else if (!f.launchedAt){
-          L({title:`Publica a ${p}`, detail:"Programa, página web y datos de depósito listos. Al publicarlo queda en vivo.", due:Math.max(f.programDoneAt, f.webDoneAt, f.bankDoneAt) + 24*HR,
+          L({title:`¿${p} ya publicó?`, detail:"Con su programa, su página y sus datos registrados ya puede publicar él mismo. Escríbele para que lo haga y márcalo cuando esté en vivo.", due:Math.max(f.programDoneAt, f.webDoneAt, f.bankDoneAt) + 24*HR,
             acts:[{label:"Publicado", act:"launched", kind:"ok"}]});
         }
       }
@@ -2664,7 +2687,7 @@ const STEPS = [
   {n:1, name:"Agendado", sub:"Registrado, validado y esperando el meet. Aquí también están los rechazados que debes cancelar."},
   {n:2, name:"Pitch", sub:"El líder pitchea, ofrece el skeleton, lo crea en vivo y se lo manda"},
   {n:3, name:"Skeleton y contenido", sub:"El líder confirma que aprobó el skeleton y le pide su contenido (fotos, videos, logo, textos)"},
-  {n:4, name:"Lanzamiento", sub:"Sesión para crear su programa, su página web e ingresar sus datos de depósito; después se publica"},
+  {n:4, name:"Lanzamiento", sub:"Rápido: le enviamos su programa, su página y su cuenta de creador · Acompañado: sesión juntos. Él registra sus datos bancarios y fiscales y publica"},
   {n:5, name:"Publicado", sub:"La meta", goal:true},
 ];
 function stepOf(id, m){
@@ -2774,7 +2797,22 @@ function actsHtml(t){
       return `<div class="notebox"><textarea rows="2" data-k="${k}" data-note="1" placeholder="Motivo del rechazo (lo verá la persona)">${esc(dr.note||"")}</textarea><div class="row">${btn}<button type="button" class="btn small" data-k="${k}" data-tog="rej" data-v="">Cancelar</button></div></div>`;
     }
     if (a.input==="note"){
-      return `<div class="notebox"><textarea rows="2" data-k="${k}" data-note="1" placeholder="¿Qué cambios pidió?">${esc(dr.note||"")}</textarea>${btn}</div>`;
+      if (a.act!=="skel-changes") return `<div class="notebox"><textarea rows="2" data-k="${k}" data-note="1" placeholder="¿Qué cambios pidió?">${esc(dr.note||"")}</textarea>${btn}</div>`;
+      const first = (t.m.prospect||"").split(" ")[0], meet = dr.adj==="meet";
+      const ask = `¡Hola ${first}! Va, lo ajustamos. ¿Prefieres que personalicemos juntos tu programa y elijas tus ejercicios en una llamada de 25 min, o lo armamos nosotros con base en ciencia y en tu disponibilidad?`;
+      return `<div class="notebox"><textarea rows="2" data-k="${k}" data-note="1" placeholder="¿Qué cambios pidió?">${esc(dr.note||"")}</textarea>
+        <div class="adj-q"><span class="eyb">Pregúntale cómo lo quiere</span><p>${esc(ask)}</p><button type="button" class="btn small" data-adjcopy="${esc(ask)}">Copiar pregunta</button></div>
+        <div class="adj-pick" role="radiogroup" aria-label="Cómo se ajusta"><button type="button" class="${meet ? "" : "on"}" data-k="${k}" data-adjset="us">Lo hacemos nosotros<small>Ciencia + disponibilidad · 24 h</small></button><button type="button" class="${meet ? "on" : ""}" data-k="${k}" data-adjset="meet">Meet de 25 min<small>Personaliza y elige sus ejercicios</small></button></div>${btn}</div>`;
+    }
+    if (a.input==="bookadj"){
+      const first = (t.m.prospect||"").split(" ")[0];
+      const auto = `¡Hola ${first}! Para personalizar tu programa y elegir juntos tus ejercicios, agendemos una llamada de 25 min. ¿Qué día y hora te acomodan? Te mando la invitación en cuanto me digas.`;
+      const text = dr.msgEdited ? dr.msg : auto, wa = waLink(t.m.phone, text);
+      return `<div class="msgbox"><div class="msg-h"><span class="eyb">Mensaje para agendar</span>${dr.msgEdited?`<button type="button" class="linkbtn" data-k="${k}" data-msgreset="1">Volver al sugerido</button>`:""}</div>
+        <textarea rows="3" data-k="${k}" data-msg="1">${esc(text)}</textarea>
+        <div class="msg-acts"><button type="button" class="btn small" data-k="${k}" data-copy="1">Copiar mensaje</button>${wa?`<a class="btn ghost" href="${esc(wa)}" target="_blank" rel="noopener">Abrir en WhatsApp</a>`:`<span class="mut">Sin teléfono registrado</span>`}</div>
+        <label class="f">Fecha y hora acordada<input type="datetime-local" data-k="${k}" data-dt="adj" value="${esc((dr.dt||{}).adj||"")}"></label>
+        <div>${btn}</div></div>`;
     }
     if (a.input==="remind"){
       const first = (t.m.prospect||"").split(" ")[0], at = effAt(t.m), link = safeUrl(t.m.link);
@@ -3164,11 +3202,17 @@ async function doAct(b){
     case "skel-approved": await ref.update({flow:{skeletonApprovedAt:now, skelLog:(f.skelLog||[]).concat([{at:now, type:"approved"}])}}); award(uid, id, "aprobado", now); return;
     case "skel-changes": {
       const note = (dr.note||"").trim(); if (!note) throw {msg:"Anota qué cambios pidió"};
-      return ref.update({flow:{skeletonNeedsChanges:true, skeletonChangesAt:now, skelLog:(f.skelLog||[]).concat([{at:now, type:"changes", note}])}});
+      const mode = dr.adj==="meet" ? "meet" : "us";
+      return ref.update({flow:{skeletonNeedsChanges:true, skeletonChangesAt:now, adjMode:mode, adjMeetAt:null, adjMeetBookedAt:null, skelLog:(f.skelLog||[]).concat([{at:now, type:"changes", note, mode}])}});
+    }
+    case "adj-booked": {
+      const w = (dr.dt||{}).adj; if (!w) throw {msg:"Registra la fecha acordada"};
+      if (meetTs(w) <= now) throw {msg:"Elige una fecha futura"};
+      return ref.update({flow:{adjMeetAt:w, adjMeetBookedAt:now}});
     }
     case "skel-resent": {
       const note = (dr.note||"").trim();
-      return ref.update({flow:{skeletonNeedsChanges:false, skeletonLastSentAt:now, skelLog:(f.skelLog||[]).concat([{at:now, type:"resent", note}])}});
+      return ref.update({flow:{skeletonNeedsChanges:false, skeletonLastSentAt:now, adjMode:null, adjMeetAt:null, adjMeetBookedAt:null, skelLog:(f.skelLog||[]).concat([{at:now, type:"resent", note}])}});
     }
     case "skel-sched": { const v = val("dt"); if (!v) throw {msg:"Elige la fecha del meet"}; return ref.update({flow:{skeletonMeetAt:v, skeletonMeetSetAt:now, skeletonMeetBookedAt:null}}); }
     case "build-booked": {
@@ -3189,6 +3233,9 @@ async function doAct(b){
       return ref.update({flow:{trial:{log, lastCheck:day}}});
     }
     case "content-done": return ref.update({flow:{contentAt:now}});
+    case "launch-fast": return ref.update({flow:{launchMode:"fast", launchModeAt:now}});
+    case "launch-guided": return ref.update({flow:{launchMode:"guided", launchModeAt:now}});
+    case "acct-sent": return ref.update({flow:{acctSentAt:now}});
     case "program-done": await ref.update({flow:{programDoneAt:now}}); if (f.webDoneAt && f.bankDoneAt) award(uid, id, "progweb", now); return;
     case "web-done": await ref.update({flow:{webDoneAt:now}}); if (f.programDoneAt && f.bankDoneAt) award(uid, id, "progweb", now); return;
     case "bank-done": await ref.update({flow:{bankDoneAt:now}}); if (f.programDoneAt && f.webDoneAt) award(uid, id, "progweb", now); return;
@@ -3204,7 +3251,7 @@ async function doAct(b){
     const card = b.closest(".detail"), host = b.closest("#myPath, #teamPath, #dayPlan");
     const DONE = {reminded:"Listo: recordatorio enviado.", validate:"Listo: meet validado.", reject:"Listo: rechazado. Le pedimos que lo cancele.", cancelled:"Listo: marcado como cancelado.", confirmed:"Listo: meet confirmado.",
       lost:"Listo: marcado como perdido.", "skel-sent":"Listo: skeleton enviado. Ahora falta saber si lo aprueba.",
-      "skel-approved":"Listo: skeleton aprobado.", "skel-changes":"Listo: cambios anotados. Ajusta el skeleton y reenvíalo cuanto antes.",
+      "skel-approved":"Listo: skeleton aprobado.", "skel-changes":"Listo: cambios anotados.", "adj-booked":"Listo: meet de ajustes agendado.",
       "skel-resent":"Listo: versión ajustada enviada.", "skel-booked":"Listo: meet de skeleton agendado.", check:"Listo: follow-up guardado.",
       "program-done":"Listo: programa creado.", "web-done":"Listo: página web creada.", "bank-done":"Listo: datos de depósito ingresados.", "content-done":"Listo: contenido recibido.", launched:"¡Publicado! Meta cumplida.",
       "att-yes":"Listo: se conectó, +1 punto.", "att-no":"Listo: marcado como no conectado."};
@@ -3387,6 +3434,8 @@ function calEvents(){
       ev.push({at, kind:"pitch", label:`Pitch · ${m.prospect}`, who:uid, key:dk(uid,id)});
     if (f.skeletonMeetAt && !f.skeletonAt)
       ev.push({at:f.skeletonMeetAt, kind:"skel", label:`Skeleton · ${m.prospect}`, who:uid, key:dk(uid,id), booked:!!f.skeletonMeetBookedAt});
+    if (f.adjMeetAt && f.skeletonNeedsChanges)
+      ev.push({at:f.adjMeetAt, kind:"skel", label:`Ajustes · ${m.prospect}`, who:uid, key:dk(uid,id), booked:true});
     if (f.buildMeetAt && !f.launchedAt)
       ev.push({at:f.buildMeetAt, kind:"build", label:`Lanzamiento · ${m.prospect}`, who:uid, key:dk(uid,id)});
   }));
@@ -3892,6 +3941,8 @@ function remOpen(ref, name){
   setTimeout(() => $("remText").focus(), 50);
 }
 document.addEventListener("click", async e => {
+  const ac = e.target.closest("[data-adjcopy]"); if (ac){ e.stopPropagation(); try{ await navigator.clipboard.writeText(ac.dataset.adjcopy); quickToast("✓ Pregunta copiada"); }catch(_){ quickToast("No se pudo copiar"); } return; }
+  const as = e.target.closest("[data-adjset]"); if (as){ e.stopPropagation(); (DRAFT[as.dataset.k] ||= {dt:{}}).adj = as.dataset.adjset; as.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("on", b===as)); return; }
   const nw = e.target.closest("[data-remnew]"); if (nw){ e.stopPropagation(); return remOpen(nw.dataset.remref || "", nw.dataset.remname || ""); }
   const nt = e.target.closest("[data-remnextt]"); if (nt){ MORE.remNext = !MORE.remNext; return; }
   const dn = e.target.closest("[data-remdone]"), sn = e.target.closest("[data-remsnooze]"), dl = e.target.closest("[data-remdel]"); if (!dn && !sn && !dl) return;
@@ -4999,6 +5050,12 @@ function msgFor(t){
     "skel-resent":["Reenviar skeleton ajustado", `¡Hola ${n}! Ya quedó tu skeleton con los ajustes que platicamos. Te lo comparto aquí; cuéntame qué te parece.`, null],
     "skel-approved":["Preguntar si aprobó el skeleton", `¡Hola ${n}! ¿Pudiste ver tu skeleton? Cuéntame si así te gusta o qué le ajustamos.`, null],
     "content-done":["Pedir su contenido", `¡Hola ${n}! Para armar tu programa y tu página web necesito tu contenido: fotos, videos, tu logo y unos textos sobre ti. ¿Me los compartes por aquí o por Drive?`, null],
+    "launch-fast":["Preguntar cómo quiere lanzar", `¡Hola ${n}! Tu skeleton y tu contenido ya están listos 🙌 Para lanzar tienes dos opciones: te enviamos tu programa, tu página web y tu cuenta de creador para que registres tus datos (lo más rápido), o hacemos juntos una sesión de lanzamiento. ¿Cuál prefieres?`, null],
+    "program-done":["Enviar programa, página y cuenta", `¡Hola ${n}! Aquí tienes tu programa con los ejercicios seleccionados y tu página web. También te mando tu cuenta de creador: ahí registras tus datos bancarios y fiscales para poder publicarte.`, null],
+    "web-done":["Enviar programa, página y cuenta", `¡Hola ${n}! Aquí tienes tu página web y tu cuenta de creador: ahí registras tus datos bancarios y fiscales para poder publicarte.`, null],
+    "acct-sent":["Enviar su cuenta de creador", `¡Hola ${n}! Te mando tu cuenta de creador: ahí registras tus datos bancarios y fiscales y con eso ya puedes publicar.`, null],
+    "launched":["Pedirle que publique", `¡Hola ${n}! Ya tienes todo listo: programa, página y datos registrados. Ya puedes publicar tu programa desde tu cuenta de creador 🚀 Avísame cuando esté en vivo.`, null],
+    "bank-done":["Recordar sus datos bancarios", `¡Hola ${n}! ¿Pudiste registrar tus datos bancarios y fiscales en tu cuenta de creador? Es lo último que falta para publicarte.`, null],
     "build-booked":["Agendar sesión de lanzamiento", `¡Hola ${n}! Con tu skeleton y tu contenido listos, sigue nuestra sesión de lanzamiento: creamos tu programa, tu página web y das de alta tus datos de depósito. ¿Qué día y hora te acomodan?`, null],
     "skel-booked":["Agendar meet de skeleton", `¡Hola ${n}! Para dejar listo tu skeleton de programa, ¿qué día y hora te acomodan para conectarnos 30 min?`, null],
     resched:    ["Reagendar", f.inviteDeclinedAt ? `¡Hola ${n}! Vi que no te quedaba el horario de nuestra sesión. ¿Qué día y hora te acomodan mejor?` : `¡Hola ${n}! Te esperamos en la sesión y no coincidimos. ¿Qué día y hora te acomodan para reagendarla?`, null],
