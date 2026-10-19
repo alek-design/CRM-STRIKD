@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 01:56:44 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 02:07:36 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792375004">
+<link rel="stylesheet" href="/auth.css?v=1792375656">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792375004"></script>
+<script src="/claude-shim.js?v=1792375656"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -50,7 +50,9 @@
 #view-msgs #msgSeg{display:none!important}
 #view-msgs .mh-tpl{border-radius:999px;white-space:nowrap}
 #dayPlan .pl-item .pl-body b svg{width:16px;height:16px;vertical-align:-3px;margin-right:4px;flex:none}
-.ag-btns .ag-rem{padding:8px 11px;font-size:16px;line-height:1}
+.sec-add{margin-left:auto;width:30px;height:30px;border-radius:50%;border:1px solid var(--line2);background:var(--surface);color:var(--fg);font:inherit;font-size:19px;font-weight:600;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+#view-agenda .sec-h em + .sec-add{margin-left:10px}
+.add-pick{display:grid;gap:10px;padding-bottom:18px}.add-pick button{font:inherit;text-align:left;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:14px;padding:14px;display:grid;gap:3px;cursor:pointer}.add-pick b{font-size:15px}.add-pick small{color:var(--muted);font-size:12.5px}
 #dayPlan .pr.rem{cursor:default;flex-wrap:wrap}#dayPlan .pr.rem .pr-m{flex:1 1 160px;min-width:0}
 .rem-ic{font-size:16px;flex:none}
 .adj-q{display:grid;gap:6px;padding:10px 12px;border-radius:12px;background:var(--raised)}.adj-q p{margin:0;font-size:13.5px;color:var(--fg2)}.adj-q .btn{justify-self:start}
@@ -1507,7 +1509,7 @@ body.mob-open header.top{z-index:31}
   </section>
 
   <section class="view" id="view-agenda" hidden>
-    <div class="ag-head"><div class="ag-top"><h2>Agenda</h2><div class="ag-btns"><button type="button" class="btn ag-rem" data-remnew="1" aria-label="Nuevo recordatorio" title="Recordatorio">⏰</button><button type="button" class="btn ag-task" data-tasknew="1" hidden>+ Tarea</button><button type="button" class="btn primary ag-new" data-agnew="1">+ <span class="ag-l">Agendar </span>meet</button></div></div><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
+    <div class="ag-head"><div class="ag-top"><h2>Agenda</h2><div class="ag-btns"><button type="button" class="btn ag-task" data-tasknew="1" hidden>+ Tarea</button><button type="button" class="btn primary ag-new" data-agnew="1">+ <span class="ag-l">Agendar </span>meet</button></div></div><p class="sub">Tus pitches y meets de skeleton de la semana, para ver qué espacios tienes libres. Sale de lo que el equipo registra aquí.</p></div>
     <div id="agendaCal"></div>
     <div id="dayPlan"></div>
   </section>
@@ -3632,6 +3634,7 @@ function renderPlan(){
     }));
   }
   if (michMode()) michEvents().forEach(e => { const ts = meetTs(e.at); if (!isNaN(ts) && ts >= t0 && ts <= eod) evs.push({ts, end:ts+MEET_MIN, kind:"pitch", label:"Pitch", gcal:true, label2:e.label, sub:`Cuenta para ${String(nameOf(S.ps||{}, e.who)).split(" (")[0]}`}); });
+  remList().filter(r => r.kind==="event" && !r.done && r.at >= t0 && r.at <= eod).forEach(r => evs.push({ts:r.at, end:r.at + (Number(r.dur)||30)*60e3, kind:"gcal", label:r.text, gcal:true, sub:r.name ? r.name : "Agregado por ti", manual:r.id}));
   evs.forEach(e => { if (e.label2) e.label = e.label2; });
   evs.sort((a,b) => a.ts - b.ts);
   // untimed: what you have to do today (overdue first)
@@ -3728,7 +3731,7 @@ function renderPlan(){
       const msg = `¡Hola ${String(c.x.prospect||"").split(" ")[0]}! Te escribo para confirmar nuestra llamada del ${fmtMeetAt(c.x.meetAt)}. ¿Sigue en pie? Si necesitas moverla, dime qué horario te acomoda.`;
       return `<div class="pr mconf${late ? " late" : ""}"><span class="pr-m"><b>Confirma el meet con ${esc(c.x.prospect)}</b><small>Meet ${esc(fmtMeetAt(c.x.meetAt))}</small></span>
         <span class="mconf-acts"><button type="button" class="btn small" data-mcopy-conf="${esc(msg)}">Copiar mensaje</button>${prof ? `<a class="btn small ghost" href="${esc(prof)}" target="_blank" rel="noopener">Instagram</a>` : ""}<button type="button" class="btn small primary" data-miconf="${c.u}/${c.id}">✓ Confirmó</button></span></div>`; }).join("")}</div></section>` : "";
-  const rems = remList(), remDue = rems.filter(r => !r.done && r.at <= eod).sort((a,b) => a.at - b.at), remNext = rems.filter(r => !r.done && r.at > eod).sort((a,b) => a.at - b.at);
+  const rems = remList().filter(r => r.kind!=="event"), remDue = rems.filter(r => !r.done && r.at <= eod).sort((a,b) => a.at - b.at), remNext = rems.filter(r => !r.done && r.at > eod).sort((a,b) => a.at - b.at);
   const remHtml = remDue.length || remNext.length ? `<section class="pg2"><div class="pg2-h"><span>Recordatorios</span>${remDue.length ? `<b>${remDue.length}</b>` : ""}</div><div class="pg2-card">
       ${remDue.map(r => `<div class="pr rem${r.at < now - 12*HR ? " late" : ""}"><span class="rem-ic">⏰</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}</small></span><span class="rem-acts"><button type="button" class="btn small" data-remsnooze="${r.id}">Mañana</button><button type="button" class="btn small primary" data-remdone="${r.id}">✓ Hecho</button></span></div>`).join("")}
       ${remNext.length ? `<details class="tt-done rem-next"${MORE.remNext ? " open" : ""}><summary data-remnextt="1">Programados (${remNext.length})</summary>${remNext.map(r => `<div class="pr rem"><span class="rem-ic">🗓</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}${r.hold ? " · ⏸ en pausa" : ""}</small></span><button type="button" class="pr-x" data-remdel="${r.id}">Borrar</button></div>`).join("")}</details>` : ""}
@@ -3744,8 +3747,8 @@ function renderPlan(){
     <div class="pl-head"><div class="pl-ttl"><h2>Hoy</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span></div>
       <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length + myT.length + mConf.length + remDue.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
     <div class="pl-cols">
-      <div class="pl-col"><h3 class="sec-h">Agenda <b>${evs.length}</b></h3>${line || `<p class="pl-empty">Hoy no tienes meets agendados.</p>`}</div>
-      <div class="pl-col"><h3 class="sec-h">Pendientes <b>${tks.length + myT.length + mConf.length + remDue.length}</b>${late ? `<em>${late} tarde</em>` : ""}</h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
+      <div class="pl-col"><h3 class="sec-h">Agenda <b>${evs.length}</b><button type="button" class="sec-add" data-remnew="1" data-remkind="event" aria-label="Agregar algo a tu agenda">+</button></h3>${line || `<p class="pl-empty">Hoy no tienes meets agendados.</p>`}</div>
+      <div class="pl-col"><h3 class="sec-h">Pendientes <b>${tks.length + myT.length + mConf.length + remDue.length}</b>${late ? `<em>${late} tarde</em>` : ""}<button type="button" class="sec-add" data-pendadd="1" aria-label="Agregar un pendiente">+</button></h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
     </div>
   </section>`;
 }
@@ -3948,21 +3951,23 @@ const TSUB = {};
 const REM = {}, REMSUB = {};
 function remSub(){ const u = meId(); if (!u || REMSUB[u] || !db) return; REMSUB[u] = db.collection(`meets/${u}/reminders`).onSnapshot(sn => { REM[u] = {}; sn.docs.forEach(d => REM[u][d.id] = {...d.data(), id:d.id}); schedule(); }, () => {}); }
 function remList(){ remSub(); return Object.values(REM[meId()] || {}); }
-function remOpen(ref, name){
-  const today = new Date(Date.now() - OFF + DAY).toISOString().slice(0,10);
+function remOpen(ref, name, kind){
+  const ev = kind==="event";
+  const today = new Date(Date.now() - OFF + (ref ? DAY : 0)).toISOString().slice(0,10); // manual: hoy · desde un prospecto: mañana
   const mine = Object.entries(michMode() ? {} : myItems()).filter(([,m]) => m && m.prospect && !(m.flow||{}).lostAt).map(([id,m]) => [`${meId()}__${id}`, m.prospect]).sort((a,b) => String(a[1]).localeCompare(String(b[1])));
   const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "remWrap";
   w.innerHTML = `<div class="bk mbk" role="dialog" aria-modal="true" aria-label="Nuevo recordatorio"><div class="bk-grab"></div>
-    <div class="bk-h"><b>⏰ Recordatorio</b><div class="spacer"></div><button type="button" class="btn small" data-remx="1">Cerrar</button></div>
+    <div class="bk-h"><b>${ev ? "📅 Agregar a tu agenda" : "＋ Pendiente o recordatorio"}</b><div class="spacer"></div><button type="button" class="btn small" data-remx="1">Cerrar</button></div>
     <div class="grid">
-      <label class="f full">¿Qué te recuerdo? <em>*</em><input id="remText" placeholder="Ej. Se fue de vacaciones: escribirle para reagendar" autocomplete="off"></label>
-      <label class="f">Día <em>*</em><input type="date" id="remDay" value="${today}"></label>
-      <label class="f">Hora<input type="time" id="remTime" value="09:00"></label>
+      <label class="f full">${ev ? "¿Qué es?" : "¿Qué hay que hacer?"} <em>*</em><input id="remText" placeholder="${ev ? "Ej. Llamada con Ana para ver su contenido" : "Ej. Se fue de vacaciones: escribirle para reagendar"}" autocomplete="off"></label>
+      <label class="f">Día <em>*</em><input type="date" id="remDay" value="${ev ? new Date(Date.now() - OFF).toISOString().slice(0,10) : today}"></label>
+      <label class="f">Hora<input type="time" id="remTime" value="${ev ? String(new Date(Date.now() - OFF + HR).getUTCHours()).padStart(2,"0") + ":00" : "09:00"}"></label>
+      ${ev ? `<label class="f">Duración<select id="remDur"><option value="15">15 min</option><option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">1 h</option><option value="90">1 h 30</option></select></label>` : ""}
       ${ref ? `<p class="mut small full" style="margin:0 4px">Prospecto: <b>${esc(name||"")}</b></p>` : ""}
-      <label class="f full rem-hold"${ref || mine.length ? "" : " hidden"}><span><input type="checkbox" id="remHold" checked> Poner al prospecto en pausa hasta ese día</span><small>Sus pendientes no te salen ni cuentan como atrasados mientras tanto.</small></label>
+      <label class="f full rem-hold"${!ev && (ref || mine.length) ? "" : " hidden"}><span><input type="checkbox" id="remHold" checked> Poner al prospecto en pausa hasta ese día</span><small>Sus pendientes no te salen ni cuentan como atrasados mientras tanto.</small></label>
       ${ref ? "" : mine.length ? `<label class="f full">Prospecto (opcional)<select id="remRef"><option value="">Ninguno</option>${mine.map(([k,n]) => `<option value="${k}">${esc(n)}</option>`).join("")}</select></label>` : ""}
     </div>
-    <p class="mut small" style="margin:8px 6px 0">Te sale en tus pendientes ese día y te llega una notificación a esa hora.</p>
+    <p class="mut small" style="margin:8px 6px 0">${ev ? "Sale en tu agenda a esa hora y cuenta como ocupado al agendar." : "Te sale en tus pendientes ese día y te llega una notificación a esa hora."}</p>
     <div class="row"><span class="err" id="remErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="remGo">Guardar</button></div></div>`;
   document.body.appendChild(w);
   w.addEventListener("click", async e => {
@@ -3974,9 +3979,9 @@ function remOpen(ref, name){
     const r = ref || ($("remRef") && $("remRef").value) || "", nm = name || (r ? (mine.find(x => x[0]===r)||[])[1] || "" : "");
     const hold = !!(r && $("remHold") && $("remHold").checked);
     $("remGo").disabled = true;
-    try{ const u = meId(), refd = db.collection(`meets/${u}/reminders`).doc(), data = {text, at, ref:r, name:nm, createdAt:Date.now(), done:false, hold};
+    try{ const u = meId(), refd = db.collection(`meets/${u}/reminders`).doc(), data = {text, at, ref:r, name:nm, createdAt:Date.now(), done:false, hold, ...(ev ? {kind:"event", dur:Number(($("remDur")||{}).value)||30} : {})};
       if (hold){ const [ou, oid] = r.split("__"); await db.doc(`meets/${ou}/items/${oid}`).update({flow:{holdUntil:at, holdBy:S.uid, holdNote:text}}); const mm = ((S.all||{})[ou]||{})[oid] || (ou===meId() ? myItems()[oid] : null); if (mm) (mm.flow ||= {}).holdUntil = at; }
-      await refd.set(data); ((REM[u] ||= {}))[refd.id] = {...data, id:refd.id}; w.remove(); schedule(); quickToast(`✓ Te lo recuerdo el ${fmtLocal(at)}`); }
+      await refd.set(data); ((REM[u] ||= {}))[refd.id] = {...data, id:refd.id}; w.remove(); schedule(); quickToast(ev ? `✓ Agregado a tu agenda · ${fmtLocal(at)}` : `✓ Te lo recuerdo el ${fmtLocal(at)}`); }
     catch(_){ $("remGo").disabled = false; $("remErr").textContent = "No se pudo guardar."; }
   });
   setTimeout(() => $("remText").focus(), 50);
@@ -3984,7 +3989,15 @@ function remOpen(ref, name){
 document.addEventListener("click", async e => {
   const ac = e.target.closest("[data-adjcopy]"); if (ac){ e.stopPropagation(); try{ await navigator.clipboard.writeText(ac.dataset.adjcopy); quickToast("✓ Pregunta copiada"); }catch(_){ quickToast("No se pudo copiar"); } return; }
   const as = e.target.closest("[data-adjset]"); if (as){ e.stopPropagation(); (DRAFT[as.dataset.k] ||= {dt:{}}).adj = as.dataset.adjset; as.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("on", b===as)); return; }
-  const nw = e.target.closest("[data-remnew]"); if (nw){ e.stopPropagation(); return remOpen(nw.dataset.remref || "", nw.dataset.remname || ""); }
+  const nw = e.target.closest("[data-remnew]"); if (nw){ e.stopPropagation(); const ch = $("addWrap"); if (ch) ch.remove(); return remOpen(nw.dataset.remref || "", nw.dataset.remname || "", nw.dataset.remkind || ""); }
+  const pa = e.target.closest("[data-pendadd]"); if (pa){ e.stopPropagation();
+    if (!(adminMode() && !S.viewAs)) return remOpen("", "", "");
+    const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "addWrap";
+    w.innerHTML = `<div class="bk mbk add-pick" role="dialog" aria-modal="true" aria-label="Agregar"><div class="bk-grab"></div>
+      <button type="button" data-remnew="1"><b>＋ Pendiente para mí</b><small>Algo que tienes que hacer o un recordatorio</small></button>
+      <button type="button" data-tasknew="1"><b>📋 Tarea para alguien del equipo</b><small>Con estatus, entrega y comentarios</small></button></div>`;
+    w.addEventListener("click", ev2 => { if (ev2.target===w) w.remove(); else if (ev2.target.closest("[data-tasknew]")) setTimeout(() => w.remove(), 0); });
+    document.body.appendChild(w); return; }
   const nt = e.target.closest("[data-remnextt]"); if (nt){ MORE.remNext = !MORE.remNext; return; }
   const dn = e.target.closest("[data-remdone]"), sn = e.target.closest("[data-remsnooze]"), dl = e.target.closest("[data-remdel]"); if (!dn && !sn && !dl) return;
   e.stopPropagation(); const u = meId(), id = (dn || sn || dl).dataset.remdone || (dn || sn || dl).dataset.remsnooze || (dn || sn || dl).dataset.remdel, r = (REM[u]||{})[id]; if (!r) return;
