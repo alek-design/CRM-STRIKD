@@ -2556,6 +2556,7 @@ function stageOf(id, m){
   if (!f.launchedAt) return {k:"build", t:"Listo para publicar"};
   return {k:"launched", t:"Publicado"};
 }
+const MEET_LEN = 30*60e3, QUICK = 15*60e3; // los meets duran 30 min; lo del resultado del pitch se hace en los 15 min siguientes
 function tasksFor(uid, id, m, now){
   const v = S.validations[id], st = statusOf(id), f = m.flow || {}, p = m.prospect || "el prospecto", T = [];
   const add = o => T.push({uid, id, m, who:"member", ...o});
@@ -2579,7 +2580,7 @@ function tasksFor(uid, id, m, now){
         add({title:`Mándale el recordatorio a ${p}`, detail:`Su pitch es hoy a las ${at.split("T")[1]}. Mándale el link 2 h antes para que no se le pase.`, due:t-1*HR,
           acts:[{label:"Ya se lo mandé", act:"reminded", input:"remind", kind:"primary"}]});
     } else {
-      add({who:"admin", title:`Resultado del pitch con ${p}`, detail:`Era el ${fmtMeetAt(at)}. Contesta: ¿se conectó?, ¿le gustó? y adjunta el skeleton que armaron en vivo (queda como enviado).`, due:t+2*HR,
+      add({who:"admin", title:`Resultado del pitch con ${p}`, detail:`Era el ${fmtMeetAt(at)}. En cuanto acabe: ¿se conectó?, ¿le gustó? y adjunta el skeleton que armaron en vivo (queda como enviado). Son 3 minutos.`, due:t + MEET_LEN + QUICK,
         acts:[{label:"Guardar resultado", act:"meet3", input:"meet3", kind:"primary"}]});
     }
   } else if (st==="noshow"){
@@ -2587,7 +2588,9 @@ function tasksFor(uid, id, m, now){
       acts:[{label:"Reagendar", act:"resched", input:"dt", kind:"primary"}, {label:"Perdido", act:"lost", kind:"bad"}]});
   } else if (st==="attended"){
     if (f.interested==null || (f.interested && !f.skeletonAt)){
-      const due = f.interested==null ? (v.decidedAt||now)+24*HR : f.skeletonMeetAt ? meetTs(f.skeletonMeetAt)+2*HR : f.skeletonMeetNeeded ? (f.skeletonMeetSetAt||now)+72*HR : (f.interestedAt||now)+48*HR;
+      // todo se contesta en cuanto acaba el meet (es un proceso de 3 minutos): 15 min después de que termina
+      const meetEnd = meetTs(effAt(m)) + MEET_LEN;
+      const due = f.interested==null ? Math.max(meetEnd, v.decidedAt||0) + QUICK : f.skeletonMeetAt ? meetTs(f.skeletonMeetAt) + MEET_LEN + QUICK : f.skeletonMeetNeeded ? Math.max(meetEnd, f.skeletonMeetSetAt||0) + QUICK : Math.max(meetEnd, f.interestedAt||0) + QUICK;
       add({who:"admin", title:`Resultado del pitch con ${p}`,
         detail: f.interested==null ? "Ya se conectó. Falta: ¿le gustó? y su skeleton." : f.skeletonMeetAt ? `Le gustó. Falta adjuntar el skeleton (meet para crearlo: ${fmtMeetAt(f.skeletonMeetAt)}).` : "Le gustó. Falta adjuntar su skeleton.",
         due, acts:[{label:"Guardar resultado", act:"meet3", input:"meet3", kind:"primary"}]});
@@ -2595,7 +2598,7 @@ function tasksFor(uid, id, m, now){
         const mt = f.skeletonMeetAt ? meetTs(f.skeletonMeetAt) : null, setAt = f.skeletonMeetSetAt || now;
         add({who:"admin", title:`Agenda el meet de skeleton con ${p}`,
           detail: mt ? `Quedó para el ${fmtMeetAt(f.skeletonMeetAt)}. Mándale la invitación a esa hora y márcalo como agendado.` : "Coordina con él fecha y hora para crear su skeleton, mándale la invitación y registra la fecha aquí.",
-          due: mt ? Math.min(setAt + 24*HR, mt - 2*HR) : setAt + 24*HR, acts:[{label:"Ya lo agendé", act:"skel-booked", input:"bookskel", kind:"primary"}]});
+          due: setAt + QUICK, acts:[{label:"Ya lo agendé", act:"skel-booked", input:"bookskel", kind:"primary"}]});
       }
     } else if (f.interested){
       // From here on the team leader owns everything until it is published
