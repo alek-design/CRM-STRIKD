@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 01:10:10 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 01:17:42 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792372210">
+<link rel="stylesheet" href="/auth.css?v=1792372662">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792372210"></script>
+<script src="/claude-shim.js?v=1792372662"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -46,6 +46,8 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+#dayPlan .pr.mconf{flex-wrap:wrap;cursor:default}#dayPlan .pr.mconf .pr-m{flex:1 1 100%}
+.mconf-acts{display:flex;flex-wrap:wrap;gap:6px}
 .tk-prog{display:block;height:4px;border-radius:99px;background:var(--raised);overflow:hidden;margin-top:6px;max-width:220px}
 .tk-prog i{display:block;height:100%;background:var(--fg);opacity:.7;border-radius:inherit}
 .tk-prog.ok i{background:#22c55e;opacity:1}
@@ -3618,23 +3620,30 @@ function renderPlan(){
     + (iskOpen ? `<section class="pg2"><div class="pg2-card"><div class="pr" role="button" tabindex="0" data-gomsgs="1"><span class="wa-b">WA</span><span class="pr-m"><b>${iskOpen} chat${iskOpen===1?"":"s"} sin responder</b><small>Contéstalos en Mensajes</small></span><span class="pr-chev" aria-hidden="true">›</span></div></div></section>` : "");
   // tareas que asignan el Head o el Manager: salen todos los días hasta que se marcan como hechas
   const myT = taskList(meId()).filter(([,x]) => tkSt(x)!=="done"); // todas las abiertas, aunque sean para otro día
+  // Influencer Outreach: confirmar los meets que ella agendó (aparece 3 días antes, vence 2 h antes). Se guarda en el perfil de su lista.
+  const mConf = michMode() ? michRows().filter(([,,x]) => x.meetId && x.meetAt && x.confirmedFor !== x.meetAt && x.status==="agendo")
+    .map(([u,id,x]) => ({u, id, x, t:meetTs(x.meetAt)})).filter(c => c.t > now && now >= c.t - 3*DAY).sort((a,b) => a.t - b.t) : [];
   const tLate = myT.filter(([,x]) => x.dueAt && x.dueAt < now && tkSt(x)!=="review").length;
   const assigned = admin && !S.viewAs ? taskAssignedByMe().filter(([,,x]) => !headLite || x.by===S.uid) : [];
   const nRev = assigned.filter(([,,x]) => tkSt(x)==="review").length;
   const onlyTasks = !groups.length && !nRev;
-  const taskHtml = (myT.length ? `<section class="pg2">${onlyTasks ? "" : `<div class="pg2-h"><span>Tareas</span><b>${myT.length}</b></div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
+  const confHtml = mConf.length ? `<section class="pg2"><div class="pg2-h"><span>Confirmar meets</span><b>${mConf.length}</b></div><div class="pg2-card">${mConf.map(c => { const due = c.t - 2*HR, late = due < now, prof = safeUrl(c.x.profile);
+      const msg = `¡Hola ${String(c.x.prospect||"").split(" ")[0]}! Te escribo para confirmar nuestra llamada del ${fmtMeetAt(c.x.meetAt)}. ¿Sigue en pie? Si necesitas moverla, dime qué horario te acomoda.`;
+      return `<div class="pr mconf${late ? " late" : ""}"><span class="pr-m"><b>Confirma el meet con ${esc(c.x.prospect)}</b><small>Meet ${esc(fmtMeetAt(c.x.meetAt))}</small></span>
+        <span class="mconf-acts"><button type="button" class="btn small" data-mcopy-conf="${esc(msg)}">Copiar mensaje</button>${prof ? `<a class="btn small ghost" href="${esc(prof)}" target="_blank" rel="noopener">Instagram</a>` : ""}<button type="button" class="btn small primary" data-miconf="${c.u}/${c.id}">✓ Confirmó</button></span></div>`; }).join("")}</div></section>` : "";
+  const taskHtml = confHtml + (myT.length ? `<section class="pg2">${onlyTasks ? "" : `<div class="pg2-h"><span>Tareas</span><b>${myT.length}</b></div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
     + (assigned.some(([,,x]) => tkSt(x)==="review") ? `<section class="pg2"><div class="pg2-h"><span>Por aprobar</span><b>${nRev}</b></div><div class="pg2-card">${assigned.filter(([,,x]) => tkSt(x)==="review").map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
   if (headLite) todo += `<p class="lite-note">Lo operativo lo lleva ${esc(headLiteMgrs())} · <button type="button" class="linkbtn" data-gotab="board">ver Equipo</button></p>`;
   todo = taskHtml + todo + (totalPend > PEND_CAP ? `<button type="button" class="pend-all" data-allpend="1">${allPend ? "Ver menos" : `Ver todos los pendientes (${totalPend})`}</button>` : "");
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
-  { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length + nRev, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
+  { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length + mConf.length + nRev, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
   const late = tks.filter(t => t.due < now).length;
   box.innerHTML = `<section class="plan">
     <div class="pl-head"><div class="pl-ttl"><h2>Hoy</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span></div>
-      <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length + myT.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
+      <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length + myT.length + mConf.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
     <div class="pl-cols">
       <div class="pl-col"><h3 class="sec-h">Agenda <b>${evs.length}</b></h3>${line || `<p class="pl-empty">Hoy no tienes meets agendados.</p>`}</div>
-      <div class="pl-col"><h3 class="sec-h">Pendientes <b>${tks.length + myT.length}</b>${late ? `<em>${late} tarde</em>` : ""}</h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
+      <div class="pl-col"><h3 class="sec-h">Pendientes <b>${tks.length + myT.length + mConf.length}</b>${late ? `<em>${late} tarde</em>` : ""}</h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
     </div>
   </section>`;
 }
@@ -4036,6 +4045,14 @@ document.addEventListener("click", async e => {
     try{ await db.doc(`meets/${u}/tasks/${id}`).delete(); delete S.tasks[u][id]; schedule(); }catch(_){} }
 });
 
+document.addEventListener("click", async e => {
+  const cp = e.target.closest("[data-mcopy-conf]"); if (cp){ try{ await navigator.clipboard.writeText(cp.dataset.mcopyConf); quickToast("✓ Mensaje copiado"); }catch(_){ quickToast("No se pudo copiar"); } return; }
+  const b = e.target.closest("[data-miconf]"); if (!b) return;
+  const [u, id] = b.dataset.miconf.split("/"), x = ((S.vip||{})[u]||{})[id]; if (!x) return;
+  b.disabled = true;
+  try{ await db.doc(`meets/${u}/vip/${id}`).update({confirmedFor:x.meetAt, confirmedAt:Date.now()}); x.confirmedFor = x.meetAt; quickToast("✓ Meet confirmado"); schedule(); }
+  catch(_){ b.disabled = false; quickToast("No se guardó, intenta otra vez"); }
+});
 /* Plantillas de Mich: tocar una la copia y la deja activa; cada perfil que contacte queda con esa plantilla */
 const MICH_DEF = [
   {name:"Directo", text:"¡Hola {nombre}! Me encanta tu contenido 🙌 Soy Mich de STRIKD: ayudamos a creadores fitness a lanzar su propia app de entrenamiento con su marca. ¿Te cuento en 2 minutos cómo funcionaría para tu comunidad?"},
