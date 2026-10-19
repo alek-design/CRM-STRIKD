@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 02:07:36 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 02:08:03 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792375656">
+<link rel="stylesheet" href="/auth.css?v=1792375683">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792375656"></script>
+<script src="/claude-shim.js?v=1792375683"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -3967,7 +3967,7 @@ function remOpen(ref, name, kind){
       <label class="f full rem-hold"${!ev && (ref || mine.length) ? "" : " hidden"}><span><input type="checkbox" id="remHold" checked> Poner al prospecto en pausa hasta ese día</span><small>Sus pendientes no te salen ni cuentan como atrasados mientras tanto.</small></label>
       ${ref ? "" : mine.length ? `<label class="f full">Prospecto (opcional)<select id="remRef"><option value="">Ninguno</option>${mine.map(([k,n]) => `<option value="${k}">${esc(n)}</option>`).join("")}</select></label>` : ""}
     </div>
-    <p class="mut small" style="margin:8px 6px 0">${ev ? "Sale en tu agenda a esa hora y cuenta como ocupado al agendar." : "Te sale en tus pendientes ese día y te llega una notificación a esa hora."}</p>
+    <p class="mut small" style="margin:8px 6px 0">${ev ? "Sale en tu agenda a esa hora y te llega una notificación." : "Te sale en tus pendientes ese día y te llega una notificación a esa hora."}</p>
     <div class="row"><span class="err" id="remErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="remGo">Guardar</button></div></div>`;
   document.body.appendChild(w);
   w.addEventListener("click", async e => {

@@ -3959,7 +3959,7 @@ function remOpen(ref, name, kind){
       <label class="f full rem-hold"${!ev && (ref || mine.length) ? "" : " hidden"}><span><input type="checkbox" id="remHold" checked> Poner al prospecto en pausa hasta ese día</span><small>Sus pendientes no te salen ni cuentan como atrasados mientras tanto.</small></label>
       ${ref ? "" : mine.length ? `<label class="f full">Prospecto (opcional)<select id="remRef"><option value="">Ninguno</option>${mine.map(([k,n]) => `<option value="${k}">${esc(n)}</option>`).join("")}</select></label>` : ""}
     </div>
-    <p class="mut small" style="margin:8px 6px 0">${ev ? "Sale en tu agenda a esa hora y cuenta como ocupado al agendar." : "Te sale en tus pendientes ese día y te llega una notificación a esa hora."}</p>
+    <p class="mut small" style="margin:8px 6px 0">${ev ? "Sale en tu agenda a esa hora y te llega una notificación." : "Te sale en tus pendientes ese día y te llega una notificación a esa hora."}</p>
     <div class="row"><span class="err" id="remErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="remGo">Guardar</button></div></div>`;
   document.body.appendChild(w);
   w.addEventListener("click", async e => {
