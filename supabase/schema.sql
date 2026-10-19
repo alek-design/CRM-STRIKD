@@ -79,6 +79,10 @@ begin
   if seg[1] = 'meets' and seg[3] = 'vip' and exists (select 1 from docs d where d.path = 'roles/' || me and d.data->>'role' = 'influencer') then
     return lvl >= 2;
   end if;
+  -- Influencer Outreach: consulta (solo lectura) los prospectos y tareas del equipo para ver Equipo (team-ro-v1)
+  if seg[1] = 'meets' and op = 'read' and exists (select 1 from docs d where d.path = 'roles/' || me and d.data->>'role' = 'influencer') then
+    return lvl >= 2;
+  end if;
   -- AM con permiso del Head ("Puede asignar tareas") o Influencer Outreach: crean y revisan tareas del equipo (tasks-v2)
   if seg[1] = 'meets' and seg[3] = 'tasks' and exists (select 1 from docs d where d.path = 'roles/' || me and ((d.data->>'canAssign')::boolean is true or d.data->>'role' = 'influencer')) then
     return lvl >= 2;

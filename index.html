@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 18:37:32 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 18:42:28 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792435052">
+<link rel="stylesheet" href="/auth.css?v=1792435348">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792435052"></script>
+<script src="/claude-shim.js?v=1792435348"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1705,7 +1705,7 @@ tick(); setInterval(tick, 30000);
 
 /* ---------- tabs ---------- */
 function showTab(t){
-  if (t==="board" && adminMode()) t = "flow"; // Head/Manager: Equipo es el pipeline del equipo
+  if (t==="board" && (adminMode() || michMode())) t = "flow"; // Head/Manager: Equipo es el pipeline del equipo
   else if (t==="board") t = "perf"; // AM: Ranking = leaderboard + su avance
   if (t==="vip") t = "agenda"; // la Lista Mich ya no se usa como pestaña
   S.tab = t;
@@ -1934,7 +1934,7 @@ const ICO = {
 };
 const svg = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
 function islandItems(){
-  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["report","chart","Reporte"],["settings","gear","Ajustes"]], more:[]};
+  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["board","home","Equipo"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["board","home","Equipo"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],["settings","gear","Ajustes"]]};
   const lead = adminMode(), am = !lead;
   const unread = ISK.convs.filter(c => c.lastDir==="in" && !c.disc && (lead ? true : c.owner===meId())).length;
   const msgN = unread;
@@ -2057,7 +2057,7 @@ async function render(){
   const ps = await profiles([...new Set(Object.keys(S.members).concat((S.config && S.config.headId) ? [S.config.headId] : []))]); S.ps = ps;
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
-  if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
+  if (adminMode()){ if (!typing) renderAdmin(ps); } else { renderMine(); if (michMode() && S.tab==="flow"){ renderFlow(ps); renderTeamChart(); } }
   syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode()); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
@@ -2071,6 +2071,8 @@ async function render(){
 }
 
 const adminMode = () => S.isLead && !S.viewAs;
+// Equipo (info de los AM): Head/Manager, y también la Influencer Outreach en modo solo lectura
+const teamView = () => adminMode() || michMode();
 // "yo" en pantalla: la persona que el Head está viendo (AM, Influencer o Manager) o él mismo
 const vMgr = () => S.viewMgr && S.viewMgr!=="__mgr" ? S.viewMgr : "";
 const meId = () => S.viewAs || vMgr() || S.uid;
@@ -2797,6 +2799,7 @@ const DRAFT = {}, EDRAFT = {}, OPEN = {};
 const dk = (uid, id) => `${uid}__${id}`;
 const draft = k => (DRAFT[k] = DRAFT[k] || {dt:{}});
 function actsHtml(t){
+  if (michMode()) return ""; // Influencer ve Equipo solo para consultar
   const k = dk(t.uid, t.id), dr = DRAFT[k] || {dt:{}};
   const base = a => `data-act="${a.act}" data-uid="${t.uid}" data-id="${t.id}"${a.day?` data-day="${a.day}"`:""}`;
   return t.acts.map(a => {
@@ -3153,7 +3156,7 @@ function renderTodo(){
   if (!busyIn($("myPath")) && Date.now() > HOLD_UNTIL) $("myPath").innerHTML = pathHtml(owners, adminMode(), "myPath");
 }
 function renderFlow(ps){
-  if (!S.isLead) return;
+  if (!S.isLead && !michMode()) return;
   const onlyLate = $("flowLate").checked, now = Date.now();
   const owners = Object.entries(S.all);
   const all = collectTasks(owners);
@@ -3510,9 +3513,10 @@ function gcalNote(mondayStr){
 function michEvents(){ // meets que agendó Mich (vienen de su lista; ella no ve los journeys de los AM)
   return michRows().filter(([,,x]) => x.meetId && x.meetAt).map(([u,,x]) => ({at:x.meetAt, kind:"pitch", label:`Pitch · ${x.prospect}`, who:u, mich:true}));
 }
-function calEvents(){
-  const ev = michMode() ? michEvents() : [];
-  (adminMode() ? Object.entries(S.all) : michMode() ? [] : [[meId(), myItems()]]).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
+function calEvents(teamAll){
+  const tAll = teamAll && michMode(); // Equipo visto por la Influencer: los meets de todos los AM
+  const ev = michMode() && !tAll ? michEvents() : [];
+  (adminMode() || tAll ? Object.entries(S.all) : michMode() ? [] : [[meId(), myItems()]]).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
     const st = statusOf(id), f = m.flow || {}, v = S.validations[id];
     if (f.lostAt || st==="rejected") return;
     const at = effAt(m);
@@ -3587,7 +3591,7 @@ function renderAgenda(){
   const h = document.querySelector("#view-agenda .ag-top h2");
   if (h){ const d = AG_DAY || todayStr, [y,mm] = d.split("-").map(Number); h.textContent = phone ? MONTHS_L[mm-1].replace(/^./, c => c.toUpperCase()) + (y !== new Date().getFullYear() ? " " + y : "") : "Agenda"; }
   const tb = $("tabBoard"); if (tb){ const lc = $("lateCount"), show = adminMode() && !lc.hidden && Number(lc.textContent);
-    const h = (adminMode() ? "Equipo" : "Ranking") + (show ? `<span class="count late">${esc(lc.textContent)}</span>` : ""); if (tb.innerHTML !== h) tb.innerHTML = h; }
+    const h = (teamView() ? "Equipo" : "Ranking") + (show ? `<span class="count late">${esc(lc.textContent)}</span>` : ""); if (tb.innerHTML !== h) tb.innerHTML = h; }
 }
 const MONTHS_L = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 let AG_SEG = "meets";
@@ -3882,7 +3886,7 @@ function syncMichUi(){
       MICH.subs[u] = db.collection(`meets/${u}/vip`).onSnapshot(s => { S.vip[u] = {}; s.docs.forEach(d => S.vip[u][d.id] = d.data()); schedule(); }, () => {}); });
   }
   if (mm === S._mm) return; S._mm = mm;
-  if (mm){ document.querySelectorAll("#tabs button").forEach(b => b.hidden = b.id!=="tabMich" && b.id!=="tabAgenda"); if (!["mich","agenda","settings"].includes(S.tab)) showTab("mich"); }
+  if (mm){ document.querySelectorAll("#tabs button").forEach(b => b.hidden = b.id!=="tabMich" && b.id!=="tabAgenda" && b.id!=="tabBoard"); if (!["mich","agenda","settings","flow"].includes(S.tab)) showTab("mich"); }
   else {
     $("tabMich").hidden = true; document.querySelector('#tabs [data-tab="board"]').hidden = false; $("tabMsgs").hidden = false;
     if (S.viewAs){ $("tabAgenda").hidden = false; $("tabPerf").hidden = true; }
@@ -4580,7 +4584,7 @@ function teamLateBy(now){
 }
 /* Equipo: tres números arriba (atrasados, tareas abiertas, pitches de la semana); cada uno lleva a su sección */
 function renderTeamLate(){
-  const box = $("teamLate"); if (!box || !adminMode() || busyIn(box)) return;
+  const box = $("teamLate"); if (!box || !teamView() || busyIn(box)) return;
   const now = Date.now(), late = Object.values(teamLateBy(now)).reduce((a, l) => a + l.length, 0);
   const actSteps = new Set(STEPS.filter(x => !x.goal).map(x => x.n));
   // pitches de esta semana (lunes a domingo): agendados y cuántos ya se tomaron
@@ -4599,7 +4603,7 @@ function renderTeamLate(){
 }
 /* Equipo: todas las tareas asignadas (abiertas y completadas recientes); en Pendientes solo salen las que esperan tu aprobación */
 function renderTeamTasks(){
-  const box = $("teamTasks"); if (!box || !adminMode() || busyIn(box)) return;
+  const box = $("teamTasks"); if (!box || !teamView() || busyIn(box)) return;
   const list = taskAssignedByMe(), now = Date.now(), open = list.filter(([,,x]) => tkSt(x)!=="done"), done = list.filter(([,,x]) => tkSt(x)==="done");
   box.innerHTML = `<section class="pg2 tt"><div class="pg2-h"><span>Tareas del equipo</span>${open.length?`<b>${open.length}</b>`:""}<button type="button" class="tt-new" data-tasknew="1">+ Tarea</button></div>
     <div class="pg2-card${open.length?"":" tt-0"}">${open.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("") || `<p class="tt-none">Sin tareas abiertas</p>`}
@@ -4742,14 +4746,14 @@ function presLine(us){
   return `<div class="pres-line">${on.length ? `<span class="pres on">${on.length} en línea</span>${on.map(nm).join(", ")}` : `<span class="pres off">Nadie en línea</span>`}${rc.length ? `<span class="pres-sep"></span><span class="pres rc">hace poco</span>${rc.map(nm).join(", ")}` : ""}</div>`;
 }
 function renderTeamLoad(){
-  const box = $("teamLoad"); if (!box || !adminMode() || busyIn(box)) return;
+  const box = $("teamLoad"); if (!box || !teamView() || busyIn(box)) return;
   const now = Date.now(), todayStr = new Date(now - OFF).toISOString().slice(0,10);
   const t0 = new Date(todayStr + "T00:00:00Z"), dow = (t0.getUTCDay()+6)%7;
   const mon = new Date(t0.getTime() - dow*DAY + LOAD_W*7*DAY);
   const days = Array.from({length:7}, (_,i) => new Date(mon.getTime() + i*DAY).toISOString().slice(0,10));
   const from = Date.parse(days[0] + "T00:00:00-05:00"), to = from + 7*DAY;
   const inW = ts => ts >= from && ts < to;
-  const ev = calEvents().filter(e => e.who && e.kind!=="gcal");
+  const ev = calEvents(true).filter(e => e.who && e.kind!=="gcal");
   // el Head también ve la carga del Manager (los meets que lidera y lo que le toca de su equipo) y de Influencer Outreach (los meets donde va)
   const extra = S.isOwner && !teamScoped() ? Object.keys(S.members||{}).filter(u => u!==S.uid && (roleOf(u)==="manager" || roleOf(u)==="influencer")) : [];
   const meetOfE = e => { const [o, id] = String(e.key||"").split("__"); return ((S.all||{})[o]||{})[id] || null; };
@@ -4789,7 +4793,7 @@ function renderTeamLoad(){
 }
 function renderTeamChart(){
   renderTeamLate(); renderTeamTasks(); renderTeamLoad();
-  const box = $("teamChart"); if (!box || !adminMode()) return;
+  const box = $("teamChart"); if (!box || !teamView()) return;
   const pick = $("flowPerson") && $("flowPerson").value, one = pick && S.team[pick];
   const uids = one ? [pick] : Object.keys(S.team);
   const s = weeklySeries(uids, S.all);
@@ -6320,6 +6324,10 @@ function syncPointSubs(){
 }
 let waCampSub = null;
 function syncAdminSubs(){
+  if (!S.isLead && roleOf(S.uid)==="influencer"){ // Influencer: solo lee los prospectos de los AM para ver Equipo
+    Object.keys(S.members).filter(uid => roleOf(uid)==="am").forEach(uid => { if (adminSubs[uid]) return;
+      adminSubs[uid] = db.collection(`meets/${uid}/items`).onSnapshot(s => { const o = {}; s.docs.forEach(d=>o[d.id]=d.data()); S.allEvery[uid] = o; scopeAll(); schedule(); }, snapErr); });
+    return; }
   if (!S.isLead) return;
   if (!waCampSub && S.uid) db.collection(`meets/${S.uid}/tpllog`).onSnapshot(s => { S.tplLog[S.uid]={}; s.docs.forEach(d=>S.tplLog[S.uid][d.id]=d.data()); schedule(); }, snapErr);
   if (!waCampSub) waCampSub = db.collection("waCampaigns").onSnapshot(s => { S.waCamps={}; s.docs.forEach(d=>S.waCamps[d.id]=d.data()); schedule(); }, snapErr);
