@@ -31,6 +31,12 @@ module.exports = async (req, res) => {
         if (f.buildMeetAt && !f.launchedAt) busy.push({t:ts(f.buildMeetAt), kind:"build", mine});
       }
       const board = busy.filter(b => b.t >= from - 3600e3 && b.t <= to);
+      // lo que cada quien agregó a mano a su agenda (botón + de Agenda): cuenta como bloque ocupado, para quien agenda y para su leader
+      const who = [...new Set([me.id, leader].filter(Boolean))];
+      const manual = (await c.query(`select split_part(path,'/',2) uid, data from public.docs where parent = any($1)
+        and data->>'kind'='event' and coalesce((data->>'done')::boolean,false)=false and (data->>'at')::bigint between $2 and $3`,
+        [who.map(u => `meets/${u}/reminders`), from - 3*3600e3, to])).rows
+        .map(r => { const t = Number(r.data.at); return {t, end:t + (Number(r.data.dur) || 30) * 60e3, mine:r.uid === me.id}; });
       let google = [], googleOk = false;
       if (leader){
         try{
@@ -44,7 +50,7 @@ module.exports = async (req, res) => {
           }
         }catch(_){ /* el calendario del leader es opcional */ }
       }
-      return {leader, board, google, googleOk};
+      return {leader, board, google, googleOk, manual};
     });
     res.json(out);
   }catch(err){ res.status(500).json({error:String(err.message || err)}); }
