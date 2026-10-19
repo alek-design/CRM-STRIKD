@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 01:54:40 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 01:56:44 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792374880">
+<link rel="stylesheet" href="/auth.css?v=1792375004">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792374880"></script>
+<script src="/claude-shim.js?v=1792375004"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -46,6 +46,9 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+#view-msgs .mh-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:1 1 100%;width:100%}
+#view-msgs #msgSeg{display:none!important}
+#view-msgs .mh-tpl{border-radius:999px;white-space:nowrap}
 #dayPlan .pl-item .pl-body b svg{width:16px;height:16px;vertical-align:-3px;margin-right:4px;flex:none}
 .ag-btns .ag-rem{padding:8px 11px;font-size:16px;line-height:1}
 #dayPlan .pr.rem{cursor:default;flex-wrap:wrap}#dayPlan .pr.rem .pr-m{flex:1 1 160px;min-width:0}
@@ -1526,8 +1529,8 @@ body.mob-open header.top{z-index:31}
   </section>
 
   <section class="view" id="view-msgs" hidden>
-    <div class="msgs-head"><h2>Mensajes</h2>
-    <div class="subnav" id="msgSeg" role="tablist" aria-label="Mensajes"><button type="button" data-mseg="isk" id="msegIsk" hidden>Conversaciones</button><button type="button" data-mseg="inbox" id="msegInbox">Conversaciones</button><button type="button" data-mseg="send" hidden>Por mandar<span class="n" id="msegSendN"></span></button><button type="button" data-mseg="tpl">Plantillas</button></div></div>
+    <div class="msgs-head"><div class="mh-top"><h2 id="msgsTitle">Mensajes</h2><button type="button" class="btn small mh-tpl" id="msgTplBtn">Plantillas</button></div>
+    <div class="subnav" id="msgSeg" hidden role="tablist" aria-label="Mensajes"><button type="button" data-mseg="isk" id="msegIsk" hidden>Conversaciones</button><button type="button" data-mseg="inbox" id="msegInbox">Conversaciones</button><button type="button" data-mseg="send" hidden>Por mandar<span class="n" id="msegSendN"></span></button><button type="button" data-mseg="tpl">Plantillas</button></div></div>
     <div data-seg="isk"><div id="iskBox" hidden></div></div>
     <div data-seg="inbox"><p class="notice" id="iskNotice">Al conectar ISKRA, "Abrir en WhatsApp" se vuelve <b>Enviar</b> y sale directo desde el número de STRIKD.</p><div id="inboxBox"></div></div>
     <div data-seg="send"><div id="msgBox"></div></div>
@@ -1962,9 +1965,12 @@ function syncMsgSeg(){
   // "Por mandar" se quitó: esos mensajes ya salen listos dentro de cada pendiente (no duplicar)
   if (!MSEG.v || MSEG.v==="send" || (MSEG.v==="isk" && !isk) || (MSEG.v==="inbox" && isk)) MSEG.v = isk ? "isk" : "inbox";
   document.querySelectorAll("#msgSeg [data-mseg]").forEach(b => b.classList.toggle("on", b.dataset.mseg===MSEG.v));
+  // sin menú arriba: el botón de la derecha alterna entre conversaciones y plantillas
+  const inTpl = MSEG.v==="tpl"; $("msgTplBtn").textContent = inTpl ? "← Conversaciones" : "Plantillas"; $("msgsTitle").textContent = inTpl ? "Plantillas" : "Mensajes";
   document.querySelectorAll("#view-msgs [data-seg]").forEach(d => d.hidden = d.dataset.seg!==MSEG.v);
   const n = $("msgCount") && !$("msgCount").hidden ? $("msgCount").textContent : ""; $("msegSendN").textContent = n ? n : "";
 }
+$("msgTplBtn").addEventListener("click", () => { MSEG.v = MSEG.v==="tpl" ? (iskFn() ? "isk" : "inbox") : "tpl"; syncMsgSeg(); schedule(); window.scrollTo({top:0}); });
 $("msgSeg").addEventListener("click", e => { const b = e.target.closest("[data-mseg]"); if (b){ MSEG.v = b.dataset.mseg; syncMsgSeg(); schedule(); } });
 function syncAcct(){
   const me = window.STRIKD_ME ? window.STRIKD_ME() : null;
