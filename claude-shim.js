@@ -117,7 +117,7 @@
     const runs = (j.ultimas_ejecuciones || []).map(x => `${x.status} ${new Date(x.start_time).toLocaleTimeString("es-MX")}`).join(", ") || "ninguna todavía";
     const http = (j.ultimas_respuestas || []).map(x => `${x.status_code || "—"} ${x.respuesta || ""}`).join("\n") || "ninguna todavía";
     const devs = (j.dispositivos || []).map(x => `• ${x.persona}: ${x.dispositivos} dispositivo(s)`).join("\n") || "Nadie ha activado notificaciones.";
-    alert(j.error ? "Error: " + j.error : `Revisión cada minuto: ${j.revision_programada ? "✅ activa" : "❌ no está activa"}${j.se_programo_ahora ? " (se activó ahora)" : ""}\nÚltimas ejecuciones: ${runs}\nRespuestas:\n${http}\n\nDispositivos:\n${devs}${j.errores ? "\n\nErrores: " + j.errores.join(" | ") : ""}`);
+    alert(j.error ? "Error: " + j.error : `Revisión cada minuto: ${j.revision_programada ? "✅ activa" : "❌ no está activa"}${j.se_programo_ahora ? " (se activó ahora)" : ""}\nÚltimas ejecuciones: ${runs}\nRespuestas:\n${http}\n\nDispositivos:\n${devs}\n\nReporte diario:\n${(j.reporte_diario||[]).map(x => `${x.day} · ${x.persona}: ${x.dispositivos_que_recibieron == null ? "enviado (sin detalle)" : x.dispositivos_que_recibieron ? "✅ llegó a " + x.dispositivos_que_recibieron + " dispositivo(s)" : "❌ " + (x.nota || "no llegó")}`).join("\n") || "(todavía no se ha mandado)"}${j.errores ? "\n\nErrores: " + j.errores.join(" | ") : ""}`);
   }
   const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const standalone = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;

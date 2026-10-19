@@ -30,6 +30,8 @@ module.exports = async (req, res) => {
       r.dispositivos = (await q(`select coalesce(u.name, u.email) as persona, count(*)::int as dispositivos, max(s.last_ok) as ultima_notificacion
         from public.push_subs s left join public.app_users u on u.id = s.user_id group by 1 order by 1`)) || [];
       r.iskra = !!process.env.ISKRA_API_KEY;
+      r.reporte_diario = (await q(`select r.day, coalesce(u.name, u.email) persona, r.ok as dispositivos_que_recibieron, r.note as nota, r.sent_at
+        from public.report_sent r left join public.app_users u on u.id = r.user_id order by r.sent_at desc limit 8`)) || [];
       return r;
     });
     res.json(out);
