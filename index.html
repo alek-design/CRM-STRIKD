@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 19:42:30 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 20:46:30 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792438950">
+<link rel="stylesheet" href="/auth.css?v=1792442790">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792438950"></script>
+<script src="/claude-shim.js?v=1792442790"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -62,6 +62,10 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.tt-p + .tt-p{border-top:1px solid var(--line)}.tt-p > summary{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;list-style:none;font-size:14.5px}.tt-p > summary::-webkit-details-marker{display:none}
+.tt-p > summary::after{content:"›";color:var(--muted);font-size:16px;transition:transform .15s}.tt-p[open] > summary::after{transform:rotate(90deg)}
+.tt-pn{font-weight:700;flex:1;min-width:0}.tt-pc{display:flex;align-items:center;gap:8px}.tt-pc b{font-size:13px;min-width:22px;text-align:center;padding:2px 7px;border-radius:999px;background:var(--line2)}
+.tt-pc em{font-style:normal;font-size:12px;font-weight:600}.tt-pc em.rev{color:#2563eb}.tt-pc em.late{color:#e5484d}.tt-p[open] > summary{border-bottom:1px solid var(--line2)}
 .mi-hbtns{display:flex;align-items:center;gap:8px;flex:none}.mi-add{border:1px solid var(--line);border-radius:14px;padding:12px;margin:4px 0 14px;background:var(--surface)}.mi-add-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .org-chk{display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 2px}.org-chk input{width:18px;height:18px}
 .tkm-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 10px}.tkm-form input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);min-width:0}
@@ -4656,11 +4660,23 @@ function renderTeamLate(){
   if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
 }
 /* Equipo: todas las tareas asignadas (abiertas y completadas recientes); en Pendientes solo salen las que esperan tu aprobación */
+// Tareas del equipo agrupadas por persona (cerradas; se abren al tocar). Primero quien tiene algo por aprobar o tarde.
+const TT_OPEN = new Set();
+function ttGroups(open, now){
+  const by = {}; open.forEach(r => (by[r[0]] ||= []).push(r));
+  const info = u => { const l = by[u], rev = l.filter(([,,x]) => tkSt(x)==="review").length, late = l.filter(([,,x]) => x.dueAt && x.dueAt < now && tkSt(x)!=="review").length; return {l, rev, late}; };
+  const ppl = Object.keys(by).sort((a,b) => { const A = info(a), B = info(b); return (B.rev - A.rev) || (B.late - A.late) || (B.l.length - A.l.length); });
+  return ppl.map(u => { const {l, rev, late} = info(u), nm = String(nameOf(S.ps||{}, u)).split(" (")[0];
+    const isOpen = TT_OPEN.has(u) || (TK_OPEN && TK_OPEN.startsWith(u + "/"));
+    return `<details class="tt-p" data-ttp="${esc(u)}"${isOpen ? " open" : ""}><summary><span class="tt-pn">${esc(nm)}</span><span class="tt-pc">${rev ? `<em class="rev">${rev} por aprobar</em>` : ""}${late ? `<em class="late">${late} tarde</em>` : ""}<b>${l.length}</b></span></summary>
+      ${l.map(([uu,id,x]) => taskRow(uu, id, x, true, now)).join("")}</details>`; }).join("");
+}
+document.addEventListener("toggle", e => { const d = e.target; if (!d || !d.matches || !d.matches("details[data-ttp]")) return; if (d.open) TT_OPEN.add(d.dataset.ttp); else TT_OPEN.delete(d.dataset.ttp); }, true);
 function renderTeamTasks(){
   const box = $("teamTasks"); if (!box || !teamView() || busyIn(box)) return;
   const list = taskAssignedByMe(), now = Date.now(), open = list.filter(([,,x]) => tkSt(x)!=="done"), done = list.filter(([,,x]) => tkSt(x)==="done");
   box.innerHTML = `<section class="pg2 tt"><div class="pg2-h"><span>Tareas del equipo</span>${open.length?`<b>${open.length}</b>`:""}<button type="button" class="tt-new" data-tasknew="1">+ Tarea</button></div>
-    <div class="pg2-card${open.length?"":" tt-0"}">${open.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("") || `<p class="tt-none">Sin tareas abiertas</p>`}
+    <div class="pg2-card${open.length?"":" tt-0"}">${ttGroups(open, now) || `<p class="tt-none">Sin tareas abiertas</p>`}
     ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>`;
 }
 /* Conectados: cada quien marca members/{uid}.seenAt cada minuto mientras tiene la app abierta y visible.
