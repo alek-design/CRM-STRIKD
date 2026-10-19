@@ -34,13 +34,16 @@ module.exports = async (req, res) => {
       let semanales = null; try{ await migrate(c).catch(() => {}); semanales = await taskrules.run(c); }catch(e){ semanales = {error:String(e.message || e)}; }
       let recordatorios = null; try{ recordatorios = await reminders.run(c); }catch(e){ recordatorios = {error:String(e.message || e)}; }
       const list = arr(await get("/v1/conversations?limit=100"));
-      const since = new Date(Date.now() - 15*60e3).toISOString();
+      const since = new Date(Date.now() - 30*60e3).toISOString();
+      // último mensaje QUE ESCRIBIÓ EL PROSPECTO por conversación: solo eso avisa (no lo que manda el equipo)
+      const inboundAt = {}; let inboundOk = false;
       try{ arr(await get(`/v1/messages/whatsapp?direction=inbound&limit=50&from=${encodeURIComponent(since)}&since=${encodeURIComponent(since)}`, 4000)).forEach(m => {
         const id = String(m.conversation_id || ""); if (!id) return;
+        { const a = Date.parse(m.created_at || m.sent_at || 0) || 0; if (a > (inboundAt[id] || 0)) inboundAt[id] = a; }
         let cv = list.find(x => String(x.id) === id); if (!cv){ cv = {id, contact_phone:m.phone || m.from || "", contact_name:m.contact_name || null}; list.push(cv); }
         const at = m.created_at || m.sent_at; if (!cv.last_message_at || Date.parse(at) >= Date.parse(cv.last_message_at)){ cv.last_message_at = at; cv.last_message_text = m.text || m.body || cv.last_message_text; }
         cv.unread_count = Math.max(1, Number(cv.unread_count || 0));
-      }); }catch(_){}
+      }); inboundOk = true; }catch(_){}
       const ids = list.map(x => String(x.id));
       const seen = {}; (await c.query("select * from public.push_seen where conversation_id = any($1)", [ids])).rows.forEach(r => seen[r.conversation_id] = r);
       const first = !(await c.query("select 1 from public.push_seen limit 1")).rows[0];
@@ -61,6 +64,10 @@ module.exports = async (req, res) => {
         if (t <= prev) continue;
         await c.query("insert into public.push_seen (conversation_id, last_at) values ($1,$2) on conflict (conversation_id) do update set last_at=excluded.last_at", [id, at]);
         if (first || !(Number(cv.unread_count || 0) > 0) || Date.now() - t > 30*60e3) continue; // solo lo nuevo que escribió el prospecto
+        { // si lo último fue un mensaje del equipo (AM, Manager o Head), no se avisa
+          const dir = String(cv.last_message_direction || (cv.last_message && cv.last_message.direction) || cv.last_direction || "").toLowerCase();
+          if (dir && !/^in/.test(dir)) continue;
+          if (inboundOk && !(inboundAt[id] > prev)) continue; }
         const o = owners[id]; if (o && o.discarded_at && new Date(o.discarded_at).getTime() > t) continue;
         // segundo intento automático: si lo que llegó fue la respuesta automática de su WhatsApp, mandamos la plantilla A/B/C
         try{ await auto.markReplied(c, id, t);

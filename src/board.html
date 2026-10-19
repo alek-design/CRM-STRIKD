@@ -5931,12 +5931,14 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-iskattx]")){ ISK.att = null; return schedule(); }
   if (e.target.closest("[data-iskrec]")){ return iskRecToggle(); }
   if (e.target.closest("[data-isksend]")){
+    // la caja se vacía en pantalla al mandar (aunque siga con el foco y no se vuelva a pintar)
+    const boxSet = v => { const ta = document.querySelector("[data-iskin]"); if (ta){ ta.value = v; ta.style.height = "auto"; if (v) ta.style.height = Math.min(140, ta.scrollHeight) + "px"; } };
     const id = ISK.sel, text = (ISK.draft[id]||"").trim(), att = ISK.att && ISK.att.id===id ? ISK.att : null;
     const ti = ISK.tplIsk && ISK.tplIsk.conv===id ? ISK.tplIsk : null;
     if (ti && !ISK.busy){
       ISK.tplIsk = null; ISK.tplMedia = null; const tu0 = ISK.tplUsed && ISK.tplUsed.conv===id ? ISK.tplUsed : null; ISK.tplUsed = null;
       const key = "strikd-t-" + id + "-" + Date.now().toString(36), bub = {d:"out", t:text || ("Plantilla " + ti.name), at:Date.now(), st:"enviando…", local:key};
-      (ISK.msgs[id] ||= []).push(bub); ISK.draft[id] = ""; ISK.err = ""; (ISK.sent[id] ||= []).push({by:meId(), text:bub.t, at:bub.at}); schedule();
+      (ISK.msgs[id] ||= []).push(bub); ISK.draft[id] = ""; boxSet(""); ISK.err = ""; (ISK.sent[id] ||= []).push({by:meId(), text:bub.t, at:bub.at}); schedule();
       try{ const rr = await iskFn()("reply", {conversation_id:id, template_id:ti.id, label:ti.name, idempotency_key:key}); bub.st = "enviado"; ISK.lastReply = rr;
         if (tu0) db.doc(`meets/${meId()}/tpllog/${key}`).set({tpl:tu0.id, v:tu0.v, at:Date.now(), conv:id}).catch(() => {}); setTimeout(() => iskTail(id), 1200); }
       catch(err){ ISK.lastErr = {error:err.message, detail:err.detail||null}; bub.st = "no se envió"; bub.failed = true; ISK.err = "No se envió la plantilla de ISKRA: " + err.message; }
@@ -5949,7 +5951,7 @@ document.addEventListener("click", async e => {
     const key = ISK.idem && ISK.idem.text===text && ISK.idem.id===id ? ISK.idem.key : "strikd-" + id + "-" + Date.now().toString(36);
     ISK.idem = {id, text, key}; ISK.err = "";
     const bub = {d:"out", t:text, at:Date.now(), st:att ? "subiendo…" : "enviando…", local:key, media:att ? {url:att.preview, type:att.blob.type, name:att.name} : tm ? {url:tm.url, type:tm.type, name:tm.name} : null};
-    (ISK.msgs[id] ||= []).push(bub); ISK.draft[id] = ""; ISK.att = null;
+    (ISK.msgs[id] ||= []).push(bub); ISK.draft[id] = ""; boxSet(""); ISK.att = null;
     (ISK.sent[id] ||= []).push({by:meId(), text, at:bub.at});
     const cv = ISK.convs.find(x => x.id===id); if (cv){ cv.last = text; cv.lastDir = "out"; cv.at = bub.at; cv.lastSender = meId(); cv.lastSentAt = bub.at; }
     schedule();
@@ -5961,7 +5963,7 @@ document.addEventListener("click", async e => {
       if (rr && rr.mediaErr){ bub.st = "solo se envió el texto"; ISK.err = "El archivo no se pudo mandar: " + rr.mediaErr; }
       ISK.lastReply = rr;
       if (tu) db.doc(`meets/${meId()}/tpllog/${key}`).set({tpl:tu.id, v:tu.v, at:Date.now(), conv:id}).catch(() => {}); ISK.idem = null; setTimeout(() => iskTail(id), 1200); }
-    catch(err){ ISK.lastErr = {error:err.message, detail:err.detail||null}; bub.st = "no se envió"; bub.failed = true; ISK.draft[id] = text; if (att) ISK.att = att; ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : "") + " · Tu texto sigue en la caja, dale Enviar otra vez."; }
+    catch(err){ ISK.lastErr = {error:err.message, detail:err.detail||null}; bub.st = "no se envió"; bub.failed = true; ISK.draft[id] = text; if (ISK.sel===id && !(document.querySelector("[data-iskin]")||{}).value) boxSet(text); if (att) ISK.att = att; ISK.err = "No se envió: " + err.message + (err.detail ? " · " + JSON.stringify(err.detail).slice(0,200) : "") + " · Tu texto sigue en la caja, dale Enviar otra vez."; }
     finally{ schedule(); }
   }
 });
