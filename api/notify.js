@@ -15,7 +15,9 @@ module.exports = async (req, res) => {
     const out = await withPg(async c => {
       await init(c);
       let allowed = to;
-      if (me.role === "am"){
+      // un AM con permiso de asignar tareas puede avisarle a cualquiera del equipo
+      const canAssign = me.role === "am" && (await c.query("select 1 from public.docs where path=$1 and (data->>'canAssign')::boolean is true", ["roles/" + me.id])).rows.length > 0;
+      if (me.role === "am" && !canAssign){
         const leads = new Set((await c.query("select id from public.app_users where role in ('head','manager') and active")).rows.map(r => r.id));
         const owner = b.taskOwner && UID.test(String(b.taskOwner)) ? String(b.taskOwner) : "";
         allowed = to.filter(u => leads.has(u) || u === owner);

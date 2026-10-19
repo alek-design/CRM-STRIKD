@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 17:36:31 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 17:53:35 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792431391">
+<link rel="stylesheet" href="/auth.css?v=1792432415">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792431391"></script>
+<script src="/claude-shim.js?v=1792432415"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -48,6 +48,7 @@
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.org-chk{display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 2px}.org-chk input{width:18px;height:18px}
 .tkm-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 10px}.tkm-form input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);min-width:0}
 .tkm-form input:nth-child(3),.tkm-form input:nth-child(4),.tkm-form .err,.tkm-form button{grid-column:1/-1}.tkm-form .err{margin:0;color:#e5484d;font-size:13px}.tkm-form button{justify-self:start}
 .tkm-list{display:grid;gap:2px;margin-bottom:10px}.tkm-r{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line2);font-size:14px}
@@ -2043,7 +2044,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else renderMine();
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !(adminMode() && !S.viewAs)); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode()); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode()); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -3758,7 +3759,8 @@ function renderPlan(){
   const mConf = michMode() ? michRows().filter(([,,x]) => x.meetId && x.meetAt && x.confirmedFor !== x.meetAt && x.status==="agendo")
     .map(([u,id,x]) => ({u, id, x, t:meetTs(x.meetAt)})).filter(c => c.t > now && now >= c.t - 3*DAY).sort((a,b) => a.t - b.t) : [];
   const tLate = myT.filter(([,x]) => x.dueAt && x.dueAt < now && tkSt(x)!=="review").length;
-  const assigned = admin && !S.viewAs ? taskAssignedByMe().filter(([,,x]) => !headLite || x.by===S.uid) : [];
+  const assigned = admin && !S.viewAs ? taskAssignedByMe().filter(([,,x]) => !headLite || x.by===S.uid) : tkAssigner() ? taskAssignedByMe().filter(([,,x]) => x.by===S.uid) : [];
+  const asgOpen = tkAssigner() ? assigned.filter(([,,x]) => tkSt(x)!=="review" && tkSt(x)!=="done") : [];
   const nRev = assigned.filter(([,,x]) => tkSt(x)==="review").length;
   const onlyTasks = !groups.length && !nRev;
   const confHtml = mConf.length ? `<section class="pg2"><div class="pg2-h"><span>Confirmar meets</span><b>${mConf.length}</b></div><div class="pg2-card">${mConf.map(c => { const due = c.t - 2*HR, late = due < now, prof = safeUrl(c.x.profile);
@@ -3771,7 +3773,8 @@ function renderPlan(){
       ${remNext.length ? `<details class="tt-done rem-next"${MORE.remNext ? " open" : ""}><summary data-remnextt="1">Programados (${remNext.length})</summary>${remNext.map(r => `<div class="pr rem"><span class="rem-ic">🗓</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}${r.hold ? " · ⏸ en pausa" : ""}</small></span><button type="button" class="pr-x" data-remdel="${r.id}">Borrar</button></div>`).join("")}</details>` : ""}
     </div></section>` : "";
   const taskHtml = remHtml + confHtml + (myT.length ? `<section class="pg2">${onlyTasks ? "" : `<div class="pg2-h"><span>Tareas</span><b>${myT.length}</b></div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
-    + (assigned.some(([,,x]) => tkSt(x)==="review") ? `<section class="pg2"><div class="pg2-h"><span>Por aprobar</span><b>${nRev}</b></div><div class="pg2-card">${assigned.filter(([,,x]) => tkSt(x)==="review").map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
+    + (assigned.some(([,,x]) => tkSt(x)==="review") ? `<section class="pg2"><div class="pg2-h"><span>Por aprobar</span><b>${nRev}</b></div><div class="pg2-card">${assigned.filter(([,,x]) => tkSt(x)==="review").map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "")
+    + (asgOpen.length ? `<section class="pg2"><div class="pg2-h"><span>Tareas que asignaste</span><b>${asgOpen.length}</b></div><div class="pg2-card">${asgOpen.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
   if (headLite) todo += `<p class="lite-note">Lo operativo lo lleva ${esc(headLiteMgrs())} · <button type="button" class="linkbtn" data-gotab="board">ver Equipo</button></p>`;
   todo = taskHtml + todo + (totalPend > PEND_CAP ? `<button type="button" class="pend-all" data-allpend="1">${allPend ? "Ver menos" : `Ver todos los pendientes (${totalPend})`}</button>` : "");
   const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
@@ -4025,7 +4028,7 @@ document.addEventListener("click", async e => {
   const as = e.target.closest("[data-adjset]"); if (as){ e.stopPropagation(); (DRAFT[as.dataset.k] ||= {dt:{}}).adj = as.dataset.adjset; as.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("on", b===as)); return; }
   const nw = e.target.closest("[data-remnew]"); if (nw){ e.stopPropagation(); const ch = $("addWrap"); if (ch) ch.remove(); return remOpen(nw.dataset.remref || "", nw.dataset.remname || "", nw.dataset.remkind || ""); }
   const pa = e.target.closest("[data-pendadd]"); if (pa){ e.stopPropagation();
-    if (!(adminMode() && !S.viewAs)) return remOpen("", "", "");
+    if (!((adminMode() && !S.viewAs) || tkAssigner())) return remOpen("", "", "");
     const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "addWrap";
     w.innerHTML = `<div class="bk mbk add-pick" role="dialog" aria-modal="true" aria-label="Agregar"><div class="bk-grab"></div>
       <button type="button" data-remnew="1"><b>＋ Pendiente para mí</b><small>Algo que tienes que hacer o un recordatorio</small></button>
@@ -4043,9 +4046,12 @@ document.addEventListener("click", async e => {
     schedule();
   }catch(_){ quickToast("No se guardó, intenta otra vez"); }
 });
+// AM con permiso del Head para asignar tareas a otros AM (Organigrama → "Puede asignar tareas")
+function tkAssigner(){ return !!(S.uid && !S.viewAs && !adminMode() && ((S.roles||{})[S.uid]||{}).canAssign); }
+function tkAssignees(){ const head = (S.config||{}).headId; return Object.keys(S.members||{}).filter(u => u!==S.uid && u!==head && (roleOf(u)==="am" || !roleOf(u))); }
 function taskSubs(){
   tkRulesSub();
-  const ids = adminMode() && !S.viewAs ? Object.keys(S.members||{}).concat(S.uid ? [S.uid] : []) : [meId()];
+  const ids = adminMode() && !S.viewAs ? Object.keys(S.members||{}).concat(S.uid ? [S.uid] : []) : tkAssigner() ? [meId()].concat(tkAssignees()) : [meId()];
   ids.forEach(u => { if (!u || TSUB[u]) return; TSUB[u] = db.collection(`meets/${u}/tasks`).onSnapshot(sn => { (S.tasks ||= {})[u] = {}; sn.docs.forEach(d => S.tasks[u][d.id] = d.data()); schedule(); }, () => {}); });
 }
 function taskList(u){ return Object.entries((S.tasks||{})[u] || {}).sort((a,b) => (a[1].dueAt||9e15) - (b[1].dueAt||9e15)); }
@@ -4165,7 +4171,8 @@ function quickToast(msg){
   clearTimeout(quickToast.t); quickToast.t = setTimeout(() => t.classList.remove("show"), 1400);
 }
 function taskOpen(){
-  const ppl = Object.keys(S.members||{}).concat(S.config && S.config.headId ? [S.config.headId] : []).filter((u,i,a) => a.indexOf(u)===i);
+  const asg = tkAssigner();
+  const ppl = asg ? [S.uid].concat(tkAssignees()) : Object.keys(S.members||{}).concat(S.config && S.config.headId ? [S.config.headId] : []).filter((u,i,a) => a.indexOf(u)===i);
   const today = new Date(Date.now()-OFF).toISOString().slice(0,10);
   const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "tkWrap";
   w.innerHTML = `<div class="bk mbk" role="dialog" aria-modal="true" aria-label="Nueva tarea"><div class="bk-grab"></div>
@@ -4173,10 +4180,10 @@ function taskOpen(){
     <div class="grid">
       <label class="f full">¿Qué hay que hacer? <em>*</em><input id="tkTitle" placeholder="Ej. Trabajar 3 plantillas de email" autocomplete="off"></label>
       <label class="f full">Detalle (opcional)<textarea id="tkNote" rows="2" placeholder="Contexto, links, cómo debe quedar"></textarea></label>
-      <label class="f">Para <em>*</em><select id="tkWho"><option value="">Elige</option><option value="__team">Todo el equipo</option>${ppl.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (tú)":""}</option>`).join("")}</select></label>
+      <label class="f">Para <em>*</em><select id="tkWho"><option value="">Elige</option>${asg ? "" : `<option value="__team">Todo el equipo</option>`}${ppl.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (tú)":""}</option>`).join("")}</select></label>
       <label class="f">Para cuándo<input type="date" id="tkDue" value="${today}"></label>
-      <label class="f">Se repite<select id="tkRep"><option value="">No se repite</option><option value="w">Cada semana (mismo día de entrega)</option></select></label>
-      <label class="f">Meta que se mide sola<select id="tkMetric"><option value="">Ninguna</option><option value="mich">Candidatos para la Lista de Mich</option></select></label>
+      <label class="f"${asg ? " hidden" : ""}>Se repite<select id="tkRep"><option value="">No se repite</option><option value="w">Cada semana (mismo día de entrega)</option></select></label>
+      <label class="f"${asg ? " hidden" : ""}>Meta que se mide sola<select id="tkMetric"><option value="">Ninguna</option><option value="mich">Candidatos para la Lista de Mich</option></select></label>
       <label class="f" id="tkGoalL" hidden>¿Cuántos?<input type="number" id="tkGoal" value="40" min="1" max="500" inputmode="numeric"></label>
       <div class="f full tk-new-file"><span>Imagen o archivo (opcional)</span>
         <label class="tk-pick" id="tkPick"><input type="file" id="tkFile" accept="image/*,application/pdf" hidden><span id="tkPickL">📷 Agregar imagen o PDF</span></label>
@@ -4431,6 +4438,7 @@ function orgCtl(uid){
   return `<div class="org-ctl">
     <select data-orgrole="${uid}" aria-label="Rol">${["am","manager","influencer"].map(k => `<option value="${k}"${r===k?" selected":""}>${ROLES[k].title}</option>`).join("")}</select>
     ${r==="manager" ? `<input type="email" data-orgmail="${uid}" placeholder="Email para invitaciones de meet" value="${esc((S.roles[uid]||{}).inviteEmail||"")}" aria-label="Email del team leader para invitaciones">` : ""}
+    ${r==="am" && uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgassign="${uid}"${(S.roles[uid]||{}).canAssign ? " checked" : ""}> Puede asignar tareas a otros AM</label>` : ""}
     ${r==="am" && mgrs.length ? `<select data-orgmgr="${uid}" aria-label="Su manager"><option value="">Manager: cualquiera</option>${mgrs.map(m => `<option value="${m}"${mgrOf(uid)===m?" selected":""}>Manager: ${esc(nameOf(S.ps||{}, m))}</option>`).join("")}</select>` : ""}
   </div>`;
 }
@@ -4467,6 +4475,10 @@ $("orgBox").addEventListener("change", async e => {
   const em = e.target.closest("[data-orgmail]");
   if (em && S.isOwner){ const v = em.value.trim(); if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){ em.setCustomValidity("Revisa el email"); em.reportValidity(); return; } em.setCustomValidity("");
     const uid = em.dataset.orgmail; try{ await db.doc(`roles/${uid}`).set({...(S.roles[uid]||{role:"manager"}), inviteEmail:v, updatedAt:Date.now()}); }catch(ex){} return; }
+  const oa = e.target.closest("[data-orgassign]");
+  if (oa && S.isOwner){ const uid = oa.dataset.orgassign, cur = S.roles[uid] || {}; oa.disabled = true;
+    try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canAssign:oa.checked, updatedAt:Date.now()}); (S.roles[uid] = {...cur, role:cur.role || "am", canAssign:oa.checked}); quickToast(oa.checked ? "✓ Ya puede asignar tareas" : "Ya no puede asignar tareas"); }catch(ex){ oa.checked = !oa.checked; quickToast("No se guardó"); }
+    oa.disabled = false; return; }
   const r = e.target.closest("[data-orgrole]"), g = e.target.closest("[data-orgmgr]");
   if (!S.isOwner || (!r && !g)) return;
   const uid = (r || g).dataset.orgrole || (r || g).dataset.orgmgr;

@@ -79,6 +79,10 @@ begin
   if seg[1] = 'meets' and seg[3] = 'vip' and exists (select 1 from docs d where d.path = 'roles/' || me and d.data->>'role' = 'influencer') then
     return lvl >= 2;
   end if;
+  -- AM con permiso del Head ("Puede asignar tareas"): crea y revisa tareas de otros AM
+  if seg[1] = 'meets' and seg[3] = 'tasks' and exists (select 1 from docs d where d.path = 'roles/' || me and (d.data->>'canAssign')::boolean is true) then
+    return lvl >= 2;
+  end if;
   if seg[1] in ('meets','members','points') and seg[2] = me then
     need := case when op = 'read' and seg[1] in ('members','points') then 1 else 2 end;
   else
