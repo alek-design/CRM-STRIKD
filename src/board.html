@@ -53,6 +53,7 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.mi-hbtns{display:flex;align-items:center;gap:8px;flex:none}.mi-add{border:1px solid var(--line);border-radius:14px;padding:12px;margin:4px 0 14px;background:var(--surface)}.mi-add-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .org-chk{display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 2px}.org-chk input{width:18px;height:18px}
 .tkm-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 10px}.tkm-form input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);min-width:0}
 .tkm-form input:nth-child(3),.tkm-form input:nth-child(4),.tkm-form .err,.tkm-form button{grid-column:1/-1}.tkm-form .err{margin:0;color:#e5484d;font-size:13px}.tkm-form button{justify-self:start}
@@ -1565,7 +1566,8 @@ body.mob-open header.top{z-index:31}
 
   <section class="view" id="view-mich" hidden>
     <div class="mi-head"><div><h2>Mi lista</h2><p class="sub" id="miSum"></p></div>
-      <button type="button" class="mi-pill" id="miPill" aria-pressed="false" title="Modo contactar: al tocar un perfil se abre su Instagram y pasa a Contactados"><span>Contactar</span><i></i></button></div>
+      <div class="mi-hbtns"><button type="button" class="btn small" data-miadd="1">+ Agregar</button><button type="button" class="mi-pill" id="miPill" aria-pressed="false" title="Modo contactar: al tocar un perfil se abre su Instagram y pasa a Contactados"><span>Contactar</span><i></i></button></div></div>
+    <div id="miAdd"></div>
     <div class="mi-kpis" id="miKpis"></div>
     <p class="mi-hint" id="miHint" hidden></p>
     <div class="mi-bar"><div class="subnav" id="miSeg"><button type="button" data-mif="nuevo" class="on">Pendientes</button><button type="button" data-mif="contactado">Contactados</button><button type="button" data-mif="tpl">Plantillas</button></div></div>
@@ -3892,7 +3894,7 @@ function michMode(){ return roleOf(meId())==="influencer" && (!S.isOwner || !!S.
 function syncMichUi(){
   const mm = michMode();
   if (mm){ // solo ve su lista: se suscribe a las propuestas de todo el equipo
-    Object.keys(S.members||{}).forEach(u => { if (u===meId() || MICH.subs[u] || (S.isOwner && S.vip[u])) return;
+    Object.keys(S.members||{}).forEach(u => { if (MICH.subs[u] || (S.isOwner && S.vip[u] && u!==meId())) return;
       MICH.subs[u] = db.collection(`meets/${u}/vip`).onSnapshot(s => { S.vip[u] = {}; s.docs.forEach(d => S.vip[u][d.id] = d.data()); schedule(); }, () => {}); });
   }
   if (mm === S._mm) return; S._mm = mm;
@@ -3912,8 +3914,41 @@ function michRows(){
     .forEach(r => { const k = r[2].igKey || igKey(r[2].profile); if (k && seen.has(k)) return; if (k) seen.add(k); rows.push(r); });
   return rows;
 }
+// Mich agrega sus propios prospectos a su lista (quedan a su nombre; no cuentan para la meta de los AM)
+const MIADD = {open:false, v:{}, err:"", busy:false};
+function renderMiAdd(){
+  const box = $("miAdd"); if (!box || busyIn(box)) return;
+  if (!MIADD.open){ box.innerHTML = ""; return; }
+  const v = MIADD.v;
+  box.innerHTML = `<div class="mi-add"><div class="mi-add-h"><b>Agregar a mi lista</b><button type="button" class="btn small" data-miaddx="1">Cerrar</button></div>
+    <div class="tkm-form">
+      <input data-miv="name" placeholder="Nombre" value="${esc(v.name||"")}" autocomplete="off">
+      <input data-miv="fol" placeholder="Seguidores (120k)" value="${esc(v.fol||"")}" autocomplete="off" autocapitalize="off">
+      <input data-miv="ig" placeholder="Link de Instagram o @usuario" value="${esc(v.ig||"")}" autocomplete="off" autocapitalize="off">
+      <input data-miv="why" placeholder="Nota (opcional)" value="${esc(v.why||"")}" autocomplete="off">
+      ${MIADD.err ? `<p class="err">${esc(MIADD.err)}</p>` : ""}
+      <button type="button" class="btn small primary" data-misave="1"${MIADD.busy ? " disabled" : ""}>${MIADD.busy ? "Agregando…" : "Agregar a mi lista"}</button></div></div>`;
+}
+document.addEventListener("input", e => { const i = e.target.closest("[data-miv]"); if (i) MIADD.v[i.dataset.miv] = i.value; });
+document.addEventListener("click", async e => {
+  if (e.target.closest("[data-miadd]")){ MIADD.open = !MIADD.open; MIADD.err = ""; schedule(); if (MIADD.open) setTimeout(() => { const f = document.querySelector('[data-miv="name"]'); if (f) f.focus(); }, 60); return; }
+  if (e.target.closest("[data-miaddx]")){ MIADD.open = false; schedule(); return; }
+  if (!e.target.closest("[data-misave]")) return;
+  const v = MIADD.v, fail = m => { MIADD.err = m; MIADD.busy = false; schedule(); };
+  const o = {prospect:String(v.name||"").trim(), followers:String(parseFol(v.fol) || ""), profile:String(v.ig||"").trim(), notes:String(v.why||"").trim()};
+  if (o.profile && !/^https?:\/\//i.test(o.profile)) o.profile = /instagram\.com/i.test(o.profile) ? "https://" + o.profile : "https://instagram.com/" + o.profile.replace(/^@/, "");
+  if (!o.prospect) return fail("Escribe el nombre.");
+  if (!o.followers) return fail(v.fol ? "No entendí los seguidores: escribe por ejemplo 350k o 350,000." : "Escribe cuántos seguidores tiene.");
+  if (!igKey(o.profile)) return fail("Pon su link de Instagram (instagram.com/usuario) o @usuario.");
+  MIADD.err = ""; MIADD.busy = true; schedule();
+  const dm = await dupCheck(o.profile, ""); if (dm) return fail(dm);
+  try{ const r = await saveVip(o, {byMich:true, addedBy:S.uid}); if (r) ((S.vip ||= {})[meId()] ||= {})[r.id] = r.data;
+    MIADD.v = {}; MIADD.busy = false; quickToast(`✓ ${o.prospect} agregado a tu lista`); schedule(); }
+  catch(ex){ fail(ex && ex.dup ? ex.msg : "No se guardó. Revisa tu conexión e intenta de nuevo."); }
+});
 function renderMich(){
   const box = $("miBox"); if (!box || S.tab!=="mich") return;
+  renderMiAdd();
   if (busyIn(box)) return;
   michTplSub();
   const rows = michRows(), done = x => (x.status||"nuevo")!=="nuevo";
@@ -3947,7 +3982,7 @@ function renderMich(){
     const locked = qt.until && !done(x);
     return `<a class="mi-row${done(x)?" done":""}${locked?" locked":""}" href="${esc(locked ? "#" : (url||"#"))}" target="_blank" rel="noopener" data-mgo="${k}">
       <span class="ck-av mi-av">${ini(x.prospect)}${h?`<img src="https://unavatar.io/instagram/${encodeURIComponent(h)}?fallback=false" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>
-      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · de ${esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}</span>
+      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}</span>
       ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
         : `<span class="mi-ig">Abrir</span>${MICH.on ? "" : `<button type="button" class="mi-ic" data-mdone="${k}" aria-label="Marcar como contactado" title="Marcar como contactado">✓</button>`}`}
     </a>`; }).join("")}</div>`
@@ -4116,7 +4151,7 @@ function tkMichHtml(k, u, x, lead){
   const rows = list.map(([,v]) => `<div class="tkm-r"><span class="tkm-n"><b>${esc(v.prospect||"")}</b>${v.notes ? `<small>${esc(v.notes)}</small>` : ""}</span><span class="tkm-f">${esc(fmtN(v.followers))}</span>${safeUrl(v.profile) ? `<a href="${esc(v.profile)}" target="_blank" rel="noopener">${esc(handle(v.profile))}</a>` : ""}</div>`).join("");
   const form = lead || S.viewAs ? "" : `<div class="tkm-form">
       <input data-tkv="${k}|name" placeholder="Nombre" value="${esc(d.v_name||"")}" autocomplete="off">
-      <input data-tkv="${k}|fol" placeholder="Seguidores (ej. 48k)" autocapitalize="off" value="${esc(d.v_fol||"")}" autocomplete="off">
+      <input data-tkv="${k}|fol" placeholder="Seguidores (48k)" autocapitalize="off" value="${esc(d.v_fol||"")}" autocomplete="off">
       <input data-tkv="${k}|ig" placeholder="Link de Instagram" inputmode="url" value="${esc(d.v_ig||"")}" autocomplete="off" autocapitalize="off">
       <input data-tkv="${k}|why" placeholder="¿Por qué vale la pena? (opcional)" value="${esc(d.v_why||"")}" autocomplete="off">
       ${d.v_err ? `<p class="err">${esc(d.v_err)}</p>` : ""}
@@ -4911,12 +4946,12 @@ async function claimVip(key, uid, vipId){
   }
   return async () => ref.set({uid, vipId, at:Date.now()});
 }
-async function saveVip(o){
+async function saveVip(o, extra){
   const key = igKey(o.profile);
   if (!key) throw {dup:true, msg:"Pon el link de Instagram del perfil (instagram.com/usuario)."};
   const ref = db.collection(`meets/${meId()}/vip`).doc();
   const commit = await claimVip(key, meId(), ref.id);
-  const data = {prospect:o.prospect, profile:o.profile, followers:Number(o.followers)||0, notes:o.notes||"", perfil:3, status:"nuevo", createdAt:Date.now(), igKey:key};
+  const data = {prospect:o.prospect, profile:o.profile, followers:Number(o.followers)||0, notes:o.notes||"", perfil:3, status:"nuevo", createdAt:Date.now(), igKey:key, ...(extra||{})};
   await ref.set(data);
   await commit();
   return {id:ref.id, data};
