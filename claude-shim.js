@@ -58,7 +58,8 @@
         <label>Contraseña<input id="sgPass" type="password" autocomplete="current-password"></label>
         <p class="sg-err" id="sgErr"></p>
         <button id="sgGo" class="sg-btn">Entrar</button>
-        <button id="sgForgot" class="sg-link">Olvidé mi contraseña</button>`);
+        <button id="sgForgot" class="sg-link">Olvidé mi contraseña</button>
+        <a class="sg-link" href="/entrar.html" style="text-align:center">¿No te deja escribir o entrar? Usa la entrada simple</a>`);
       const err = t => { el.querySelector("#sgErr").textContent = t; };
       const go = el.querySelector("#sgGo");
       go.onclick = async () => {

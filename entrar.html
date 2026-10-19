@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Entrar · STRIKD</title>
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#000000">
+<style>
+  html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,system-ui,sans-serif}
+  .w{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+  .c{width:100%;max-width:380px;background:#0e0e0e;border:1px solid #3a3a3a;border-radius:18px;padding:24px;box-sizing:border-box}
+  h1{font-size:20px;margin:0 0 4px;font-weight:900;letter-spacing:.02em}h1 span{color:#8c8c8c}
+  p{color:#8c8c8c;font-size:13px;margin:0 0 16px}
+  label{display:block;font-size:12px;color:#8c8c8c;margin-bottom:12px}
+  input{display:block;width:100%;box-sizing:border-box;margin-top:4px;font-size:16px;background:#000;color:#fff;border:1px solid #3a3a3a;border-radius:10px;padding:12px}
+  button{width:100%;font-size:16px;font-weight:700;background:#fff;color:#000;border:0;border-radius:999px;padding:12px;margin-top:4px}
+  button[disabled]{opacity:.6}
+  .e{color:#f87171;font-size:13px;min-height:1.2em;margin:8px 0 0}
+</style></head><body>
+<div class="w"><form class="c" id="f" autocomplete="on">
+  <h1>OUTREACH <span>x</span> STRIKD</h1>
+  <p>Entrada simple. Si la app normal no te deja escribir, entra desde aquí.</p>
+  <label>Correo<input id="em" type="email" autocomplete="email" required></label>
+  <label>Contraseña<input id="pw" type="password" autocomplete="current-password" required></label>
+  <button id="go" type="submit">Entrar</button>
+  <div class="e" id="er"></div>
+</form></div>
+<script>
+/* Página de entrada mínima: sin el tablero ni librerías. Pide la sesión directo a Supabase,
+   la guarda donde la app la busca y abre la app ya con la sesión iniciada. */
+(function(){
+  var f = document.getElementById("f"), go = document.getElementById("go"), er = document.getElementById("er");
+  function msg(t){ er.textContent = t; }
+  f.addEventListener("submit", function(e){
+    e.preventDefault();
+    var email = document.getElementById("em").value.trim(), pw = document.getElementById("pw").value;
+    if (!email || !pw){ msg("Escribe tu correo y contraseña."); return; }
+    go.disabled = true; go.textContent = "Entrando…"; msg("");
+    var done = false, t = setTimeout(function(){ if (!done){ go.disabled = false; go.textContent = "Entrar"; msg("Está tardando mucho. Revisa tu internet y vuelve a intentar."); } }, 20000);
+    fetch("/api/config").then(function(r){ return r.json(); }).then(function(cfg){
+      if (!cfg.url || !cfg.anonKey) throw new Error("cfg");
+      return fetch(cfg.url + "/auth/v1/token?grant_type=password", {method:"POST", headers:{"content-type":"application/json", apikey:cfg.anonKey},
+        body:JSON.stringify({email:email, password:pw})}).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j, cfg:cfg}; }); });
+    }).then(function(x){
+      done = true; clearTimeout(t);
+      if (!x.ok || !x.j.access_token){ go.disabled = false; go.textContent = "Entrar";
+        msg(/invalid/i.test(x.j.error_description || x.j.msg || x.j.error || "") ? "Correo o contraseña incorrectos." : "No se pudo entrar: " + (x.j.error_description || x.j.msg || x.j.error || "error")); return; }
+      var ref = x.cfg.url.replace(/^https?:\/\//, "").split(".")[0], s = x.j;
+      if (!s.expires_at) s.expires_at = Math.floor(Date.now()/1000) + (s.expires_in || 3600);
+      try{ localStorage.setItem("sb-" + ref + "-auth-token", JSON.stringify(s)); }catch(_){ msg("Tu navegador no deja guardar la sesión (¿modo privado?)."); go.disabled = false; go.textContent = "Entrar"; return; }
+      go.textContent = "Abriendo…"; location.replace("/");
+    }).catch(function(){ done = true; clearTimeout(t); go.disabled = false; go.textContent = "Entrar"; msg("No hay conexión con el servidor. Intenta de nuevo."); });
+  });
+})();
+</script>
+</body></html>
