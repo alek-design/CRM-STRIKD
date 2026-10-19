@@ -1865,7 +1865,7 @@ const ICO = {
 };
 const svg = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
 function islandItems(){
-  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["more","more","Más"]], more:[["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["settings","gear","Ajustes"]], more:[]};
+  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["report","chart","Reporte"],["settings","gear","Ajustes"]], more:[]};
   const lead = adminMode(), am = !lead;
   const unread = ISK.convs.filter(c => c.lastDir==="in" && !c.disc && (lead ? true : c.owner===meId())).length;
   const msgN = unread || (Number($("msgCount").textContent)||0) * ($("msgCount").hidden ? 0 : 1);
@@ -4349,7 +4349,9 @@ setInterval(() => { if (document.visibilityState==="visible") presBeat(false); i
 /* Reporte del día (Head: todo el equipo · Manager: su equipo). La notificación de las 9 pm abre esta vista. */
 const RPT = {day:null};
 function renderReport(){
-  const box = $("reportBox"); if (!box || S.tab!=="report" || !adminMode() || busyIn(box)) return;
+  const box = $("reportBox"); if (!box || S.tab!=="report" || busyIn(box)) return;
+  if (michMode()) return renderMichReport(box);
+  if (!adminMode()) return;
   const now = Date.now(), today = new Date(now - OFF).toISOString().slice(0,10), day = RPT.day || today;
   const from = Date.parse(day + "T00:00:00-05:00"), to = from + DAY, inD = t => { t = Number(t)||0; return t >= from && t < to; };
   const isToday = day===today, team = Object.keys(S.team||{}), first = u => String(nameOf(S.ps||{}, u)).split(" (")[0].split(" ")[0];
@@ -4390,9 +4392,32 @@ function renderReport(){
   </div>`;
   if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
 }
+/* Reporte del día de Influencer Outreach (Mich): su lista, sus contactos y sus meets */
+function renderMichReport(box){
+  const now = Date.now(), today = new Date(now - OFF).toISOString().slice(0,10), day = RPT.day || today, isToday = day===today;
+  const from = Date.parse(day + "T00:00:00-05:00"), to = from + DAY, inD = t => { t = Number(t)||0; return t >= from && t < to; };
+  const dl = `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(day+"T12:00:00Z").getUTCDay()]} ${Number(day.slice(8))} ${MONTHS[Number(day.slice(5,7))-1]}`;
+  const rows = michRows().map(r => r[2]), me = meId();
+  const cont = rows.filter(x => x.contactedBy===me && inD(x.contactedAt)).length;
+  const ag = rows.filter(x => x.status==="agendo" && inD(x.statusAt)).length, intr = rows.filter(x => x.status==="interesado" && inD(x.statusAt)).length;
+  const nuevos = rows.filter(x => inD(x.createdAt)).length, pend = rows.filter(x => (x.status||"nuevo")==="nuevo").length;
+  const tomorrow = new Date(to - OFF + 12*3600e3).toISOString().slice(0,10);
+  const next = michEvents().filter(e => String(e.at).slice(0,10)===tomorrow).sort((a,b) => String(a.at).localeCompare(String(b.at)));
+  const qt = isToday ? michQuota() : null;
+  const k = (n, l, cls) => `<span class="${cls||""}"><b>${n}</b>${l}</span>`;
+  const h = `<div class="rp">
+    <div class="rp-top"><div><h2>Tu reporte</h2><p class="sub">${esc(dl)}</p></div>
+      <div class="tld-nav"><button type="button" data-rpday="-1" aria-label="Día anterior">‹</button><em>${isToday ? "Hoy" : esc(dl.split(" ")[0])}</em><button type="button" data-rpday="1" aria-label="Día siguiente"${isToday ? " disabled" : ""}>›</button></div></div>
+    <section class="rp-sec"><h3 class="sec-h">Tu lista</h3><div class="tf-kpis rp-k">${k(cont, "contactaste")}${k(intr, "interesados")}${k(ag, "agendaron meet", ag ? "on" : "")}${k(nuevos, "nuevos en tu lista")}</div>
+      <p class="mut small">${pend} perfil${pend===1?"":"es"} por contactar${qt ? qt.until ? ` · en pausa hasta las ${esc(fmtLocal(qt.until).split(", ")[1]||"")}` : ` · te quedan ${qt.left} de ${MI_MAX} en esta tanda` : ""}.</p></section>
+    <section class="rp-sec"><h3 class="sec-h">Tus meets de mañana <b>${next.length}</b></h3>${next.length ? `<div class="pg2-card rp-list">${next.map(e => `<div><span>${esc(String(e.at).slice(11,16))}</span>${esc(String(e.label).replace(/^Pitch · /,""))}</div>`).join("")}</div>` : `<p class="mut small">No tienes meets mañana.</p>`}</section>
+    <p class="mut small">Cada noche a las 9:00 pm te llega una notificación con este resumen.</p>
+  </div>`;
+  if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
+}
 document.addEventListener("click", async e => {
   const d = e.target.closest("[data-rpday]"); if (d){ const today = new Date(Date.now() - OFF).toISOString().slice(0,10), cur = RPT.day || today;
-    const nx = new Date(Date.parse(cur + "T12:00:00Z") + Number(d.dataset.rpday)*DAY).toISOString().slice(0,10); RPT.day = nx >= today ? null : nx; renderReport(); return; }
+    const nx = new Date(Date.parse(cur + "T12:00:00Z") + Number(d.dataset.rpday)*DAY).toISOString().slice(0,10); RPT.day = nx >= today ? null : nx; const b = $("reportBox"); if (b) b.dataset.h = ""; renderReport(); return; }
   const t = e.target.closest("[data-rptest]"); if (t){ if (!window.STRIKD_REPORT_TEST){ quickToast("Solo funciona en growth.strikd.ai"); return; }
     t.disabled = true; t.textContent = "Enviando…";
     try{ const r = await window.STRIKD_REPORT_TEST(); quickToast(r && r.enviados ? "✓ Te llegó la notificación" : "No llegó: activa las notificaciones en Ajustes"); }catch(err){ quickToast(err.message || "No se pudo"); }

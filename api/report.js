@@ -7,7 +7,7 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({error:"POST"});
   const me = await userFromReq(req);
   if (!me) return res.status(401).json({error:"Sesión no válida"});
-  if (me.role !== "head" && me.role !== "manager") return res.status(403).json({error:"Solo Head o Manager"});
+  
   try{ res.json(await withPg(async c => { await init(c); return await report.maybeSend(c, {force:true, only:me.id}) || {enviados:0}; })); }
   catch(err){ res.status(500).json({error:String(err.message || err)}); }
 };
