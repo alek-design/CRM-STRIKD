@@ -326,6 +326,12 @@
     try{ const { data } = await sb.auth.getSession();
       await fetch("/api/notify", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify(payload)}); }catch(_){}
   };
+  // borrar datos de ejemplo (solo Head): dry=true solo cuenta
+  window.STRIKD_CLEANUP = async (dry) => {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch("/api/cleanup", {method: dry ? "GET" : "POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, ...(dry ? {} : {body:JSON.stringify({confirm:true})})});
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "No se pudo"); return j;
+  };
   // reporte diario: mandármelo ahora como notificación (prueba)
   window.STRIKD_REPORT_TEST = async () => {
     const { data } = await sb.auth.getSession();

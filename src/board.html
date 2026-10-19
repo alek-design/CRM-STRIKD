@@ -1765,6 +1765,7 @@ document.addEventListener("click", async e => {
     if (cur.some(c => c.id===id)){ XC.err = "Ya está agregado"; schedule(); return; }
     cur.push({id, name:name || id.split("@")[0]}); if (await save(cur)){ XC.open = false; XC.err = ""; quickToast("✓ Agregado · revisando acceso…"); } }
 });
+const CLN = {res:null, busy:false, armed:false};
 function renderSettings(){
   const box = $("setBox"); if (!box || S.tab!=="settings" || busyIn(box)) return;
   const A = window.STRIKD_ACT, me = window.STRIKD_ME ? window.STRIKD_ME() : null;
@@ -1798,6 +1799,7 @@ function renderSettings(){
     </section>` : ""}
     ${A ? `<h3 class="set-h">Cuenta</h3><section class="set-card">
       ${setRow("🔑", "Contraseña", "Cámbiala cuando quieras", `<button type="button" class="btn small" data-set="pwd">Cambiar</button>`)}
+      ${S.isOwner && window.STRIKD_CLEANUP ? setRow("🧹", "Datos de ejemplo", CLN.res ? (CLN.res.nada ? "Ya no hay datos de ejemplo. Todo limpio." : CLN.res.borrados ? `Listo: se borraron ${CLN.res.borrados} registros de ${CLN.res.ejemplo} personas de ejemplo.` : `Hay ${CLN.res.ejemplo} personas de ejemplo con ${CLN.res.docs} registros (prospectos, tareas, puntos…). Los usuarios reales no se tocan.`) : "Borra las personas \"(ejemplo)\" y todo lo suyo", CLN.res && !CLN.res.nada && !CLN.res.borrados ? `<button type="button" class="btn small bad" data-set="cln-go">${CLN.armed ? "¿Seguro? Borrar" : "Borrar todo"}</button>` : CLN.res ? "" : `<button type="button" class="btn small" data-set="cln-check">${CLN.busy ? "Revisando…" : "Revisar"}</button>`) : ""}
       ${S.isOwner ? setRow("🩺", "Estado de notificaciones", "Revisión de cada minuto y dispositivos del equipo", `<button type="button" class="btn small" data-set="pdiag">Ver</button>`) : ""}
       ${setRow("↩︎", "Cerrar sesión", "", `<button type="button" class="btn small bad" data-set="out">Salir</button>`)}
     </section>` : ""}
@@ -1807,6 +1809,9 @@ document.addEventListener("click", async e => {
   const b = e.target.closest("[data-set]"); if (!b) return;
   const A = window.STRIKD_ACT, k = b.dataset.set;
   if (k==="t-light" || k==="t-dark"){ setTheme(k==="t-light" ? "light" : "dark"); return schedule(); }
+  if (k==="cln-check"){ CLN.busy = true; schedule(); try{ CLN.res = await window.STRIKD_CLEANUP(true); }catch(err){ quickToast(err.message || "No se pudo"); } CLN.busy = false; return schedule(); }
+  if (k==="cln-go"){ if (!CLN.armed){ CLN.armed = true; return schedule(); } b.disabled = true; b.textContent = "Borrando…";
+    try{ CLN.res = await window.STRIKD_CLEANUP(false); quickToast("✓ Datos de ejemplo borrados"); setTimeout(() => location.reload(), 1500); }catch(err){ quickToast(err.message || "No se pudo"); CLN.armed = false; } return schedule(); }
   if (k==="gchip"){ const c = $("gcChip"); if (c) c.click(); return; }
   if (k==="org") return showTab("org");
   if (k==="xls"){ $("xlsBtn").click(); return; }
