@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 01:51:39 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 01:54:40 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792374699">
+<link rel="stylesheet" href="/auth.css?v=1792374880">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792374699"></script>
+<script src="/claude-shim.js?v=1792374880"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1527,7 +1527,7 @@ body.mob-open header.top{z-index:31}
 
   <section class="view" id="view-msgs" hidden>
     <div class="msgs-head"><h2>Mensajes</h2>
-    <div class="subnav" id="msgSeg" role="tablist" aria-label="Mensajes"><button type="button" data-mseg="isk" id="msegIsk" hidden>Conversaciones</button><button type="button" data-mseg="inbox" id="msegInbox">Conversaciones</button><button type="button" data-mseg="send">Por mandar<span class="n" id="msegSendN"></span></button><button type="button" data-mseg="tpl">Plantillas</button></div></div>
+    <div class="subnav" id="msgSeg" role="tablist" aria-label="Mensajes"><button type="button" data-mseg="isk" id="msegIsk" hidden>Conversaciones</button><button type="button" data-mseg="inbox" id="msegInbox">Conversaciones</button><button type="button" data-mseg="send" hidden>Por mandar<span class="n" id="msegSendN"></span></button><button type="button" data-mseg="tpl">Plantillas</button></div></div>
     <div data-seg="isk"><div id="iskBox" hidden></div></div>
     <div data-seg="inbox"><p class="notice" id="iskNotice">Al conectar ISKRA, "Abrir en WhatsApp" se vuelve <b>Enviar</b> y sale directo desde el número de STRIKD.</p><div id="inboxBox"></div></div>
     <div data-seg="send"><div id="msgBox"></div></div>
@@ -1893,7 +1893,7 @@ function islandItems(){
   if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["report","chart","Reporte"],["settings","gear","Ajustes"]], more:[]};
   const lead = adminMode(), am = !lead;
   const unread = ISK.convs.filter(c => c.lastDir==="in" && !c.disc && (lead ? true : c.owner===meId())).length;
-  const msgN = unread || (Number($("msgCount").textContent)||0) * ($("msgCount").hidden ? 0 : 1);
+  const msgN = unread;
   const main = am
     ? [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","trophy","Ranking"],["more","more","Más"]]
     : [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","home","Equipo",Number($("lateCount").textContent)||0],["more","more","Más"]];
@@ -1959,7 +1959,8 @@ function syncMsgSeg(){
   const isk = !!iskFn();
   // con ISKRA, la bandeja es solo la de ISKRA (una sola); sin ISKRA, la bandeja manual
   $("msegIsk").hidden = !isk; $("msegInbox").hidden = isk;
-  if (!MSEG.v || (MSEG.v==="isk" && !isk) || (MSEG.v==="inbox" && isk)) MSEG.v = isk ? "isk" : "inbox";
+  // "Por mandar" se quitó: esos mensajes ya salen listos dentro de cada pendiente (no duplicar)
+  if (!MSEG.v || MSEG.v==="send" || (MSEG.v==="isk" && !isk) || (MSEG.v==="inbox" && isk)) MSEG.v = isk ? "isk" : "inbox";
   document.querySelectorAll("#msgSeg [data-mseg]").forEach(b => b.classList.toggle("on", b.dataset.mseg===MSEG.v));
   document.querySelectorAll("#view-msgs [data-seg]").forEach(d => d.hidden = d.dataset.seg!==MSEG.v);
   const n = $("msgCount") && !$("msgCount").hidden ? $("msgCount").textContent : ""; $("msegSendN").textContent = n ? n : "";
