@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 02:42:00 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 02:46:11 UTC"</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792377720">
+<link rel="stylesheet" href="/auth.css?v=1792377971">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792377720"></script>
+<script src="/claude-shim.js?v=1792377971"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -46,6 +46,9 @@
 #view-flow .tf-p.on i{color:var(--bg);opacity:.8}
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
+.ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.pl-gopen{margin-left:auto;align-self:center;flex:none;font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;background:var(--fg);color:var(--bg);text-decoration:none}
+.pl-gopen.sec{background:transparent;color:var(--fg);border:1px solid var(--line)}
 #view-msgs .mh-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:1 1 100%;width:100%}
 #view-msgs #msgSeg{display:none!important}
 #view-msgs .mh-tpl{border-radius:999px;white-space:nowrap}
@@ -3391,7 +3394,7 @@ function gcalWatch(mondayStr){
         g.events = (Array.isArray(p.events) ? p.events : []).filter(e => e && e.status!=="cancelled" && e.start && e.start.dateTime
           && !(e.attendees||[]).some(a => a.self && a.responseStatus==="declined"))
           .map(e => ({at:gcalLocal(e.start.dateTime), endTs:Date.parse(e.end && e.end.dateTime || e.start.dateTime),
-            label:`${e.calName ? e.calName : "Calendario"} · ${e.summary || "Ocupado"}`, emails:(e.attendees||[]).filter(a => !a.self).map(a => (a.email||"").toLowerCase())}))
+            label:`${e.calName ? e.calName : "Calendario"} · ${e.summary || "Ocupado (sin detalles)"}`, title:e.summary || "Ocupado (sin detalles)", extra:!!e.extraCal, calName:e.calName || "", link:safeUrl(e.conferenceUrl || e.hangoutLink || ((e.conferenceData||{}).entryPoints||[]).map(x => x.uri).find(u => /^https:/.test(u||"")) || ""), html:safeUrl(e.htmlLink || ""), emails:(e.attendees||[]).filter(a => !a.self).map(a => (a.email||"").toLowerCase())}))
           .filter(e => e.at);
         g.err = null; g.at = (ev.result.cache && ev.result.cache.storedAt) || Date.now();
       } else {
@@ -3500,7 +3503,7 @@ function calEvents(){
   if (!S.viewAs) Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
     const gk = e.at + "|" + e.label; if (seenG.has(gk)) return; seenG.add(gk);
     if (sameMeet(e.at, e.label) || e.emails.some(x => mails[x])) return;
-    ev.push({at:e.at, endTs:e.endTs, kind:"gcal", label:e.label, who:null});
+    ev.push({at:e.at, endTs:e.endTs, kind:"gcal", label:e.label, who:null, title:e.title, extra:e.extra, calName:e.calName, link:e.link, html:e.html});
   }));
   return ev;
 }
@@ -3528,7 +3531,7 @@ function calHtml(offset, pickKey, selected){
       const key = `${d}T${pad2(h)}`, evs = byCell[key] || [], past = key < nowLocal;
       const sel = selected && selected.slice(0,13) === key;
       const clash = evs.some(e => e.clash);
-      const chips = evs.map(e => `<span class="cal-ev ${e.kind}${e.booked===false?" tentative":""}${e.clash?" clash":""}" title="${esc(e.label)}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""} · ${esc(e.at.split("T")[1])}">${esc(e.at.split("T")[1])} ${esc(e.label.split(" · ")[1]||"")}</span>`).join("");
+      const chips = evs.map(e => `<span class="cal-ev ${e.kind}${e.booked===false?" tentative":""}${e.clash?" clash":""}" title="${esc(e.label)}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""} · ${esc(e.at.split("T")[1])}">${esc(e.at.split("T")[1])} ${e.extra ? "🌮 " : ""}${esc(e.title || e.label.split(" · ")[1]||"")}</span>`).join("");
       if (pickKey && !evs.length && !past) grid += `<button type="button" class="cal-c free${sel?" sel":""}" data-k="${pickKey}" data-slot="${d}T${pad2(h)}:00" aria-label="Elegir ${d} ${pad2(h)}:00">${sel?"Elegido":"Libre"}</button>`;
       else grid += `<div class="cal-c${evs.length?" busy":""}${clash?" clash":""}${past?" past":""}${sel?" sel":""}"${clash?' title="Hay meets encimados en este horario"':""}>${chips}</div>`;
     });
@@ -3560,8 +3563,8 @@ let AG_SEG = "meets";
 // iPhone: mes arriba, semana con flechas a los lados, y dos pestañas: Meets / Pendientes
 function agendaPhone(offset){
   const todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
-  // semana corrida: hoy y los 6 días que siguen (así el domingo también ves el lunes); las flechas avanzan 7 días
-  const t0 = new Date(todayStr + "T00:00:00Z"), start = new Date(t0.getTime() + offset*7*DAY);
+  // la semana va de lunes a domingo; las flechas avanzan una semana
+  const t0 = new Date(todayStr + "T00:00:00Z"), start = new Date(t0.getTime() - ((t0.getUTCDay()+6)%7)*DAY + offset*7*DAY);
   const days = Array.from({length:7}, (_,i) => new Date(start.getTime() + i*DAY).toISOString().slice(0,10));
   const mondayOf = d => { const x = new Date(d + "T00:00:00Z"), w = (x.getUTCDay()+6)%7; return new Date(x.getTime() - w*DAY).toISOString().slice(0,10); };
   [...new Set([mondayOf(days[0]), mondayOf(days[6])])].forEach(m => gcalWatch(m));
@@ -3585,7 +3588,7 @@ function agendaPhone(offset){
       tasksFor(uid, id, m, nowTs).filter(t => ownTask(t) && t.due >= d0 && t.due < d1e).slice(0,1).forEach(t => tks.push({...t, m})); }));
     tks.sort((a,b) => a.due - b.due);
     nMeets = list.length; nTasks = tks.length;
-    body = `<h3 class="sec-h">Agenda <b>${list.length}</b></h3>` + (list.length ? `<div class="ap-list">${list.map(e => `<div class="ap-ev ${e.kind}${e.clash?" clash":""}${e.end < nowTs?" past":""}"><span class="ap-t">${esc(e.at.split("T")[1])}</span><span class="ap-b"><b>${esc(e.label.split(" · ")[1] || e.label)}</b><span>${esc(KIND[e.kind]||"")}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""}${e.clash?` · <em>encimado</em>`:""}</span></span></div>`).join("")}</div>` : `<p class="ap-empty">Sin meets este día</p>`)
+    body = `<h3 class="sec-h">Agenda <b>${list.length}</b></h3>` + (list.length ? `<div class="ap-list">${list.map(e => `<div class="ap-ev ${e.kind}${e.clash?" clash":""}${e.end < nowTs?" past":""}"><span class="ap-t">${esc(e.at.split("T")[1])}</span><span class="ap-b"><b>${e.extra ? "🌮 " : ""}${esc(e.title || e.label.split(" · ")[1] || e.label)}</b><span>${esc(e.extra ? (e.calName || "Tacos") : (KIND[e.kind]||""))}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""}${e.clash?` · <em>encimado</em>`:""}</span></span>${e.link ? `<a class="pl-gopen" href="${esc(e.link)}" target="_blank" rel="noopener">Unirse</a>` : e.html ? `<a class="pl-gopen sec" href="${esc(e.html)}" target="_blank" rel="noopener">Abrir</a>` : ""}</div>`).join("")}</div>` : `<p class="ap-empty">Sin meets este día</p>`)
       + `<h3 class="sec-h">Pendientes <b>${tks.length}</b></h3>` + (tks.length ? `<div class="pg"><div class="pg-l">${tks.map(t => `<div class="pg-row"><span class="pg-who"><b>${esc(t.title)}</b>${adminMode()?`<small>${esc(String(nameOf(S.ps||{}, t.uid)).split(" ")[0])}</small>`:""}</span><span class="pg-due">${esc(fmtLocal(t.due).split(", ")[1]||"")}</span></div>`).join("")}</div></div>` : `<p class="ap-empty">Nada vence este día</p>`);
   }
   const seg = `<div class="ag-seg" role="tablist"><button type="button" data-agseg="meets" class="${AG_SEG==="meets"?"on":""}">Meets <b>${nMeets}</b></button><button type="button" data-agseg="tasks" class="${AG_SEG==="tasks"?"on":""}">Pendientes <b>${nTasks}</b>${nLate?`<i title="${nLate} atrasados">${nLate}</i>`:""}</button></div>`;
@@ -3644,7 +3647,7 @@ function renderPlan(){
     const startNames = {}; evs.forEach(e => (startNames[e.ts] ||= []).push(String((e.m && e.m.prospect) || "").toLowerCase()));
     Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
       const ts = meetTs(e.at); if (isNaN(ts) || ts < t0 || ts > eod || (startNames[ts]||[]).some(n => n && String(e.label||"").toLowerCase().includes(n)) || e.emails.some(x => mails[x])) return;
-      evs.push({ts, end:e.endTs > ts ? e.endTs : ts+MEET_MIN, kind:"gcal", label:e.label.replace(/^Calendario · /,""), gcal:true});
+      evs.push({ts, end:e.endTs > ts ? e.endTs : ts+MEET_MIN, kind:"gcal", label:(e.extra ? "🌮 " : "") + (e.title || e.label.replace(/^Calendario · /,"")), gcal:true, sub:e.extra ? (e.calName || "Tacos") : "", glink:e.link, ghtml:e.html});
     }));
   }
   if (michMode()) michEvents().forEach(e => { const ts = meetTs(e.at); if (!isNaN(ts) && ts >= t0 && ts <= eod) evs.push({ts, end:ts+MEET_MIN, kind:"pitch", label:"Pitch", gcal:true, label2:e.label, sub:`Cuenta para ${String(nameOf(S.ps||{}, e.who)).split(" (")[0]}`}); });
@@ -3702,7 +3705,8 @@ function renderPlan(){
     const inner = `<span class="pl-time">${hm(e.ts)}</span><span class="pl-dot ${e.kind}"></span>
       <span class="pl-body"><b>${e.gcal ? esc(e.label) : `${perfilIcon(e.m)}${esc(e.label)} · ${esc(e.m.prospect)}`}</b>
       ${(() => { const sub = e.gcal ? (e.sub || "Tu calendario") : [admin ? nameOf(S.ps,e.uid) : "", t ? t.title : ""].filter(Boolean).join(" · "); return sub ? `<small>${esc(sub)}</small>` : ""; })()}</span>${tag}`;
-    line += e.gcal ? `<div class="pl-item ${state} gcal">${inner}</div>`
+    const gOpen = e.gcal && (e.glink ? `<a class="pl-gopen" href="${esc(e.glink)}" target="_blank" rel="noopener">Unirse</a>` : e.ghtml ? `<a class="pl-gopen sec" href="${esc(e.ghtml)}" target="_blank" rel="noopener">Abrir</a>` : "");
+    line += e.gcal ? `<div class="pl-item ${state} gcal">${inner}${gOpen}</div>`
       : `<div class="pl-item ${state}${sel===key?" sel":""}" role="button" tabindex="0" data-pick="${key}">${inner}</div>${expand(key, e.uid, e.id, e.m)}`;
   });
   if (!nowPlaced && evs.length) line += nowMark;
