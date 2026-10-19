@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 17:26:37 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-19 17:36:31 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792430797">
+<link rel="stylesheet" href="/auth.css?v=1792431391">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792430797"></script>
+<script src="/claude-shim.js?v=1792431391"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -48,6 +48,10 @@
 #view-flow #teamPath>.acc-h{display:none}
 #view-flow #teamChart{margin-top:26px}
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.tkm-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 10px}.tkm-form input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);min-width:0}
+.tkm-form input:nth-child(3),.tkm-form input:nth-child(4),.tkm-form .err,.tkm-form button{grid-column:1/-1}.tkm-form .err{margin:0;color:#e5484d;font-size:13px}.tkm-form button{justify-self:start}
+.tkm-list{display:grid;gap:2px;margin-bottom:10px}.tkm-r{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line2);font-size:14px}
+.tkm-n{display:grid;min-width:0}.tkm-n b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tkm-n small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tkm-f{color:var(--muted);font-variant-numeric:tabular-nums}.tkm-r a{color:var(--fg);font-size:13px}
 .xc-opt{padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px}.xc-opt p{margin:4px 0 8px;font-size:13px;color:var(--muted)}
 .linkish{background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:600;color:var(--fg);text-decoration:underline;cursor:pointer}
 .xc-or{font-size:12px;color:var(--muted);text-align:center;margin:6px 0 10px}
@@ -4063,6 +4067,37 @@ function tkProgress(u, x){
   const n = Object.values(vipItems(u) || {}).filter(v => v && !v.byMich && Number(v.createdAt) >= from && Number(v.createdAt) < to).length;
   return {n, goal:Number(x.goal), label:"candidatos"};
 }
+// Tarea "Lista de Mich": la lista de candidatos que ya cuentan + formulario rápido para agregar sin salir de la tarea
+function tkMichList(u, x){
+  const from = Number(x.from || x.createdAt || 0), to = Number(x.dueAt || 9e15);
+  return Object.entries(vipItems(u) || {}).filter(([,v]) => v && !v.byMich && Number(v.createdAt) >= from && Number(v.createdAt) < to).sort((a,b) => b[1].createdAt - a[1].createdAt);
+}
+function tkMichHtml(k, u, x, lead){
+  const d = TKD[k] || {}, list = tkMichList(u, x), fmtN = n => Number(n) >= 1000 ? (Math.round(Number(n)/100)/10) + "K" : String(n||"");
+  const handle = l => { const m = String(l||"").match(/instagram\.com\/([^/?#]+)/i); return m ? "@" + m[1] : String(l||""); };
+  const rows = list.map(([,v]) => `<div class="tkm-r"><span class="tkm-n"><b>${esc(v.prospect||"")}</b>${v.notes ? `<small>${esc(v.notes)}</small>` : ""}</span><span class="tkm-f">${esc(fmtN(v.followers))}</span>${safeUrl(v.profile) ? `<a href="${esc(v.profile)}" target="_blank" rel="noopener">${esc(handle(v.profile))}</a>` : ""}</div>`).join("");
+  const form = lead || S.viewAs ? "" : `<div class="tkm-form">
+      <input data-tkv="${k}|name" placeholder="Nombre" value="${esc(d.v_name||"")}" autocomplete="off">
+      <input data-tkv="${k}|fol" placeholder="Seguidores (ej. 48000)" inputmode="numeric" value="${esc(d.v_fol||"")}" autocomplete="off">
+      <input data-tkv="${k}|ig" placeholder="Link de Instagram" inputmode="url" value="${esc(d.v_ig||"")}" autocomplete="off" autocapitalize="off">
+      <input data-tkv="${k}|why" placeholder="¿Por qué vale la pena? (opcional)" value="${esc(d.v_why||"")}" autocomplete="off">
+      ${d.v_err ? `<p class="err">${esc(d.v_err)}</p>` : ""}
+      <button type="button" class="btn small primary" data-tkvadd="${k}"${d.v_busy ? " disabled" : ""}>${d.v_busy ? "Agregando…" : "+ Agregar a la lista de Mich"}</button></div>`;
+  return `<div class="tk-sec">${lead ? "Sus candidatos" : "Tus candidatos"} <b>${list.length}</b></div>${form}${rows ? `<div class="tkm-list">${rows}</div>` : `<p class="mut small">${lead ? "Todavía no ha propuesto ninguno esta semana." : "Aún no agregas ninguno esta semana."}</p>`}`;
+}
+document.addEventListener("click", async e => { const b = e.target.closest("[data-tkvadd]"); if (!b) return; e.stopPropagation();
+  const k = b.dataset.tkvadd, d = (TKD[k] ||= {});
+  const o = {prospect:String(d.v_name||"").trim(), followers:String(d.v_fol||"").replace(/[^0-9]/g, ""), profile:String(d.v_ig||"").trim(), notes:String(d.v_why||"").trim()};
+  if (o.profile && !/^https?:\/\//i.test(o.profile)) o.profile = /instagram\.com/i.test(o.profile) ? "https://" + o.profile : "https://instagram.com/" + o.profile.replace(/^@/, "");
+  const fail = m => { d.v_err = m; d.v_busy = false; schedule(); };
+  if (!o.prospect) return fail("Escribe el nombre.");
+  if (!o.followers) return fail("Escribe cuántos seguidores tiene.");
+  if (!igKey(o.profile)) return fail("Pon su link de Instagram (instagram.com/usuario).");
+  d.v_err = ""; d.v_busy = true; schedule();
+  const dm = await dupCheck(o.profile, ""); if (dm) return fail(dm + " No cuenta otra vez.");
+  try{ const r = await saveVip(o); if (r && S.myVip && !S.viewAs) S.myVip[r.id] = r.data; ["v_name","v_fol","v_ig","v_why"].forEach(f => delete d[f]); d.v_busy = false; quickToast(`✓ ${o.prospect} agregado a la lista de Mich`); schedule(); }
+  catch(ex){ fail(ex && ex.dup ? ex.msg : "No se guardó. Revisa tu conexión e intenta de nuevo."); }
+});
 function tkCfHtml(k){ const d = TKD[k] || {}; return (d.cfiles||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name)}`}<button type="button" data-tkcfx="${k}|${i}" aria-label="Quitar">×</button></span>`).join("") + (d.cup ? `<span class="tk-cf tk-cf-up">Subiendo…</span>` : ""); }
 // pinta las fotos pendientes del comentario aunque la caja esté en uso (no espera al re-render)
 function tkCfPaint(k){ document.querySelectorAll(`[data-tkcfile="${CSS.escape(k)}"]`).forEach(inp => { const box = inp.closest(".tk-cbox"); const c = box && box.querySelector(".tk-cfs"); if (c) c.innerHTML = tkCfHtml(k); }); }
@@ -4091,6 +4126,7 @@ function taskRow(u, id, x, lead, now){
       <div class="tk-acts"><button class="btn small" data-tkecancel="${k}">Cancelar</button><button class="btn small primary" data-tkesave="${k}">Guardar cambios</button></div></div>`;
   const det = !open ? "" : `<div class="tk-det" data-tkbox="${k}">
       ${d.edit ? editForm : `${x.note ? `<p class="tk-note">${esc(x.note)}</p>` : ""}${files ? `<div class="tk-files">${files}</div>` : ""}${canEdit ? `<button type="button" class="linkbtn tk-editbtn" data-tkedit="${k}">✎ Editar tarea</button>` : ""}`}
+      ${prog ? tkMichHtml(k, u, x, lead) : ""}
       ${lead ? `${x.reply ? `<div class="tk-rep"><b>Entrega</b><p>${esc(x.reply)}</p></div>` : ""}`
         : `<label class="f">Tu avance o entrega<textarea rows="3" data-tkrep="${k}" placeholder="Escribe lo que hiciste, links, dudas…">${esc(d.rep ?? x.reply ?? "")}</textarea></label>
           ${d.edit ? "" : `<div class="tk-files"><label class="tk-up">${d.up ? "Subiendo…" : "📎 Subir archivo o foto"}<input type="file" accept="image/*,application/pdf" data-tkfile="${k}" hidden></label></div>`}`}
@@ -4185,7 +4221,8 @@ function taskOpen(){
   });
   setTimeout(() => $("tkTitle").focus(), 50);
 }
-document.addEventListener("input", e => { const ed = e.target.closest("[data-tke]"); if (ed){ const [k, fld] = ed.dataset.tke.split("|"); (TKD[k] ||= {})["e_" + fld] = ed.value; }
+document.addEventListener("input", e => { const tv = e.target.closest("[data-tkv]"); if (tv){ const [k, fld] = tv.dataset.tkv.split("|"); (TKD[k] ||= {})["v_" + fld] = tv.value; }
+  const ed = e.target.closest("[data-tke]"); if (ed){ const [k, fld] = ed.dataset.tke.split("|"); (TKD[k] ||= {})["e_" + fld] = ed.value; }
   const r = e.target.closest("[data-tkrep]"), f = e.target.closest("[data-tkfb]");
   if (r) (TKD[r.dataset.tkrep] ||= {}).rep = r.value; if (f) (TKD[f.dataset.tkfb] ||= {}).fb = f.value; });
 document.addEventListener("change", async e => { const ci = e.target.closest("[data-tkcfile]"); if (!ci || !ci.files[0]) return;
@@ -4835,8 +4872,10 @@ async function saveVip(o){
   if (!key) throw {dup:true, msg:"Pon el link de Instagram del perfil (instagram.com/usuario)."};
   const ref = db.collection(`meets/${meId()}/vip`).doc();
   const commit = await claimVip(key, meId(), ref.id);
-  await ref.set({prospect:o.prospect, profile:o.profile, followers:Number(o.followers)||0, notes:o.notes||"", perfil:3, status:"nuevo", createdAt:Date.now(), igKey:key});
+  const data = {prospect:o.prospect, profile:o.profile, followers:Number(o.followers)||0, notes:o.notes||"", perfil:3, status:"nuevo", createdAt:Date.now(), igKey:key};
+  await ref.set(data);
   await commit();
+  return {id:ref.id, data};
 }
 function vipItems(uid){ return (uid===S.uid && !S.viewAs) ? S.myVip : (S.vip[uid] || {}); }
 function renderMyVip(){
