@@ -1470,7 +1470,7 @@ body.mob-open header.top{z-index:31}
         </div>
         <div class="fsec"><span class="fsec-h">Prospecto</span><div class="grid">
           <label class="f">Nombre del prospecto <em>*</em><input id="f_prospect" autocomplete="off"></label>
-          <label class="f fol-only" hidden>Seguidores aprox. <em>*</em><input id="f_followers" type="number" min="0" inputmode="numeric" placeholder="Ej. 18000" autocomplete="off"></label>
+          <label class="f fol-only" hidden>Seguidores aprox. <em>*</em><input id="f_followers" type="text" placeholder="Ej. 18k, 350k o 350,000" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
           <label class="f" id="f_profileLbl">Link al perfil del prospecto <em>*</em><input id="f_profile" type="url" placeholder="https://linkedin.com/in/… o instagram.com/…" autocomplete="off"></label>
         </div></div>
         <div class="fsec m-only"><span class="fsec-h">Contacto</span><div class="grid g3">
@@ -2301,7 +2301,24 @@ const GC_HINT = () => window.STRIKD_GOOGLE ? "con el botón «Conectar mi Google
 const INV_ERR = {get server_not_connected(){ return "conecta tu Google Calendar " + GC_HINT(); }, get needs_reauth(){ return "vuelve a conectar tu Google Calendar " + GC_HINT(); },
   approval_required:"falta tu permiso para que la página use Google Calendar", not_in_manifest:"no diste permiso a Google Calendar en esta página", selection_required:"elige qué cuenta de Google Calendar usar",
   blocked_by_policy:"tu organización bloquea Google Calendar aquí"};
-function readForm(){ const o={}; FIELDS.forEach(f=> o[f] = $("f_"+f).value.trim()); return o; }
+// Seguidores como los escriben: 350k · 350K · 350 mil · 350,000 · 350.000 · 1.2M · 1,5 millones → número
+function parseFol(v){
+  let t = String(v ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/seguidores?|followers?/g, "").replace(/\s+/g, "").trim();
+  if (!t) return 0;
+  let mult = 1;
+  const suf = t.match(/(k|mil|m|mm|millones|millon|mill)$/);
+  if (suf){ mult = suf[1]==="k" || suf[1]==="mil" ? 1e3 : 1e6; t = t.slice(0, -suf[1].length); }
+  if (!/^[0-9.,]+$/.test(t)) return 0;
+  let n;
+  if (mult > 1){ n = Number(t.replace(",", ".").replace(/[.,](?=.*[.,])/g, "")); } // con k/M: la coma o el punto es decimal (1,5M)
+  else if (/^\d{1,3}([.,]\d{3})+$/.test(t)) n = Number(t.replace(/[.,]/g, ""));     // 350,000 · 350.000 · 1,250,000
+  else if (/[.,]/.test(t)) return 0;                                                    // 3.5 o 350,5 sin k: no se adivina
+  else n = Number(t.replace(/[.,]/g, ""));
+  return isFinite(n) && n > 0 ? Math.round(n * mult) : 0;
+}
+// comparar texto sin importar acentos ni mayúsculas (Ramírez = ramirez)
+const fold = v => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+function readForm(){ const o={}; FIELDS.forEach(f=> o[f] = $("f_"+f).value.trim()); o._folRaw = o.followers; if (o.followers) o.followers = String(parseFol(o.followers) || ""); return o; }
 /* ---------- horarios libres del team leader al agendar (para no encimar meets) ---------- */
 const SL = {day:"", busy:null, at:0, loading:false, leader:null, googleOk:false};
 const MEET_MIN = 45*60e3, SLOT_STEP = 15*60e3, SLOT_MIN = MEET_MIN; // cada meet dura 45 min; horarios cada 15 min
@@ -2370,6 +2387,7 @@ function validate(o){
   const p = Number(o.perfil)||0;
   if (!p) return "Elige el perfil del prospecto.";
   if (p===3 && $("f_p3meet").checked){
+    if (o._folRaw && !o.followers) return "No entendí los seguidores: escribe por ejemplo 350k o 350,000.";
     if (!o.followers || Number(o.followers) <= 35000) return "Pon los seguidores (más de 35K para Perfil 3).";
   } else if (p===3){
     if (!o.prospect || !o.profile || !o.followers) return "Para la lista de Mich: nombre, link de Instagram y seguidores.";
@@ -2377,6 +2395,7 @@ function validate(o){
     if (Number(o.followers) <= 35000) return "Con 35K o menos va como Perfil 2: contáctalo tú.";
     return "";
   }
+  if (p===2 && o._folRaw && !o.followers) return "No entendí los seguidores: escribe por ejemplo 18k o 18,000.";
   if (p===2 && !o.followers) return "Pon los seguidores aproximados.";
   if (p===2 && Number(o.followers) > 35000) return "Con más de 35K va como Perfil 3, en la lista de Mich.";
   if (!S.editingId && !autoInv() && (curPerfil()!==3 || $("f_p3meet").checked)) return "Conecta tu Google Calendar para agendar: el link de Meet se genera solo.";
@@ -3523,8 +3542,8 @@ function calEvents(teamAll){
   // add the admin's real Google Calendar, skipping the ones that are the same meet as a panel event
   const mails = {}; Object.values(S.all).forEach(o => Object.values(o||{}).forEach(m => { if (m.email) mails[m.email.toLowerCase()] = 1; }));
   // mismo meet = trae el email del prospecto, o empieza a la misma hora Y su título trae el nombre del prospecto
-  const startNames = {}; ev.forEach(e => (startNames[e.at] ||= []).push(String(e.label||"").split(" · ").slice(1).join(" · ").toLowerCase()));
-  const sameMeet = (at, label) => (startNames[at]||[]).some(n => n && String(label||"").toLowerCase().includes(n));
+  const startNames = {}; ev.forEach(e => (startNames[e.at] ||= []).push(fold(String(e.label||"").split(" · ").slice(1).join(" · "))));
+  const sameMeet = (at, label) => (startNames[at]||[]).some(n => n && fold(label).includes(n));
   const seenG = new Set();
   if (!S.viewAs) Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
     const gk = e.at + "|" + e.label; if (seenG.has(gk)) return; seenG.add(gk);
@@ -3670,9 +3689,9 @@ function renderPlan(){
   }));
   if (admin){
     const mails = {}; Object.values(S.all).forEach(o => Object.values(o||{}).forEach(m => { if (m.email) mails[m.email.toLowerCase()] = 1; }));
-    const startNames = {}; evs.forEach(e => (startNames[e.ts] ||= []).push(String((e.m && e.m.prospect) || "").toLowerCase()));
+    const startNames = {}; evs.forEach(e => (startNames[e.ts] ||= []).push(fold((e.m && e.m.prospect) || "")));
     Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
-      const ts = meetTs(e.at); if (isNaN(ts) || ts < t0 || ts > eod || (startNames[ts]||[]).some(n => n && String(e.label||"").toLowerCase().includes(n)) || e.emails.some(x => mails[x])) return;
+      const ts = meetTs(e.at); if (isNaN(ts) || ts < t0 || ts > eod || (startNames[ts]||[]).some(n => n && fold(e.label).includes(n)) || e.emails.some(x => mails[x])) return;
       evs.push({ts, end:e.endTs > ts ? e.endTs : ts+MEET_MIN, kind:"gcal", label:(e.extra ? "🌮 " : "") + (e.title || e.label.replace(/^Calendario · /,"")), gcal:true, sub:e.extra ? (e.calName || "Tacos") : "", glink:e.link, ghtml:e.html});
     }));
   }
@@ -3921,7 +3940,7 @@ function renderMich(){
   $("miQ").hidden = MICH.f!=="contactado";
   const q = MICH.f==="contactado" ? (MICH.q||"").trim().toLowerCase().replace(/^@/,"") : "";
   const list = rows.filter(([,,x]) => MICH.f==="nuevo" ? !done(x) : done(x))
-    .filter(([,,x]) => !q || (String(x.prospect||"")+" "+igUser(x.profile)).toLowerCase().includes(q))
+    .filter(([,,x]) => !q || fold(String(x.prospect||"")+" "+igUser(x.profile)).includes(fold(q)))
     .sort((a,b) => MICH.f==="nuevo" ? (b[2].followers||0) - (a[2].followers||0) : (b[2].statusAt||b[2].createdAt||0) - (a[2].statusAt||a[2].createdAt||0));
   const ini = n => esc((String(n||"?").trim()[0]||"?").toUpperCase());
   box.innerHTML = list.length ? `<div class="mi-list">${list.map(([u,id,x]) => { const h = igUser(x.profile), url = igUrl(x.profile), st = x.status||"nuevo", k = `${u}/${id}`;
@@ -4097,7 +4116,7 @@ function tkMichHtml(k, u, x, lead){
   const rows = list.map(([,v]) => `<div class="tkm-r"><span class="tkm-n"><b>${esc(v.prospect||"")}</b>${v.notes ? `<small>${esc(v.notes)}</small>` : ""}</span><span class="tkm-f">${esc(fmtN(v.followers))}</span>${safeUrl(v.profile) ? `<a href="${esc(v.profile)}" target="_blank" rel="noopener">${esc(handle(v.profile))}</a>` : ""}</div>`).join("");
   const form = lead || S.viewAs ? "" : `<div class="tkm-form">
       <input data-tkv="${k}|name" placeholder="Nombre" value="${esc(d.v_name||"")}" autocomplete="off">
-      <input data-tkv="${k}|fol" placeholder="Seguidores (ej. 48000)" inputmode="numeric" value="${esc(d.v_fol||"")}" autocomplete="off">
+      <input data-tkv="${k}|fol" placeholder="Seguidores (ej. 48k)" autocapitalize="off" value="${esc(d.v_fol||"")}" autocomplete="off">
       <input data-tkv="${k}|ig" placeholder="Link de Instagram" inputmode="url" value="${esc(d.v_ig||"")}" autocomplete="off" autocapitalize="off">
       <input data-tkv="${k}|why" placeholder="¿Por qué vale la pena? (opcional)" value="${esc(d.v_why||"")}" autocomplete="off">
       ${d.v_err ? `<p class="err">${esc(d.v_err)}</p>` : ""}
@@ -4106,11 +4125,11 @@ function tkMichHtml(k, u, x, lead){
 }
 document.addEventListener("click", async e => { const b = e.target.closest("[data-tkvadd]"); if (!b) return; e.stopPropagation();
   const k = b.dataset.tkvadd, d = (TKD[k] ||= {});
-  const o = {prospect:String(d.v_name||"").trim(), followers:String(d.v_fol||"").replace(/[^0-9]/g, ""), profile:String(d.v_ig||"").trim(), notes:String(d.v_why||"").trim()};
+  const o = {prospect:String(d.v_name||"").trim(), followers:String(parseFol(d.v_fol) || ""), profile:String(d.v_ig||"").trim(), notes:String(d.v_why||"").trim()};
   if (o.profile && !/^https?:\/\//i.test(o.profile)) o.profile = /instagram\.com/i.test(o.profile) ? "https://" + o.profile : "https://instagram.com/" + o.profile.replace(/^@/, "");
   const fail = m => { d.v_err = m; d.v_busy = false; schedule(); };
   if (!o.prospect) return fail("Escribe el nombre.");
-  if (!o.followers) return fail("Escribe cuántos seguidores tiene.");
+  if (!o.followers) return fail(d.v_fol ? "No entendí los seguidores: escribe por ejemplo 350k o 350,000." : "Escribe cuántos seguidores tiene.");
   if (!igKey(o.profile)) return fail("Pon su link de Instagram (instagram.com/usuario).");
   d.v_err = ""; d.v_busy = true; schedule();
   const dm = await dupCheck(o.profile, ""); if (dm) return fail(dm + " No cuenta otra vez.");
@@ -4955,7 +4974,7 @@ function vipMeetForm(key, x, withWho){
   const inp = (f, label, type, ph, req) => `<label class="f">${label}${req?" <em>*</em>":""}<input type="${type}" data-vk="${key}" data-vf="${f}" value="${esc(d[f] ?? "")}" placeholder="${ph||""}" autocomplete="off"></label>`;
   return `<div class="vip-form">
     ${withWho ? `<label class="f">¿A quién del equipo se le asigna? <em>*</em><select data-vk="${key}" data-vf="who"><option value="">Elige</option>${team.map(u => `<option value="${u}"${d.who===u?" selected":""}>${esc(nameOf(S.ps||{}, u))}</option>`).join("")}</select></label>
-      ${inp("prospect","Nombre del influencer","text","",true)}${inp("profile","Link de Instagram","url","https://instagram.com/…",true)}${inp("followers","Seguidores aprox.","number","Ej. 80000",true)}` : ""}
+      ${inp("prospect","Nombre del influencer","text","",true)}${inp("profile","Link de Instagram","url","https://instagram.com/…",true)}${inp("followers","Seguidores aprox.","text","Ej. 80k o 80,000",true)}` : ""}
     ${inp("email","Email del influencer","email","",true)}${inp("phone","Teléfono / WhatsApp","tel","",false)}${inp("meetAt","Fecha y hora del meet","datetime-local","",true)}
     ${mcp ? `<label class="chk${d.inv?" on":""}"><input type="checkbox" data-vk="${key}" data-vf="inv"${d.inv?" checked":""}><span class="box"></span><span>Crear la invitación con link de Google Meet</span></label>` : ""}
     ${(!mcp || !d.inv) ? inp("link","Link del meet","url","https://",true) : ""}
@@ -4967,7 +4986,7 @@ function vipMeetForm(key, x, withWho){
 async function saveVipMeet(key, btn){
   const d = vd(key), isNew = key==="__new";
   const [puid, vid] = isNew ? [d.who, null] : key.split("/");
-  const x = isNew ? {prospect:d.prospect, profile:d.profile, followers:Number(d.followers)||0, notes:""} : (S.vip[puid]||{})[vid];
+  const x = isNew ? {prospect:d.prospect, profile:d.profile, followers:parseFol(d.followers), notes:""} : (S.vip[puid]||{})[vid];
   const msg = t => { const el = document.querySelector(`[data-vmsg="${CSS.escape(key)}"]`); if (el) el.textContent = t; };
   if (isNew && (!puid || !x.prospect || !safeUrl(x.profile||"") || !x.followers)) return msg("Completa a quién se asigna, nombre, link de Instagram y seguidores.");
   if (!d.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) return msg("Revisa el email.");
@@ -5705,7 +5724,7 @@ function renderIskra(){
   const nm = x => { const mt = iskMatch(x.phone); return mt ? mt.name : x.name; };
   const q = (ISK.q||"").toLowerCase();
   const item = x => { const n = nm(x), st = needs(x) ? (x.esc ? "mgr" : "rep") : "";
-    return `<button type="button" class="ck${x.id===ISK.sel?" sel":""}${st?" "+st:""}" data-iskc="${esc(x.id)}" data-s="${esc((n+" "+(x.phone||"")).toLowerCase())}"${q && !(n+" "+(x.phone||"")).toLowerCase().includes(q)?" hidden":""}>
+    return `<button type="button" class="ck${x.id===ISK.sel?" sel":""}${st?" "+st:""}" data-iskc="${esc(x.id)}" data-s="${esc(fold(n+" "+(x.phone||"")))}"${q && !fold(n+" "+(x.phone||"")).includes(fold(q))?" hidden":""}>
       ${iskAv(x, n, "ck-av")}
       <span class="ck-m"><span class="ck-1"><b>${esc(n)}</b>${st==="mgr" ? `<em class="ck-b mgr">${lead?"Te toca":"Manager"}</em>` : ""}<time>${x.at?ago(x.at):""}</time></span>
       <span class="ck-2"><span class="ck-tx">${x.lastDir==="out"?"Tú: ":""}${esc(String(x.last).slice(0,90)) || "<i>Sin mensajes</i>"}</span>${lead?`<span class="ck-o">${x.owner ? esc(iskWho(x.owner).split(" ")[0]) : "sin dueño"}</span>`:""}</span></span>
@@ -5787,7 +5806,7 @@ async function iskRecToggle(){
     if (blob.size) iskAttach(blob, `nota-de-voz.${type.includes("ogg")?"ogg":type.includes("mp4")?"m4a":"webm"}`); else schedule(); };
   rec.start(); ISK.rec = rec; ISK.recS = 0; ISK.recT = setInterval(() => { ISK.recS++; if (ISK.recS >= 120) rec.stop(); schedule(); }, 1000); schedule();
 }
-document.addEventListener("input", e => { const qi = e.target.closest("[data-iskq]"); if (!qi) return; ISK.q = qi.value; const q = qi.value.toLowerCase();
+document.addEventListener("input", e => { const qi = e.target.closest("[data-iskq]"); if (!qi) return; ISK.q = qi.value; const q = fold(qi.value);
   document.querySelectorAll("#iskBox .ck").forEach(b => b.hidden = !!q && !(b.dataset.s||"").includes(q)); });
 document.addEventListener("input", e => { const ta = e.target.closest("[data-iskin]"); if (ta){ ta.style.height = "auto"; ta.style.height = Math.min(140, ta.scrollHeight) + "px"; } });
 document.addEventListener("keydown", e => { const ta = e.target.closest && e.target.closest("[data-iskin]"); if (ta && e.key==="Enter" && !e.shiftKey && !e.isComposing){ e.preventDefault(); const b = document.querySelector("[data-isksend]"); b && b.click(); } });
@@ -5924,7 +5943,7 @@ function renderInbox(){
       <div class="cv-l3">${x.need==="manager" ? `<span class="cv-flag mgr">${lead?"Te toca":"Con el manager"}</span>` : x.need==="reply" ? `<span class="cv-flag rep">Sin responder</span>` : `<span class="cv-flag ok">Esperando respuesta</span>`}${x.cs.tipo?`<span class="cv-tipo">${esc(TRIG[x.cs.tipo]||x.cs.tipo)}</span>`:""}${lead?`<span class="cv-who">${esc(nameOf(S.ps||{}, x.uid))}</span>`:""}</div>
     </button>`;
   // starting a conversation: search among active prospects
-  const pool = INB.newOpen ? astTargets().filter(t => !all.some(x => x.k===t.k) && (!INB.q || (t.name||"").toLowerCase().includes(INB.q.toLowerCase()))).slice(0,8) : [];
+  const pool = INB.newOpen ? astTargets().filter(t => !all.some(x => x.k===t.k) && (!INB.q || fold(t.name).includes(fold(INB.q)))).slice(0,8) : [];
   const left = `<div class="cv-left">
     <div class="cv-filters">${[["accion",`Necesitan acción${cnt.accion?` · ${cnt.accion}`:""}`],["manager",`Para el manager${cnt.manager?` · ${cnt.manager}`:""}`],["todas","Todas"]].map(([k,l]) => `<button type="button" class="${INB.filter===k?"on":""}" data-cvf="${k}">${l}</button>`).join("")}</div>
     <button type="button" class="btn small cv-new" data-cvnew="1">${INB.newOpen?"Cerrar":"+ Nueva conversación"}</button>

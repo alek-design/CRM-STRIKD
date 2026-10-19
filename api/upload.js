@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
   const me = await userFromReq(req);
   if (!me) return res.status(401).json({error:"Sesión no válida"});
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
-  const type = String(body.type || ""), name = String(body.name || "archivo").replace(/[^\w.\- ]+/g, "_").slice(0, 80);
+  const type = String(body.type || ""), name = String(body.name || "archivo").replace(/[^\p{L}\p{N}._\- ]+/gu, "_").slice(0, 80);
   if (!OK.test(type)) return res.status(400).json({error:"Tipo de archivo no permitido. Usa foto (JPG/PNG), PDF o nota de voz."});
   const buf = Buffer.from(String(body.data || ""), "base64");
   if (!buf.length) return res.status(400).json({error:"Archivo vacío"});
