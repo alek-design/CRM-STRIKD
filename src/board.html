@@ -53,6 +53,8 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.mi-ef{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}.mi-ef button{font:inherit;font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}.mi-ef button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.mi-ef b{opacity:.7;font-weight:600;margin-left:2px}
+.mi-em{display:block;font-size:12px;color:var(--muted);margin-top:2px}.mi-emadd{font:inherit;font-size:12px;font-weight:600;margin-top:4px;padding:2px 9px;border-radius:999px;border:1px dashed var(--line);background:none;color:var(--fg);align-self:flex-start}
 .own-sel{font:inherit;font-size:12.5px;font-weight:600;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);max-width:180px}
 .cal-h.pick{cursor:pointer}.cal-h.pick:hover{text-decoration:underline}.pl-today{margin-left:10px;font-size:13px}
 .tt-p + .tt-p{border-top:1px solid var(--line)}.tt-p > summary{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;list-style:none;font-size:14.5px}.tt-p > summary::-webkit-details-marker{display:none}
@@ -1481,7 +1483,7 @@ body.mob-open header.top{z-index:31}
           <label class="f" id="f_profileLbl">Link al perfil del prospecto <em>*</em><input id="f_profile" type="url" placeholder="https://linkedin.com/in/… o instagram.com/…" autocomplete="off"></label>
         </div></div>
         <div class="fsec m-only"><span class="fsec-h">Contacto</span><div class="grid g3">
-          <label class="f m-only">Email del prospecto <em>*</em><input id="f_email" type="email" autocomplete="off"></label>
+          <label class="f" id="f_emailLbl">Email del prospecto <em>*</em><input id="f_email" type="email" autocomplete="off"></label>
           <label class="f m-only">Teléfono / WhatsApp<input id="f_phone" type="tel" autocomplete="off"></label>
           <label class="f m-only">Lo contactaste por <em>*</em>
             <select id="f_channel">
@@ -2054,11 +2056,7 @@ async function render(){
   computeTeam();
   const ids = Object.keys(S.team);
   const ps = await profiles([...new Set(Object.keys(S.members).concat((S.config && S.config.headId) ? [S.config.headId] : []))]); S.ps = ps;
-  // en el ranking también salen el Head, el Manager y la Influencer si ya tienen prospectos con puntos a su nombre
-  const lbIds = ids.slice(); { const have = new Set(Object.values(S.validations||{}).filter(v => v && v.status==="attended").map(v => v.uid));
-    Object.entries(S.pts||{}).forEach(([u, evs]) => { if (Object.keys(evs||{}).length) have.add(u); });
-    [...new Set(Object.keys(S.members||{}).concat((S.config && S.config.headId) ? [S.config.headId] : []))].forEach(u => { if (!lbIds.includes(u) && (have.has(u) || roleOf(u)==="manager")) lbIds.push(u); }); } // el Manager (Alex) siempre compite
-  renderBoard(ps, lbIds);
+  renderBoard(ps, ids); // ranking: solo AM
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else { renderMine(); if (michMode() && S.tab==="flow"){ renderFlow(ps); renderTeamChart(); } }
   syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
@@ -2142,7 +2140,7 @@ function unaward(uid, id, ms){ return db.doc(`points/${uid}/ev/${id}_${ms}`).del
 function boardHtml(ps, ids, week, live){
   const t = tally(week), z = {pts:0, tom:0, valid:0, noshow:0, rejected:0, legusto:0, aprobado:0, progweb:0, publicado:0};
   const rows = ids.map(id => ({id, ...z, ...(t[id]||{})}))
-    .filter(r => S.team[r.id] || (S.members||{})[r.id] || r.id===(S.config||{}).headId)
+    .filter(r => S.team[r.id] && roleOf(r.id)!=="manager" && roleOf(r.id)!=="influencer" && r.id!==((S.config||{}).headId || (S.isOwner ? S.uid : "")))
     .sort((a,b)=> b.pts-a.pts || b.valid-a.valid || nameOf(ps,a.id).localeCompare(nameOf(ps,b.id)));
   if (!rows.length) return `<div class="empty">Aún no hay nadie en el tablero. Cada persona del equipo aparece al abrir esta página por primera vez.</div>`;
   // ranks with ties
@@ -3870,24 +3868,31 @@ function renderPlan(){
       return `<div class="pr mconf${late ? " late" : ""}"><span class="pr-m"><b>Confirma el meet con ${esc(c.x.prospect)}</b><small>Meet ${esc(fmtMeetAt(c.x.meetAt))}</small></span>
         <span class="mconf-acts"><button type="button" class="btn small" data-mcopy-conf="${esc(msg)}">Copiar mensaje</button>${prof ? `<a class="btn small ghost" href="${esc(prof)}" target="_blank" rel="noopener">Instagram</a>` : ""}<button type="button" class="btn small primary" data-miconf="${c.u}/${c.id}">✓ Confirmó</button></span></div>`; }).join("")}</div></section>` : "";
   const rems = remList().filter(r => r.kind!=="event"), remDue = rems.filter(r => !r.done && r.at <= eod).sort((a,b) => a.at - b.at), remNext = rems.filter(r => !r.done && r.at > eod).sort((a,b) => a.at - b.at);
+  // 10 días después de que Mich lo contactó sin cerrar el meet: al AM que lo propuso le toca escribirle por email
+  const emDue = michMode() || admin ? [] : Object.entries(vipItems(meId()) || {}).filter(([,x]) => x && x.status==="contactado" && !x.meetId && !x.emailedAt && (x.contactedAt||x.statusAt||0) && now >= (x.contactedAt||x.statusAt) + 10*DAY)
+    .sort((a,b) => (a[1].contactedAt||0) - (b[1].contactedAt||0));
+  const emHtml = emDue.length ? `<section class="pg2"><div class="pg2-h"><span>Mándales email</span><b>${emDue.length}</b></div><div class="pg2-card">${emDue.map(([id,x]) => {
+      const k = `${meId()}/${id}`, d0 = Math.floor((now - (x.contactedAt||x.statusAt))/DAY);
+      return `<div class="pr vem"><span class="pr-m"><b>${esc(x.prospect||"Influencer")}</b><small>Mich lo contactó hace ${d0} días y no cerró · ${x.email ? esc(x.email) : "sin email"}</small></span>
+        <span class="rem-acts">${x.email ? `<button type="button" class="btn small" data-vemcopy="${esc(x.email)}">Copiar email</button>` : `<button type="button" class="btn small" data-memail="${k}">+ email</button>`}<button type="button" class="btn small primary" data-vemdone="${k}">✓ Ya le escribí</button></span></div>`; }).join("")}</div></section>` : "";
   const remHtml = remDue.length || remNext.length ? `<section class="pg2"><div class="pg2-h"><span>Recordatorios</span>${remDue.length ? `<b>${remDue.length}</b>` : ""}</div><div class="pg2-card">
       ${remDue.map(r => `<div class="pr rem${r.at < now - 12*HR ? " late" : ""}"><span class="rem-ic">⏰</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}</small></span><span class="rem-acts"><button type="button" class="btn small" data-remsnooze="${r.id}">Mañana</button><button type="button" class="btn small primary" data-remdone="${r.id}">✓ Hecho</button></span></div>`).join("")}
       ${remNext.length ? `<details class="tt-done rem-next"${MORE.remNext ? " open" : ""}><summary data-remnextt="1">Programados (${remNext.length})</summary>${remNext.map(r => `<div class="pr rem"><span class="rem-ic">🗓</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}${r.hold ? " · ⏸ en pausa" : ""}</small></span><button type="button" class="pr-x" data-remdel="${r.id}">Borrar</button></div>`).join("")}</details>` : ""}
     </div></section>` : "";
-  const taskHtml = remHtml + confHtml + (myT.length ? `<section class="pg2">${onlyTasks ? "" : `<div class="pg2-h"><span>Tareas</span><b>${myT.length}</b></div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
+  const taskHtml = remHtml + confHtml + emHtml + (myT.length ? `<section class="pg2">${onlyTasks ? "" : `<div class="pg2-h"><span>Tareas</span><b>${myT.length}</b></div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</div></section>` : "")
     + (assigned.some(([,,x]) => tkSt(x)==="review") ? `<section class="pg2"><div class="pg2-h"><span>Por aprobar</span><b>${nRev}</b></div><div class="pg2-card">${assigned.filter(([,,x]) => tkSt(x)==="review").map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "")
     + (asgOpen.length ? `<section class="pg2"><div class="pg2-h"><span>Tareas que asignaste</span><b>${asgOpen.length}</b></div><div class="pg2-card">${asgOpen.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
   if (headLite) todo += `<p class="lite-note">Lo operativo lo lleva ${esc(headLiteMgrs())} · <button type="button" class="linkbtn" data-gotab="board">ver Equipo</button></p>`;
   todo = taskHtml + todo + (totalPend > PEND_CAP ? `<button type="button" class="pend-all" data-allpend="1">${allPend ? "Ver menos" : `Ver todos los pendientes (${totalPend})`}</button>` : "");
   const dd = new Date(todayStr + "T12:00:00Z"), past = evs.filter(e => e.end < now).length;
-  { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length + mConf.length + remDue.length + nRev, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
+  { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length + mConf.length + remDue.length + emDue.length + nRev, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
   const late = tks.filter(t => t.due < now).length;
   box.innerHTML = `<section class="plan">
     <div class="pl-head"><div class="pl-ttl"><h2>${pastDay ? "Ya pasó" : "Hoy"}</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span>${pastDay ? `<button type="button" class="linkbtn pl-today" data-planday="">Volver a hoy</button>` : ""}</div>
-      <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length + myT.length + mConf.length + remDue.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
+      <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length + myT.length + mConf.length + remDue.length + emDue.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
     <div class="pl-cols">
       <div class="pl-col"><h3 class="sec-h">Agenda <b>${evs.length}</b><button type="button" class="sec-add" data-remnew="1" data-remkind="event" aria-label="Agregar algo a tu agenda">+</button></h3>${line || `<p class="pl-empty">${pastDay ? "No hubo meets este día." : "Hoy no tienes meets agendados."}</p>`}</div>
-      <div class="pl-col"><h3 class="sec-h">Pendientes <b>${tks.length + myT.length + mConf.length + remDue.length}</b>${late ? `<em>${late} tarde</em>` : ""}<button type="button" class="sec-add" data-pendadd="1" aria-label="Agregar un pendiente">+</button></h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
+      <div class="pl-col"><h3 class="sec-h">Pendientes <b>${tks.length + myT.length + mConf.length + remDue.length + emDue.length}</b>${late ? `<em>${late} tarde</em>` : ""}<button type="button" class="sec-add" data-pendadd="1" aria-label="Agregar un pendiente">+</button></h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
     </div>
   </section>`;
 }
@@ -3997,6 +4002,7 @@ function renderMiAdd(){
       <input data-miv="name" placeholder="Nombre" value="${esc(v.name||"")}" autocomplete="off">
       <input data-miv="fol" placeholder="Seguidores (120k)" value="${esc(v.fol||"")}" autocomplete="off" autocapitalize="off">
       <input data-miv="ig" placeholder="Link de Instagram o @usuario" value="${esc(v.ig||"")}" autocomplete="off" autocapitalize="off">
+      <input data-miv="email" type="email" placeholder="Email (opcional)" value="${esc(v.email||"")}" autocomplete="off" autocapitalize="off">
       <input data-miv="why" placeholder="Nota (opcional)" value="${esc(v.why||"")}" autocomplete="off">
       ${MIADD.err ? `<p class="err">${esc(MIADD.err)}</p>` : ""}
       <button type="button" class="btn small primary" data-misave="1"${MIADD.busy ? " disabled" : ""}>${MIADD.busy ? "Agregando…" : "Agregar a mi lista"}</button></div></div>`;
@@ -4007,7 +4013,8 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-miaddx]")){ MIADD.open = false; schedule(); return; }
   if (!e.target.closest("[data-misave]")) return;
   const v = MIADD.v, fail = m => { MIADD.err = m; MIADD.busy = false; schedule(); };
-  const o = {prospect:String(v.name||"").trim(), followers:String(parseFol(v.fol) || ""), profile:String(v.ig||"").trim(), notes:String(v.why||"").trim()};
+  const o = {prospect:String(v.name||"").trim(), followers:String(parseFol(v.fol) || ""), profile:String(v.ig||"").trim(), notes:String(v.why||"").trim(), email:String(v.email||"").trim()};
+  if (o.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return fail("Revisa el email.");
   if (o.profile && !/^https?:\/\//i.test(o.profile)) o.profile = /instagram\.com/i.test(o.profile) ? "https://" + o.profile : "https://instagram.com/" + o.profile.replace(/^@/, "");
   if (!o.prospect) return fail("Escribe el nombre.");
   if (!o.followers) return fail(v.fol ? "No entendí los seguidores: escribe por ejemplo 350k o 350,000." : "Escribe cuántos seguidores tiene.");
@@ -4046,19 +4053,31 @@ function renderMich(){
   if (MICH.f==="tpl"){ box.innerHTML = michTplHtml(rows); return; }
   $("miQ").hidden = MICH.f!=="contactado";
   const q = MICH.f==="contactado" ? (MICH.q||"").trim().toLowerCase().replace(/^@/,"") : "";
+  const ef = MICH.f==="contactado" ? (MICH.ef || "") : "";
   const list = rows.filter(([,,x]) => MICH.f==="nuevo" ? !done(x) : done(x))
+    .filter(([,,x]) => !ef || (ef==="con" ? !!x.email : !x.email))
     .filter(([,,x]) => !q || fold(String(x.prospect||"")+" "+igUser(x.profile)).includes(fold(q)))
     .sort((a,b) => MICH.f==="nuevo" ? (b[2].followers||0) - (a[2].followers||0) : (b[2].statusAt||b[2].createdAt||0) - (a[2].statusAt||a[2].createdAt||0));
   const ini = n => esc((String(n||"?").trim()[0]||"?").toUpperCase());
-  box.innerHTML = list.length ? `<div class="mi-list">${list.map(([u,id,x]) => { const h = igUser(x.profile), url = igUrl(x.profile), st = x.status||"nuevo", k = `${u}/${id}`;
+  const efBar = MICH.f==="contactado" ? (() => { const all = rows.filter(([,,x]) => done(x)), con = all.filter(([,,x]) => x.email).length;
+    return `<div class="mi-ef">${[["","Todos",all.length],["con","Con email",con],["sin","Sin email",all.length-con]].map(([v,l,n]) => `<button type="button" class="${ef===v?"on":""}" data-mief="${v}">${l} <b>${n}</b></button>`).join("")}</div>`; })() : "";
+  box.innerHTML = efBar + (list.length ? `<div class="mi-list">${list.map(([u,id,x]) => { const h = igUser(x.profile), url = igUrl(x.profile), st = x.status||"nuevo", k = `${u}/${id}`;
     const locked = qt.until && !done(x);
     return `<a class="mi-row${done(x)?" done":""}${locked?" locked":""}" href="${esc(locked ? "#" : (url||"#"))}" target="_blank" rel="noopener" data-mgo="${k}">
       <span class="ck-av mi-av">${ini(x.prospect)}${h?`<img src="https://unavatar.io/instagram/${encodeURIComponent(h)}?fallback=false" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>
-      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}</span>
+      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}</span>` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}</span>
       ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
         : `<span class="mi-ig">Abrir</span>${MICH.on ? "" : `<button type="button" class="mi-ic" data-mdone="${k}" aria-label="Marcar como contactado" title="Marcar como contactado">✓</button>`}`}
     </a>`; }).join("")}</div>`
-    : `<div class="empty">${rows.length ? (MICH.f==="nuevo" ? "🎉 No hay pendientes. Cuando el equipo proponga más influencers aparecen aquí." : "Nada por aquí.") : "Todavía no hay influencers en la lista. Aparecen cuando el equipo registra un Perfil 3 (35K+)."}</div>`;
+    : `<div class="empty">${rows.length ? (MICH.f==="nuevo" ? "🎉 No hay pendientes. Cuando el equipo proponga más influencers aparecen aquí." : "Nada por aquí.") : "Todavía no hay influencers en la lista. Aparecen cuando el equipo registra un Perfil 3 (35K+)."}</div>`);
+}
+// agregar o corregir el email de un influencer de la lista (Mich o el AM que lo propuso)
+async function vipEmailAsk(k){
+  const [u, id] = k.split("/"), x = (S.vip[u]||{})[id] || (u===meId() ? (S.myVip||{})[id] : null); if (!x) return;
+  const v = (prompt(`Email de ${x.prospect || "este perfil"}:`, x.email || "") || "").trim().toLowerCase(); if (!v) return;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){ quickToast("Ese email no se ve bien"); return; }
+  const prev = x.email; x.email = v; schedule();
+  try{ await db.doc(`meets/${u}/vip/${id}`).update({email:v}); quickToast("✓ Email guardado"); }catch(_){ x.email = prev; schedule(); quickToast("No se guardó"); }
 }
 async function michMark(k, status){
   const [u, id] = k.split("/"), x = (S.vip[u]||{})[id]; if (!x) return;
@@ -4082,6 +4101,8 @@ async function michStatsLoad(){
 $("miQ").addEventListener("input", e => { MICH.q = e.target.value; renderMich(); });
 $("miSeg").addEventListener("click", e => { const b = e.target.closest("[data-mif]"); if (b){ MICH.f = b.dataset.mif; schedule(); } });
 $("view-mich").addEventListener("click", e => {
+  const ef = e.target.closest("[data-mief]"); if (ef){ e.preventDefault(); MICH.ef = ef.dataset.mief; return renderMich(); }
+  const ea = e.target.closest("[data-memail]"); if (ea){ e.preventDefault(); e.stopPropagation(); vipEmailAsk(ea.dataset.memail); return; }
   const bk = e.target.closest("[data-mbook]"); if (bk){ e.preventDefault(); e.stopPropagation(); return michBookOpen(bk.dataset.mbook); }
   const dn = e.target.closest("[data-mdone]"), un = e.target.closest("[data-mundo]"), tu = e.target.closest("[data-mtundo]");
   if (dn){ e.preventDefault(); e.stopPropagation(); return michMark(dn.dataset.mdone, "contactado"); }
@@ -4225,14 +4246,23 @@ function tkMichHtml(k, u, x, lead){
       <input data-tkv="${k}|name" placeholder="Nombre" value="${esc(d.v_name||"")}" autocomplete="off">
       <input data-tkv="${k}|fol" placeholder="Seguidores (48k)" autocapitalize="off" value="${esc(d.v_fol||"")}" autocomplete="off">
       <input data-tkv="${k}|ig" placeholder="Link de Instagram" inputmode="url" value="${esc(d.v_ig||"")}" autocomplete="off" autocapitalize="off">
+      <input data-tkv="${k}|email" type="email" placeholder="Email (opcional)" value="${esc(d.v_email||"")}" autocomplete="off" autocapitalize="off">
       <input data-tkv="${k}|why" placeholder="¿Por qué vale la pena? (opcional)" value="${esc(d.v_why||"")}" autocomplete="off">
       ${d.v_err ? `<p class="err">${esc(d.v_err)}</p>` : ""}
       <button type="button" class="btn small primary" data-tkvadd="${k}"${d.v_busy ? " disabled" : ""}>${d.v_busy ? "Agregando…" : "+ Agregar a la lista de Mich"}</button></div>`;
   return `<div class="tk-sec">${lead ? "Sus candidatos" : "Tus candidatos"} <b>${list.length}</b></div>${form}${rows ? `<div class="tkm-list">${rows}</div>` : `<p class="mut small">${lead ? "Todavía no ha propuesto ninguno esta semana." : "Aún no agregas ninguno esta semana."}</p>`}`;
 }
+document.addEventListener("click", async e => {
+  const c = e.target.closest("[data-vemcopy]"); if (c){ e.stopPropagation(); try{ await navigator.clipboard.writeText(c.dataset.vemcopy); quickToast("✓ Email copiado"); }catch(_){ quickToast(c.dataset.vemcopy); } return; }
+  const me = e.target.closest("[data-memail]"); if (me && !e.target.closest("#view-mich")){ e.stopPropagation(); return vipEmailAsk(me.dataset.memail); }
+  const dn = e.target.closest("[data-vemdone]"); if (!dn) return; e.stopPropagation();
+  const [u, id] = dn.dataset.vemdone.split("/"), x = (u===meId() && !S.viewAs ? S.myVip : S.vip[u] || {})[id]; if (!x) return;
+  x.emailedAt = Date.now(); schedule();
+  try{ await db.doc(`meets/${u}/vip/${id}`).update({emailedAt:x.emailedAt, emailedBy:S.uid}); quickToast("✓ Listo"); }catch(_){ delete x.emailedAt; schedule(); quickToast("No se guardó"); }
+});
 document.addEventListener("click", async e => { const b = e.target.closest("[data-tkvadd]"); if (!b) return; e.stopPropagation();
   const k = b.dataset.tkvadd, d = (TKD[k] ||= {});
-  const o = {prospect:String(d.v_name||"").trim(), followers:String(parseFol(d.v_fol) || ""), profile:String(d.v_ig||"").trim(), notes:String(d.v_why||"").trim()};
+  const o = {prospect:String(d.v_name||"").trim(), followers:String(parseFol(d.v_fol) || ""), profile:String(d.v_ig||"").trim(), notes:String(d.v_why||"").trim(), email:String(d.v_email||"").trim()};
   if (o.profile && !/^https?:\/\//i.test(o.profile)) o.profile = /instagram\.com/i.test(o.profile) ? "https://" + o.profile : "https://instagram.com/" + o.profile.replace(/^@/, "");
   const fail = m => { d.v_err = m; d.v_busy = false; schedule(); };
   if (!o.prospect) return fail("Escribe el nombre.");
@@ -4240,7 +4270,7 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
   if (!igKey(o.profile)) return fail("Pon su link de Instagram (instagram.com/usuario).");
   d.v_err = ""; d.v_busy = true; schedule();
   const dm = await dupCheck(o.profile, ""); if (dm) return fail(dm + " No cuenta otra vez.");
-  try{ const r = await saveVip(o); if (r && S.myVip && !S.viewAs) S.myVip[r.id] = r.data; ["v_name","v_fol","v_ig","v_why"].forEach(f => delete d[f]); d.v_busy = false; quickToast(`✓ ${o.prospect} agregado a la lista de Mich`); schedule(); }
+  try{ const r = await saveVip(o); if (r && S.myVip && !S.viewAs) S.myVip[r.id] = r.data; ["v_name","v_fol","v_ig","v_why","v_email"].forEach(f => delete d[f]); d.v_busy = false; quickToast(`✓ ${o.prospect} agregado a la lista de Mich`); schedule(); }
   catch(ex){ fail(ex && ex.dup ? ex.msg : "No se guardó. Revisa tu conexión e intenta de nuevo."); }
 });
 function tkCfHtml(k){ const d = TKD[k] || {}; return (d.cfiles||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name)}`}<button type="button" data-tkcfx="${k}|${i}" aria-label="Quitar">×</button></span>`).join("") + (d.cup ? `<span class="tk-cf tk-cf-up">Subiendo…</span>` : ""); }
@@ -4966,6 +4996,7 @@ function syncPerfilUi(){
   document.querySelectorAll("#p3meetL [data-p3]").forEach(b => { const on = (b.dataset.p3==="1")===p3m; b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on)); });
   document.querySelectorAll("#meetForm .m-only").forEach(el => el.hidden = vip);
   document.querySelectorAll("#meetForm .fol-only").forEach(el => el.hidden = !(p===2 || p===3));
+  { const el = $("f_emailLbl"); if (el){ el.firstChild.textContent = vip ? "Email (opcional) " : "Email del prospecto "; const em = el.querySelector("em"); if (em) em.hidden = vip; } }
   const waNoProf = !vip; // el link al perfil ya no es obligatorio (solo en la Lista de Mich, donde es su Instagram)
   $("f_profileLbl").firstChild.textContent = vip ? "Link de Instagram " : waNoProf ? "Link al perfil (opcional) " : "Link al perfil del prospecto ";
   { const em = $("f_profileLbl").querySelector("em"); if (em) em.hidden = waNoProf; }
@@ -5035,7 +5066,8 @@ async function saveVip(o, extra){
   if (!key) throw {dup:true, msg:"Pon el link de Instagram del perfil (instagram.com/usuario)."};
   const ref = db.collection(`meets/${meId()}/vip`).doc();
   const commit = await claimVip(key, meId(), ref.id);
-  const data = {prospect:o.prospect, profile:o.profile, followers:Number(o.followers)||0, notes:o.notes||"", perfil:3, status:"nuevo", createdAt:Date.now(), igKey:key, ...(extra||{})};
+  const em = String(o.email||"").trim().toLowerCase();
+  const data = {prospect:o.prospect, profile:o.profile, followers:Number(o.followers)||0, notes:o.notes||"", ...(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em) ? {email:em} : {}), perfil:3, status:"nuevo", createdAt:Date.now(), igKey:key, ...(extra||{})};
   await ref.set(data);
   await commit();
   return {id:ref.id, data};
