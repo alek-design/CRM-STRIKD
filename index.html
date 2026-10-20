@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 20:52:44 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 20:55:27 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792529564">
+<link rel="stylesheet" href="/auth.css?v=1792529727">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792529564"></script>
+<script src="/claude-shim.js?v=1792529727"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1971,7 +1971,7 @@ const ICO = {
 };
 const svg = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
 function islandItems(){
-  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["board","home","Equipo"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["board","home","Equipo"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],...(resultsView() ? [["funnel","chart","Resultados"]] : []),["settings","gear","Ajustes"]]};
+  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["board","home","Equipo"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["board","home","Equipo"],["more","more","Más"]], more:[["report","cal","Reporte del día"],...(resultsView() ? [["funnel","chart","Resultados"]] : []),["settings","gear","Ajustes"]]};
   const lead = adminMode(), am = !lead;
   const unread = ISK.convs.filter(c => c.lastDir==="in" && !c.disc && (lead ? true : c.owner===meId())).length;
   const msgN = unread;
@@ -1979,7 +1979,7 @@ function islandItems(){
     ? [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","trophy","Ranking"],["more","more","Más"]]
     : [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","home","Equipo",Number($("lateCount").textContent)||0],["more","more","Más"]];
   const more = am
-    ? [...(resultsView() ? [["funnel","chart","Resultados"]] : []),["settings","gear","Ajustes"]]
+    ? [...(resultsView() ? [["report","cal","Reporte del día"],["funnel","chart","Resultados"]] : []),["settings","gear","Ajustes"]]
     : [["report","cal","Reporte del día"],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
        ["settings","gear","Ajustes"]];
   return {main, more};
@@ -4277,6 +4277,7 @@ document.addEventListener("click", async e => {
       <button type="button" data-tasknew="1"><b>📋 Tarea para alguien del equipo</b><small>Con estatus, entrega y comentarios</small></button></div>`;
     w.addEventListener("click", ev2 => { if (ev2.target===w) w.remove(); else if (ev2.target.closest("[data-tasknew]")) setTimeout(() => w.remove(), 0); });
     document.body.appendChild(w); return; }
+  const rpm = e.target.closest("[data-rpmine]"); if (rpm){ RPT.mine = rpm.dataset.rpmine === "1"; const bx = $("reportBox"); if (bx) bx.dataset.h = ""; schedule(); return; }
   const nt = e.target.closest("[data-remnextt]"); if (nt){ MORE.remNext = !MORE.remNext; return; }
   const tdt = e.target.closest("[data-tkdonet]"); if (tdt){ MORE[tdt.dataset.tkdonet] = !MORE[tdt.dataset.tkdonet]; return; }
   const dn = e.target.closest("[data-remdone]"), sn = e.target.closest("[data-remsnooze]"), dl = e.target.closest("[data-remdel]"); if (!dn && !sn && !dl) return;
@@ -4736,7 +4737,7 @@ function orgCtl(uid){
     ${r==="manager" ? `<input type="email" data-orgmail="${uid}" placeholder="Email para invitaciones de meet" value="${esc((S.roles[uid]||{}).inviteEmail||"")}" aria-label="Email del team leader para invitaciones">` : ""}
     ${r==="am" && uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgassign="${uid}"${(S.roles[uid]||{}).canAssign ? " checked" : ""}> Puede asignar tareas a otros AM</label>
       <label class="org-chk"><input type="checkbox" data-orgemail="${uid}"${(S.roles[uid]||{}).canEmail ? " checked" : ""}> Los emails a sus influencers salen de su Gmail</label>` : ""}
-    ${uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgres="${uid}"${((S.roles[uid]||{}).canResults === true || ((S.roles[uid]||{}).canResults !== false && r !== "am")) ? " checked" : ""}> Puede ver Resultados</label>` : ""}
+    ${uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgres="${uid}"${((S.roles[uid]||{}).canResults === true || ((S.roles[uid]||{}).canResults !== false && r !== "am")) ? " checked" : ""}> Puede ver Resultados y Reporte del día</label>` : ""}
     ${r==="am" && mgrs.length ? `<select data-orgmgr="${uid}" aria-label="Su manager"><option value="">Manager: cualquiera</option>${mgrs.map(m => `<option value="${m}"${mgrOf(uid)===m?" selected":""}>Manager: ${esc(nameOf(S.ps||{}, m))}</option>`).join("")}</select>` : ""}
   </div>`;
 }
@@ -4779,7 +4780,7 @@ $("orgBox").addEventListener("change", async e => {
     oe.disabled = false; return; }
   const ors = e.target.closest("[data-orgres]");
   if (ors && S.isOwner){ const uid = ors.dataset.orgres, cur = S.roles[uid] || {}; ors.disabled = true;
-    try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canResults:ors.checked, updatedAt:Date.now()}); S.roles[uid] = {...cur, role:cur.role || "am", canResults:ors.checked}; quickToast(ors.checked ? "✓ Ya puede ver Resultados" : "Ya no ve Resultados"); }catch(ex){ ors.checked = !ors.checked; quickToast("No se guardó"); }
+    try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canResults:ors.checked, updatedAt:Date.now()}); S.roles[uid] = {...cur, role:cur.role || "am", canResults:ors.checked}; quickToast(ors.checked ? "✓ Ya puede ver Resultados y Reporte" : "Ya no ve Resultados ni Reporte"); }catch(ex){ ors.checked = !ors.checked; quickToast("No se guardó"); }
     ors.disabled = false; return; }
   const oa = e.target.closest("[data-orgassign]");
   if (oa && S.isOwner){ const uid = oa.dataset.orgassign, cur = S.roles[uid] || {}; oa.disabled = true;
@@ -5125,8 +5126,10 @@ setInterval(() => { if (document.visibilityState==="visible") presBeat(false); i
 const RPT = {day:null};
 function renderReport(){
   const box = $("reportBox"); if (!box || S.tab!=="report" || busyIn(box)) return;
-  if (michMode()) return renderMichReport(box);
-  if (!adminMode()) return;
+  const rpSeg = () => `<div class="subnav rp-seg" role="tablist" aria-label="Reporte"><button type="button" data-rpmine="0" class="${RPT.mine ? "" : "on"}">Equipo</button><button type="button" data-rpmine="1" class="${RPT.mine ? "on" : ""}">Mío</button></div>`;
+  if (michMode() && (S.isOwner || !resultsView() || RPT.mine)){ renderMichReport(box); if (!S.isOwner && resultsView() && !box.querySelector(".rp-seg")) box.insertAdjacentHTML("afterbegin", rpSeg()); return; }
+  if (!adminMode() && !resultsView()) return;
+  const ro = !adminMode(); // Manager / Influencer: solo consulta
   const now = Date.now(), today = new Date(now - OFF).toISOString().slice(0,10), day = RPT.day || today;
   // el lunes el reporte incluye el fin de semana (sábado y domingo no hay reporte)
   const isMon = new Date(day+"T12:00:00Z").getUTCDay()===1, to = Date.parse(day + "T00:00:00-05:00") + DAY, from = to - (isMon ? 3 : 1)*DAY, inD = t => { t = Number(t)||0; return t >= from && t < to; };
@@ -5151,15 +5154,15 @@ function renderReport(){
   const tomorrow = new Date(to - OFF + 12*3600e3).toISOString().slice(0,10);
   const next = calEvents().filter(e => e.kind==="pitch" && e.who && String(e.at).slice(0,10)===tomorrow).sort((a,b) => String(a.at).localeCompare(String(b.at)));
   // WhatsApp (bandeja de ISKRA, si ya cargó) y Mich
-  const wa = ISK.st==="ok" ? {act:ISK.convs.filter(c => inD(c.at)).length, rep:ISK.convs.filter(c => inD(c.lastSentAt)).length, open:ISK.convs.filter(c => c.lastDir==="in" && !c.disc).length} : null;
+  const wa = ISK.st==="ok" && !ro ? {act:ISK.convs.filter(c => inD(c.at)).length, rep:ISK.convs.filter(c => inD(c.lastSentAt)).length, open:ISK.convs.filter(c => c.lastDir==="in" && !c.disc).length} : null;
   const vipAll = Object.values(S.vip||{}).flatMap(o => Object.values(o||{}));
   const mi = {cont:vipAll.filter(x => inD(x.contactedAt)).length, ag:vipAll.filter(x => x.status==="agendo" && inD(x.statusAt)).length, nuevos:vipAll.filter(x => inD(x.createdAt)).length};
   const k = (n, l, cls) => `<span class="${cls||""}"><b>${n}</b>${l}</span>`;
   const sec = (t, body) => `<section class="rp-sec"><h3 class="sec-h">${t}</h3>${body}</section>`;
   const row = r => `<div class="rp-p"><div class="rp-ph"><b>${esc(first(r.u))}</b>${r.seen ? `<span class="pres on">${isToday && presOf(r.u).st==="on" ? "en línea" : "entró hoy"}</span>` : `<span class="pres off">no entró</span>`}</div>
       <div class="rp-pn">${k(fmtMin(actOf(r.u, day)), "activo")}${(() => { const p = rsD && rsD.people && rsD.people[r.u]; return p && p.n ? k(fmtRt(p.med), "respuesta WA", p.med > 30*60e3 ? "bad" : "") : ""; })()}${k(r.reg, "agendó")}${k(r.tom, "pitches")}${k(r.gus + r.apr + r.pw + r.pub, "avances")}${r.late!==null ? k(r.late, "atrasados", r.late ? "bad" : "") : ""}${k(r.tkDone, "tareas hechas")}${r.tkRev ? k(r.tkRev, "por aprobar") : ""}</div></div>`;
-  const h = `<div class="rp">
-    <div class="rp-top"><div><h2>Reporte del día</h2><p class="sub">${esc(dl)}${S.isOwner && !teamScoped() ? " · todo el equipo" : " · tu equipo"}</p></div>
+  const h = `${michMode() && ro ? rpSeg() : ""}<div class="rp">
+    <div class="rp-top"><div><h2>Reporte del día</h2><p class="sub">${esc(dl)}${(S.isOwner && !teamScoped()) || ro ? " · todo el equipo" : " · tu equipo"}</p></div>
       <div class="tld-nav"><button type="button" data-rpday="-1" aria-label="Día anterior">‹</button><em>${isToday ? "Hoy" : esc(isMon ? "Lun" : dl.split(" ")[0])}</em><button type="button" data-rpday="1" aria-label="Día siguiente"${isToday ? " disabled" : ""}>›</button></div></div>
     ${sec("Meets y pitches", `<div class="tf-kpis rp-k">${k(sum("reg"), "agendados")}${k(sum("tom"), "pitches tomados")}${k(sum("ns"), "no se conectaron", sum("ns") ? "bad" : "")}${k(next.length, "pitches mañana")}</div>
       ${next.length ? `<div class="pg2-card rp-list">${next.slice(0, 8).map(e => `<div><span>${esc(String(e.at).slice(11,16))}</span>${esc(String(e.label).replace(/^Pitch · /,""))}<small>${esc(first(e.who))}</small></div>`).join("")}${next.length > 8 ? `<div class="mut">+${next.length-8} más</div>` : ""}</div>` : ""}`)}
@@ -5169,7 +5172,7 @@ function renderReport(){
       return sec("Tiempo activo en la app", `<div class="pg2-card rp-act">${ppl.map(([u,n]) => `<div><b>${esc(first(u))}${roleOf(u)==="manager" ? " <small>Manager</small>" : roleOf(u)==="influencer" ? " <small>Influencer</small>" : ""}</b><span class="rp-bar"><i style="width:${Math.round(n/mx*100)}%"></i></span><em>${n ? fmtMin(n) : "—"}</em></div>`).join("") || `<p class="tt-none">Sin datos</p>`}</div><p class="mut small">Cuenta solo el tiempo con la app abierta y usándola; después de 5 min sin tocar nada deja de contar.</p>`); })()}
     ${sec("WhatsApp y Mich", `<div class="tf-kpis rp-k">${rsD && rsD.team && rsD.team.n ? k(fmtRt(rsD.team.med), "tiempo de respuesta", rsD.team.med > 30*60e3 ? "bad" : "") + k(rsD.team.fast + "%", "en menos de 15 min") + (rsD.team.slow ? k(rsD.team.slow, "tardaron +1 h", "bad") : "") : ""}${wa ? k(wa.act, "chats con actividad") + k(wa.rep, "respondidos") + k(wa.open, "sin responder", wa.open ? "bad" : "") : k("—", "abre Mensajes para cargar")}${k(sum("wa"), "meets por WhatsApp")}</div>
       ${vipAll.length ? `<div class="tf-kpis rp-k k3" style="margin-top:8px">${k(mi.cont, "Mich contactó")}${k(mi.ag, "agendaron con Mich")}${k(mi.nuevos, "propuestos a Mich")}</div>` : ""}`)}
-    <p class="mut small">Cada noche a las 9:00 pm te llega una notificación con este resumen. <button type="button" class="linkbtn" data-rptest="1">Mandármelo ahora para probar</button></p>
+    ${ro ? "" : `<p class="mut small">Cada noche a las 9:00 pm te llega una notificación con este resumen. <button type="button" class="linkbtn" data-rptest="1">Mandármelo ahora para probar</button></p>`}
   </div>`;
   if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
 }
