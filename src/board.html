@@ -4834,14 +4834,35 @@ function emailIntro(){
       <li>Si contestan, te llega un aviso al celular y la plática sigue en tu Gmail, contigo.</li>
       <li>Si piden que no les escribamos, ya no se les manda nada.</li>
     </ol>
-    <p class="mut small">Salen máximo 20 al día, de lunes a viernes de 9 am a 6 pm, y quedan en tus Enviados. Las plantillas las define ${esc(head)}.</p>
+    <p class="mut small">Salen máximo 20 al día, de lunes a viernes de 9 am a 6 pm, y quedan en tus Enviados.</p>
+    <p>Las plantillas ya están predefinidas. Si crees que las podemos mejorar o te gustaría proponer una, <b>nos encantaría escucharla</b>: lo puedes hacer cuando quieras en Ajustes → Emails automáticos.</p>
     <p><b>Lo que te toca:</b> conectar tu Gmail y, al proponer influencers, conseguir su email (al menos 40 de cada 60).</p>
-    <div class="tk-acts"><button type="button" class="btn small" data-emi="later">Después</button>${window.STRIKD_GMAIL_CONNECT ? `<button type="button" class="btn small primary" data-emi="con">Conectar mi Gmail</button>` : ""}</div></div>`;
+    <div class="tk-acts"><button type="button" class="btn small" data-emi="later">Después</button><button type="button" class="btn small" data-emi="idea">Proponer plantilla</button>${window.STRIKD_GMAIL_CONNECT ? `<button type="button" class="btn small primary" data-emi="con">Conectar mi Gmail</button>` : ""}</div></div>`;
   document.body.appendChild(w);
   const seen = () => { const t = Date.now(); ((S.members||{})[S.uid] ||= {}).emailIntroSeen = t; db.doc(`members/${S.uid}`).update({emailIntroSeen:t}).catch(() => {}); };
   w.addEventListener("click", e => { const b = e.target.closest("[data-emi]"); if (!b && e.target !== w) return;
-    seen(); w.remove(); if (b && b.dataset.emi === "con") window.STRIKD_GMAIL_CONNECT("me"); });
+    seen(); w.remove(); if (b && b.dataset.emi === "con") window.STRIKD_GMAIL_CONNECT("me"); if (b && b.dataset.emi === "idea") mailIdeaOpen(); });
 }
+// Propuesta de plantilla de un AM: se guarda en su ficha (members) y le llega aviso al Head
+function mailIdeaOpen(){
+  if ($("emIdea")) return;
+  const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "emIdea";
+  w.innerHTML = `<div class="bk mbk em-intro" role="dialog" aria-modal="true" aria-label="Proponer plantilla"><div class="bk-grab"></div>
+    <h3>💡 Proponer una plantilla</h3><p class="mut small">Escribe el correo como te gustaría que saliera. Usa {nombre} para el nombre del influencer.</p>
+    <label class="f">Asunto<input id="emiSubj" maxlength="120" placeholder="Ej. {nombre}, una idea para tu comunidad"></label>
+    <label class="f">Mensaje<textarea id="emiBody" rows="7" placeholder="Hola {nombre}…"></textarea></label>
+    <p class="err" id="emiErr"></p>
+    <div class="tk-acts"><button type="button" class="btn small" data-emi2="x">Cancelar</button><button type="button" class="btn small primary" data-emi2="send">Enviar propuesta</button></div></div>`;
+  document.body.appendChild(w); setTimeout(() => $("emiSubj").focus(), 60);
+  w.addEventListener("click", async e => { if (e.target === w || e.target.closest('[data-emi2="x"]')) return w.remove(); if (!e.target.closest('[data-emi2="send"]')) return;
+    const subject = $("emiSubj").value.trim(), body = $("emiBody").value.trim(); if (!body){ $("emiErr").textContent = "Escribe el mensaje."; return; }
+    const idea = {subject, body, at:Date.now()};
+    try{ await db.doc(`members/${S.uid}`).update({mailIdea:idea}); ((S.members||{})[S.uid] ||= {}).mailIdea = idea; w.remove(); quickToast("✓ ¡Gracias! Le llegó tu propuesta a Alek");
+      if (window.STRIKD_NOTIFY && (S.config||{}).headId) window.STRIKD_NOTIFY({to:[S.config.headId], title:"💡 Propuesta de plantilla de email", body:`${String(nameOf(S.ps||{}, S.uid)).split(" (")[0]}: ${subject || body.slice(0, 80)}`, url:"/?tab=settings", tag:"mailidea-" + S.uid});
+      schedule(); }
+    catch(_){ $("emiErr").textContent = "No se guardó. Intenta otra vez."; } });
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-emi-idea]")){ e.stopPropagation(); mailIdeaOpen(); } });
 /* ---------- Emails automáticos a influencers que no cerraron (Lista de Mich) ----------
    Paso 1: 10 días después de que Mich lo contactó sin meet. Paso 2: 7 días después, en el mismo hilo, si no contestó.
    Sale del Gmail del AM si está autorizado y conectado; si no, del correo general. Máx. 20 por cuenta al día, L–V 9 am–6 pm. */
@@ -4859,7 +4880,8 @@ function gmLoad(force){ if (!window.STRIKD_GMAIL_STATUS || GM.loading || (!force
   window.STRIKD_GMAIL_STATUS().then(j => { GM.st = j || {}; GM.at = Date.now(); }).catch(() => {}).finally(() => { GM.loading = false; schedule(); }); }
 function mailMineRow(){
   gmLoad(); const me = GM.st && GM.st.me, n = GM.st && GM.st.today ? (GM.st.today[S.uid] || 0) : 0;
-  return setRow("✉️", "Mi Gmail para emails a influencers", me ? `Conectado · ${esc(me.email)} · ${n}/20 hoy` : "Conéctalo para que los emails a tus influencers salgan de tu correo",
+  const idea = ((S.members||{})[S.uid]||{}).mailIdea;
+  return setRow("💡", "Proponer una plantilla", idea ? `Mandaste una propuesta el ${esc(fmtLocal(idea.at).split(",")[0])} · ¡gracias!` : "Si se te ocurre un mejor correo, nos encantaría escucharlo", `<button type="button" class="btn small" data-emi-idea="1">${idea ? "Mandar otra" : "Proponer"}</button>`) + setRow("✉️", "Mi Gmail para emails a influencers", me ? `Conectado · ${esc(me.email)} · ${n}/20 hoy` : "Conéctalo para que los emails a tus influencers salgan de tu correo",
     window.STRIKD_GMAIL_CONNECT ? (me ? `<button type="button" class="btn small" data-gm="dis-me">Desconectar</button>` : `<button type="button" class="btn small primary" data-gm="con-me">Conectar</button>`) : "");
 }
 function mailSetHtml(){
@@ -4888,6 +4910,9 @@ function mailSetHtml(){
       S.isOwner ? (gen ? `<button type="button" class="btn small" data-gm="dis-gen">Cambiar</button>` : `<button type="button" class="btn small primary" data-gm="con-gen">Conectar</button>`) : "")
       + setRow("👤", "AM autorizados", auth.length ? esc(auth.join(" · ")) : "Ninguno: todo sale del correo general. Se autorizan en Organigrama.", "")
       + (((S.roles||{})[S.uid]||{}).canEmail || S.isOwner ? "" : "") : `<p class="mut small">Los correos se conectan en la versión real (growth.strikd.ai).</p>`}
+    ${(() => { const ideas = Object.entries(S.members||{}).filter(([,m]) => m && m.mailIdea && m.mailIdea.body && !m.mailIdea.done); if (!ideas.length || !S.isOwner) return "";
+      return `<div class="ml-sh"><b>Propuestas del equipo</b></div>${ideas.map(([u,m]) => `<div class="ml-t"><div><b>${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}${m.mailIdea.subject ? " · " + esc(m.mailIdea.subject) : ""}</b><small>${esc(m.mailIdea.body.slice(0, 140))}</small></div>
+        <span><button type="button" class="btn small" data-gm="ideax|${u}">Descartar</button><button type="button" class="btn small primary" data-gm="ideause|${u}">Usarla</button></span></div>`).join("")}`; })()}
     <div class="ml-st"><div class="ml-sh"><b>Paso 1 · 10 días después</b></div>${list(1)}<div class="ml-sh"><b>Paso 2 · 7 días después</b></div>${list(2)}
     ${canEditTpl && !tf ? `<button type="button" class="btn small" data-gm="new">+ Nueva plantilla</button>` : ""}${form}</div></section>`;
 }
@@ -4899,6 +4924,9 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
   if (k==="con-me") return window.STRIKD_GMAIL_CONNECT("me");
   if (k==="dis-me"){ if (!confirm("¿Desconectar tu Gmail? Tus emails saldrán del correo general.")) return; await window.STRIKD_GMAIL_DISCONNECT("me"); GM.at = 0; gmLoad(true); return; }
   if (k==="new"){ GM.tf = {step:1, name:"", subject:"", body:""}; GM.err = ""; return schedule(); }
+  if (k==="ideause" || k==="ideax"){ const m = (S.members||{})[id]; if (!m || !m.mailIdea) return;
+    if (k==="ideause") GM.tf = {step:1, name:`Propuesta de ${String(nameOf(S.ps||{}, id)).split(" (")[0].split(" ")[0]}`, subject:m.mailIdea.subject || "", body:m.mailIdea.body || ""};
+    m.mailIdea = {...m.mailIdea, done:true}; db.doc(`members/${id}`).update({mailIdea:m.mailIdea}).catch(() => {}); return schedule(); }
   if (k==="edit"){ const t = (S.mailTpl||{})[id]; if (t){ GM.tf = {id, step:Number(t.step)||1, name:t.name||"", subject:t.subject||"", body:t.body||""}; GM.err = ""; schedule(); } return; }
   if (k==="cancel"){ GM.tf = null; return schedule(); }
   if (k==="tog"){ const t = (S.mailTpl||{})[id]; if (t){ t.active = t.active===false; schedule(); db.doc(`emailTpl/${id}`).update({active:t.active}).catch(() => {}); } return; }
