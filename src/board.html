@@ -53,6 +53,7 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.mi-esk{display:block;font:inherit;font-size:12px;font-weight:600;margin-top:4px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);text-align:left}.mi-esk.off{color:var(--muted);text-decoration:none;border-style:dashed}
 .em-intro h3{margin:4px 0 8px;font-size:18px}.em-intro ol{margin:6px 0 10px;padding-left:20px;display:grid;gap:6px;font-size:14.5px}.em-intro p{font-size:14.5px;margin:6px 0}
 .ml .ml-how{font-size:13px;color:var(--muted);margin:2px 2px 10px;line-height:1.45}.ml-st{display:grid;gap:6px;margin-top:10px}.ml-sh{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:6px}
 .ml-t{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}.ml-t.off{opacity:.55}.ml-t div{display:grid;min-width:0}.ml-t small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis}.ml-t span{display:flex;gap:6px;flex:none}
@@ -2073,7 +2074,7 @@ async function render(){
   renderBoard(ps, ids); // ranking: solo AM
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else { renderMine(); if (michMode() && S.tab==="flow"){ renderFlow(ps); renderTeamChart(); } }
-  syncAutoV(); inviteSync(); try{ emailIntro(); }catch(_){} renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); try{ emailIntro(); updNotice(); }catch(_){} renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -4099,7 +4100,9 @@ function renderMich(){
     const locked = qt.until && !done(x);
     return `<a class="mi-row${done(x)?" done":""}${locked?" locked":""}" href="${esc(locked ? "#" : (url||"#"))}" target="_blank" rel="noopener" data-mgo="${k}">
       <span class="ck-av mi-av">${ini(x.prospect)}${h?`<img src="https://unavatar.io/instagram/${encodeURIComponent(h)}?fallback=false" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>
-      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}${x.emailOptout ? " · pidió baja" : x.emailRepliedAt ? " · contestó el email" : x.email2At ? " · 2 emails enviados" : x.email1At ? " · email 1 enviado" : ""}</span>` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}</span>
+      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}${x.emailOptout ? " · pidió baja" : x.emailRepliedAt ? " · contestó el email" : x.email2At ? " · 2 emails enviados" : x.email1At ? " · email 1 enviado" : ""}</span>${!x.meetId && !x.email1At && !x.emailOptout ? (x.emailSkip
+          ? `<button type="button" class="mi-esk off" data-meskip="${u}/${id}" title="Toca para volver a programarlo">✉ No se le enviará email · Reactivar</button>`
+          : `<button type="button" class="mi-esk" data-meskip="${u}/${id}" title="Si por estrategia no conviene escribirle, toca para no enviarle">✉ Se le escribirá por email${x.contactedAt ? (Number(x.contactedAt) + 10*DAY > Date.now() ? ` el ${esc(fmtLocal(Number(x.contactedAt) + 10*DAY).split(",")[0])}` : " en el próximo envío") : ""} · No enviar</button>`) : ""}` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}</span>
       ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
         : `<span class="mi-ig">Abrir</span>${MICH.on ? "" : `<button type="button" class="mi-ic" data-mdone="${k}" aria-label="Marcar como contactado" title="Marcar como contactado">✓</button>`}`}
     </a>`; }).join("")}</div>`
@@ -4136,6 +4139,10 @@ $("miQ").addEventListener("input", e => { MICH.q = e.target.value; renderMich();
 $("miSeg").addEventListener("click", e => { const b = e.target.closest("[data-mif]"); if (b){ MICH.f = b.dataset.mif; schedule(); } });
 $("view-mich").addEventListener("click", e => {
   const ef = e.target.closest("[data-mief]"); if (ef){ e.preventDefault(); MICH.ef = ef.dataset.mief; return renderMich(); }
+  const sk = e.target.closest("[data-meskip]"); if (sk){ e.preventDefault(); e.stopPropagation();
+    const [u, id] = sk.dataset.meskip.split("/"), x = (S.vip[u]||{})[id]; if (!x) return;
+    const v = !x.emailSkip; x.emailSkip = v; renderMich(); quickToast(v ? "✓ No se le enviará email" : "✓ Se le escribirá por email");
+    db.doc(`meets/${u}/vip/${id}`).update({emailSkip:v, emailSkipBy:S.uid, emailSkipAt:Date.now()}).catch(() => { x.emailSkip = !v; renderMich(); quickToast("No se guardó"); }); return; }
   const ea = e.target.closest("[data-memail]"); if (ea){ e.preventDefault(); e.stopPropagation(); vipEmailAsk(ea.dataset.memail); return; }
   const bk = e.target.closest("[data-mbook]"); if (bk){ e.preventDefault(); e.stopPropagation(); return michBookOpen(bk.dataset.mbook); }
   const dn = e.target.closest("[data-mdone]"), un = e.target.closest("[data-mundo]"), tu = e.target.closest("[data-mtundo]");
@@ -4817,6 +4824,23 @@ function ttGroups(open, now){
       ${l.map(([uu,id,x]) => taskRow(uu, id, x, true, now)).join("")}</details>`; }).join("");
 }
 document.addEventListener("toggle", e => { const d = e.target; if (!d || !d.matches || !d.matches("details[data-ttp]")) return; if (d.open){ TT_OPEN.add(d.dataset.ttp); TT_SHUT.delete(d.dataset.ttp); } else { TT_OPEN.delete(d.dataset.ttp); TT_SHUT.add(d.dataset.ttp); if (TK_OPEN && TK_OPEN.startsWith(d.dataset.ttp + "/")) TK_OPEN = null; } }, true);
+/* Novedades: aviso único la próxima vez que abren la app (a quien le toca) */
+const UPD = {id:"2026-10-20-emails", for:u => roleOf(u)==="influencer" || u===((S.config||{}).headId) || (S.isOwner && u===S.uid),
+  title:"✉️ Novedad: emails a los que no cerraron",
+  html:`<p>Los influencers que Mich contactó por Instagram y <b>no agendaron meet</b> ahora reciben correos automáticos:</p>
+    <ol><li><b>Email 1</b> a los 10 días del contacto, si tienen email.</li><li><b>Email 2</b> 7 días después, en el mismo hilo, si no contestaron.</li>
+    <li>Si contestan, se detiene y le avisa al AM. Si piden baja, ya no se les escribe.</li></ol>
+    <p><b>Para ti, Mich:</b> en <b>Mi lista → Contactados</b> cada perfil con email dice <b>"Se le escribirá por email el (fecha)"</b>. Si al entrar a su perfil ves que por estrategia no nos conviene escribirle, toca <b>"No enviar"</b> y no le sale ningún correo. Lo puedes reactivar cuando quieras.</p>
+    <p class="mut small">También puedes filtrar Contactados por con o sin email y agregar el email desde "+ email". Salen máx. 20 correos al día por cuenta, de lunes a viernes de 9 am a 6 pm.</p>`};
+function updNotice(){
+  if (S.viewAs || !S.uid || $("updNote") || !UPD.for(S.uid)) return;
+  const me = (S.members||{})[S.uid]; if (!me || me.updSeen === UPD.id) return;
+  const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "updNote";
+  w.innerHTML = `<div class="bk mbk em-intro" role="dialog" aria-modal="true" aria-label="Novedades"><div class="bk-grab"></div><h3>${UPD.title}</h3>${UPD.html}
+    <div class="tk-acts"><button type="button" class="btn small primary" data-updok="1">Entendido</button></div></div>`;
+  document.body.appendChild(w);
+  w.addEventListener("click", e => { if (e.target !== w && !e.target.closest("[data-updok]")) return; me.updSeen = UPD.id; db.doc(`members/${S.uid}`).update({updSeen:UPD.id}).catch(() => {}); w.remove(); });
+}
 /* Aviso único al AM cuando el Head lo autoriza a mandar los emails desde su Gmail */
 function emailIntro(){
   if (S.viewAs || S.isLead || !S.uid || $("emIntro")) return;
