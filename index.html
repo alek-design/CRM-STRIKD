@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 21:26:09 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 21:30:59 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792531569">
+<link rel="stylesheet" href="/auth.css?v=1792531859">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792531569"></script>
+<script src="/claude-shim.js?v=1792531859"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1908,6 +1908,7 @@ function renderSettings(){
       ${S.isOwner ? setRow("🧭", "Organigrama y accesos", "Roles, quién reporta a quién y dar de alta al equipo", `<button type="button" class="btn small" data-set="org">Abrir</button>`) : ""}
       ${!$("xlsBtn").hidden ? setRow("📊", "Descargar Excel", "Todos los meets y su avance en un archivo", `<button type="button" class="btn small" data-set="xls">Descargar</button>`) : ""}
     </section>${(() => { const r = rulesHtml(); return r ? `<h3 class="set-h">Tareas recurrentes</h3><div class="set-rules">${r}</div>` : ""; })()}${mailSetHtml()}` : ""}
+    ${!S.isLead && tkInfl() ? (() => { const r = rulesHtml(); return r ? `<h3 class="set-h">Tareas recurrentes</h3><div class="set-rules">${r}</div>` : ""; })() : ""}
     ${!S.isLead && !S.viewAs && ((S.roles||{})[S.uid]||{}).canEmail ? `<h3 class="set-h">Emails automáticos</h3><section class="set-card">${mailMineRow()}</section>` : ""}
     ${A ? `<h3 class="set-h">Cuenta</h3><section class="set-card">
       ${setRow("🔑", "Contraseña", "Cámbiala cuando quieras", `<button type="button" class="btn small" data-set="pwd">Cambiar</button>`)}
@@ -4374,7 +4375,7 @@ const TK_ST = {todo:"Por hacer", progress:"En progreso", review:"Esperando aprob
 const tkSt = x => x.status || (x.doneAt ? "done" : "todo");
 const TKD = {}; let TK_OPEN = "";
 const TK_RULES = {}; let TK_RULES_SUB = null;
-function tkRulesSub(){ if (TK_RULES_SUB || !S.isLead || !db) return; TK_RULES_SUB = db.collection("taskRules").onSnapshot(sn => { Object.keys(TK_RULES).forEach(k => delete TK_RULES[k]); sn.docs.forEach(d => TK_RULES[d.id] = d.data()); schedule(); }, () => {}); }
+function tkRulesSub(){ if (TK_RULES_SUB || !(S.isLead || tkInfl()) || !db) return; TK_RULES_SUB = db.collection("taskRules").onSnapshot(sn => { Object.keys(TK_RULES).forEach(k => delete TK_RULES[k]); sn.docs.forEach(d => TK_RULES[d.id] = d.data()); schedule(); }, () => {}); }
 // metas que se miden solas: cuenta lo que la persona hizo entre que se le dio la tarea y la entrega
 const isUgc = v => v && v.kind === "ugc";
 const tkListMetric = m => m==="mich" || m==="ugc";
@@ -4521,8 +4522,8 @@ function taskOpen(){
       <label class="f">Para cuándo<input type="date" id="tkDue" value="${today}"></label>
       <label class="f">Publicar<select id="tkPub"><option value="">Ahora</option><option value="later">Programar para después</option></select></label>
       <label class="f" id="tkPubL" hidden>Se publica el<input type="datetime-local" id="tkPubAt"></label>
-      <label class="f"${asg ? " hidden" : ""}>Se repite<select id="tkRep"><option value="">No se repite</option><option value="w">Cada semana (mismo día de entrega)</option></select></label>
-      <label class="f"${asg ? " hidden" : ""}>Meta que se mide sola<select id="tkMetric"><option value="">Ninguna</option><option value="mich">Candidatos para la Lista de Mich</option><option value="ugc">Creadores para la Lista UGC</option></select></label>
+      <label class="f"${asg && !tkInfl() ? " hidden" : ""}>Se repite<select id="tkRep"><option value="">No se repite</option><option value="w">Cada semana (mismo día de entrega)</option></select></label>
+      <label class="f"${asg && !tkInfl() ? " hidden" : ""}>Meta que se mide sola<select id="tkMetric"><option value="">Ninguna</option><option value="mich">Candidatos para la Lista de Mich</option><option value="ugc">Creadores para la Lista UGC</option></select></label>
       <label class="f" id="tkGoalL" hidden>¿Cuántos?<input type="number" id="tkGoal" value="40" min="1" max="500" inputmode="numeric"></label>
       <div class="f full tk-new-file"><span>Imágenes o archivos (opcional)</span>
         <label class="tk-pick" id="tkPick"><input type="file" id="tkFile" accept="image/*,application/pdf" multiple hidden><span id="tkPickL">📷 Agregar imágenes o PDF</span></label>
@@ -5104,11 +5105,11 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
 });
 // Tareas que se repiten cada semana: a quién le llega cada una (se puede quitar a alguien) y dejar de repetirlas
 function rulesHtml(){
-  if (!adminMode() || S.viewAs) return "";
+  if ((!adminMode() && !tkInfl()) || S.viewAs) return "";
   const DOWS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
   const rules = Object.entries(TK_RULES).filter(([,r]) => r && r.active !== false && (S.isOwner || r.by === S.uid));
   if (!rules.length) return "";
-  const ppl = r => { const head = (S.config||{}).headId; return r.to === "__team" ? Object.keys(S.members||{}).filter(u => u!==head && (roleOf(u)==="am" || !roleOf(u)) && (S.isOwner || mgrOf(u)===r.by || !mgrOf(u))) : (Array.isArray(r.to) ? r.to : []); };
+  const ppl = r => { const head = (S.config||{}).headId; return r.to === "__team" ? Object.keys(S.members||{}).filter(u => u!==head && (roleOf(u)==="am" || !roleOf(u)) && (S.isOwner || roleOf(r.by)==="influencer" || mgrOf(u)===r.by || !mgrOf(u))) : (Array.isArray(r.to) ? r.to : []); };
   return `<section class="pg2 tt-rules"><div class="pg2-card">${rules.map(([id, r]) => { const ex = new Set(r.exclude || []);
     return `<div class="rl"><div class="rl-h"><b>${esc(r.title)}</b><small>Cada ${esc(DOWS[Number(r.weekday)]||"semana")} · 6 pm${tkListMetric(r.metric) && r.goal ? ` · meta ${r.goal}${r.metric==="ugc" ? " UGC" : ""}` : ""}</small></div>
       <div class="rl-p">${ppl(r).map(u => `<button type="button" class="rl-u${ex.has(u) ? " off" : ""}" data-rlu="${esc(id)}|${esc(u)}" title="${ex.has(u) ? "No le llega · toca para volver a incluir" : "Le llega · toca para quitar"}">${ex.has(u) ? "" : "✓ "}${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</button>`).join("")}</div>
