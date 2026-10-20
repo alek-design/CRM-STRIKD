@@ -5073,9 +5073,10 @@ function renderReport(){
   if (michMode()) return renderMichReport(box);
   if (!adminMode()) return;
   const now = Date.now(), today = new Date(now - OFF).toISOString().slice(0,10), day = RPT.day || today;
-  const from = Date.parse(day + "T00:00:00-05:00"), to = from + DAY, inD = t => { t = Number(t)||0; return t >= from && t < to; };
+  // el lunes el reporte incluye el fin de semana (sábado y domingo no hay reporte)
+  const isMon = new Date(day+"T12:00:00Z").getUTCDay()===1, to = Date.parse(day + "T00:00:00-05:00") + DAY, from = to - (isMon ? 3 : 1)*DAY, inD = t => { t = Number(t)||0; return t >= from && t < to; };
   const isToday = day===today, team = Object.keys(S.team||{}), first = u => String(nameOf(S.ps||{}, u)).split(" (")[0].split(" ")[0];
-  const dl = (() => { const d = new Date(from); return `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(day+"T12:00:00Z").getUTCDay()]} ${Number(day.slice(8))} ${MONTHS[Number(day.slice(5,7))-1]}`; })();
+  const dl = (() => { const base = `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(day+"T12:00:00Z").getUTCDay()]} ${Number(day.slice(8))} ${MONTHS[Number(day.slice(5,7))-1]}`; if (!isMon) return base; const sat = new Date(from - OFF + 12*3600e3); return `Sáb ${sat.getUTCDate()} a lun ${Number(day.slice(8))} ${MONTHS[Number(day.slice(5,7))-1]} (incluye fin de semana)`; })();
   // también cuentan los prospectos que están a nombre del Head, el Manager o la Influencer (si tuvieron movimiento ese día)
   const ppl = [...new Set(team.concat(Object.keys(S.all||{}), Object.keys(S.pts||{})))];
   const per = ppl.map(u => {
@@ -5104,7 +5105,7 @@ function renderReport(){
       <div class="rp-pn">${k(fmtMin(actOf(r.u, day)), "activo")}${(() => { const p = rsD && rsD.people && rsD.people[r.u]; return p && p.n ? k(fmtRt(p.med), "respuesta WA", p.med > 30*60e3 ? "bad" : "") : ""; })()}${k(r.reg, "agendó")}${k(r.tom, "pitches")}${k(r.gus + r.apr + r.pw + r.pub, "avances")}${r.late!==null ? k(r.late, "atrasados", r.late ? "bad" : "") : ""}${k(r.tkDone, "tareas hechas")}${r.tkRev ? k(r.tkRev, "por aprobar") : ""}</div></div>`;
   const h = `<div class="rp">
     <div class="rp-top"><div><h2>Reporte del día</h2><p class="sub">${esc(dl)}${S.isOwner && !teamScoped() ? " · todo el equipo" : " · tu equipo"}</p></div>
-      <div class="tld-nav"><button type="button" data-rpday="-1" aria-label="Día anterior">‹</button><em>${isToday ? "Hoy" : esc(dl.split(" ")[0])}</em><button type="button" data-rpday="1" aria-label="Día siguiente"${isToday ? " disabled" : ""}>›</button></div></div>
+      <div class="tld-nav"><button type="button" data-rpday="-1" aria-label="Día anterior">‹</button><em>${isToday ? "Hoy" : esc(isMon ? "Lun" : dl.split(" ")[0])}</em><button type="button" data-rpday="1" aria-label="Día siguiente"${isToday ? " disabled" : ""}>›</button></div></div>
     ${sec("Meets y pitches", `<div class="tf-kpis rp-k">${k(sum("reg"), "agendados")}${k(sum("tom"), "pitches tomados")}${k(sum("ns"), "no se conectaron", sum("ns") ? "bad" : "")}${k(next.length, "pitches mañana")}</div>
       ${next.length ? `<div class="pg2-card rp-list">${next.slice(0, 8).map(e => `<div><span>${esc(String(e.at).slice(11,16))}</span>${esc(String(e.label).replace(/^Pitch · /,""))}<small>${esc(first(e.who))}</small></div>`).join("")}${next.length > 8 ? `<div class="mut">+${next.length-8} más</div>` : ""}</div>` : ""}`)}
     ${sec("Avance del journey", `<div class="tf-kpis rp-k">${k(sum("gus"), "les gustó")}${k(sum("apr"), "skeleton aprobado")}${k(sum("pw"), "programa y web")}${k(sum("pub"), "publicados", sum("pub") ? "on" : "")}</div>${sum("lost") ? `<p class="mut small">${sum("lost")} marcado${sum("lost")===1?"":"s"} como perdido${sum("lost")===1?"":"s"}.</p>` : ""}`)}
@@ -5120,8 +5121,9 @@ function renderReport(){
 /* Reporte del día de Influencer Outreach (Mich): su lista, sus contactos y sus meets */
 function renderMichReport(box){
   const now = Date.now(), today = new Date(now - OFF).toISOString().slice(0,10), day = RPT.day || today, isToday = day===today;
-  const from = Date.parse(day + "T00:00:00-05:00"), to = from + DAY, inD = t => { t = Number(t)||0; return t >= from && t < to; };
-  const dl = `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(day+"T12:00:00Z").getUTCDay()]} ${Number(day.slice(8))} ${MONTHS[Number(day.slice(5,7))-1]}`;
+  // el lunes el reporte incluye el fin de semana (sábado y domingo no hay reporte)
+  const isMon = new Date(day+"T12:00:00Z").getUTCDay()===1, to = Date.parse(day + "T00:00:00-05:00") + DAY, from = to - (isMon ? 3 : 1)*DAY, inD = t => { t = Number(t)||0; return t >= from && t < to; };
+  const dl = isMon ? `Sáb ${new Date(from - OFF + 12*3600e3).getUTCDate()} a lun ${Number(day.slice(8))} ${MONTHS[Number(day.slice(5,7))-1]} (incluye fin de semana)` : `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(day+"T12:00:00Z").getUTCDay()]} ${Number(day.slice(8))} ${MONTHS[Number(day.slice(5,7))-1]}`;
   const rows = michRows().map(r => r[2]), me = meId();
   const cont = rows.filter(x => x.contactedBy===me && inD(x.contactedAt)).length;
   const ag = rows.filter(x => x.status==="agendo" && inD(x.statusAt)).length, intr = rows.filter(x => x.status==="interesado" && inD(x.statusAt)).length;
@@ -5132,7 +5134,7 @@ function renderMichReport(box){
   const k = (n, l, cls) => `<span class="${cls||""}"><b>${n}</b>${l}</span>`;
   const h = `<div class="rp">
     <div class="rp-top"><div><h2>Tu reporte</h2><p class="sub">${esc(dl)}</p></div>
-      <div class="tld-nav"><button type="button" data-rpday="-1" aria-label="Día anterior">‹</button><em>${isToday ? "Hoy" : esc(dl.split(" ")[0])}</em><button type="button" data-rpday="1" aria-label="Día siguiente"${isToday ? " disabled" : ""}>›</button></div></div>
+      <div class="tld-nav"><button type="button" data-rpday="-1" aria-label="Día anterior">‹</button><em>${isToday ? "Hoy" : esc(isMon ? "Lun" : dl.split(" ")[0])}</em><button type="button" data-rpday="1" aria-label="Día siguiente"${isToday ? " disabled" : ""}>›</button></div></div>
     <section class="rp-sec"><h3 class="sec-h">Tu lista</h3><div class="tf-kpis rp-k">${k(cont, "contactaste")}${k(intr, "interesados")}${k(ag, "agendaron meet", ag ? "on" : "")}${k(nuevos, "nuevos en tu lista")}</div>
       <p class="mut small">Estuviste activa ${fmtMin(Math.max(actOf(me, day), day===actDay() ? ACT.min : 0))} en la app · ${pend} perfil${pend===1?"":"es"} por contactar${qt ? qt.until ? ` · en pausa hasta las ${esc(fmtLocal(qt.until).split(", ")[1]||"")}` : ` · te quedan ${qt.left} de ${MI_MAX} en esta tanda` : ""}.</p></section>
     <section class="rp-sec"><h3 class="sec-h">Tus meets de mañana <b>${next.length}</b></h3>${next.length ? `<div class="pg2-card rp-list">${next.map(e => `<div><span>${esc(String(e.at).slice(11,16))}</span>${esc(String(e.label).replace(/^Pitch · /,""))}</div>`).join("")}</div>` : `<p class="mut small">No tienes meets mañana.</p>`}</section>
