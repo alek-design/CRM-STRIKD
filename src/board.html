@@ -53,6 +53,7 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.own-sel{font:inherit;font-size:12.5px;font-weight:600;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);max-width:180px}
 .cal-h.pick{cursor:pointer}.cal-h.pick:hover{text-decoration:underline}.pl-today{margin-left:10px;font-size:13px}
 .tt-p + .tt-p{border-top:1px solid var(--line)}.tt-p > summary{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;list-style:none;font-size:14.5px}.tt-p > summary::-webkit-details-marker{display:none}
 .tt-p > summary::after{content:"›";color:var(--muted);font-size:16px;transition:transform .15s}.tt-p[open] > summary::after{transform:rotate(90deg)}
@@ -2105,6 +2106,33 @@ function tally(week){
 const PMULT = {1:1, 2:2.5, 3:5};
 const multOf = p => PMULT[Number(p)] || 1;
 const fmtPts = x => { const v = Math.round((Number(x)||0)*10)/10; return String(v).replace(".", ","); };
+// Head: cambiar a quién se le atribuye un prospecto (y sus puntos)
+function ownerChip(uid, id){
+  if (!(S.isOwner && !S.viewAs)) return `<span class="chip muted">${esc(nameOf(S.ps,uid))}</span>`;
+  const ppl = [...new Set(Object.keys(S.members||{}).concat((S.config && S.config.headId) ? [S.config.headId] : [], [uid]))];
+  return `<select class="own-sel" data-move="${uid}__${id}" aria-label="A nombre de" title="A quién se le atribuye (y sus puntos)">${ppl.map(u => `<option value="${u}"${u===uid?" selected":""}>${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}${u===S.uid?" (yo)":""}</option>`).join("")}</select>`;
+}
+async function moveProspect(oldU, id, newU){
+  const m = (S.allEvery[oldU]||{})[id] || (S.all[oldU]||{})[id] || (oldU===S.uid ? S.mine[id] : null);
+  if (!m || oldU===newU) return;
+  const now = Date.now();
+  await db.doc(`meets/${newU}/items/${id}`).set({...m, movedFrom:oldU, movedAt:now, movedBy:S.uid});
+  const v = S.validations[id]; if (v) await db.doc(`validations/${id}`).update({uid:newU}).catch(() => {});
+  for (const ms of Object.keys(PTS)){ const e = ((S.pts||{})[oldU]||{})[`${id}_${ms}`];
+    if (e){ await db.doc(`points/${newU}/ev/${id}_${ms}`).set({...e, uid:newU}).catch(() => {}); await db.doc(`points/${oldU}/ev/${id}_${ms}`).delete().catch(() => {}); } }
+  const keys = [igKey(m.profile||""), m.email ? "email:" + String(m.email).toLowerCase().replace(/[^a-z0-9._@+-]/g,"") : ""].filter(Boolean);
+  for (const k of keys){ try{ const d = await db.doc(`prospectIndex/${k}`).get(); if (d.exists && d.data().uid===oldU && d.data().mid===id) await db.doc(`prospectIndex/${k}`).set({...d.data(), uid:newU}); }catch(_){} }
+  await db.doc(`meets/${oldU}/items/${id}`).delete();
+  if (S.allEvery[oldU]) delete S.allEvery[oldU][id]; ((S.allEvery[newU] ||= {}))[id] = {...m, movedFrom:oldU};
+  scopeAll(); syncAutoV();
+}
+document.addEventListener("change", async e => { const sel = e.target.closest("[data-move]"); if (!sel) return;
+  const [oldU, id] = sel.dataset.move.split("__"), newU = sel.value, nm = String(nameOf(S.ps||{}, newU)).split(" (")[0];
+  if (!confirm(`¿Pasar este prospecto a ${nm}? Sus puntos (de esta y otras semanas) se van con él.`)){ sel.value = oldU; return; }
+  sel.disabled = true;
+  try{ await moveProspect(oldU, id, newU); PICK.dayPlan = null; quickToast(`✓ Ahora está a nombre de ${nm}`); }
+  catch(_){ sel.value = oldU; quickToast("No se pudo cambiar. Intenta otra vez."); }
+  sel.disabled = false; schedule(); });
 function award(uid, id, ms, at){
   const m = (S.all[uid]||{})[id] || (uid===S.uid ? S.mine[id] : null) || {};
   const mult = multOf(m.perfil);
@@ -3067,7 +3095,7 @@ function detailHtml(uid, id, m, isAdmin, cid){
   return `<div class="detail">
     <div class="d-head">
       <div class="d-id">
-        <div class="d-tags"><span class="chip stage">${esc(sname)}</span>${d?`<span class="sema ${d.cls}"><i></i>${SEMA[d.cls]}</span>`:""}${isAdmin?`<span class="chip muted">${esc(nameOf(S.ps,uid))}</span>`:""}</div>
+        <div class="d-tags"><span class="chip stage">${esc(sname)}</span>${d?`<span class="sema ${d.cls}"><i></i>${SEMA[d.cls]}</span>`:""}${isAdmin?ownerChip(uid, id):""}</div>
         <h3 class="d-name">${perfilIcon(m, true)}${esc(m.prospect)}</h3>
         <div class="pc-co">${[m.role, m.channel].filter(Boolean).map(esc).join(" · ")}</div>
       </div>
@@ -3754,7 +3782,7 @@ function renderPlan(){
     const t = first(uid,id,m), d = t ? dueInfo(t.due, now) : null;
     const prof = safeUrl(m.profile), link = safeUrl(m.link);
     return `<div class="detail pl-x">
-      <div class="pl-xh"><div><div class="d-tags"><span class="chip stage">${esc(stageOf(id,m).t)}</span>${admin?`<span class="chip muted">${esc(nameOf(S.ps,uid))}</span>`:""}</div>
+      <div class="pl-xh"><div><div class="d-tags"><span class="chip stage">${esc(stageOf(id,m).t)}</span>${admin?ownerChip(uid, id):""}</div>
         <h3 class="d-name">${perfilIcon(m, true)}${esc(m.prospect)}</h3>${m.role?`<div class="pc-co">${esc(m.role)}</div>`:""}</div>
         <div class="d-acts">${link?`<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">Abrir meet</a>`:""}${prof?`<a class="btn ghost" href="${esc(prof)}" target="_blank" rel="noopener">Ver perfil</a>`:""}<button type="button" class="btn small" data-remnew="1" data-remref="${uid}__${id}" data-remname="${esc(m.prospect||"")}">⏰ Recordatorio</button><button class="btn small" data-pick="${key}">Cerrar</button></div></div>
       ${t ? `<div class="d-next ${d.cls}"><div class="d-next-h"><span class="eyb">Lo que sigue</span><span class="sema ${d.cls}"><i></i>${d.txt}</span></div>
