@@ -1,7 +1,7 @@
 // Google regresa aquí con el permiso: guardamos el token y volvemos a la página.
 const { env, withPg, readState, redirectUri } = require("../../lib/google");
 module.exports = async (req, res) => {
-  const st = readState(req.query.state) || "", extra = st.endsWith("~x"), uid = st.replace(/~x$/, "");
+  const st = readState(req.query.state) || "", extra = st.endsWith("~x"), gm = (st.match(/~(gg|gs)$/) || [])[1], uid = st.replace(/~(x|gg|gs)$/, "");
   if (!uid) return res.redirect(302, "/?google=error");
   if (req.query.error || !req.query.code) return res.redirect(302, "/?google=cancelado");
   const e = env();
@@ -11,6 +11,11 @@ module.exports = async (req, res) => {
   if (!r.ok || !j.refresh_token) return res.redirect(302, "/?google=error");
   let email = "";
   try{ email = JSON.parse(Buffer.from(String(j.id_token).split(".")[1], "base64url").toString()).email || ""; }catch(_){}
+  if (gm){ // Gmail para los emails automáticos
+    if (!email) return res.redirect(302, "/?google=error");
+    await withPg(c => require("../../lib/gmail").save(c, gm === "gg" ? "general" : uid, j, email.toLowerCase()));
+    return res.redirect(302, "/?google=gmail");
+  }
   if (extra){
     // otra cuenta (p. ej. la de otro trabajo): se guarda aparte y se agrega a "Otros calendarios" como conectada directo
     if (!email) return res.redirect(302, "/?google=error");

@@ -39,7 +39,7 @@
     headerChip();
     if (me.role === "head" && localStorage.getItem("strikd_cron") !== "2"){ fetch("/api/push-cron", {method:"POST", headers:{authorization:"Bearer " + session.access_token}}).then(r => { if (r.ok) localStorage.setItem("strikd_cron", "2"); }).catch(() => {}); }
     const gq = new URLSearchParams(location.search).get("google");
-    if (gq){ history.replaceState(null, "", location.pathname); if (gq === "extra") setTimeout(() => alert("✓ Cuenta conectada. Sus eventos ya salen en tu agenda con su título y link de Meet."), 300); else if (gq !== "ok") setTimeout(() => alert(gq === "cancelado" ? "No se conectó Google Calendar (cancelaste el permiso)." : "No se pudo conectar Google Calendar. Intenta de nuevo."), 300); }
+    if (gq){ history.replaceState(null, "", location.pathname); if (gq === "extra") setTimeout(() => alert("✓ Cuenta conectada. Sus eventos ya salen en tu agenda con su título y link de Meet."), 300); else if (gq === "gmail") setTimeout(() => alert("✓ Gmail conectado para los emails automáticos."), 300); else if (gq !== "ok") setTimeout(() => alert(gq === "cancelado" ? "No se conectó Google Calendar (cancelaste el permiso)." : "No se pudo conectar Google Calendar. Intenta de nuevo."), 300); }
   })();
   let google = {};
 
@@ -384,6 +384,11 @@
     if (!r.ok) throw new Error(j.error || "No se pudo invitar");
     return j;
   };
+  /* ---------- Gmail para emails automáticos ---------- */
+  window.STRIKD_GMAIL_STATUS = async () => { const t = (await sb.auth.getSession()).data.session.access_token; const r = await fetch("/api/gmail", {headers:{authorization:"Bearer " + t}}); return r.ok ? r.json() : {}; };
+  window.STRIKD_GMAIL_CONNECT = async (kind) => { const t = (await sb.auth.getSession()).data.session.access_token; location.href = "/api/google/connect?token=" + encodeURIComponent(t) + "&gmail=" + (kind === "general" ? "general" : "me"); };
+  window.STRIKD_GMAIL_DISCONNECT = async (kind) => { const t = (await sb.auth.getSession()).data.session.access_token;
+    await fetch("/api/gmail", {method:"POST", headers:{authorization:"Bearer " + t, "content-type":"application/json"}, body:JSON.stringify({disconnect:kind === "general" ? "general" : "me"})}); };
   window.STRIKD_RESETPW = async (uid) => {
     const { data } = await sb.auth.getSession();
     const r = await fetch("/api/invite", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify({resetFor:uid})});

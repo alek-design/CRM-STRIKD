@@ -6,8 +6,11 @@ module.exports = async (req, res) => {
   const me = await userFromReq(req);
   if (!me) return res.status(401).send("Sesión no válida. Vuelve a entrar a la página.");
   const x = req.query.extra !== undefined;
+  // Gmail para emails automáticos: "general" (solo el Head) o el propio del AM autorizado
+  const g = req.query.gmail === "general" ? (me.role === "head" ? "~gg" : "") : req.query.gmail === "me" ? "~gs" : "";
+  if (req.query.gmail === "general" && me.role !== "head") return res.status(403).send("Solo el Head conecta el correo general.");
   const q = new URLSearchParams({client_id:e.gid, redirect_uri:redirectUri(req), response_type:"code", access_type:"offline", prompt:"select_account consent", include_granted_scopes:"true",
-    scope:"openid email https://www.googleapis.com/auth/calendar.events", state:makeState(me.id + (x ? "~x" : ""))});
+    scope:g ? require("../../lib/gmail").SCOPES : "openid email https://www.googleapis.com/auth/calendar.events", state:makeState(me.id + (g || (x ? "~x" : "")))});
   // cuenta extra: el nombre corto viaja en una cookie de 15 min
   if (x) res.setHeader("set-cookie", `gx_name=${encodeURIComponent(String(req.query.extra).slice(0, 16))}; Path=/api/google; Max-Age=900; HttpOnly; Secure; SameSite=Lax`);
   // sin login_hint: Google muestra el selector de cuentas y cada quien elige con cuál conectar (p. ej. su correo de STRIKD)

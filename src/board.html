@@ -53,6 +53,10 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.ml .ml-how{font-size:13px;color:var(--muted);margin:2px 2px 10px;line-height:1.45}.ml-st{display:grid;gap:6px;margin-top:10px}.ml-sh{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:6px}
+.ml-t{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}.ml-t.off{opacity:.55}.ml-t div{display:grid;min-width:0}.ml-t small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis}.ml-t span{display:flex;gap:6px;flex:none}
+.ml-form{display:grid;gap:8px;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:6px}.ml-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ml-form textarea{font:inherit;font-size:15px}
+@media (max-width:520px){.ml-row{grid-template-columns:1fr}.ml-t{flex-wrap:wrap}}
 .tt-rules{margin-top:14px}.rl{padding:12px 14px;display:grid;gap:8px}.rl + .rl{border-top:1px solid var(--line)}.rl-h{display:grid}.rl-h small{color:var(--muted);font-size:12.5px}
 .rl-p{display:flex;flex-wrap:wrap;gap:6px}.rl-u{font:inherit;font-size:13px;font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--fg);background:var(--fg);color:var(--bg);cursor:pointer}
 .rl-u.off{background:transparent;color:var(--muted);border-color:var(--line);text-decoration:line-through}.rl .linkbtn{justify-self:start;font-size:12.5px}
@@ -1847,7 +1851,8 @@ function renderSettings(){
     ${S.isLead && !S.viewAs ? `<h3 class="set-h">Equipo</h3><section class="set-card">
       ${S.isOwner ? setRow("🧭", "Organigrama y accesos", "Roles, quién reporta a quién y dar de alta al equipo", `<button type="button" class="btn small" data-set="org">Abrir</button>`) : ""}
       ${!$("xlsBtn").hidden ? setRow("📊", "Descargar Excel", "Todos los meets y su avance en un archivo", `<button type="button" class="btn small" data-set="xls">Descargar</button>`) : ""}
-    </section>${(() => { const r = rulesHtml(); return r ? `<h3 class="set-h">Tareas recurrentes</h3><div class="set-rules">${r}</div>` : ""; })()}` : ""}
+    </section>${(() => { const r = rulesHtml(); return r ? `<h3 class="set-h">Tareas recurrentes</h3><div class="set-rules">${r}</div>` : ""; })()}${mailSetHtml()}` : ""}
+    ${!S.isLead && !S.viewAs && ((S.roles||{})[S.uid]||{}).canEmail ? `<h3 class="set-h">Emails automáticos</h3><section class="set-card">${mailMineRow()}</section>` : ""}
     ${A ? `<h3 class="set-h">Cuenta</h3><section class="set-card">
       ${setRow("🔑", "Contraseña", "Cámbiala cuando quieras", `<button type="button" class="btn small" data-set="pwd">Cambiar</button>`)}
       ${S.isOwner && window.STRIKD_CLEANUP ? setRow("🧹", "Datos de ejemplo", CLN.res ? (CLN.res.nada ? "Ya no hay datos de ejemplo. Todo limpio." : CLN.res.borrados ? `Listo: se borraron ${CLN.res.borrados} registros de ${CLN.res.ejemplo} personas de ejemplo.` : `Hay ${CLN.res.ejemplo} personas de ejemplo con ${CLN.res.docs} registros (prospectos, tareas, puntos…). Los usuarios reales no se tocan.`) : "Borra las personas \"(ejemplo)\" y todo lo suyo", CLN.res && !CLN.res.nada && !CLN.res.borrados ? `<button type="button" class="btn small bad" data-set="cln-go">${CLN.armed ? "¿Seguro? Borrar" : "Borrar todo"}</button>` : CLN.res ? "" : `<button type="button" class="btn small" data-set="cln-check">${CLN.busy ? "Revisando…" : "Revisar"}</button>`) : ""}
@@ -3894,7 +3899,9 @@ function renderPlan(){
         <span class="mconf-acts"><button type="button" class="btn small" data-mcopy-conf="${esc(msg)}">Copiar mensaje</button>${prof ? `<a class="btn small ghost" href="${esc(prof)}" target="_blank" rel="noopener">Instagram</a>` : ""}<button type="button" class="btn small primary" data-miconf="${c.u}/${c.id}">✓ Confirmó</button></span></div>`; }).join("")}</div></section>` : "";
   const rems = remList().filter(r => r.kind!=="event"), remDue = rems.filter(r => !r.done && r.at <= eod).sort((a,b) => a.at - b.at), remNext = rems.filter(r => !r.done && r.at > eod).sort((a,b) => a.at - b.at);
   // 10 días después de que Mich lo contactó sin cerrar el meet: al AM que lo propuso le toca escribirle por email
-  const emDue = michMode() || admin ? [] : Object.entries(vipItems(meId()) || {}).filter(([,x]) => x && x.status==="contactado" && !x.meetId && !x.emailedAt && (x.contactedAt||x.statusAt||0) && now >= (x.contactedAt||x.statusAt) + 10*DAY)
+  // si los emails automáticos están listos, el AM solo ve los que no tienen email (para conseguirlo)
+  const emAuto = !!(S.config && S.config.emailReady);
+  const emDue = michMode() || admin ? [] : Object.entries(vipItems(meId()) || {}).filter(([,x]) => x && x.status==="contactado" && !x.meetId && !x.emailedAt && !x.email1At && !x.emailOptout && (!emAuto || !x.email) && (x.contactedAt||x.statusAt||0) && now >= (x.contactedAt||x.statusAt) + 10*DAY)
     .sort((a,b) => (a[1].contactedAt||0) - (b[1].contactedAt||0));
   const emHtml = emDue.length ? `<section class="pg2"><div class="pg2-h"><span>Mándales email</span><b>${emDue.length}</b></div><div class="pg2-card">${emDue.map(([id,x]) => {
       const k = `${meId()}/${id}`, d0 = Math.floor((now - (x.contactedAt||x.statusAt))/DAY);
@@ -4091,7 +4098,7 @@ function renderMich(){
     const locked = qt.until && !done(x);
     return `<a class="mi-row${done(x)?" done":""}${locked?" locked":""}" href="${esc(locked ? "#" : (url||"#"))}" target="_blank" rel="noopener" data-mgo="${k}">
       <span class="ck-av mi-av">${ini(x.prospect)}${h?`<img src="https://unavatar.io/instagram/${encodeURIComponent(h)}?fallback=false" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>
-      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}</span>` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}</span>
+      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}${x.emailOptout ? " · pidió baja" : x.emailRepliedAt ? " · contestó el email" : x.email2At ? " · 2 emails enviados" : x.email1At ? " · email 1 enviado" : ""}</span>` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}</span>
       ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
         : `<span class="mi-ig">Abrir</span>${MICH.on ? "" : `<button type="button" class="mi-ic" data-mdone="${k}" aria-label="Marcar como contactado" title="Marcar como contactado">✓</button>`}`}
     </a>`; }).join("")}</div>`
@@ -4650,7 +4657,8 @@ function orgCtl(uid){
   return `<div class="org-ctl">
     <select data-orgrole="${uid}" aria-label="Rol">${["am","manager","influencer"].map(k => `<option value="${k}"${r===k?" selected":""}>${ROLES[k].title}</option>`).join("")}</select>
     ${r==="manager" ? `<input type="email" data-orgmail="${uid}" placeholder="Email para invitaciones de meet" value="${esc((S.roles[uid]||{}).inviteEmail||"")}" aria-label="Email del team leader para invitaciones">` : ""}
-    ${r==="am" && uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgassign="${uid}"${(S.roles[uid]||{}).canAssign ? " checked" : ""}> Puede asignar tareas a otros AM</label>` : ""}
+    ${r==="am" && uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgassign="${uid}"${(S.roles[uid]||{}).canAssign ? " checked" : ""}> Puede asignar tareas a otros AM</label>
+      <label class="org-chk"><input type="checkbox" data-orgemail="${uid}"${(S.roles[uid]||{}).canEmail ? " checked" : ""}> Los emails a sus influencers salen de su Gmail</label>` : ""}
     ${r==="am" && mgrs.length ? `<select data-orgmgr="${uid}" aria-label="Su manager"><option value="">Manager: cualquiera</option>${mgrs.map(m => `<option value="${m}"${mgrOf(uid)===m?" selected":""}>Manager: ${esc(nameOf(S.ps||{}, m))}</option>`).join("")}</select>` : ""}
   </div>`;
 }
@@ -4687,6 +4695,10 @@ $("orgBox").addEventListener("change", async e => {
   const em = e.target.closest("[data-orgmail]");
   if (em && S.isOwner){ const v = em.value.trim(); if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){ em.setCustomValidity("Revisa el email"); em.reportValidity(); return; } em.setCustomValidity("");
     const uid = em.dataset.orgmail; try{ await db.doc(`roles/${uid}`).set({...(S.roles[uid]||{role:"manager"}), inviteEmail:v, updatedAt:Date.now()}); }catch(ex){} return; }
+  const oe = e.target.closest("[data-orgemail]");
+  if (oe && S.isOwner){ const uid = oe.dataset.orgemail, cur = S.roles[uid] || {}; oe.disabled = true;
+    try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canEmail:oe.checked, updatedAt:Date.now()}); S.roles[uid] = {...cur, role:cur.role || "am", canEmail:oe.checked}; quickToast(oe.checked ? "✓ Autorizado: que conecte su Gmail en Ajustes" : "Sus emails saldrán del correo general"); }catch(ex){ oe.checked = !oe.checked; quickToast("No se guardó"); }
+    oe.disabled = false; return; }
   const oa = e.target.closest("[data-orgassign]");
   if (oa && S.isOwner){ const uid = oa.dataset.orgassign, cur = S.roles[uid] || {}; oa.disabled = true;
     try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canAssign:oa.checked, updatedAt:Date.now()}); (S.roles[uid] = {...cur, role:cur.role || "am", canAssign:oa.checked}); quickToast(oa.checked ? "✓ Ya puede asignar tareas" : "Ya no puede asignar tareas"); }catch(ex){ oa.checked = !oa.checked; quickToast("No se guardó"); }
@@ -4804,6 +4816,74 @@ function ttGroups(open, now){
       ${l.map(([uu,id,x]) => taskRow(uu, id, x, true, now)).join("")}</details>`; }).join("");
 }
 document.addEventListener("toggle", e => { const d = e.target; if (!d || !d.matches || !d.matches("details[data-ttp]")) return; if (d.open){ TT_OPEN.add(d.dataset.ttp); TT_SHUT.delete(d.dataset.ttp); } else { TT_OPEN.delete(d.dataset.ttp); TT_SHUT.add(d.dataset.ttp); if (TK_OPEN && TK_OPEN.startsWith(d.dataset.ttp + "/")) TK_OPEN = null; } }, true);
+/* ---------- Emails automáticos a influencers que no cerraron (Lista de Mich) ----------
+   Paso 1: 10 días después de que Mich lo contactó sin meet. Paso 2: 7 días después, en el mismo hilo, si no contestó.
+   Sale del Gmail del AM si está autorizado y conectado; si no, del correo general. Máx. 20 por cuenta al día, L–V 9 am–6 pm. */
+const GM = {st:null, at:0, loading:false, tf:null, err:""};
+const MAIL_DEF = [
+  {step:1, name:"Directo", subject:"{nombre}, tu propia app de entrenamiento", body:"Hola {nombre}:\n\nHace unos días te escribimos por Instagram. Te lo resumo por aquí: en STRIKD te ayudamos a lanzar tu propia app con tus programas de entrenamiento, con tu marca, sin que tengas que programar nada. Tus seguidores pagan una suscripción y tú te quedas con la mayor parte.\n\n¿Te late que te cuente cómo funcionaría en tu caso en una llamada de 20 minutos?\n\nSaludos,\n{am}"},
+  {step:1, name:"Pregunta", subject:"Una idea para tu comunidad, {nombre}", body:"Hola {nombre}:\n\n¿Has pensado en que tu comunidad pueda entrenar contigo todos los días desde una app con tu nombre?\n\nEso hacemos en STRIKD: armamos tu app con tus rutinas y tú decides el precio. Si te interesa, te muestro ejemplos de creadores como tú.\n\n¿Te puedo mandar la info?\n\n{am}"},
+  {step:2, name:"Seguimiento corto", subject:"", body:"Hola {nombre}, solo para saber si viste mi correo anterior. Si ahora no es buen momento, no hay problema; si te interesa, con gusto agendamos 20 minutos.\n\n{am}"},
+  {step:2, name:"Último", subject:"", body:"Hola {nombre}, te escribo por última vez sobre esto. Si algún día quieres tener tu propia app de entrenamiento, aquí estamos. ¡Mucho éxito con tu comunidad!\n\n{am}"}];
+let MAIL_SUB = null;
+function mailSub(){ if (MAIL_SUB || !S.isLead || !db) return; MAIL_SUB = db.collection("emailTpl").onSnapshot(sn => { S.mailTpl = {}; sn.docs.forEach(d => S.mailTpl[d.id] = d.data());
+  if (!sn.docs.length && S.isOwner && !S.mailSeeded){ S.mailSeeded = true; MAIL_DEF.forEach((t,i) => { const ref = db.collection("emailTpl").doc(), d = {...t, active:true, order:i, createdAt:Date.now()}; S.mailTpl[ref.id] = d; ref.set(d).catch(() => {}); }); }
+  schedule(); }, () => {}); }
+function gmLoad(force){ if (!window.STRIKD_GMAIL_STATUS || GM.loading || (!force && GM.st && Date.now() - GM.at < 60e3)) return; GM.loading = true;
+  window.STRIKD_GMAIL_STATUS().then(j => { GM.st = j || {}; GM.at = Date.now(); }).catch(() => {}).finally(() => { GM.loading = false; schedule(); }); }
+function mailMineRow(){
+  gmLoad(); const me = GM.st && GM.st.me, n = GM.st && GM.st.today ? (GM.st.today[S.uid] || 0) : 0;
+  return setRow("✉️", "Mi Gmail para emails a influencers", me ? `Conectado · ${esc(me.email)} · ${n}/20 hoy` : "Conéctalo para que los emails a tus influencers salgan de tu correo",
+    window.STRIKD_GMAIL_CONNECT ? (me ? `<button type="button" class="btn small" data-gm="dis-me">Desconectar</button>` : `<button type="button" class="btn small primary" data-gm="con-me">Conectar</button>`) : "");
+}
+function mailSetHtml(){
+  if (!adminMode() || S.viewAs) return "";
+  mailSub(); gmLoad();
+  const g = GM.st || {}, gen = g.general, tpls = Object.entries(S.mailTpl || {}).sort((a,b) => (a[1].step - b[1].step) || ((a[1].order||0) - (b[1].order||0)));
+  const stat = {}; (g.tpl || []).forEach(r => stat[r.tpl] = r);
+  const canEditTpl = S.isOwner || S.isLead;
+  // aviso para los AM: si ya hay correo general y plantillas, su pendiente "mándales email" lo hace el sistema
+  if (S.isOwner && GM.st && S.mailTpl){ const ready = !!gen && tpls.some(([,t]) => Number(t.step)===1 && t.active!==false);
+    if (!!(S.config||{}).emailReady !== ready){ (S.config ||= {}).emailReady = ready; db.doc("config/main").update({emailReady:ready}).catch(() => {}); } }
+  const auth = Object.keys(S.members||{}).filter(u => ((S.roles||{})[u]||{}).canEmail).map(u => { const c = (g.people||[]).find(p => p.uid===u); return `${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}${c ? " ✓" : " (sin conectar)"}`; });
+  const tf = GM.tf;
+  const form = tf ? `<div class="ml-form"><div class="ml-row"><label class="f">Nombre<input data-gmf="name" value="${esc(tf.name||"")}" maxlength="40"></label>
+      <label class="f">Cuándo sale<select data-gmf="step"><option value="1"${tf.step!=2?" selected":""}>Paso 1 · 10 días después</option><option value="2"${tf.step==2?" selected":""}>Paso 2 · 7 días después del 1</option></select></label></div>
+      ${tf.step==2 ? `<p class="mut small">El paso 2 sale como respuesta en el mismo hilo (sin asunto nuevo).</p>` : `<label class="f">Asunto<input data-gmf="subject" value="${esc(tf.subject||"")}" maxlength="120"></label>`}
+      <label class="f">Mensaje<textarea data-gmf="body" rows="7">${esc(tf.body||"")}</textarea></label>
+      <p class="mut small">Usa {nombre} (nombre del influencer) y {am} (quien lo manda). Al final se agrega solo: "Si prefieres que no te volvamos a escribir, responde «baja»".</p>
+      ${GM.err ? `<p class="err">${esc(GM.err)}</p>` : ""}
+      <div class="tk-acts">${tf.id ? `<button type="button" class="pr-x" data-gm="del">Borrar</button>` : ""}<button type="button" class="btn small" data-gm="cancel">Cancelar</button><button type="button" class="btn small primary" data-gm="save">Guardar</button></div></div>` : "";
+  const list = st => tpls.filter(([,t]) => Number(t.step)===st).map(([id,t]) => { const x = stat[id] || {}; return `<div class="ml-t${t.active===false?" off":""}"><div><b>${esc(t.name||"Plantilla")}</b><small>${t.subject ? esc(t.subject) + " · " : ""}${x.sent||0} enviados · ${x.replied||0} contestaron${x.sent ? ` (${Math.round((x.replied||0)/x.sent*100)}%)` : ""}</small></div>
+      ${canEditTpl ? `<span><button type="button" class="btn small" data-gm="tog|${id}">${t.active===false ? "Activar" : "Pausar"}</button><button type="button" class="btn small" data-gm="edit|${id}">Editar</button></span>` : ""}</div>`; }).join("") || `<p class="mut small" style="margin:6px 0">Sin plantillas.</p>`;
+  return `<h3 class="set-h">Emails automáticos</h3><section class="set-card ml">
+    <p class="ml-how">A los influencers que Mich contactó y no cerraron: <b>email 1</b> a los 10 días y <b>email 2</b> a los 7 días si no contestó. Solo a los que tienen email. Máx. 20 por correo al día, de lunes a viernes de 9 am a 6 pm. Si contestan, se detiene y le avisa al AM.</p>
+    ${window.STRIKD_GMAIL_STATUS ? setRow("📮", "Correo general", gen ? `${esc(gen.email)} · ${(g.today||{}).general || 0}/20 hoy` : "Sale de aquí cuando el AM no está autorizado o no conectó su Gmail",
+      S.isOwner ? (gen ? `<button type="button" class="btn small" data-gm="dis-gen">Cambiar</button>` : `<button type="button" class="btn small primary" data-gm="con-gen">Conectar</button>`) : "")
+      + setRow("👤", "AM autorizados", auth.length ? esc(auth.join(" · ")) : "Ninguno: todo sale del correo general. Se autorizan en Organigrama.", "")
+      + (((S.roles||{})[S.uid]||{}).canEmail || S.isOwner ? "" : "") : `<p class="mut small">Los correos se conectan en la versión real (growth.strikd.ai).</p>`}
+    <div class="ml-st"><div class="ml-sh"><b>Paso 1 · 10 días después</b></div>${list(1)}<div class="ml-sh"><b>Paso 2 · 7 días después</b></div>${list(2)}
+    ${canEditTpl && !tf ? `<button type="button" class="btn small" data-gm="new">+ Nueva plantilla</button>` : ""}${form}</div></section>`;
+}
+document.addEventListener("input", e => { const f = e.target.closest("[data-gmf]"); if (f && GM.tf){ GM.tf[f.dataset.gmf] = f.value; if (f.dataset.gmf==="step") schedule(); } });
+document.addEventListener("change", e => { const f = e.target.closest("select[data-gmf]"); if (f && GM.tf){ GM.tf.step = Number(f.value); schedule(); } });
+document.addEventListener("click", async e => { const b = e.target.closest("[data-gm]"); if (!b) return; e.stopPropagation();
+  const [k, id] = b.dataset.gm.split("|");
+  if (k==="con-gen" || k==="dis-gen"){ if (k==="dis-gen"){ if (!confirm("¿Desconectar el correo general para conectar otro?")) return; await window.STRIKD_GMAIL_DISCONNECT("general"); } return window.STRIKD_GMAIL_CONNECT("general"); }
+  if (k==="con-me") return window.STRIKD_GMAIL_CONNECT("me");
+  if (k==="dis-me"){ if (!confirm("¿Desconectar tu Gmail? Tus emails saldrán del correo general.")) return; await window.STRIKD_GMAIL_DISCONNECT("me"); GM.at = 0; gmLoad(true); return; }
+  if (k==="new"){ GM.tf = {step:1, name:"", subject:"", body:""}; GM.err = ""; return schedule(); }
+  if (k==="edit"){ const t = (S.mailTpl||{})[id]; if (t){ GM.tf = {id, step:Number(t.step)||1, name:t.name||"", subject:t.subject||"", body:t.body||""}; GM.err = ""; schedule(); } return; }
+  if (k==="cancel"){ GM.tf = null; return schedule(); }
+  if (k==="tog"){ const t = (S.mailTpl||{})[id]; if (t){ t.active = t.active===false; schedule(); db.doc(`emailTpl/${id}`).update({active:t.active}).catch(() => {}); } return; }
+  if (k==="del"){ if (!GM.tf || !GM.tf.id || !confirm("¿Borrar esta plantilla?")) return; await db.doc(`emailTpl/${GM.tf.id}`).delete().catch(() => {}); if (S.mailTpl) delete S.mailTpl[GM.tf.id]; GM.tf = null; return schedule(); }
+  if (k==="save"){ const t = GM.tf; if (!t) return;
+    if (!String(t.name||"").trim() || !String(t.body||"").trim() || (Number(t.step)!==2 && !String(t.subject||"").trim())){ GM.err = "Pon nombre, asunto y mensaje."; return schedule(); }
+    const data = {name:t.name.trim(), step:Number(t.step)||1, subject:Number(t.step)===2 ? "" : t.subject.trim(), body:t.body.trim(), updatedAt:Date.now()};
+    try{ if (t.id){ await db.doc(`emailTpl/${t.id}`).update(data); Object.assign((S.mailTpl||{})[t.id] || {}, data); } else { const ref = db.collection("emailTpl").doc(), d = {...data, active:true, createdAt:Date.now()}; await ref.set(d); (S.mailTpl ||= {})[ref.id] = d; } GM.tf = null; GM.err = ""; quickToast("✓ Plantilla guardada"); }
+    catch(_){ GM.err = "No se guardó. Intenta otra vez."; }
+    schedule(); }
+});
 // Tareas que se repiten cada semana: a quién le llega cada una (se puede quitar a alguien) y dejar de repetirlas
 function rulesHtml(){
   if (!adminMode() || S.viewAs) return "";
