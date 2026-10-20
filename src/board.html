@@ -171,6 +171,8 @@
 .tk-new-file{display:grid;gap:6px}.tk-new-file>span{font-size:13px;font-weight:600;color:var(--fg2)}
 .tk-pick{display:flex;align-items:center;justify-content:center;border:1.5px dashed var(--line2);border-radius:12px;padding:12px;font-size:14px;font-weight:600;color:var(--fg2);cursor:pointer;background:var(--surface)}
 .tk-prev{display:flex;align-items:center;gap:10px}
+#tkPrev{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}#tkPrev .tk-prev{position:relative}#tkPrev .tk-prev img{width:76px;height:76px}#tkPrev .tk-prev .tkfx{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:1px solid var(--line2);background:var(--bg);color:var(--fg);font-size:14px;line-height:1;padding:0;cursor:pointer}
+.tk-who-row{display:flex;gap:6px;align-items:center}.tk-who-row select{flex:1;min-width:0}.tk-who-row .tkwx{flex:none;width:36px;height:36px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);color:var(--fg2);font-size:16px;cursor:pointer}.tk-who-add{margin-top:6px;align-self:flex-start;background:none;border:0;color:var(--fg);font-weight:700;font-size:13px;padding:4px 0;cursor:pointer}#tkWhoBox{display:flex;flex-direction:column;gap:6px}
 .tk-prev img{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line2)}
 #perfBox .pf-row.worst{border-color:var(--line2)}
 #perfBox .pf-row.down .pf-bar.me i{background:var(--fg);opacity:.55}
@@ -4372,12 +4374,12 @@ function taskRow(u, id, x, lead, now){
   const thread = (x.comments||[]).map(c => `<div class="tk-c${c.by===S.uid?" me":""}"><div class="tk-c-h"><b>${esc(c.byName||"")}</b><span>${esc(fmtLocal(c.at||0))}</span></div>${c.text ? `<p>${esc(c.text)}</p>` : ""}${(c.files||[]).length ? `<div class="tk-files">${c.files.map(imgOrFile).join("")}</div>` : ""}</div>`).join("");
   const cbox = `<div class="tk-cbox"><textarea rows="2" data-tkfb="${k}" placeholder="Escribe un comentario…">${esc(d.fb ?? "")}</textarea>
       <div class="tk-files tk-cfs">${tkCfHtml(k)}</div>
-      <div class="tk-cbar"><label class="tk-up">${d.cup ? "Subiendo…" : "📷 Foto"}<input type="file" accept="image/*,application/pdf" data-tkcfile="${k}" hidden></label><button class="btn small" data-tkcmt="${k}">Comentar</button></div></div>`;
+      <div class="tk-cbar"><label class="tk-up">${d.cup ? "Subiendo…" : "📷 Foto"}<input type="file" accept="image/*,application/pdf" data-tkcfile="${k}" multiple hidden></label><button class="btn small" data-tkcmt="${k}">Comentar</button></div></div>`;
   const editForm = `<div class="tk-edit">
       <label class="f">Tarea<input data-tke="${k}|title" value="${esc(d.e_title ?? x.title)}"></label>
       <label class="f">Detalle<textarea rows="2" data-tke="${k}|note">${esc(d.e_note ?? x.note ?? "")}</textarea></label>
       <label class="f">Para cuándo<input type="date" data-tke="${k}|due" value="${esc(d.e_due ?? (x.dueAt ? new Date(x.dueAt - OFF).toISOString().slice(0,10) : ""))}"></label>
-      <div class="tk-files">${(x.files||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name||"archivo")}`}<button type="button" data-tkfdel="${k}|${i}" aria-label="Quitar">×</button></span>`).join("")}<label class="tk-up">${d.up ? "Subiendo…" : "📷 Agregar foto"}<input type="file" accept="image/*,application/pdf" data-tkfile="${k}" hidden></label></div>
+      <div class="tk-files">${(x.files||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name||"archivo")}`}<button type="button" data-tkfdel="${k}|${i}" aria-label="Quitar">×</button></span>`).join("")}<label class="tk-up">${d.up ? "Subiendo…" : "📷 Agregar foto"}<input type="file" accept="image/*,application/pdf" data-tkfile="${k}" multiple hidden></label></div>
       ${x.ruleId && (TK_RULES[x.ruleId]||{active:true}).active!==false ? `<button type="button" class="linkbtn" data-tkstoprule="${esc(x.ruleId)}">Dejar de repetir cada semana</button>` : ""}
       <div class="tk-acts"><button class="btn small" data-tkecancel="${k}">Cancelar</button><button class="btn small primary" data-tkesave="${k}">Guardar cambios</button></div></div>`;
   const det = !open ? "" : `<div class="tk-det" data-tkbox="${k}">
@@ -4385,7 +4387,7 @@ function taskRow(u, id, x, lead, now){
       ${prog ? tkMichHtml(k, u, x, lead) : ""}
       ${lead ? `${x.reply ? `<div class="tk-rep"><b>Entrega</b><p>${esc(x.reply)}</p></div>` : ""}`
         : `<label class="f">Tu avance o entrega<textarea rows="3" data-tkrep="${k}" placeholder="Escribe lo que hiciste, links, dudas…">${esc(d.rep ?? x.reply ?? "")}</textarea></label>
-          ${d.edit ? "" : `<div class="tk-files"><label class="tk-up">${d.up ? "Subiendo…" : "📎 Subir archivo o foto"}<input type="file" accept="image/*,application/pdf" data-tkfile="${k}" hidden></label></div>`}`}
+          ${d.edit ? "" : `<div class="tk-files"><label class="tk-up">${d.up ? "Subiendo…" : "📎 Subir archivo o foto"}<input type="file" accept="image/*,application/pdf" data-tkfile="${k}" multiple hidden></label></div>`}`}
       <div class="tk-sec">Comentarios${(x.comments||[]).length ? ` <b>${x.comments.length}</b>` : ""}</div>
       ${thread ? `<div class="tk-thread">${thread}</div>` : ""}
       ${cbox}
@@ -4426,47 +4428,54 @@ function taskOpen(){
   const asg = tkAssigner();
   const ppl = asg ? [S.uid].concat(tkAssignees()) : Object.keys(S.members||{}).concat(S.config && S.config.headId ? [S.config.headId] : []).filter((u,i,a) => a.indexOf(u)===i);
   const today = new Date(Date.now()-OFF).toISOString().slice(0,10);
+  const whoOpts = `<option value="">Elige</option>${asg && !tkInfl() ? "" : `<option value="__team">Todo el equipo</option>`}${ppl.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (tú)":""}</option>`).join("")}`;
+  let picked = []; // varias imágenes o PDFs
+  const paintPicked = () => { $("tkPrev").innerHTML = picked.map((f,i) => `<div class="tk-prev">${tkIsImg(f) ? `<img src="${f._u ||= URL.createObjectURL(f)}" alt="">` : `<span class="tk-file">📄 ${esc(f.name)}</span>`}<button type="button" class="tkfx" data-tkfx="${i}" aria-label="Quitar">×</button></div>`).join(""); $("tkPickL").textContent = picked.length ? "📷 Agregar más" : "📷 Agregar imágenes o PDF"; };
   const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "tkWrap";
   w.innerHTML = `<div class="bk mbk" role="dialog" aria-modal="true" aria-label="Nueva tarea"><div class="bk-grab"></div>
     <div class="bk-h"><b>Nueva tarea</b><div class="spacer"></div><button type="button" class="btn small" data-tkx="1">Cerrar</button></div>
     <div class="grid">
       <label class="f full">¿Qué hay que hacer? <em>*</em><input id="tkTitle" placeholder="Ej. Trabajar 3 plantillas de email" autocomplete="off"></label>
       <label class="f full">Detalle (opcional)<textarea id="tkNote" rows="2" placeholder="Contexto, links, cómo debe quedar"></textarea></label>
-      <label class="f">Para <em>*</em><select id="tkWho"><option value="">Elige</option>${asg && !tkInfl() ? "" : `<option value="__team">Todo el equipo</option>`}${ppl.map(u => `<option value="${u}">${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (tú)":""}</option>`).join("")}</select></label>
+      <div class="f"><span>Para <em>*</em></span><div id="tkWhoBox"><div class="tk-who-row"><select class="tk-who" id="tkWho" aria-label="Para quién">${whoOpts}</select></div></div><button type="button" class="tk-who-add" data-tkwadd="1">+ Agregar otra persona</button></div>
       <label class="f">Para cuándo<input type="date" id="tkDue" value="${today}"></label>
       <label class="f">Publicar<select id="tkPub"><option value="">Ahora</option><option value="later">Programar para después</option></select></label>
       <label class="f" id="tkPubL" hidden>Se publica el<input type="datetime-local" id="tkPubAt"></label>
       <label class="f"${asg ? " hidden" : ""}>Se repite<select id="tkRep"><option value="">No se repite</option><option value="w">Cada semana (mismo día de entrega)</option></select></label>
       <label class="f"${asg ? " hidden" : ""}>Meta que se mide sola<select id="tkMetric"><option value="">Ninguna</option><option value="mich">Candidatos para la Lista de Mich</option></select></label>
       <label class="f" id="tkGoalL" hidden>¿Cuántos?<input type="number" id="tkGoal" value="40" min="1" max="500" inputmode="numeric"></label>
-      <div class="f full tk-new-file"><span>Imagen o archivo (opcional)</span>
-        <label class="tk-pick" id="tkPick"><input type="file" id="tkFile" accept="image/*,application/pdf" hidden><span id="tkPickL">📷 Agregar imagen o PDF</span></label>
+      <div class="f full tk-new-file"><span>Imágenes o archivos (opcional)</span>
+        <label class="tk-pick" id="tkPick"><input type="file" id="tkFile" accept="image/*,application/pdf" multiple hidden><span id="tkPickL">📷 Agregar imágenes o PDF</span></label>
         <div id="tkPrev"></div></div>
     </div>
     <p class="mut small" style="margin:8px 6px 0">Le sale en sus pendientes del día hasta que la marque como hecha.</p>
     <div class="row"><span class="err" id="tkErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="tkGo">Asignar tarea</button></div></div>`;
   document.body.appendChild(w);
   w.addEventListener("change", e => { if (e.target.id === "tkMetric"){ $("tkGoalL").hidden = !e.target.value; return; }
-    if (e.target.id === "tkPub"){ $("tkPubL").hidden = !e.target.value; if (e.target.value && !$("tkPubAt").value){ const t = new Date(Date.now() - OFF + DAY); $("tkPubAt").value = t.toISOString().slice(0,10) + "T09:00"; } return; } if (e.target.id !== "tkFile") return; const f = e.target.files[0], pv = $("tkPrev");
-    if (!f){ pv.innerHTML = ""; return; }
-    if (f.size > 15*1024*1024){ e.target.value = ""; pv.innerHTML = `<p class="err">El archivo pesa más de 15 MB</p>`; return; }
-    pv.innerHTML = tkIsImg(f) ? `<div class="tk-prev"><img src="${URL.createObjectURL(f)}" alt=""><button type="button" class="pr-x" data-tkfx="1">Quitar</button></div>` : `<div class="tk-prev"><span class="tk-file">📄 ${esc(f.name)}</span><button type="button" class="pr-x" data-tkfx="1">Quitar</button></div>`;
-    $("tkPickL").textContent = "Cambiar archivo"; });
+    if (e.target.id === "tkPub"){ $("tkPubL").hidden = !e.target.value; if (e.target.value && !$("tkPubAt").value){ const t = new Date(Date.now() - OFF + DAY); $("tkPubAt").value = t.toISOString().slice(0,10) + "T09:00"; } return; } if (e.target.id !== "tkFile") return;
+    const fs = [...e.target.files], big = fs.filter(f => f.size > 15*1024*1024);
+    picked = picked.concat(fs.filter(f => f.size <= 15*1024*1024)).slice(0, 10); e.target.value = "";
+    $("tkErr").textContent = big.length ? `${big.length === 1 ? "Un archivo pesa" : big.length + " archivos pesan"} más de 15 MB y no se agregó.` : "";
+    paintPicked(); });
   w.addEventListener("click", async e => {
     if (e.target===w || e.target.closest("[data-tkx]")) return w.remove();
-    if (e.target.closest("[data-tkfx]")){ $("tkFile").value = ""; $("tkPrev").innerHTML = ""; $("tkPickL").textContent = "📷 Agregar imagen o PDF"; return; }
+    const fx = e.target.closest("[data-tkfx]"); if (fx){ e.preventDefault(); picked.splice(Number(fx.dataset.tkfx), 1); paintPicked(); return; }
+    if (e.target.closest("[data-tkwadd]")){ const row = document.createElement("div"); row.className = "tk-who-row"; row.innerHTML = `<select class="tk-who" aria-label="Para quién">${whoOpts}</select><button type="button" class="tkwx" data-tkwx="1" aria-label="Quitar">×</button>`; $("tkWhoBox").appendChild(row); row.querySelector("select").focus(); return; }
+    const wx = e.target.closest("[data-tkwx]"); if (wx){ wx.closest(".tk-who-row").remove(); return; }
     if (!e.target.closest("#tkGo")) return;
-    const title = $("tkTitle").value.trim(), who = $("tkWho").value, due = $("tkDue").value, note = $("tkNote").value.trim();
+    const whos = [...new Set([...w.querySelectorAll("select.tk-who")].map(sl => sl.value).filter(Boolean))];
+    const title = $("tkTitle").value.trim(), who = whos.includes("__team") ? "__team" : whos[0] || "", due = $("tkDue").value, note = $("tkNote").value.trim();
     if (!title || !who){ $("tkErr").textContent = "Escribe la tarea y elige para quién."; return; }
-    const to = who==="__team" ? (tkInfl() ? tkAssignees().filter(u => u!==(S.config||{}).headId && roleOf(u)!=="manager" && roleOf(u)!=="influencer") : Object.keys(S.team||{}).filter(u => u!==S.uid && u!==(S.config||{}).headId)) : [who];
+    const teamTo = () => tkInfl() ? tkAssignees().filter(u => u!==(S.config||{}).headId && roleOf(u)!=="manager" && roleOf(u)!=="influencer") : Object.keys(S.team||{}).filter(u => u!==S.uid && u!==(S.config||{}).headId);
+    const to = [...new Set(whos.flatMap(v => v==="__team" ? teamTo() : [v]))];
     const dueAt = due ? Date.parse(due + "T18:00:00-05:00") : 0, now = Date.now();
     $("tkGo").disabled = true;
     let files = [];
-    const file = $("tkFile") && $("tkFile").files[0];
-    if (file){ $("tkGo").textContent = "Subiendo…";
-      try{ const assets = await claude.use("assets"); const up = await assets.upload(file);
-        files = [{name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || "", at:now}]; }
-      catch(_){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = "No se pudo subir el archivo. Intenta otra vez o quítalo."; return; } }
+    if (picked.length){
+      try{ const assets = await claude.use("assets");
+        for (let i = 0; i < picked.length; i++){ const file = picked[i]; $("tkGo").textContent = picked.length > 1 ? `Subiendo ${i+1} de ${picked.length}…` : "Subiendo…";
+          const up = await assets.upload(file); files.push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || "", at:now}); } }
+      catch(_){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = "No se pudo subir un archivo. Intenta otra vez o quítalo."; return; } }
     const rep = $("tkRep").value, metric = $("tkMetric").value, goal = Math.max(1, Number($("tkGoal").value) || 0);
     const publishAt = $("tkPub").value && $("tkPubAt").value ? meetTs($("tkPubAt").value) : 0;
     if ($("tkPub").value && !(publishAt > now)){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = "Elige una fecha y hora futura para publicarla."; return; }
@@ -4474,7 +4483,7 @@ function taskOpen(){
     const byName = String(nameOf(S.ps||{}, S.uid)).split(" (")[0];
     let ruleId = "";
     if (rep){ try{ const rr = db.collection("taskRules").doc(); ruleId = rr.id;
-        await rr.set({title, note, to: who==="__team" ? "__team" : [who], weekday:new Date(due + "T12:00:00Z").getUTCDay(), by:S.uid, byName, createdAt:now, active:true, ...(metric ? {metric, goal} : {}), ...(files.length ? {files} : {})}); }
+        await rr.set({title, note, to: whos.length === 1 && who==="__team" ? "__team" : to, weekday:new Date(due + "T12:00:00Z").getUTCDay(), by:S.uid, byName, createdAt:now, active:true, ...(metric ? {metric, goal} : {}), ...(files.length ? {files} : {})}); }
       catch(_){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = "No se pudo guardar la repetición."; return; } }
     try{ for (const u of to){ const ref = db.collection(`meets/${u}/tasks`).doc(), data = {title, note, dueAt, status:"todo", by:S.uid, byName, createdAt:now, ...(files.length ? {files} : {}), ...(ruleId ? {ruleId} : {}), ...(metric ? {metric, goal, from:publishAt || now} : {}), ...(publishAt && !rep ? {publishAt} : {})};
         await ref.set(data); ((S.tasks ||= {})[u] ||= {})[ref.id] = data;
@@ -4490,18 +4499,23 @@ document.addEventListener("input", e => { const tv = e.target.closest("[data-tkv
   const r = e.target.closest("[data-tkrep]"), f = e.target.closest("[data-tkfb]");
   if (r) (TKD[r.dataset.tkrep] ||= {}).rep = r.value; if (f) (TKD[f.dataset.tkfb] ||= {}).fb = f.value; });
 document.addEventListener("change", async e => { const ci = e.target.closest("[data-tkcfile]"); if (!ci || !ci.files[0]) return;
-  const k = ci.dataset.tkcfile, file = ci.files[0]; if (file.size > 15*1024*1024){ quickToast("El archivo pesa más de 15 MB"); return; }
+  const k = ci.dataset.tkcfile, all = [...ci.files], fs = all.filter(f => f.size <= 15*1024*1024);
+  if (fs.length < all.length) quickToast("Algún archivo pesa más de 15 MB y no se subió");
+  if (!fs.length){ ci.value = ""; return; }
   const d = (TKD[k] ||= {}); d.cup = true; tkCfPaint(k);
-  try{ const assets = await claude.use("assets"); const up = await assets.upload(file); (d.cfiles ||= []).push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || ""}); }
+  try{ const assets = await claude.use("assets"); for (const file of fs){ const up = await assets.upload(file); (d.cfiles ||= []).push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || ""}); } }
   catch(_){ quickToast("No se pudo subir la foto"); }
   d.cup = false; ci.value = ""; tkCfPaint(k); });
 document.addEventListener("change", async e => { const ed = e.target.closest('input[type="date"][data-tke]'); if (ed){ const [k] = ed.dataset.tke.split("|"); (TKD[k] ||= {}).e_due = ed.value; } });
 document.addEventListener("change", async e => { const inp = e.target.closest("[data-tkfile]"); if (!inp || !inp.files[0]) return;
-  const k = inp.dataset.tkfile, file = inp.files[0], [u, id] = k.split("/"), x = ((S.tasks||{})[u]||{})[id]; if (!x) return;
-  if (file.size > 15*1024*1024){ quickToast("El archivo pesa más de 15 MB"); return; }
+  const k = inp.dataset.tkfile, [u, id] = k.split("/"), x = ((S.tasks||{})[u]||{})[id]; if (!x) return;
+  const all = [...inp.files], fs = all.filter(f => f.size <= 15*1024*1024); inp.value = "";
+  if (fs.length < all.length) quickToast("Algún archivo pesa más de 15 MB y no se subió");
+  if (!fs.length) return;
   (TKD[k] ||= {}).up = true; inp.blur(); schedule();
-  try{ const assets = await claude.use("assets"); const up = await assets.upload(file);
-    await taskSave(k, {files:(x.files||[]).concat([{name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || "", at:Date.now(), by:S.uid}])}); quickToast("✓ Archivo subido"); }
+  try{ const assets = await claude.use("assets"), add = [];
+    for (const file of fs){ const up = await assets.upload(file); add.push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || "", at:Date.now(), by:S.uid}); }
+    await taskSave(k, {files:(x.files||[]).concat(add)}); quickToast(add.length > 1 ? `✓ ${add.length} archivos subidos` : "✓ Archivo subido"); }
   catch(_){ quickToast("No se pudo subir el archivo"); }
   TKD[k].up = false; schedule(); });
 document.addEventListener("click", async e => {
