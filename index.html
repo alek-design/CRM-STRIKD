@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 04:07:58 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 04:10:05 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792469278">
+<link rel="stylesheet" href="/auth.css?v=1792469405">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792469278"></script>
+<script src="/claude-shim.js?v=1792469405"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -3237,7 +3237,9 @@ function renderFlow(ps){
   const late = all.filter(t => t.due < now).length;
   $("lateCount").textContent = late; $("lateCount").hidden = !late;
   const pSel = $("flowPerson");
-  const pHtml = `<option value="">Todo el equipo</option><option value="__admin">Solo mis tareas</option>` + Object.keys(S.team).map(id=>`<option value="${id}">${esc(nameOf(ps,id))}</option>`).join("");
+  // además de los AM, cualquiera que tenga prospectos a su nombre (Head, Manager, Influencer)
+  const flowPpl = [...new Set(Object.keys(S.team).concat(Object.entries(S.all||{}).filter(([,o]) => Object.values(o||{}).some(m => m && !(m.flow||{}).lostAt)).map(([u]) => u)))];
+  const pHtml = `<option value="">Todo el equipo</option><option value="__admin">Solo mis tareas</option>` + flowPpl.map(id=>`<option value="${id}">${esc(nameOf(ps,id))}</option>`).join("");
   if (pSel.dataset.html !== pHtml){ const v = pSel.value; pSel.innerHTML = pHtml; pSel.dataset.html = pHtml; pSel.value = v; }
   if (S.flowPick !== undefined){ pSel.value = S.flowPick; S.flowPick = undefined; }
   const who = pSel.value;
@@ -3256,7 +3258,7 @@ function renderFlow(ps){
   $("tfLate").classList.toggle("on", onlyLate); $("tfLate").setAttribute("aria-pressed", String(onlyLate));
   { const lb = teamLateBy(now), first = u => String(nameOf(ps, u)).split(" (")[0].split(" ")[0];
     const chip = (v, lab, n) => `<button type="button" class="tf-p${(who||"")===v?" on":""}" data-fp="${v}">${esc(lab)}${n?`<i>${n}</i>`:""}</button>`;
-    const h = chip("", "Todos") + Object.keys(S.team).map(u => chip(u, first(u), (lb[u]||[]).length)).join("");
+    const h = chip("", "Todos") + flowPpl.map(u => chip(u, first(u) + (u===S.uid ? " (yo)" : ""), (lb[u]||[]).length)).join("");
     if ($("teamPeople").dataset.h !== h){ $("teamPeople").innerHTML = h; $("teamPeople").dataset.h = h; } }
   $("flowList").innerHTML = list.length ? list.map(t => taskHtml(t, true)).join("") : `<div class="empty">Nada pendiente con estos filtros.</div>`;
 }
