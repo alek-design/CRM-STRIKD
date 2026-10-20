@@ -53,6 +53,7 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.chip.elim{cursor:pointer;border:1px solid color-mix(in srgb,#e5484d 40%,transparent);color:#e5484d;background:transparent;font:inherit;font-size:12px;font-weight:600}
 .mi-ef{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}.mi-ef button{font:inherit;font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}.mi-ef button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.mi-ef b{opacity:.7;font-weight:600;margin-left:2px}
 .mi-em{display:block;font-size:12px;color:var(--muted);margin-top:2px}.mi-emadd{font:inherit;font-size:12px;font-weight:600;margin-top:4px;padding:2px 9px;border-radius:999px;border:1px dashed var(--line);background:none;color:var(--fg);align-self:flex-start}
 .own-sel{font:inherit;font-size:12.5px;font-weight:600;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);max-width:180px}
@@ -2110,6 +2111,20 @@ function ownerChip(uid, id){
   const ppl = [...new Set(Object.keys(S.members||{}).concat((S.config && S.config.headId) ? [S.config.headId] : [], [uid]))];
   return `<select class="own-sel" data-move="${uid}__${id}" aria-label="A nombre de" title="A quién se le atribuye (y sus puntos)">${ppl.map(u => `<option value="${u}"${u===uid?" selected":""}>${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}${u===S.uid?" (yo)":""}</option>`).join("")}</select>`;
 }
+// Head/Manager: sacar un prospecto activo del flujo (cualquier etapa) con razón obligatoria. Queda en el historial como eliminado.
+document.addEventListener("click", async e => { const b = e.target.closest("[data-elim]"); if (!b) return; e.preventDefault(); e.stopPropagation();
+  if (!adminMode()) return;
+  const [uid, id] = b.dataset.elim.split("__"), m = (S.allEvery[uid]||{})[id] || (S.all[uid]||{})[id] || (uid===S.uid ? S.mine[id] : null); if (!m) return;
+  let why = ""; while (!why){ const r = prompt(`¿Por qué eliminas a ${m.prospect || "este prospecto"}? (obligatorio)`, ""); if (r === null) return; why = r.trim(); }
+  const future = meetTs(effAt(m)) > Date.now() && m.gcalEventId && !m.fromCalendar && !m.cancelled;
+  if (!confirm(`Eliminar a ${m.prospect || "este prospecto"}${future ? " y cancelar su invitación al meet" : ""}?\n\nRazón: ${why}`)) return;
+  const now = Date.now(), f = {...(m.flow||{}), lostAt:now, lostWhy:why, removed:true, removedBy:S.uid};
+  b.disabled = true;
+  try{ await db.doc(`meets/${uid}/items/${id}`).update({flow:{lostAt:now, lostWhy:why, removed:true, removedBy:S.uid}, ...(future ? {cancelled:true, cancelledAt:now} : {})});
+    m.flow = f; if (future){ m.cancelled = true; try{ await cancelInvite(m); }catch(_){} }
+    PICK.dayPlan = null; S.flowPick = null; quickToast(`✓ ${m.prospect || "Prospecto"} eliminado`); schedule(); }
+  catch(_){ b.disabled = false; quickToast("No se pudo eliminar. Intenta otra vez."); }
+});
 async function moveProspect(oldU, id, newU){
   const m = (S.allEvery[oldU]||{})[id] || (S.all[oldU]||{})[id] || (oldU===S.uid ? S.mine[id] : null);
   if (!m || oldU===newU) return;
@@ -3093,7 +3108,7 @@ function detailHtml(uid, id, m, isAdmin, cid){
   return `<div class="detail">
     <div class="d-head">
       <div class="d-id">
-        <div class="d-tags"><span class="chip stage">${esc(sname)}</span>${d?`<span class="sema ${d.cls}"><i></i>${SEMA[d.cls]}</span>`:""}${isAdmin?ownerChip(uid, id):""}</div>
+        <div class="d-tags"><span class="chip stage">${esc(sname)}</span>${d?`<span class="sema ${d.cls}"><i></i>${SEMA[d.cls]}</span>`:""}${isAdmin?ownerChip(uid, id):""}${isAdmin && !(m.flow||{}).lostAt ? `<button type="button" class="chip elim" data-elim="${uid}__${id}">Eliminar</button>` : ""}</div>
         <h3 class="d-name">${perfilIcon(m, true)}${esc(m.prospect)}</h3>
         <div class="pc-co">${[m.role, m.channel].filter(Boolean).map(esc).join(" · ")}</div>
       </div>
@@ -3780,7 +3795,7 @@ function renderPlan(){
     const t = first(uid,id,m), d = t ? dueInfo(t.due, now) : null;
     const prof = safeUrl(m.profile), link = safeUrl(m.link);
     return `<div class="detail pl-x">
-      <div class="pl-xh"><div><div class="d-tags"><span class="chip stage">${esc(stageOf(id,m).t)}</span>${admin?ownerChip(uid, id):""}</div>
+      <div class="pl-xh"><div><div class="d-tags"><span class="chip stage">${esc(stageOf(id,m).t)}</span>${admin?ownerChip(uid, id):""}${admin && !(m.flow||{}).lostAt ? `<button type="button" class="chip elim" data-elim="${uid}__${id}">Eliminar</button>` : ""}</div>
         <h3 class="d-name">${perfilIcon(m, true)}${esc(m.prospect)}</h3>${m.role?`<div class="pc-co">${esc(m.role)}</div>`:""}</div>
         <div class="d-acts">${link?`<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">Abrir meet</a>`:""}${prof?`<a class="btn ghost" href="${esc(prof)}" target="_blank" rel="noopener">Ver perfil</a>`:""}<button type="button" class="btn small" data-remnew="1" data-remref="${uid}__${id}" data-remname="${esc(m.prospect||"")}">⏰ Recordatorio</button><button class="btn small" data-pick="${key}">Cerrar</button></div></div>
       ${t ? `<div class="d-next ${d.cls}"><div class="d-next-h"><span class="eyb">Lo que sigue</span><span class="sema ${d.cls}"><i></i>${d.txt}</span></div>
