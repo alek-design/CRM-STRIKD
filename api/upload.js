@@ -10,6 +10,28 @@ module.exports = async (req, res) => {
   const me = await userFromReq(req);
   if (!me) return res.status(401).json({error:"Sesión no válida"});
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+  // Archivos de tareas y comentarios (fotos y PDF, hasta 20 MB): el navegador los sube directo al bucket "assets"
+  // con un permiso firmado de un solo uso, así cualquier persona del equipo puede subir (no solo Head/Manager).
+  if (body.sign){
+    const ASSET_OK = /^(image\/(jpeg|png|webp|gif|heic|heif)|application\/pdf)$/i;
+    const t = String(body.type || "").split(";")[0].trim(), size = Number(body.size) || 0;
+    const nm = String(body.name || "archivo");
+    const isPdfName = /\.pdf$/i.test(nm), isImgName = /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(nm);
+    const ct = ASSET_OK.test(t) ? t : isPdfName ? "application/pdf" : isImgName ? "image/" + nm.split(".").pop().toLowerCase().replace("jpg", "jpeg") : "";
+    if (!ct) return res.status(400).json({error:"Solo fotos (JPG, PNG, HEIC) o PDF."});
+    if (size > 20 * 1024 * 1024) return res.status(413).json({error:"El archivo pesa más de 20 MB."});
+    const e = env(), sb = createClient(e.url, e.key, {auth:{persistSession:false}});
+    const { data: bk } = await sb.storage.getBucket("assets");
+    const allowed = bk && bk.allowed_mime_types;
+    if (!bk) await sb.storage.createBucket("assets", {public:true}).catch(() => {});
+    else if (Array.isArray(allowed) && allowed.length && !allowed.some(m => m === ct || (m.endsWith("/*") && ct.startsWith(m.slice(0, -1)))))
+      await sb.storage.updateBucket("assets", {public:true, allowedMimeTypes:[...new Set(allowed.concat(["image/*", "application/pdf"]))], fileSizeLimit:bk.file_size_limit || null}).catch(() => {});
+    const ext = (nm.match(/\.[a-z0-9]{2,5}$/i) || [""])[0].toLowerCase() || (ct === "application/pdf" ? ".pdf" : ".jpg");
+    const id = crypto.randomBytes(16).toString("hex") + ext;
+    const { data, error } = await sb.storage.from("assets").createSignedUploadUrl(id);
+    if (error) return res.status(500).json({error:"No se pudo preparar la subida: " + error.message});
+    return res.json({id, token:data.token, contentType:ct});
+  }
   const type = String(body.type || ""), name = String(body.name || "archivo").replace(/[^\p{L}\p{N}._\- ]+/gu, "_").slice(0, 80);
   if (!OK.test(type)) return res.status(400).json({error:"Tipo de archivo no permitido. Usa foto (JPG/PNG), PDF o nota de voz."});
   const buf = Buffer.from(String(body.data || ""), "base64");

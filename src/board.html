@@ -171,6 +171,7 @@
 .tk-new-file{display:grid;gap:6px}.tk-new-file>span{font-size:13px;font-weight:600;color:var(--fg2)}
 .tk-pick{display:flex;align-items:center;justify-content:center;border:1.5px dashed var(--line2);border-radius:12px;padding:12px;font-size:14px;font-weight:600;color:var(--fg2);cursor:pointer;background:var(--surface)}
 .tk-prev{display:flex;align-items:center;gap:10px}
+.tk-cdel{margin-left:auto;background:none;border:0;padding:2px 4px;font-size:12px;color:var(--mut,#8c8c8c);cursor:pointer}.tk-cdel.armed{color:var(--bad,#f87171);font-weight:700}
 #tkPrev{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}#tkPrev .tk-prev{position:relative}#tkPrev .tk-prev img{width:76px;height:76px}#tkPrev .tk-prev .tkfx{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:1px solid var(--line2);background:var(--bg);color:var(--fg);font-size:14px;line-height:1;padding:0;cursor:pointer}
 .tk-who-row{display:flex;gap:6px;align-items:center}.tk-who-row select{flex:1;min-width:0}.tk-who-row .tkwx{flex:none;width:36px;height:36px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);color:var(--fg2);font-size:16px;cursor:pointer}.tk-who-add{margin-top:6px;align-self:flex-start;background:none;border:0;color:var(--fg);font-weight:700;font-size:13px;padding:4px 0;cursor:pointer}#tkWhoBox{display:flex;flex-direction:column;gap:6px}
 .tk-prev img{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line2)}
@@ -4371,10 +4372,10 @@ function taskRow(u, id, x, lead, now){
   const d = TKD[k] || {};
   const canEdit = !S.viewAs && (x.by===S.uid || S.isOwner);
   const imgOrFile = f => tkIsImg(f) ? `<a class="tk-img sm" href="${esc(f.url)}" target="_blank" rel="noopener"><img src="${esc(f.url)}" alt="${esc(f.name||"imagen")}" loading="lazy"></a>` : `<a class="tk-file" href="${esc(f.url)}" target="_blank" rel="noopener">📄 ${esc(f.name||"archivo")}</a>`;
-  const thread = (x.comments||[]).map(c => `<div class="tk-c${c.by===S.uid?" me":""}"><div class="tk-c-h"><b>${esc(c.byName||"")}</b><span>${esc(fmtLocal(c.at||0))}</span></div>${c.text ? `<p>${esc(c.text)}</p>` : ""}${(c.files||[]).length ? `<div class="tk-files">${c.files.map(imgOrFile).join("")}</div>` : ""}</div>`).join("");
+  const thread = (x.comments||[]).map(c => `<div class="tk-c${c.by===S.uid?" me":""}"><div class="tk-c-h"><b>${esc(c.byName||"")}</b><span>${esc(fmtLocal(c.at||0))}</span>${!S.viewAs && (c.by===S.uid || S.isOwner) ? `<button type="button" class="tk-cdel" data-tkcdel="${k}|${c.at||0}|${esc(c.by||"")}" aria-label="Borrar comentario">Borrar</button>` : ""}</div>${c.text ? `<p>${esc(c.text)}</p>` : ""}${(c.files||[]).length ? `<div class="tk-files">${c.files.map(imgOrFile).join("")}</div>` : ""}</div>`).join("");
   const cbox = `<div class="tk-cbox"><textarea rows="2" data-tkfb="${k}" placeholder="Escribe un comentario…">${esc(d.fb ?? "")}</textarea>
       <div class="tk-files tk-cfs">${tkCfHtml(k)}</div>
-      <div class="tk-cbar"><label class="tk-up">${d.cup ? "Subiendo…" : "📷 Foto"}<input type="file" accept="image/*,application/pdf" data-tkcfile="${k}" multiple hidden></label><button class="btn small" data-tkcmt="${k}">Comentar</button></div></div>`;
+      <div class="tk-cbar"><label class="tk-up">${d.cup ? "Subiendo…" : "📎 Foto o PDF"}<input type="file" accept="image/*,application/pdf" data-tkcfile="${k}" multiple hidden></label><button class="btn small" data-tkcmt="${k}">Comentar</button></div></div>`;
   const editForm = `<div class="tk-edit">
       <label class="f">Tarea<input data-tke="${k}|title" value="${esc(d.e_title ?? x.title)}"></label>
       <label class="f">Detalle<textarea rows="2" data-tke="${k}|note">${esc(d.e_note ?? x.note ?? "")}</textarea></label>
@@ -4475,7 +4476,7 @@ function taskOpen(){
       try{ const assets = await claude.use("assets");
         for (let i = 0; i < picked.length; i++){ const file = picked[i]; $("tkGo").textContent = picked.length > 1 ? `Subiendo ${i+1} de ${picked.length}…` : "Subiendo…";
           const up = await assets.upload(file); files.push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || "", at:now}); } }
-      catch(_){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = "No se pudo subir un archivo. Intenta otra vez o quítalo."; return; } }
+      catch(err){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = (err && err.message) ? "No se pudo subir: " + err.message : "No se pudo subir un archivo. Intenta otra vez o quítalo."; return; } }
     const rep = $("tkRep").value, metric = $("tkMetric").value, goal = Math.max(1, Number($("tkGoal").value) || 0);
     const publishAt = $("tkPub").value && $("tkPubAt").value ? meetTs($("tkPubAt").value) : 0;
     if ($("tkPub").value && !(publishAt > now)){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = "Elige una fecha y hora futura para publicarla."; return; }
@@ -4504,7 +4505,7 @@ document.addEventListener("change", async e => { const ci = e.target.closest("[d
   if (!fs.length){ ci.value = ""; return; }
   const d = (TKD[k] ||= {}); d.cup = true; tkCfPaint(k);
   try{ const assets = await claude.use("assets"); for (const file of fs){ const up = await assets.upload(file); (d.cfiles ||= []).push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || ""}); } }
-  catch(_){ quickToast("No se pudo subir la foto"); }
+  catch(err){ quickToast(err && err.message ? "No se subió: " + err.message : "No se pudo subir el archivo"); }
   d.cup = false; ci.value = ""; tkCfPaint(k); });
 document.addEventListener("change", async e => { const ed = e.target.closest('input[type="date"][data-tke]'); if (ed){ const [k] = ed.dataset.tke.split("|"); (TKD[k] ||= {}).e_due = ed.value; } });
 document.addEventListener("change", async e => { const inp = e.target.closest("[data-tkfile]"); if (!inp || !inp.files[0]) return;
@@ -4516,7 +4517,7 @@ document.addEventListener("change", async e => { const inp = e.target.closest("[
   try{ const assets = await claude.use("assets"), add = [];
     for (const file of fs){ const up = await assets.upload(file); add.push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || "", at:Date.now(), by:S.uid}); }
     await taskSave(k, {files:(x.files||[]).concat(add)}); quickToast(add.length > 1 ? `✓ ${add.length} archivos subidos` : "✓ Archivo subido"); }
-  catch(_){ quickToast("No se pudo subir el archivo"); }
+  catch(err){ quickToast(err && err.message ? "No se subió: " + err.message : "No se pudo subir el archivo"); }
   TKD[k].up = false; schedule(); });
 document.addEventListener("click", async e => {
   if (e.target.closest("[data-tasknew]")) return taskOpen();
@@ -4537,6 +4538,12 @@ document.addEventListener("click", async e => {
     if (!text && !cf.length){ quickToast("Escribe el comentario o agrega una foto"); return; }
     if (d.cup){ quickToast("Espera a que termine de subir"); return; }
     if (await taskSave(k, {comments:(x0.comments||[]).concat([{by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], text, at:Date.now(), ...(cf.length ? {files:cf} : {})}])})){ tkWho(k, x0, "comment", text || "📷 Foto"); d.fb = ""; d.cfiles = []; quickToast("✓ Comentario enviado"); schedule(); } return; }
+  const cd = e.target.closest("[data-tkcdel]"); if (cd){ e.stopPropagation();
+    if (cd.dataset.armed !== "1"){ cd.dataset.armed = "1"; cd.textContent = "¿Borrar?"; cd.classList.add("armed"); setTimeout(() => { if (cd.isConnected){ cd.dataset.armed = ""; cd.textContent = "Borrar"; cd.classList.remove("armed"); } }, 4000); return; }
+    const [k, at, by] = cd.dataset.tkcdel.split("|"), [u, id] = k.split("/"), x0 = ((S.tasks||{})[u]||{})[id] || {};
+    const list = (x0.comments||[]).filter(c => !(String(c.at||0) === at && String(c.by||"") === by));
+    if (list.length === (x0.comments||[]).length) return;
+    if (await taskSave(k, {comments:list})) quickToast("Comentario borrado"); return; }
   const cfx = e.target.closest("[data-tkcfx]"); if (cfx){ e.stopPropagation(); const [k, i] = cfx.dataset.tkcfx.split("|"); ((TKD[k]||{}).cfiles||[]).splice(Number(i), 1); tkCfPaint(k); return; }
   const sr = e.target.closest("[data-tkstoprule]"); if (sr){ e.stopPropagation(); if (sr.dataset.armed!=="1"){ sr.dataset.armed = "1"; sr.textContent = "¿Seguro? Ya no se creará la de la próxima semana"; return; }
     try{ await db.doc(`taskRules/${sr.dataset.tkstoprule}`).update({active:false, stoppedAt:Date.now()}); (TK_RULES[sr.dataset.tkstoprule] ||= {}).active = false; quickToast("Ya no se repite"); schedule(); }catch(_){ quickToast("No se pudo"); } return; }

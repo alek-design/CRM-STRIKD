@@ -246,6 +246,18 @@
       if (file.size > 20*1024*1024) throw {code:"too_large"};
       const ext = (file.name.match(/\.[a-z0-9]+$/i) || [""])[0].toLowerCase();
       const id = crypto.randomUUID().replace(/-/g, "") + ext;
+      // primero con permiso firmado del servidor (sirve para todo el equipo y para PDF); si no, directo
+      try{
+        const t = (await sb.auth.getSession()).data.session.access_token;
+        const r = await fetch("/api/upload", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + t}, body:JSON.stringify({sign:true, name:file.name, type:file.type, size:file.size})});
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j.token){
+          const up = await sb.storage.from("assets").uploadToSignedUrl(j.id, j.token, file, {contentType:j.contentType});
+          if (up.error) throw {code:"upload_failed", message:up.error.message};
+          return {id:j.id, url:"/_blob/" + j.id, sizeBytes:file.size, contentType:j.contentType};
+        }
+        if (r.status === 400 || r.status === 413) throw {code: r.status === 413 ? "too_large" : "unsupported_type", message:j.error};
+      }catch(err){ if (err && err.code) throw err; }
       const { error } = await sb.storage.from("assets").upload(id, file, {contentType:file.type || undefined});
       if (error) throw {code: /mime|type/i.test(error.message) ? "unsupported_type" : "upload_failed", message:error.message};
       return {id, url:"/_blob/" + id, sizeBytes:file.size, contentType:file.type};
