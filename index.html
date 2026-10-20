@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 02:35:47 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 03:17:13 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792463747">
+<link rel="stylesheet" href="/auth.css?v=1792466233">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792463747"></script>
+<script src="/claude-shim.js?v=1792466233"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -4142,10 +4142,23 @@ $("view-mich").addEventListener("click", e => {
   const go = e.target.closest("[data-mgo]"); if (!go) return;
   if (go.getAttribute("href")==="#"){ e.preventDefault(); if (go.classList.contains("locked")) michMark(go.dataset.mgo, "contactado"); return; }
   const [u,id] = go.dataset.mgo.split("/"), x = (S.vip[u]||{})[id];
-  { const at = MICH.tpl && S.michTpl && S.michTpl[MICH.tpl]; if (at && x && (x.status||"nuevo")==="nuevo"){ try{ navigator.clipboard.writeText(fillVars(at.text, x.prospect||"").replace(/\s+([!,.?])/g, "$1")); }catch(_){} } }
+  { const at = MICH.tpl && S.michTpl && S.michTpl[MICH.tpl]; if (at && x && (x.status||"nuevo")==="nuevo") copyNow(fillVars(at.text, x.prospect||"").replace(/\s+([!,.?])/g, "$1")); }
   if (MICH.on && x && (x.status||"nuevo")==="nuevo") setTimeout(() => michMark(go.dataset.mgo, "contactado"), 0); // el link abre Instagram; aquí solo se marca
 });
 
+/* Copiar al instante (en iPhone, al abrir Instagram la página pierde el foco y el portapapeles normal falla):
+   primero la copia "clásica", que es inmediata, y además la moderna como respaldo. */
+function copyNow(text){
+  let ok = false;
+  try{
+    const ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.contentEditable = "true";
+    ta.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px"; document.body.appendChild(ta);
+    const r = document.createRange(); r.selectNodeContents(ta); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); ta.setSelectionRange(0, text.length);
+    ok = document.execCommand("copy"); ta.remove(); sel.removeAllRanges();
+  }catch(_){}
+  try{ if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(() => {}); }catch(_){}
+  return ok;
+}
 /* Límite para cuidar la cuenta de Instagram: 40 contactos y luego 15 h de descanso */
 const MI_MAX = 40, MI_COOL = 15*HR;
 function michQuota(){
