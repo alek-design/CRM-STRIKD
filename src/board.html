@@ -2057,7 +2057,7 @@ async function render(){
   // en el ranking también salen el Head, el Manager y la Influencer si ya tienen prospectos con puntos a su nombre
   const lbIds = ids.slice(); { const have = new Set(Object.values(S.validations||{}).filter(v => v && v.status==="attended").map(v => v.uid));
     Object.entries(S.pts||{}).forEach(([u, evs]) => { if (Object.keys(evs||{}).length) have.add(u); });
-    [...new Set(Object.keys(S.members||{}).concat((S.config && S.config.headId) ? [S.config.headId] : []))].forEach(u => { if (!lbIds.includes(u) && have.has(u)) lbIds.push(u); }); }
+    [...new Set(Object.keys(S.members||{}).concat((S.config && S.config.headId) ? [S.config.headId] : []))].forEach(u => { if (!lbIds.includes(u) && (have.has(u) || roleOf(u)==="manager")) lbIds.push(u); }); } // el Manager (Alex) siempre compite
   renderBoard(ps, lbIds);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else { renderMine(); if (michMode() && S.tab==="flow"){ renderFlow(ps); renderTeamChart(); } }
@@ -2142,7 +2142,7 @@ function unaward(uid, id, ms){ return db.doc(`points/${uid}/ev/${id}_${ms}`).del
 function boardHtml(ps, ids, week, live){
   const t = tally(week), z = {pts:0, tom:0, valid:0, noshow:0, rejected:0, legusto:0, aprobado:0, progweb:0, publicado:0};
   const rows = ids.map(id => ({id, ...z, ...(t[id]||{})}))
-    .filter(r => S.team[r.id])
+    .filter(r => S.team[r.id] || (S.members||{})[r.id] || r.id===(S.config||{}).headId)
     .sort((a,b)=> b.pts-a.pts || b.valid-a.valid || nameOf(ps,a.id).localeCompare(nameOf(ps,b.id)));
   if (!rows.length) return `<div class="empty">Aún no hay nadie en el tablero. Cada persona del equipo aparece al abrir esta página por primera vez.</div>`;
   // ranks with ties

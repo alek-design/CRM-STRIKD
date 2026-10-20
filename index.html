@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 01:15:17 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 01:18:29 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792458917">
+<link rel="stylesheet" href="/auth.css?v=1792459109">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792458917"></script>
+<script src="/claude-shim.js?v=1792459109"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -2066,7 +2066,7 @@ async function render(){
   // en el ranking también salen el Head, el Manager y la Influencer si ya tienen prospectos con puntos a su nombre
   const lbIds = ids.slice(); { const have = new Set(Object.values(S.validations||{}).filter(v => v && v.status==="attended").map(v => v.uid));
     Object.entries(S.pts||{}).forEach(([u, evs]) => { if (Object.keys(evs||{}).length) have.add(u); });
-    [...new Set(Object.keys(S.members||{}).concat((S.config && S.config.headId) ? [S.config.headId] : []))].forEach(u => { if (!lbIds.includes(u) && have.has(u)) lbIds.push(u); }); }
+    [...new Set(Object.keys(S.members||{}).concat((S.config && S.config.headId) ? [S.config.headId] : []))].forEach(u => { if (!lbIds.includes(u) && (have.has(u) || roleOf(u)==="manager")) lbIds.push(u); }); } // el Manager (Alex) siempre compite
   renderBoard(ps, lbIds);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else { renderMine(); if (michMode() && S.tab==="flow"){ renderFlow(ps); renderTeamChart(); } }
@@ -2151,7 +2151,7 @@ function unaward(uid, id, ms){ return db.doc(`points/${uid}/ev/${id}_${ms}`).del
 function boardHtml(ps, ids, week, live){
   const t = tally(week), z = {pts:0, tom:0, valid:0, noshow:0, rejected:0, legusto:0, aprobado:0, progweb:0, publicado:0};
   const rows = ids.map(id => ({id, ...z, ...(t[id]||{})}))
-    .filter(r => S.team[r.id])
+    .filter(r => S.team[r.id] || (S.members||{})[r.id] || r.id===(S.config||{}).headId)
     .sort((a,b)=> b.pts-a.pts || b.valid-a.valid || nameOf(ps,a.id).localeCompare(nameOf(ps,b.id)));
   if (!rows.length) return `<div class="empty">Aún no hay nadie en el tablero. Cada persona del equipo aparece al abrir esta página por primera vez.</div>`;
   // ranks with ties
