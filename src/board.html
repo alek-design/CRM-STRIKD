@@ -3223,13 +3223,14 @@ function renderTodo(){
 function renderFlow(ps){
   if (!S.isLead && !michMode()) return;
   const onlyLate = $("flowLate").checked, now = Date.now();
-  const owners = Object.entries(S.all);
+  // Prospectos activos: todos, para todos (Head, Manager e Influencer ven lo mismo)
+  const owners = Object.entries(S.allEvery && Object.keys(S.allEvery).length ? S.allEvery : S.all);
   const all = collectTasks(owners);
   const late = all.filter(t => t.due < now).length;
   $("lateCount").textContent = late; $("lateCount").hidden = !late;
   const pSel = $("flowPerson");
   // además de los AM, cualquiera que tenga prospectos a su nombre (Head, Manager, Influencer)
-  const flowPpl = [...new Set(Object.keys(S.team).concat(Object.entries(S.all||{}).filter(([,o]) => Object.values(o||{}).some(m => m && !(m.flow||{}).lostAt)).map(([u]) => u)))];
+  const flowPpl = [...new Set(Object.keys(S.team).concat(owners.filter(([,o]) => Object.values(o||{}).some(m => m && !(m.flow||{}).lostAt)).map(([u]) => u)))];
   const pHtml = `<option value="">Todo el equipo</option><option value="__admin">Solo mis tareas</option>` + flowPpl.map(id=>`<option value="${id}">${esc(nameOf(ps,id))}</option>`).join("");
   if (pSel.dataset.html !== pHtml){ const v = pSel.value; pSel.innerHTML = pHtml; pSel.dataset.html = pHtml; pSel.value = v; }
   if (S.flowPick !== undefined){ pSel.value = S.flowPick; S.flowPick = undefined; }
@@ -6522,14 +6523,14 @@ function syncPointSubs(){
 let waCampSub = null;
 function syncAdminSubs(){
   if (!S.isLead && roleOf(S.uid)==="influencer"){ // Influencer: solo lee los prospectos de los AM para ver Equipo
-    Object.keys(S.members).filter(uid => roleOf(uid)==="am").forEach(uid => { if (adminSubs[uid]) return;
+    [...new Set(Object.keys(S.members).concat((S.config && S.config.headId) ? [S.config.headId] : []))].forEach(uid => { if (adminSubs[uid]) return;
       adminSubs[uid] = db.collection(`meets/${uid}/items`).onSnapshot(s => { const o = {}; s.docs.forEach(d=>o[d.id]=d.data()); S.allEvery[uid] = o; scopeAll(); schedule(); }, snapErr); });
     return; }
   if (!S.isLead) return;
   if (!waCampSub && S.uid) db.collection(`meets/${S.uid}/tpllog`).onSnapshot(s => { S.tplLog[S.uid]={}; s.docs.forEach(d=>S.tplLog[S.uid][d.id]=d.data()); schedule(); }, snapErr);
   if (!waCampSub) waCampSub = db.collection("waCampaigns").onSnapshot(s => { S.waCamps={}; s.docs.forEach(d=>S.waCamps[d.id]=d.data()); schedule(); }, snapErr);
   // los prospectos de todos: AM y también los que registran el Head, el Manager y la Influencer a su nombre
-  [...new Set(Object.keys(S.members).concat(S.uid ? [S.uid] : []))].forEach(uid => {
+  [...new Set(Object.keys(S.members).concat(S.uid ? [S.uid] : [], (S.config && S.config.headId) ? [S.config.headId] : []))].forEach(uid => {
     if (adminSubs[uid]) return;
     adminSubs[uid] = db.collection(`meets/${uid}/items`).onSnapshot(s => { const o = {}; s.docs.forEach(d=>o[d.id]=d.data()); S.allEvery[uid] = o; scopeAll(); schedule(); }, snapErr);
     db.collection(`meets/${uid}/tpllog`).onSnapshot(s => { S.tplLog[uid]={}; s.docs.forEach(d=>S.tplLog[uid][d.id]=d.data()); schedule(); }, snapErr);
