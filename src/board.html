@@ -2056,7 +2056,7 @@ async function render(){
   renderBoard(ps, ids);
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else { renderMine(); if (michMode() && S.tab==="flow"){ renderFlow(ps); renderTeamChart(); } }
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode()); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -2819,7 +2819,7 @@ const DRAFT = {}, EDRAFT = {}, OPEN = {};
 const dk = (uid, id) => `${uid}__${id}`;
 const draft = k => (DRAFT[k] = DRAFT[k] || {dt:{}});
 function actsHtml(t){
-  if (michMode()) return ""; // Influencer ve Equipo solo para consultar
+  if (michMode() && t.uid !== meId()) return ""; // Influencer: en Equipo solo consulta; en sus propios prospectos sí actúa
   const k = dk(t.uid, t.id), dr = DRAFT[k] || {dt:{}};
   const base = a => `data-act="${a.act}" data-uid="${t.uid}" data-id="${t.id}"${a.day?` data-day="${a.day}"`:""}`;
   return t.acts.map(a => {
@@ -3536,7 +3536,7 @@ function michEvents(){ // meets que agendó Mich (vienen de su lista; ella no ve
 function calEvents(teamAll){
   const tAll = teamAll && michMode(); // Equipo visto por la Influencer: los meets de todos los AM
   const ev = michMode() && !tAll ? michEvents() : [];
-  (adminMode() || tAll ? Object.entries(S.all) : michMode() ? [] : [[meId(), myItems()]]).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
+  (adminMode() || tAll ? Object.entries(S.all) : [[meId(), myItems()]]).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
     const st = statusOf(id), f = m.flow || {}, v = S.validations[id];
     if (f.lostAt || st==="rejected") return;
     const at = effAt(m);
@@ -3712,7 +3712,7 @@ function renderPlan(){
   const todayStr = PLAN_DAY && PLAN_DAY < realToday ? PLAN_DAY : realToday, pastDay = todayStr !== realToday;
   const t0 = Date.parse(todayStr+"T00:00:00-05:00"), eod = t0 + DAY - 1;
   if (admin){ const d = new Date(todayStr+"T00:00:00Z"), dow = (d.getUTCDay()+6)%7; gcalWatch(new Date(d.getTime()-dow*DAY).toISOString().slice(0,10)); }
-  const owners = michMode() ? [] : planOwners(), sel = PICK.dayPlan; // Influencer: su agenda es solo lo de su lista y sus tareas
+  const owners = planOwners(), sel = PICK.dayPlan; // Influencer: su agenda es solo lo de su lista y sus tareas
   const first = (uid,id,m) => tasksFor(uid,id,m,now).filter(ownTask)[0];
   // timed: meets of today
   const evs = [];
@@ -4523,7 +4523,7 @@ function computeTeam(){
 function teamScoped(){ return (S.isLead && !S.isOwner) || (S.viewMgr && S.viewMgr!=="__mgr"); }
 function scopeAll(){
   if (!teamScoped()){ S.all = S.allEvery; return; }
-  const keep = new Set(Object.keys(S.team||{}).concat(S.viewAs ? [S.viewAs] : []));
+  const keep = new Set(Object.keys(S.team||{}).concat(S.viewAs ? [S.viewAs] : [], S.uid ? [S.uid] : []));
   S.all = Object.fromEntries(Object.entries(S.allEvery).filter(([u]) => keep.has(u)));
 }
 function leadNameFor(uid){
@@ -5600,8 +5600,9 @@ function openBook(c){
   const panel = $("meetForm").closest(".panel"); if (!panel || BOOK.open) return;
   BOOK.home = panel.parentNode; BOOK.next = panel.nextSibling; BOOK.open = true;
   const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "bkWrap";
-  const team = Object.keys(S.team||{}), who0 = c ? (c.owner || meId()) : (adminMode() ? (team[0] || meId()) : meId());
-  const whoSel = adminMode() && team.length ? `<label class="bk-who">A nombre de <select id="bkWho">${team.map(u => `<option value="${u}"${u===who0?" selected":""}>${esc(nameOf(S.ps||{}, u))}</option>`).join("")}</select></label>` : "";
+  const others = S.isOwner ? Object.keys(S.members||{}).filter(u => u!==S.uid && (roleOf(u)==="manager" || roleOf(u)==="influencer")) : [];
+  const team = [...new Set(Object.keys(S.team||{}).concat(adminMode() && S.uid ? [S.uid] : [], others))], who0 = c ? (c.owner || meId()) : (adminMode() ? (Object.keys(S.team||{})[0] || meId()) : meId());
+  const whoSel = adminMode() && team.length ? `<label class="bk-who">A nombre de <select id="bkWho">${team.map(u => `<option value="${u}"${u===who0?" selected":""}>${esc(nameOf(S.ps||{}, u))}${u===S.uid?" (yo)":""}</option>`).join("")}</select></label>` : "";
   w.innerHTML = `<div class="bk" role="dialog" aria-modal="true" aria-label="Agendar meet"><div class="bk-grab"></div><div class="bk-h"><b>${c ? "Agendar meet desde WhatsApp" : "Agendar meet"}</b>${c ? `<span class="mut small">Revisa lo que llenamos y elige horario</span>` : ""}<div class="spacer"></div><button type="button" class="btn small" data-bkclose="1">Cerrar</button>${whoSel ? `<div class="bk-whorow">${whoSel}</div>` : ""}</div></div>`;
   w.querySelector(".bk").appendChild(panel); document.body.appendChild(w); BOOK.wrap = w;
   w.addEventListener("click", e => { if (e.target===w || e.target.closest("[data-bkclose]")) closeBook(); });
@@ -6430,7 +6431,8 @@ function syncAdminSubs(){
   if (!S.isLead) return;
   if (!waCampSub && S.uid) db.collection(`meets/${S.uid}/tpllog`).onSnapshot(s => { S.tplLog[S.uid]={}; s.docs.forEach(d=>S.tplLog[S.uid][d.id]=d.data()); schedule(); }, snapErr);
   if (!waCampSub) waCampSub = db.collection("waCampaigns").onSnapshot(s => { S.waCamps={}; s.docs.forEach(d=>S.waCamps[d.id]=d.data()); schedule(); }, snapErr);
-  Object.keys(S.members).filter(uid => roleOf(uid)==="am").forEach(uid => {
+  // los prospectos de todos: AM y también los que registran el Head, el Manager y la Influencer a su nombre
+  [...new Set(Object.keys(S.members).concat(S.uid ? [S.uid] : []))].forEach(uid => {
     if (adminSubs[uid]) return;
     adminSubs[uid] = db.collection(`meets/${uid}/items`).onSnapshot(s => { const o = {}; s.docs.forEach(d=>o[d.id]=d.data()); S.allEvery[uid] = o; scopeAll(); schedule(); }, snapErr);
     db.collection(`meets/${uid}/tpllog`).onSnapshot(s => { S.tplLog[uid]={}; s.docs.forEach(d=>S.tplLog[uid][d.id]=d.data()); schedule(); }, snapErr);
