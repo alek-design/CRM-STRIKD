@@ -2254,7 +2254,7 @@ function renderMine(){
   }).join("");
 }
 const FIELDS = ["perfil","canal","prospect","followers","channel","profile","email","phone","meetAt","link","notes"];
-const autoInv = () => !!mcp && !S.editingId && $("f_mkinv").checked;
+const autoInv = () => !!mcp && !S.editingId && !S.gcPrefill && $("f_mkinv").checked; // si viene de tu Google Calendar ya tiene invitación
 function syncInvUi(){
   // el link de Meet siempre lo generamos nosotros: nunca se pide a mano
   const isMeet = curPerfil()!==3 || $("f_p3meet").checked;
@@ -2405,16 +2405,16 @@ function validate(o){
   if (p===2 && o._folRaw && !o.followers) return "No entendí los seguidores: escribe por ejemplo 18k o 18,000.";
   if (p===2 && !o.followers) return "Pon los seguidores aproximados.";
   if (p===2 && Number(o.followers) > 35000) return "Con más de 35K va como Perfil 3, en la lista de Mich.";
-  if (!S.editingId && !autoInv() && (curPerfil()!==3 || $("f_p3meet").checked)) return "Conecta tu Google Calendar para agendar: el link de Meet se genera solo.";
+  if (!S.editingId && !S.gcPrefill && !autoInv() && (curPerfil()!==3 || $("f_p3meet").checked)) return "Conecta tu Google Calendar para agendar: el link de Meet se genera solo.";
   if (!o.prospect || !o.channel || (!o.profile && o.canal!=="whatsapp") || !o.email || !o.meetAt) return "Completa los campos marcados con *.";
   if (isNaN(meetTs(o.meetAt))) return "Revisa la fecha y hora del meet.";
-  { const c = slotClash(meetTs(o.meetAt)); if (c && c.hard) return `A esa hora tu team leader ya tiene ${SLOT_KIND[c.kind]||"un meet"}. Elige otro horario libre.`; }
+  if (!S.gcPrefill){ const c = slotClash(meetTs(o.meetAt)); if (c && c.hard) return `A esa hora tu team leader ya tiene ${SLOT_KIND[c.kind]||"un meet"}. Elige otro horario libre.`; }
   if (o.profile && !safeUrl(o.profile)) return "El link al perfil debe empezar con https://";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return "Revisa el email del prospecto.";
   if (o.link && !safeUrl(o.link)) return "El link debe empezar con https://";
   return "";
 }
-function resetForm(){ S.waPrefill = null; S.bkGuests = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Enviar a validación"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
+function resetForm(){ S.waPrefill = null; S.gcPrefill = null; S.bkGuests = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Enviar a validación"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
 $("cancelEdit").addEventListener("click", resetForm);
 /* ---------- resultado claro al registrar: cargando → listo / con aviso / error ---------- */
 const RS_IC = {ok:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>', warn:'<svg viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"/></svg>', err:'<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>', loading:""};
@@ -2468,7 +2468,9 @@ $("meetForm").addEventListener("submit", async e => {
         }catch(e){ auto = false; }
       }
       const wp = S.waPrefill, ip = S.iskPrefill && iskDigits(S.iskPrefill.phone)===iskDigits(o.phone) ? S.iskPrefill : null;
-      await ref.set({...o, createdAt: now, updatedAt: now, week: weekKey(now), ...(auto ? {autoValid:true, autoValidAt:now} : {}), ...(dupOf ? {dupOf} : {}), ...(wp ? {waLeadId:wp.id, waCampaign:wp.campaignId} : {}), ...(ip ? {iskConvId:ip.conv, canal:"whatsapp"} : {})});
+      const gp = S.gcPrefill; S.gcPrefill = null;
+      if (gp){ o.link = o.link || gp.link; if (adminMode() && !dupOf){ auto = true; } }
+      await ref.set({...o, createdAt: now, updatedAt: now, week: weekKey(now), ...(auto ? {autoValid:true, autoValidAt:now} : {}), ...(dupOf ? {dupOf} : {}), ...(wp ? {waLeadId:wp.id, waCampaign:wp.campaignId} : {}), ...(gp ? {gcalEventId:gp.eventId, gcalHtml:gp.html, fromCalendar:true} : {}), ...(ip ? {iskConvId:ip.conv, canal:"whatsapp"} : {})});
       S.iskPrefill = null;
       if (wp) db.doc(`meets/${wp.uid}/waleads/${wp.id}`).update({status:"agendado", statusAt:now, meetId:ref.id}).catch(()=>{});
       resetForm(); SL.at = 0; slotLoad(true); if (BOOK.open) closeBook();
@@ -3445,7 +3447,7 @@ function gcalWatch(mondayStr){
         g.events = (Array.isArray(p.events) ? p.events : []).filter(e => e && e.status!=="cancelled" && e.start && e.start.dateTime
           && !(e.attendees||[]).some(a => a.self && a.responseStatus==="declined"))
           .map(e => ({at:gcalLocal(e.start.dateTime), endTs:Date.parse(e.end && e.end.dateTime || e.start.dateTime),
-            label:`${e.calName ? e.calName : "Calendario"} · ${e.summary || "Ocupado (sin detalles)"}`, title:e.summary || "Ocupado (sin detalles)", extra:!!e.extraCal, calName:e.calName || "", link:safeUrl(e.conferenceUrl || e.hangoutLink || ((e.conferenceData||{}).entryPoints||[]).map(x => x.uri).find(u => /^https:/.test(u||"")) || ""), html:safeUrl(e.htmlLink || ""), emails:(e.attendees||[]).filter(a => !a.self).map(a => (a.email||"").toLowerCase())}))
+            label:`${e.calName ? e.calName : "Calendario"} · ${e.summary || "Ocupado (sin detalles)"}`, title:e.summary || "Ocupado (sin detalles)", gid:e.id || "", gstart:gcalLocal(e.start.dateTime), extra:!!e.extraCal, calName:e.calName || "", link:safeUrl(e.conferenceUrl || e.hangoutLink || ((e.conferenceData||{}).entryPoints||[]).map(x => x.uri).find(u => /^https:/.test(u||"")) || ""), html:safeUrl(e.htmlLink || ""), emails:(e.attendees||[]).filter(a => !a.self).map(a => (a.email||"").toLowerCase())}))
           .filter(e => e.at);
         g.err = null; g.at = (ev.result.cache && ev.result.cache.storedAt) || Date.now();
       } else {
@@ -3681,6 +3683,23 @@ function planOwners(){
   return adminMode() ? Object.entries(S.all) : [[meId(), myItems()]];
 }
 function ownTask(t){ return adminMode() ? (t.who==="admin" || t.alsoAdmin) : t.who==="member"; }
+// Meets de tu Google Calendar que no están en el panel (para "Registrar")
+const GCREG = {};
+document.addEventListener("click", e => { const b = e.target.closest("[data-gcreg]"); if (!b) return; e.stopPropagation();
+  const g = GCREG[b.dataset.gcreg]; if (!g) return;
+  const name = String(g.title||"").replace(/^\s*(strikd|outreach)\s*[x×\-·|:]\s*/i, "").replace(/\s*[x×\-·|:]\s*(strikd|outreach)\s*$/i, "").trim();
+  openBook(null);
+  setTimeout(() => {
+    S.gcPrefill = {eventId:g.gid, link:g.link || "", html:g.html || ""};
+    $("f_prospect").value = /^meet$/i.test(name) || /^Ocupado/.test(name) ? "" : name;
+    $("f_meetAt").value = String(g.gstart || g.at || "").slice(0,16);
+    if (g.emails && g.emails[0]) $("f_email").value = g.emails[0];
+    if ($("f_mkinv")) $("f_mkinv").checked = false; // ya existe en Google: no se manda otra invitación
+    const h = document.querySelector("#bkWrap .bk-h b"); if (h) h.textContent = "Registrar meet de tu calendario";
+    syncInvUi(); renderSlots();
+    const fe = ["f_prospect","f_profile","f_email"].map(id => $(id)).find(el => el && !el.value); (fe || $("f_prospect")).focus();
+  }, 60);
+});
 // Día que muestra el plan: hoy, o un día pasado que elegiste (para registrar el resultado de meets que ya pasaron)
 let PLAN_DAY = null;
 function renderPlan(){
@@ -3709,7 +3728,7 @@ function renderPlan(){
     const startNames = {}; evs.forEach(e => (startNames[e.ts] ||= []).push(fold((e.m && e.m.prospect) || "")));
     Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
       const ts = meetTs(e.at); if (isNaN(ts) || ts < t0 || ts > eod || (startNames[ts]||[]).some(n => n && fold(e.label).includes(n)) || e.emails.some(x => mails[x])) return;
-      evs.push({ts, end:e.endTs > ts ? e.endTs : ts+MEET_MIN, kind:"gcal", label:(e.extra ? "🌮 " : "") + (e.title || e.label.replace(/^Calendario · /,"")), gcal:true, sub:e.extra ? (e.calName || "Tacos") : "", glink:e.link, ghtml:e.html});
+      evs.push({ts, end:e.endTs > ts ? e.endTs : ts+MEET_MIN, kind:"gcal", label:(e.extra ? "🌮 " : "") + (e.title || e.label.replace(/^Calendario · /,"")), gcal:true, sub:e.extra ? (e.calName || "Tacos") : "", glink:e.link, ghtml:e.html, gev:e});
     }));
   }
   if (michMode()) michEvents().forEach(e => { const ts = meetTs(e.at); if (!isNaN(ts) && ts >= t0 && ts <= eod) evs.push({ts, end:ts+MEET_MIN, kind:"pitch", label:"Pitch", gcal:true, label2:e.label, sub:`Cuenta para ${String(nameOf(S.ps||{}, e.who)).split(" (")[0]}`}); });
@@ -3768,7 +3787,10 @@ function renderPlan(){
       <span class="pl-body"><b>${e.gcal ? esc(e.label) : `${perfilIcon(e.m)}${esc(e.label)} · ${esc(e.m.prospect)}`}</b>
       ${(() => { const sub = e.gcal ? (e.sub || "Tu calendario") : [admin ? nameOf(S.ps,e.uid) : "", t ? t.title : ""].filter(Boolean).join(" · "); return sub ? `<small>${esc(sub)}</small>` : ""; })()}</span>${tag}`;
     const gOpen = e.gcal && (e.glink ? `<a class="pl-gopen" href="${esc(e.glink)}" target="_blank" rel="noopener">Unirse</a>` : e.ghtml ? `<a class="pl-gopen sec" href="${esc(e.ghtml)}" target="_blank" rel="noopener">Abrir</a>` : "");
-    line += e.gcal ? `<div class="pl-item ${state} gcal">${inner}${gOpen}</div>`
+    // meet que se agendó directo en Google (no está en el panel): se puede registrar para seguir su flujo
+    const gReg = e.gev && !e.gev.extra && e.gev.gid && admin && e.ts <= now + 7*DAY ? `<button type="button" class="pl-gopen sec" data-gcreg="${esc(e.gev.gid)}">Registrar</button>` : "";
+    if (e.gev && e.gev.gid) GCREG[e.gev.gid] = e.gev;
+    line += e.gcal ? `<div class="pl-item ${state} gcal">${inner}${gReg}${gOpen}</div>`
       : `<div class="pl-item ${state}${sel===key?" sel":""}" role="button" tabindex="0" data-pick="${key}">${inner}</div>${expand(key, e.uid, e.id, e.m)}`;
   });
   if (!nowPlaced && evs.length) line += nowMark;
