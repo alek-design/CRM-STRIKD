@@ -34,7 +34,8 @@ module.exports = async (req, res) => {
   if (error){
     if (!/already/i.test(error.message)) return res.status(500).json({error:error.message});
     // ya tenía cuenta: solo cambiamos su rol
-    const { data: ex } = await admin.from("app_users").select("id").eq("email", email).maybeSingle();
+    const { data: ex } = await admin.from("app_users").select("id, role").eq("email", email).maybeSingle();
+    if (ex && (ex.role === "head" || ex.id === who.user.id)) return res.status(403).json({error:"Ese correo es del Head: no se le puede cambiar el rol desde aquí."});
     if (ex){ await admin.from("app_users").update({role, active:true, ...(name?{name}:{})}).eq("id", ex.id); await admin.from("invites").delete().eq("email", email); await setInfl(ex.id); }
     return res.status(200).json({ok:true, already:true});
   }
