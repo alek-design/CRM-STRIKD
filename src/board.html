@@ -1733,6 +1733,8 @@ function showTab(t){
   if (t==="board" && (adminMode() || michMode())) t = "flow"; // Head/Manager: Equipo es el pipeline del equipo
   else if (t==="board") t = "perf"; // AM: Ranking = leaderboard + su avance
   if (t==="vip") t = "agenda"; // la Lista Mich ya no se usa como pestaña
+  if (t==="wa" && !adminMode()) t = "funnel"; // WhatsApp outreach: solo Head y líderes
+  if (t==="funnel" && !adminMode() && !resultsView()) t = "agenda";
   S.tab = t;
   const navT = t==="wa" ? "funnel" : (t==="flow" || t==="perf") ? "board" : t;
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab===navT)));
@@ -1960,7 +1962,7 @@ const ICO = {
 };
 const svg = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
 function islandItems(){
-  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["board","home","Equipo"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["board","home","Equipo"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],["settings","gear","Ajustes"]]};
+  if (michMode()) return S.isOwner ? {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["board","home","Equipo"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],["settings","gear","Ajustes"]]} : {main:[["mich","crown","Mi lista"],["agenda","cal","Agenda"],["board","home","Equipo"],["more","more","Más"]], more:[["report","chart","Mi reporte del día"],...(resultsView() ? [["funnel","chart","Resultados"]] : []),["settings","gear","Ajustes"]]};
   const lead = adminMode(), am = !lead;
   const unread = ISK.convs.filter(c => c.lastDir==="in" && !c.disc && (lead ? true : c.owner===meId())).length;
   const msgN = unread;
@@ -1968,7 +1970,7 @@ function islandItems(){
     ? [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","trophy","Ranking"],["more","more","Más"]]
     : [["agenda","cal","Agenda"],["msgs","chat","Mensajes",msgN],["board","home","Equipo",Number($("lateCount").textContent)||0],["more","more","Más"]];
   const more = am
-    ? [["settings","gear","Ajustes"]]
+    ? [...(resultsView() ? [["funnel","chart","Resultados"]] : []),["settings","gear","Ajustes"]]
     : [["report","cal","Reporte del día"],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
        ["settings","gear","Ajustes"]];
   return {main, more};
@@ -2100,6 +2102,10 @@ async function render(){
 }
 
 const adminMode = () => S.isLead && !S.viewAs;
+// Resultados (solo consulta) para el Manager y la Influencer aunque no sean líderes con permisos de edición
+// Manager e Influencer la ven de entrada; a cualquier otra persona el Head se la activa en Accesos ("Puede ver Resultados")
+function resultsView(){ if (!S.uid || S.viewAs || S.isLead) return false; const r = (S.roles||{})[S.uid] || {};
+  return r.canResults === true || (r.canResults !== false && ["manager","influencer"].includes(roleOf(S.uid))); }
 // Equipo (info de los AM): Head/Manager, y también la Influencer Outreach en modo solo lectura
 const teamView = () => adminMode() || michMode();
 // "yo" en pantalla: la persona que el Head está viendo (AM, Influencer o Manager) o él mismo
@@ -2254,7 +2260,7 @@ function renderMiniLb(ps, ids){
 }
 function renderBoard(ps, ids){
   renderMiniLb(ps, ids);
-  const home = $(adminMode() ? "lbHomeFunnel" : "lbHomePerf"), blk = $("lbBlock");
+  const home = $(adminMode() || (resultsView() && S.tab==="funnel") ? "lbHomeFunnel" : "lbHomePerf"), blk = $("lbBlock");
   if (blk.parentNode !== home) home.appendChild(blk);
   { const pw = $("pathWrap"), ph = adminMode() ? $("lbHomeBoard").parentNode : $("view-perf"); if (pw && pw.parentNode !== ph) ph.appendChild(pw); } // AM: su journey vive en Ranking
   $("board").innerHTML = boardHtml(ps, ids, S.currentKey, true);
@@ -4721,6 +4727,7 @@ function orgCtl(uid){
     ${r==="manager" ? `<input type="email" data-orgmail="${uid}" placeholder="Email para invitaciones de meet" value="${esc((S.roles[uid]||{}).inviteEmail||"")}" aria-label="Email del team leader para invitaciones">` : ""}
     ${r==="am" && uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgassign="${uid}"${(S.roles[uid]||{}).canAssign ? " checked" : ""}> Puede asignar tareas a otros AM</label>
       <label class="org-chk"><input type="checkbox" data-orgemail="${uid}"${(S.roles[uid]||{}).canEmail ? " checked" : ""}> Los emails a sus influencers salen de su Gmail</label>` : ""}
+    ${uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgres="${uid}"${((S.roles[uid]||{}).canResults === true || ((S.roles[uid]||{}).canResults !== false && r !== "am")) ? " checked" : ""}> Puede ver Resultados</label>` : ""}
     ${r==="am" && mgrs.length ? `<select data-orgmgr="${uid}" aria-label="Su manager"><option value="">Manager: cualquiera</option>${mgrs.map(m => `<option value="${m}"${mgrOf(uid)===m?" selected":""}>Manager: ${esc(nameOf(S.ps||{}, m))}</option>`).join("")}</select>` : ""}
   </div>`;
 }
@@ -4761,6 +4768,10 @@ $("orgBox").addEventListener("change", async e => {
   if (oe && S.isOwner){ const uid = oe.dataset.orgemail, cur = S.roles[uid] || {}; oe.disabled = true;
     try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canEmail:oe.checked, ...(oe.checked ? {canEmailAt:Date.now()} : {}), updatedAt:Date.now()}); S.roles[uid] = {...cur, role:cur.role || "am", canEmail:oe.checked}; quickToast(oe.checked ? "✓ Autorizado: que conecte su Gmail en Ajustes" : "Sus emails saldrán del correo general"); }catch(ex){ oe.checked = !oe.checked; quickToast("No se guardó"); }
     oe.disabled = false; return; }
+  const ors = e.target.closest("[data-orgres]");
+  if (ors && S.isOwner){ const uid = ors.dataset.orgres, cur = S.roles[uid] || {}; ors.disabled = true;
+    try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canResults:ors.checked, updatedAt:Date.now()}); S.roles[uid] = {...cur, role:cur.role || "am", canResults:ors.checked}; quickToast(ors.checked ? "✓ Ya puede ver Resultados" : "Ya no ve Resultados"); }catch(ex){ ors.checked = !ors.checked; quickToast("No se guardó"); }
+    ors.disabled = false; return; }
   const oa = e.target.closest("[data-orgassign]");
   if (oa && S.isOwner){ const uid = oa.dataset.orgassign, cur = S.roles[uid] || {}; oa.disabled = true;
     try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canAssign:oa.checked, updatedAt:Date.now()}); (S.roles[uid] = {...cur, role:cur.role || "am", canAssign:oa.checked}); quickToast(oa.checked ? "✓ Ya puede asignar tareas" : "Ya no puede asignar tareas"); }catch(ex){ oa.checked = !oa.checked; quickToast("No se guardó"); }
@@ -6612,7 +6623,9 @@ function funnelCard(title, fun, isTeam){
   </section>`;
 }
 function renderFunnel(ps){
-  if (!S.isLead || !$("funnelBox")) return;
+  if (!S.viewAs) $("tabFunnel").hidden = !(S.isLead || resultsView());
+  if ((!S.isLead && !resultsView()) || !$("funnelBox")) return;
+  document.querySelectorAll('#view-funnel .subnav [data-go="wa"]').forEach(b => b.hidden = !adminMode());
   const per = $("funPeriod").value, since = per ? Date.now() - Number(per)*DAY : 0, canal = $("funCanal").value;
   const ids = Object.keys(S.team);
   const team = {}; ids.forEach(u => Object.assign(team, S.all[u]||{}));
@@ -6796,7 +6809,7 @@ function syncPointSubs(){
 }
 let waCampSub = null;
 function syncAdminSubs(){
-  if (!S.isLead && roleOf(S.uid)==="influencer"){ // Influencer: solo lee los prospectos de los AM para ver Equipo
+  if (!S.isLead && (roleOf(S.uid)==="influencer" || resultsView())){ // Influencer (Equipo) y quien ve Resultados: solo leen los prospectos
     [...new Set(Object.keys(S.members).concat((S.config && S.config.headId) ? [S.config.headId] : []))].forEach(uid => { if (adminSubs[uid]) return;
       adminSubs[uid] = db.collection(`meets/${uid}/items`).onSnapshot(s => { const o = {}; s.docs.forEach(d=>o[d.id]=d.data()); S.allEvery[uid] = o; scopeAll(); schedule(); }, snapErr); });
     return; }
