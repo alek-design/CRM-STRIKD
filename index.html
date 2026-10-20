@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 21:30:59 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 22:57:36 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792531859">
+<link rel="stylesheet" href="/auth.css?v=1792537056">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792531859"></script>
+<script src="/claude-shim.js?v=1792537056"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1281,6 +1281,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .set-row{display:flex;gap:12px;align-items:center;padding:13px 16px;border-top:1px solid var(--line)}.set-card .set-row:first-child{border-top:0}
 .set-ic{width:28px;text-align:center;font-size:18px}.set-tx{flex:1;min-width:0;display:grid;gap:2px}.set-tx span{font-size:12.5px;color:var(--muted)}
 .pl-move{display:flex;flex-direction:column;gap:6px;margin:10px 0}.pl-move .ig{display:flex;gap:8px;flex-wrap:wrap}.pl-move input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
+.tk-fw{position:relative;display:inline-flex}.tk-fx{position:absolute;top:-7px;right:-7px;min-width:24px;height:24px;padding:0 6px;border-radius:12px;border:1px solid var(--line2);background:var(--bg);color:var(--fg);font-size:14px;line-height:1;cursor:pointer;z-index:1}.tk-fx.armed{font-size:11.5px;font-weight:700;color:#e5484d;border-color:#e5484d}
 .tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
@@ -4445,8 +4446,11 @@ function taskRow(u, id, x, lead, now){
   const k = `${u}/${id}`, st = tkSt(x), late = x.dueAt && x.dueAt < now && st!=="done" && st!=="review", open = TK_OPEN===k, due = tkDue(x, now);
   const sub = lead ? [String(nameOf(S.ps||{}, u)).split(" (")[0], x.dueAt ? fmtLocal(x.dueAt).split(",")[0] : ""].filter(Boolean).join(" · ") : [x.byName && x.by !== u ? "de " + x.byName : "", x.dueAt ? (late ? "tarde" : "para " + fmtLocal(x.dueAt).split(",")[0]) : ""].filter(Boolean).join(" · ");
   // imágenes con vista previa; los demás archivos (PDF, etc.) como chip
-  const files = (x.files||[]).map(f => tkIsImg(f) ? `<a class="tk-img" href="${esc(f.url)}" target="_blank" rel="noopener" title="${esc(f.name||"imagen")}"><img src="${esc(f.url)}" alt="${esc(f.name||"imagen")}" loading="lazy"></a>`
-    : `<a class="tk-file" href="${esc(f.url)}" target="_blank" rel="noopener">${/pdf/i.test(f.type||f.name||"") ? "📄" : "📎"} ${esc(f.name||"archivo")}</a>`).join("");
+  // quien subió el archivo (o quien asignó la tarea / el Head) lo puede quitar mientras no la haya enviado
+  const canDelF = f => !S.viewAs && st!=="done" && st!=="review" && (f.by===S.uid || x.by===S.uid || S.isOwner);
+  const fdel = (f, i) => canDelF(f) ? `<button type="button" class="tk-fx" data-tkfdel="${k}|${i}" aria-label="Quitar archivo" title="Quitar">×</button>` : "";
+  const files = (x.files||[]).map((f, i) => `<span class="tk-fw">` + (tkIsImg(f) ? `<a class="tk-img" href="${esc(f.url)}" target="_blank" rel="noopener" title="${esc(f.name||"imagen")}"><img src="${esc(f.url)}" alt="${esc(f.name||"imagen")}" loading="lazy"></a>`
+    : `<a class="tk-file" href="${esc(f.url)}" target="_blank" rel="noopener">${/pdf/i.test(f.type||f.name||"") ? "📄" : "📎"} ${esc(f.name||"archivo")}</a>`) + fdel(f, i) + `</span>`).join("");
   const thumb = (x.files||[]).find(tkIsImg);
   const prog = tkProgress(u, x), rep = x.ruleId ? (TK_RULES[x.ruleId] || {active:true}) : null;
   const d = TKD[k] || {};
@@ -4629,8 +4633,10 @@ document.addEventListener("click", async e => {
     try{ await db.doc(`taskRules/${sr.dataset.tkstoprule}`).update({active:false, stoppedAt:Date.now()}); (TK_RULES[sr.dataset.tkstoprule] ||= {}).active = false; quickToast("Ya no se repite"); schedule(); }catch(_){ quickToast("No se pudo"); } return; }
   const te = e.target.closest("[data-tkedit]"); if (te){ e.stopPropagation(); (TKD[te.dataset.tkedit] ||= {}).edit = true; schedule(); return; }
   const tc = e.target.closest("[data-tkecancel]"); if (tc){ e.stopPropagation(); const d = TKD[tc.dataset.tkecancel] || {}; d.edit = false; delete d.e_title; delete d.e_note; delete d.e_due; schedule(); return; }
-  const fdel = e.target.closest("[data-tkfdel]"); if (fdel){ e.stopPropagation(); const [k, i] = fdel.dataset.tkfdel.split("|"), x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
-    const fl = (x0.files||[]).slice(); fl.splice(Number(i), 1); await taskSave(k, {files:fl}); return; }
+  const fdel = e.target.closest("[data-tkfdel]"); if (fdel){ e.stopPropagation(); e.preventDefault();
+    if (fdel.classList.contains("tk-fx") && fdel.dataset.armed !== "1"){ fdel.dataset.armed = "1"; fdel.textContent = "¿Quitar?"; fdel.classList.add("armed"); setTimeout(() => { if (fdel.isConnected){ fdel.dataset.armed = ""; fdel.textContent = "×"; fdel.classList.remove("armed"); } }, 4000); return; }
+    const [k, i] = fdel.dataset.tkfdel.split("|"), x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
+    const fl = (x0.files||[]).slice(); fl.splice(Number(i), 1); if (await taskSave(k, {files:fl})) quickToast("Archivo quitado"); return; }
   const es = e.target.closest("[data-tkesave]"); if (es){ e.stopPropagation(); const k = es.dataset.tkesave, d = TKD[k] || {}, x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
     const patch = {};
     if (d.e_title !== undefined){ const t = d.e_title.trim(); if (!t){ quickToast("La tarea necesita un título"); return; } if (t !== x0.title) patch.title = t; }
