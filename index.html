@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 01:32:39 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 02:03:01 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792459959">
+<link rel="stylesheet" href="/auth.css?v=1792461781">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792459959"></script>
+<script src="/claude-shim.js?v=1792461781"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -4851,7 +4851,9 @@ function renderReport(){
   const from = Date.parse(day + "T00:00:00-05:00"), to = from + DAY, inD = t => { t = Number(t)||0; return t >= from && t < to; };
   const isToday = day===today, team = Object.keys(S.team||{}), first = u => String(nameOf(S.ps||{}, u)).split(" (")[0].split(" ")[0];
   const dl = (() => { const d = new Date(from); return `${["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(day+"T12:00:00Z").getUTCDay()]} ${Number(day.slice(8))} ${MONTHS[Number(day.slice(5,7))-1]}`; })();
-  const per = team.map(u => {
+  // también cuentan los prospectos que están a nombre del Head, el Manager o la Influencer (si tuvieron movimiento ese día)
+  const ppl = [...new Set(team.concat(Object.keys(S.all||{}), Object.keys(S.pts||{})))];
+  const per = ppl.map(u => {
     const items = Object.entries((S.all||{})[u]||{});
     const reg = items.filter(([,m]) => inD(m.createdAt));
     const vs = Object.values(S.validations||{}).filter(v => v.uid===u && inD(v.decidedAt));
@@ -4861,8 +4863,8 @@ function renderReport(){
     return {u, reg:reg.length, wa:reg.filter(([,m]) => canalOf(m)==="whatsapp").length, tom:vs.filter(v => v.status==="attended").length, ns:vs.filter(v => v.status==="noshow").length,
       gus:n("legusto"), apr:n("aprobado"), pw:n("progweb"), pub:n("publicado"), lost:items.filter(([,m]) => inD((m.flow||{}).lostAt)).length,
       late:isToday ? (teamLateBy(now)[u]||[]).length : null, tkDone:tk.filter(([,x]) => inD(x.doneAt)).length, tkOpen:tk.filter(([,x]) => tkSt(x)!=="done").length, tkRev:tk.filter(([,x]) => tkSt(x)==="review").length,
-      seen:inD(((S.members||{})[u]||{}).seenAt) || actOf(u, day) > 0 || (isToday && presOf(u).st) };
-  });
+      seen:inD(((S.members||{})[u]||{}).seenAt) || actOf(u, day) > 0 || (isToday && presOf(u).st), extra:!team.includes(u) };
+  }).filter(r => !r.extra || (r.reg + r.tom + r.ns + r.gus + r.apr + r.pw + r.pub + r.lost) > 0);
   const sum = k => per.reduce((a,r) => a + (r[k]||0), 0);
   const tomorrow = new Date(to - OFF + 12*3600e3).toISOString().slice(0,10);
   const next = calEvents().filter(e => e.kind==="pitch" && e.who && String(e.at).slice(0,10)===tomorrow).sort((a,b) => String(a.at).localeCompare(String(b.at)));
