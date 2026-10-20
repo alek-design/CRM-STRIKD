@@ -53,6 +53,9 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.tt-rules{margin-top:14px}.rl{padding:12px 14px;display:grid;gap:8px}.rl + .rl{border-top:1px solid var(--line)}.rl-h{display:grid}.rl-h small{color:var(--muted);font-size:12.5px}
+.rl-p{display:flex;flex-wrap:wrap;gap:6px}.rl-u{font:inherit;font-size:13px;font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--fg);background:var(--fg);color:var(--bg);cursor:pointer}
+.rl-u.off{background:transparent;color:var(--muted);border-color:var(--line);text-decoration:line-through}.rl .linkbtn{justify-self:start;font-size:12.5px}
 .tkm-em{font-size:13px}.tkm-em.no{font-size:11px;color:var(--muted)}
 .ck-w{font-style:normal;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--line2);color:var(--muted);margin-left:6px;white-space:nowrap}.ck-w.mid{background:#fef3c7;color:#92400e}.ck-w.bad{background:#fee2e2;color:#b91c1c}
 .rt{margin-left:auto}.rt.ok b{color:var(--ok-fg,#15803d)}.rt.mid b{color:#b45309}.rt.bad b{color:#e5484d}
@@ -4801,12 +4804,40 @@ function ttGroups(open, now){
       ${l.map(([uu,id,x]) => taskRow(uu, id, x, true, now)).join("")}</details>`; }).join("");
 }
 document.addEventListener("toggle", e => { const d = e.target; if (!d || !d.matches || !d.matches("details[data-ttp]")) return; if (d.open){ TT_OPEN.add(d.dataset.ttp); TT_SHUT.delete(d.dataset.ttp); } else { TT_OPEN.delete(d.dataset.ttp); TT_SHUT.add(d.dataset.ttp); if (TK_OPEN && TK_OPEN.startsWith(d.dataset.ttp + "/")) TK_OPEN = null; } }, true);
+// Tareas que se repiten cada semana: a quién le llega cada una (se puede quitar a alguien) y dejar de repetirlas
+function rulesHtml(){
+  if (!adminMode() || S.viewAs) return "";
+  const DOWS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+  const rules = Object.entries(TK_RULES).filter(([,r]) => r && r.active !== false && (S.isOwner || r.by === S.uid));
+  if (!rules.length) return "";
+  const ppl = r => { const head = (S.config||{}).headId; return r.to === "__team" ? Object.keys(S.members||{}).filter(u => u!==head && (roleOf(u)==="am" || !roleOf(u)) && (S.isOwner || mgrOf(u)===r.by || !mgrOf(u))) : (Array.isArray(r.to) ? r.to : []); };
+  return `<section class="pg2 tt-rules"><div class="pg2-h"><span>Se repiten cada semana</span><b>${rules.length}</b></div><div class="pg2-card">${rules.map(([id, r]) => { const ex = new Set(r.exclude || []);
+    return `<div class="rl"><div class="rl-h"><b>${esc(r.title)}</b><small>Cada ${esc(DOWS[Number(r.weekday)]||"semana")} · 6 pm${r.metric==="mich" && r.goal ? ` · meta ${r.goal}` : ""}</small></div>
+      <div class="rl-p">${ppl(r).map(u => `<button type="button" class="rl-u${ex.has(u) ? " off" : ""}" data-rlu="${esc(id)}|${esc(u)}" title="${ex.has(u) ? "No le llega · toca para volver a incluir" : "Le llega · toca para quitar"}">${ex.has(u) ? "" : "✓ "}${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</button>`).join("")}</div>
+      <button type="button" class="linkbtn" data-tkstoprule="${esc(id)}">Dejar de repetir</button></div>`; }).join("")}</div>
+    <p class="mut small" style="margin:6px 4px 0">Toca a una persona para que ya no le llegue (o para volver a incluirla).</p></section>`;
+}
+document.addEventListener("click", async e => { const b = e.target.closest("[data-rlu]"); if (!b) return; e.stopPropagation();
+  const [rid, u] = b.dataset.rlu.split("|"), r = TK_RULES[rid]; if (!r) return;
+  const ex = new Set(r.exclude || []), nm = String(nameOf(S.ps||{}, u)).split(" (")[0], removing = !ex.has(u);
+  // su tarea de esta semana (si sigue abierta)
+  const open = Object.entries((S.tasks||{})[u] || {}).filter(([,x]) => x.ruleId===rid && tkSt(x)!=="done");
+  if (removing){
+    if (!confirm(`¿Ya no mandarle "${r.title}" a ${nm} cada semana?${open.length ? `\n\nTambién se borra la que tiene abierta esta semana.` : ""}`)) return;
+    ex.add(u);
+  } else ex.delete(u);
+  b.disabled = true;
+  try{ await db.doc(`taskRules/${rid}`).update({exclude:[...ex]}); r.exclude = [...ex];
+    if (removing) for (const [tid] of open){ await db.doc(`meets/${u}/tasks/${tid}`).delete().catch(() => {}); if (S.tasks[u]) delete S.tasks[u][tid]; }
+    quickToast(removing ? `✓ A ${nm} ya no le llega` : `✓ A ${nm} le vuelve a llegar desde la próxima`); }
+  catch(_){ quickToast("No se guardó. Intenta otra vez."); }
+  schedule(); });
 function renderTeamTasks(){
   const box = $("teamTasks"); if (!box || !teamView() || busyIn(box)) return;
   const list = taskAssignedByMe(), now = Date.now(), open = list.filter(([,,x]) => tkSt(x)!=="done"), done = list.filter(([,,x]) => tkSt(x)==="done");
   box.innerHTML = `<section class="pg2 tt"><div class="pg2-h"><span>Tareas del equipo</span>${open.length?`<b>${open.length}</b>`:""}<button type="button" class="tt-new" data-tasknew="1">+ Tarea</button></div>
     <div class="pg2-card${open.length?"":" tt-0"}">${ttGroups(open, now) || `<p class="tt-none">Sin tareas abiertas</p>`}
-    ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>`;
+    ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>${rulesHtml()}`;
 }
 /* Conectados: cada quien marca members/{uid}.seenAt cada minuto mientras tiene la app abierta y visible.
    Verde = abierta ahora (último latido < 2.5 min). Amarillo = la cerró hace menos de 15 min. */
