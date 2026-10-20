@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 02:03:01 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 02:35:47 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792461781">
+<link rel="stylesheet" href="/auth.css?v=1792463747">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792461781"></script>
+<script src="/claude-shim.js?v=1792463747"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -4241,7 +4241,7 @@ function taskSubs(){
 function taskList(u){ return Object.entries((S.tasks||{})[u] || {}).sort((a,b) => (a[1].dueAt||9e15) - (b[1].dueAt||9e15)); }
 function taskAssignedByMe(){ const out = []; Object.entries(S.tasks||{}).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,x]) => { if (u===meId() || x.by===u) return; // las tareas personales (que alguien se crea a sí mismo) no las ve nadie más
     const headU = S.config && S.config.headId;
-    if (x.by===meId() || (S.isOwner && !teamScoped()) || (teamScoped() && S.team && S.team[u])) out.push([u,id,x]); }));
+    if (x.by===meId() || (S.isOwner && !teamScoped()) || (teamScoped() && S.team && S.team[u]) || michMode()) out.push([u,id,x]); })); // la Influencer ve todas las del equipo
   const ord = {review:0, changes:1, progress:2, todo:3, done:4};
   return out.sort((a,b) => ord[tkSt(a[2])] - ord[tkSt(b[2])] || (b[2].createdAt||0) - (a[2].createdAt||0)).filter(([,,x]) => tkSt(x)!=="done" || Date.now() - (x.doneAt||0) < 3*864e5); }
 /* Estatus: Por hacer → En progreso (AM) → Esperando aprobación (AM) → Necesita ajustes / Completado (Head o Manager) */
@@ -4332,7 +4332,8 @@ function taskRow(u, id, x, lead, now){
       <div class="tk-sec">Comentarios${(x.comments||[]).length ? ` <b>${x.comments.length}</b>` : ""}</div>
       ${thread ? `<div class="tk-thread">${thread}</div>` : ""}
       ${cbox}
-      ${lead ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button>${canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
+      ${lead && michMode() && x.by !== S.uid ? `<p class="mut small">La revisa ${esc(x.byName || "quien la asignó")}.</p>`
+        : lead ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button>${canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
         : `<div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}${x.by === u ? `<button class="btn small primary" data-tkst="${k}|done">✓ Completar</button>` : `<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button>`}</div>`}
     </div>`;
   return `<div class="pr tkr st-${st}${late?" late":""}${open?" sel":""}" role="button" tabindex="0" data-tkopen="${k}">

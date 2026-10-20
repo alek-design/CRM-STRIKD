@@ -4232,7 +4232,7 @@ function taskSubs(){
 function taskList(u){ return Object.entries((S.tasks||{})[u] || {}).sort((a,b) => (a[1].dueAt||9e15) - (b[1].dueAt||9e15)); }
 function taskAssignedByMe(){ const out = []; Object.entries(S.tasks||{}).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,x]) => { if (u===meId() || x.by===u) return; // las tareas personales (que alguien se crea a sí mismo) no las ve nadie más
     const headU = S.config && S.config.headId;
-    if (x.by===meId() || (S.isOwner && !teamScoped()) || (teamScoped() && S.team && S.team[u])) out.push([u,id,x]); }));
+    if (x.by===meId() || (S.isOwner && !teamScoped()) || (teamScoped() && S.team && S.team[u]) || michMode()) out.push([u,id,x]); })); // la Influencer ve todas las del equipo
   const ord = {review:0, changes:1, progress:2, todo:3, done:4};
   return out.sort((a,b) => ord[tkSt(a[2])] - ord[tkSt(b[2])] || (b[2].createdAt||0) - (a[2].createdAt||0)).filter(([,,x]) => tkSt(x)!=="done" || Date.now() - (x.doneAt||0) < 3*864e5); }
 /* Estatus: Por hacer → En progreso (AM) → Esperando aprobación (AM) → Necesita ajustes / Completado (Head o Manager) */
@@ -4323,7 +4323,8 @@ function taskRow(u, id, x, lead, now){
       <div class="tk-sec">Comentarios${(x.comments||[]).length ? ` <b>${x.comments.length}</b>` : ""}</div>
       ${thread ? `<div class="tk-thread">${thread}</div>` : ""}
       ${cbox}
-      ${lead ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button>${canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
+      ${lead && michMode() && x.by !== S.uid ? `<p class="mut small">La revisa ${esc(x.byName || "quien la asignó")}.</p>`
+        : lead ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button>${canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
         : `<div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}${x.by === u ? `<button class="btn small primary" data-tkst="${k}|done">✓ Completar</button>` : `<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button>`}</div>`}
     </div>`;
   return `<div class="pr tkr st-${st}${late?" late":""}${open?" sel":""}" role="button" tabindex="0" data-tkopen="${k}">
