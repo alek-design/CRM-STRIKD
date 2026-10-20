@@ -1847,7 +1847,7 @@ function renderSettings(){
     ${S.isLead && !S.viewAs ? `<h3 class="set-h">Equipo</h3><section class="set-card">
       ${S.isOwner ? setRow("🧭", "Organigrama y accesos", "Roles, quién reporta a quién y dar de alta al equipo", `<button type="button" class="btn small" data-set="org">Abrir</button>`) : ""}
       ${!$("xlsBtn").hidden ? setRow("📊", "Descargar Excel", "Todos los meets y su avance en un archivo", `<button type="button" class="btn small" data-set="xls">Descargar</button>`) : ""}
-    </section>` : ""}
+    </section>${(() => { const r = rulesHtml(); return r ? `<h3 class="set-h">Tareas recurrentes</h3><div class="set-rules">${r}</div>` : ""; })()}` : ""}
     ${A ? `<h3 class="set-h">Cuenta</h3><section class="set-card">
       ${setRow("🔑", "Contraseña", "Cámbiala cuando quieras", `<button type="button" class="btn small" data-set="pwd">Cambiar</button>`)}
       ${S.isOwner && window.STRIKD_CLEANUP ? setRow("🧹", "Datos de ejemplo", CLN.res ? (CLN.res.nada ? "Ya no hay datos de ejemplo. Todo limpio." : CLN.res.borrados ? `Listo: se borraron ${CLN.res.borrados} registros de ${CLN.res.ejemplo} personas de ejemplo.` : `Hay ${CLN.res.ejemplo} personas de ejemplo con ${CLN.res.docs} registros (prospectos, tareas, puntos…). Los usuarios reales no se tocan.`) : "Borra las personas \"(ejemplo)\" y todo lo suyo", CLN.res && !CLN.res.nada && !CLN.res.borrados ? `<button type="button" class="btn small bad" data-set="cln-go">${CLN.armed ? "¿Seguro? Borrar" : "Borrar todo"}</button>` : CLN.res ? "" : `<button type="button" class="btn small" data-set="cln-check">${CLN.busy ? "Revisando…" : "Revisar"}</button>`) : ""}
@@ -4811,7 +4811,7 @@ function rulesHtml(){
   const rules = Object.entries(TK_RULES).filter(([,r]) => r && r.active !== false && (S.isOwner || r.by === S.uid));
   if (!rules.length) return "";
   const ppl = r => { const head = (S.config||{}).headId; return r.to === "__team" ? Object.keys(S.members||{}).filter(u => u!==head && (roleOf(u)==="am" || !roleOf(u)) && (S.isOwner || mgrOf(u)===r.by || !mgrOf(u))) : (Array.isArray(r.to) ? r.to : []); };
-  return `<section class="pg2 tt-rules"><div class="pg2-h"><span>Se repiten cada semana</span><b>${rules.length}</b></div><div class="pg2-card">${rules.map(([id, r]) => { const ex = new Set(r.exclude || []);
+  return `<section class="pg2 tt-rules"><div class="pg2-card">${rules.map(([id, r]) => { const ex = new Set(r.exclude || []);
     return `<div class="rl"><div class="rl-h"><b>${esc(r.title)}</b><small>Cada ${esc(DOWS[Number(r.weekday)]||"semana")} · 6 pm${r.metric==="mich" && r.goal ? ` · meta ${r.goal}` : ""}</small></div>
       <div class="rl-p">${ppl(r).map(u => `<button type="button" class="rl-u${ex.has(u) ? " off" : ""}" data-rlu="${esc(id)}|${esc(u)}" title="${ex.has(u) ? "No le llega · toca para volver a incluir" : "Le llega · toca para quitar"}">${ex.has(u) ? "" : "✓ "}${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</button>`).join("")}</div>
       <button type="button" class="linkbtn" data-tkstoprule="${esc(id)}">Dejar de repetir</button></div>`; }).join("")}</div>
@@ -4837,7 +4837,7 @@ function renderTeamTasks(){
   const list = taskAssignedByMe(), now = Date.now(), open = list.filter(([,,x]) => tkSt(x)!=="done"), done = list.filter(([,,x]) => tkSt(x)==="done");
   box.innerHTML = `<section class="pg2 tt"><div class="pg2-h"><span>Tareas del equipo</span>${open.length?`<b>${open.length}</b>`:""}<button type="button" class="tt-new" data-tasknew="1">+ Tarea</button></div>
     <div class="pg2-card${open.length?"":" tt-0"}">${ttGroups(open, now) || `<p class="tt-none">Sin tareas abiertas</p>`}
-    ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>${rulesHtml()}`;
+    ${done.length ? `<details class="tt-done"><summary>Completadas (${done.length})</summary>${done.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</details>` : ""}</div></section>`;
 }
 /* Conectados: cada quien marca members/{uid}.seenAt cada minuto mientras tiene la app abierta y visible.
    Verde = abierta ahora (último latido < 2.5 min). Amarillo = la cerró hace menos de 15 min. */
