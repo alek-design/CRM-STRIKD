@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-19 21:26:00 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 00:49:56 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792445160">
+<link rel="stylesheet" href="/auth.css?v=1792457396">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792445160"></script>
+<script src="/claude-shim.js?v=1792457396"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -62,6 +62,7 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.cal-h.pick{cursor:pointer}.cal-h.pick:hover{text-decoration:underline}.pl-today{margin-left:10px;font-size:13px}
 .tt-p + .tt-p{border-top:1px solid var(--line)}.tt-p > summary{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;list-style:none;font-size:14.5px}.tt-p > summary::-webkit-details-marker{display:none}
 .tt-p > summary::after{content:"›";color:var(--muted);font-size:16px;transition:transform .15s}.tt-p[open] > summary::after{transform:rotate(90deg)}
 .tt-pn{font-weight:700;flex:1;min-width:0}.tt-pc{display:flex;align-items:center;gap:8px}.tt-pc b{font-size:13px;min-width:22px;text-align:center;padding:2px 7px;border-radius:999px;background:var(--line2)}
@@ -3584,7 +3585,7 @@ function calHtml(offset, pickKey, selected){
   const [y1,m1,d1] = days[0].split("-").map(Number), [y7,m7,d7] = days[6].split("-").map(Number);
   const range = `${d1} ${MONTHS[m1-1]} – ${d7} ${MONTHS[m7-1]} ${y7}`;
   const nav = pickKey ? `data-k="${pickKey}"` : `data-k="__tab"`;
-  let grid = `<div class="cal-h"></div>` + days.map((d,i) => { const [,mm,dd] = d.split("-").map(Number); return `<div class="cal-h${d===todayStr?" today":""}">${DOW[i]} <b>${dd}</b></div>`; }).join("");
+  let grid = `<div class="cal-h"></div>` + days.map((d,i) => { const [,mm,dd] = d.split("-").map(Number); return `<div class="cal-h${d===todayStr?" today":""}${d<=todayStr?" pick":""}"${d<=todayStr?` data-planday="${d===todayStr?"":d}" title="Ver y registrar lo de este día"`:""}>${DOW[i]} <b>${dd}</b></div>`; }).join("");
   for (let h = CAL_H0; h <= CAL_H1; h++){
     grid += `<div class="cal-t">${pad2(h)}:00</div>`;
     days.forEach(d => {
@@ -3611,7 +3612,10 @@ function renderAgenda(){
   const phone = isPhone(), todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
   box.innerHTML = phone ? agendaPhone(AG_OFF) : calHtml(AG_OFF, null, null);
   const dp = $("dayPlan");
-  dp.hidden = phone && AG_DAY && AG_DAY !== todayStr; // en celular: hoy = tu plan; otro día = su lista
+  // en celular: hoy y días pasados = tu plan (con acciones, para registrar lo que pasó); días que vienen = su lista
+  const pd0 = PLAN_DAY; PLAN_DAY = phone && AG_DAY && AG_DAY < todayStr ? AG_DAY : (phone ? null : PLAN_DAY);
+  if (pd0 !== PLAN_DAY){ PICK.dayPlan = null; setTimeout(renderPlan, 0); }
+  dp.hidden = phone && AG_DAY && AG_DAY > todayStr;
   dp.classList.toggle("seg-meets", phone && AG_SEG==="meets"); dp.classList.toggle("seg-tasks", phone && AG_SEG==="tasks");
   const h = document.querySelector("#view-agenda .ag-top h2");
   if (h){ const d = AG_DAY || todayStr, [y,mm] = d.split("-").map(Number); h.textContent = phone ? MONTHS_L[mm-1].replace(/^./, c => c.toUpperCase()) + (y !== new Date().getFullYear() ? " " + y : "") : "Agenda"; }
@@ -3636,7 +3640,7 @@ function agendaPhone(offset){
   const strip = days.map((d,i) => { const n = (by[d]||[]).length, c = (by[d]||[]).some(e => e.clash);
     return `<button type="button" class="ap-d${d===AG_DAY?" on":""}${d===todayStr?" today":""}" data-agday="${d}"><span>${d===todayStr ? "Hoy" : DOW[(new Date(d + "T12:00:00Z").getUTCDay()+6)%7]}</span><b>${Number(d.slice(8))}</b><i class="${c?"x":""}">${n?"•".repeat(Math.min(n,3)):""}</i></button>`; }).join("");
   const week = `<div class="ap-week"><button type="button" class="ap-nav" data-k="__tab" data-calnav="-1" aria-label="Semana anterior">‹</button><div class="ap-strip">${strip}</div><button type="button" class="ap-nav" data-k="__tab" data-calnav="1" aria-label="Semana siguiente">›</button></div>`;
-  const nowTs = Date.now(), isToday = AG_DAY === todayStr;
+  const nowTs = Date.now(), isToday = AG_DAY === todayStr || AG_DAY < todayStr; // días pasados se ven con el plan (abajo)
   // conteos del día para las pestañas
   let nMeets, nTasks, nLate = 0, body = "";
   if (isToday){
@@ -3654,6 +3658,10 @@ function agendaPhone(offset){
   const seg = `<div class="ag-seg" role="tablist"><button type="button" data-agseg="meets" class="${AG_SEG==="meets"?"on":""}">Meets <b>${nMeets}</b></button><button type="button" data-agseg="tasks" class="${AG_SEG==="tasks"?"on":""}">Pendientes <b>${nTasks}</b>${nLate?`<i title="${nLate} atrasados">${nLate}</i>`:""}</button></div>`;
   return `<div class="ap">${week}${body}</div>`;
 }
+document.addEventListener("click", e => { const pd = e.target.closest("[data-planday]"); if (!pd) return;
+  PLAN_DAY = pd.dataset.planday || null; PICK.dayPlan = null;
+  if (isPhone()){ AG_DAY = PLAN_DAY || new Date(Date.now()-OFF).toISOString().slice(0,10); renderAgenda(); }
+  schedule(); setTimeout(() => { const el = $("dayPlan"); el && el.scrollIntoView({behavior:"smooth", block:"start"}); }, 80); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-agseg]"); if (b){ AG_SEG = b.dataset.agseg; renderAgenda(); } });
 document.addEventListener("click", e => { const b = e.target.closest("[data-agday]"); if (b){ AG_DAY = b.dataset.agday; renderAgenda(); } if (e.target.closest("[data-agnew]")) openBook(null); });
 addEventListener("resize", () => { if (S.tab === "agenda") renderAgenda(); });
@@ -3682,11 +3690,14 @@ function planOwners(){
   return adminMode() ? Object.entries(S.all) : [[meId(), myItems()]];
 }
 function ownTask(t){ return adminMode() ? (t.who==="admin" || t.alsoAdmin) : t.who==="member"; }
+// Día que muestra el plan: hoy, o un día pasado que elegiste (para registrar el resultado de meets que ya pasaron)
+let PLAN_DAY = null;
 function renderPlan(){
   const box = $("dayPlan"); if (!box) return;
   if (busyIn(box) || Date.now() <= HOLD_UNTIL) return;
   const now = Date.now(), admin = adminMode();
-  const todayStr = new Date(now-OFF).toISOString().slice(0,10);
+  const realToday = new Date(now-OFF).toISOString().slice(0,10);
+  const todayStr = PLAN_DAY && PLAN_DAY < realToday ? PLAN_DAY : realToday, pastDay = todayStr !== realToday;
   const t0 = Date.parse(todayStr+"T00:00:00-05:00"), eod = t0 + DAY - 1;
   if (admin){ const d = new Date(todayStr+"T00:00:00Z"), dow = (d.getUTCDay()+6)%7; gcalWatch(new Date(d.getTime()-dow*DAY).toISOString().slice(0,10)); }
   const owners = michMode() ? [] : planOwners(), sel = PICK.dayPlan; // Influencer: su agenda es solo lo de su lista y sus tareas
@@ -3820,14 +3831,14 @@ function renderPlan(){
     + (asgOpen.length ? `<section class="pg2"><div class="pg2-h"><span>Tareas que asignaste</span><b>${asgOpen.length}</b></div><div class="pg2-card">${asgOpen.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "");
   if (headLite) todo += `<p class="lite-note">Lo operativo lo lleva ${esc(headLiteMgrs())} · <button type="button" class="linkbtn" data-gotab="board">ver Equipo</button></p>`;
   todo = taskHtml + todo + (totalPend > PEND_CAP ? `<button type="button" class="pend-all" data-allpend="1">${allPend ? "Ver menos" : `Ver todos los pendientes (${totalPend})`}</button>` : "");
-  const dd = new Date(now-OFF), past = evs.filter(e => e.end < now).length;
+  const dd = new Date(todayStr + "T12:00:00Z"), past = evs.filter(e => e.end < now).length;
   { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length + mConf.length + remDue.length + nRev, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
   const late = tks.filter(t => t.due < now).length;
   box.innerHTML = `<section class="plan">
-    <div class="pl-head"><div class="pl-ttl"><h2>Hoy</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span></div>
+    <div class="pl-head"><div class="pl-ttl"><h2>${pastDay ? "Ya pasó" : "Hoy"}</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span>${pastDay ? `<button type="button" class="linkbtn pl-today" data-planday="">Volver a hoy</button>` : ""}</div>
       <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length + myT.length + mConf.length + remDue.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
     <div class="pl-cols">
-      <div class="pl-col"><h3 class="sec-h">Agenda <b>${evs.length}</b><button type="button" class="sec-add" data-remnew="1" data-remkind="event" aria-label="Agregar algo a tu agenda">+</button></h3>${line || `<p class="pl-empty">Hoy no tienes meets agendados.</p>`}</div>
+      <div class="pl-col"><h3 class="sec-h">Agenda <b>${evs.length}</b><button type="button" class="sec-add" data-remnew="1" data-remkind="event" aria-label="Agregar algo a tu agenda">+</button></h3>${line || `<p class="pl-empty">${pastDay ? "No hubo meets este día." : "Hoy no tienes meets agendados."}</p>`}</div>
       <div class="pl-col"><h3 class="sec-h">Pendientes <b>${tks.length + myT.length + mConf.length + remDue.length}</b>${late ? `<em>${late} tarde</em>` : ""}<button type="button" class="sec-add" data-pendadd="1" aria-label="Agregar un pendiente">+</button></h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
     </div>
   </section>`;
