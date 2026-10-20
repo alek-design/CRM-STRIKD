@@ -2301,7 +2301,7 @@ async function createInvite(o){
   return {link, id:(p && p.id) || "", html:(p && p.htmlLink) || ""};
 }
 async function cancelInvite(m){
-  if (!mcp || !m || !m.gcalEventId) return;
+  if (!mcp || !m || !m.gcalEventId || m.fromCalendar) return; // si vino de tu calendario, el evento es tuyo: no se borra desde aquí
   try{ await mcp.callTool(GCAL, "delete_event", {eventId:m.gcalEventId, notificationLevel:"ALL"}); }catch(e){}
 }
 const GC_HINT = () => window.STRIKD_GOOGLE ? "con el botón «Conectar mi Google Calendar» de arriba" : "en claude.ai → Ajustes → Conectores";
@@ -2406,11 +2406,11 @@ function validate(o){
   if (p===2 && !o.followers) return "Pon los seguidores aproximados.";
   if (p===2 && Number(o.followers) > 35000) return "Con más de 35K va como Perfil 3, en la lista de Mich.";
   if (!S.editingId && !S.gcPrefill && !autoInv() && (curPerfil()!==3 || $("f_p3meet").checked)) return "Conecta tu Google Calendar para agendar: el link de Meet se genera solo.";
-  if (!o.prospect || !o.channel || (!o.profile && o.canal!=="whatsapp") || !o.email || !o.meetAt) return "Completa los campos marcados con *.";
+  if (!o.prospect || !o.channel || (!o.email && !S.gcPrefill) || !o.meetAt) return "Completa los campos marcados con *.";
   if (isNaN(meetTs(o.meetAt))) return "Revisa la fecha y hora del meet.";
   if (!S.gcPrefill){ const c = slotClash(meetTs(o.meetAt)); if (c && c.hard) return `A esa hora tu team leader ya tiene ${SLOT_KIND[c.kind]||"un meet"}. Elige otro horario libre.`; }
   if (o.profile && !safeUrl(o.profile)) return "El link al perfil debe empezar con https://";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return "Revisa el email del prospecto.";
+  if ((o.email || !S.gcPrefill) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return "Revisa el email del prospecto.";
   if (o.link && !safeUrl(o.link)) return "El link debe empezar con https://";
   return "";
 }
@@ -2486,7 +2486,8 @@ $("meetForm").addEventListener("submit", async e => {
         }catch(ex){
           showResult("warn", "Registrado, pero sin invitación", `${o.prospect} · ${when}`, `No se pudo crear la invitación: ${INV_ERR[ex && ex.code] || "Google Calendar no respondió"}. Revisa tu conexión con Google y vuelve a agendarlo. ${val}`);
         }
-      } else showResult(dupOf ? "warn" : "ok", dupOf ? "Registrado, en revisión" : "Meet agendado", `${o.prospect} · ${when}`, val);
+      } else if (gp) showResult("ok", "Registrado para seguimiento", `${o.prospect} · ${when}`, meetTs(o.meetAt) < now ? "No se creó ningún meet nuevo. Ya puedes registrar cómo le fue." : "No se creó otro meet: usa el que ya tienes en tu calendario.");
+      else showResult(dupOf ? "warn" : "ok", dupOf ? "Registrado, en revisión" : "Meet agendado", `${o.prospect} · ${when}`, val);
     }
   }catch(ex){
     showResult("err", "No se agendó", ex && ex.code==="invalid_argument" ? "No tienes permiso para registrar meets. Pide al Head que te dé acceso." : "No se pudo guardar. Revisa tu conexión e intenta de nuevo; tus datos siguen en el formulario.");
@@ -3553,10 +3554,10 @@ function calEvents(teamAll){
   // mismo meet = trae el email del prospecto, o empieza a la misma hora Y su título trae el nombre del prospecto
   const startNames = {}; ev.forEach(e => (startNames[e.at] ||= []).push(fold(String(e.label||"").split(" · ").slice(1).join(" · "))));
   const sameMeet = (at, label) => (startNames[at]||[]).some(n => n && fold(label).includes(n));
-  const seenG = new Set();
+  const seenG = new Set(), gIdsC = new Set(); Object.values(S.allEvery || S.all || {}).concat([S.mine || {}]).forEach(o => Object.values(o||{}).forEach(m => { if (m && m.gcalEventId) gIdsC.add(m.gcalEventId); }));
   if (!S.viewAs) Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
     const gk = e.at + "|" + e.label; if (seenG.has(gk)) return; seenG.add(gk);
-    if (sameMeet(e.at, e.label) || e.emails.some(x => mails[x])) return;
+    if (sameMeet(e.at, e.label) || e.emails.some(x => mails[x]) || (e.gid && gIdsC.has(e.gid))) return;
     ev.push({at:e.at, endTs:e.endTs, kind:"gcal", label:e.label, who:null, title:e.title, extra:e.extra, calName:e.calName, link:e.link, html:e.html});
   }));
   return ev;
@@ -3695,7 +3696,8 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-gcre
     $("f_meetAt").value = String(g.gstart || g.at || "").slice(0,16);
     if (g.emails && g.emails[0]) $("f_email").value = g.emails[0];
     if ($("f_mkinv")) $("f_mkinv").checked = false; // ya existe en Google: no se manda otra invitación
-    const h = document.querySelector("#bkWrap .bk-h b"); if (h) h.textContent = "Registrar meet de tu calendario";
+    const h = document.querySelector("#bkWrap .bk-h b"); if (h) h.textContent = "Registrar para dar seguimiento";
+    $("submitBtn").textContent = "Registrar";
     syncInvUi(); renderSlots();
     const fe = ["f_prospect","f_profile","f_email"].map(id => $(id)).find(el => el && !el.value); (fe || $("f_prospect")).focus();
   }, 60);
@@ -3726,8 +3728,9 @@ function renderPlan(){
   if (admin){
     const mails = {}; Object.values(S.all).forEach(o => Object.values(o||{}).forEach(m => { if (m.email) mails[m.email.toLowerCase()] = 1; }));
     const startNames = {}; evs.forEach(e => (startNames[e.ts] ||= []).push(fold((e.m && e.m.prospect) || "")));
+    const gIds = new Set(); Object.values(S.allEvery || S.all || {}).concat([S.mine || {}]).forEach(o => Object.values(o||{}).forEach(m => { if (m && m.gcalEventId) gIds.add(m.gcalEventId); }));
     Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
-      const ts = meetTs(e.at); if (isNaN(ts) || ts < t0 || ts > eod || (startNames[ts]||[]).some(n => n && fold(e.label).includes(n)) || e.emails.some(x => mails[x])) return;
+      const ts = meetTs(e.at); if (isNaN(ts) || ts < t0 || ts > eod || (e.gid && gIds.has(e.gid)) || (startNames[ts]||[]).some(n => n && fold(e.label).includes(n)) || e.emails.some(x => mails[x])) return;
       evs.push({ts, end:e.endTs > ts ? e.endTs : ts+MEET_MIN, kind:"gcal", label:(e.extra ? "🌮 " : "") + (e.title || e.label.replace(/^Calendario · /,"")), gcal:true, sub:e.extra ? (e.calName || "Tacos") : "", glink:e.link, ghtml:e.html, gev:e});
     }));
   }
@@ -4931,7 +4934,7 @@ function syncPerfilUi(){
   document.querySelectorAll("#p3meetL [data-p3]").forEach(b => { const on = (b.dataset.p3==="1")===p3m; b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on)); });
   document.querySelectorAll("#meetForm .m-only").forEach(el => el.hidden = vip);
   document.querySelectorAll("#meetForm .fol-only").forEach(el => el.hidden = !(p===2 || p===3));
-  const waNoProf = !vip && $("f_canal").value==="whatsapp";
+  const waNoProf = !vip; // el link al perfil ya no es obligatorio (solo en la Lista de Mich, donde es su Instagram)
   $("f_profileLbl").firstChild.textContent = vip ? "Link de Instagram " : waNoProf ? "Link al perfil (opcional) " : "Link al perfil del prospecto ";
   { const em = $("f_profileLbl").querySelector("em"); if (em) em.hidden = waNoProf; }
   $("f_profile").placeholder = vip ? "https://instagram.com/…" : "https://instagram.com/… o tiktok.com/@…";
