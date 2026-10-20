@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 05:24:20 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 05:31:12 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792473860">
+<link rel="stylesheet" href="/auth.css?v=1792474272">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792473860"></script>
+<script src="/claude-shim.js?v=1792474272"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -62,6 +62,7 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.em-intro h3{margin:4px 0 8px;font-size:18px}.em-intro ol{margin:6px 0 10px;padding-left:20px;display:grid;gap:6px;font-size:14.5px}.em-intro p{font-size:14.5px;margin:6px 0}
 .ml .ml-how{font-size:13px;color:var(--muted);margin:2px 2px 10px;line-height:1.45}.ml-st{display:grid;gap:6px;margin-top:10px}.ml-sh{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:6px}
 .ml-t{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}.ml-t.off{opacity:.55}.ml-t div{display:grid;min-width:0}.ml-t small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis}.ml-t span{display:flex;gap:6px;flex:none}
 .ml-form{display:grid;gap:8px;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:6px}.ml-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ml-form textarea{font:inherit;font-size:15px}
@@ -2081,7 +2082,7 @@ async function render(){
   renderBoard(ps, ids); // ranking: solo AM
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else { renderMine(); if (michMode() && S.tab==="flow"){ renderFlow(ps); renderTeamChart(); } }
-  syncAutoV(); inviteSync(); renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); try{ emailIntro(); }catch(_){} renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -3910,7 +3911,7 @@ function renderPlan(){
   // 10 días después de que Mich lo contactó sin cerrar el meet: al AM que lo propuso le toca escribirle por email
   // si los emails automáticos están listos, el AM solo ve los que no tienen email (para conseguirlo)
   const emAuto = !!(S.config && S.config.emailReady);
-  const emDue = michMode() || admin ? [] : Object.entries(vipItems(meId()) || {}).filter(([,x]) => x && x.status==="contactado" && !x.meetId && !x.emailedAt && !x.email1At && !x.emailOptout && (!emAuto || !x.email) && (x.contactedAt||x.statusAt||0) && now >= (x.contactedAt||x.statusAt) + 10*DAY)
+  const emDue = michMode() || admin ? [] : Object.entries(vipItems(meId()) || {}).filter(([,x]) => x && x.status==="contactado" && !x.meetId && !x.emailedAt && !x.email1At && !x.emailOptout && x.email && !emAuto && (x.contactedAt||x.statusAt||0) && now >= (x.contactedAt||x.statusAt) + 10*DAY)
     .sort((a,b) => (a[1].contactedAt||0) - (b[1].contactedAt||0));
   const emHtml = emDue.length ? `<section class="pg2"><div class="pg2-h"><span>Mándales email</span><b>${emDue.length}</b></div><div class="pg2-card">${emDue.map(([id,x]) => {
       const k = `${meId()}/${id}`, d0 = Math.floor((now - (x.contactedAt||x.statusAt))/DAY);
@@ -4706,7 +4707,7 @@ $("orgBox").addEventListener("change", async e => {
     const uid = em.dataset.orgmail; try{ await db.doc(`roles/${uid}`).set({...(S.roles[uid]||{role:"manager"}), inviteEmail:v, updatedAt:Date.now()}); }catch(ex){} return; }
   const oe = e.target.closest("[data-orgemail]");
   if (oe && S.isOwner){ const uid = oe.dataset.orgemail, cur = S.roles[uid] || {}; oe.disabled = true;
-    try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canEmail:oe.checked, updatedAt:Date.now()}); S.roles[uid] = {...cur, role:cur.role || "am", canEmail:oe.checked}; quickToast(oe.checked ? "✓ Autorizado: que conecte su Gmail en Ajustes" : "Sus emails saldrán del correo general"); }catch(ex){ oe.checked = !oe.checked; quickToast("No se guardó"); }
+    try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canEmail:oe.checked, ...(oe.checked ? {canEmailAt:Date.now()} : {}), updatedAt:Date.now()}); S.roles[uid] = {...cur, role:cur.role || "am", canEmail:oe.checked}; quickToast(oe.checked ? "✓ Autorizado: que conecte su Gmail en Ajustes" : "Sus emails saldrán del correo general"); }catch(ex){ oe.checked = !oe.checked; quickToast("No se guardó"); }
     oe.disabled = false; return; }
   const oa = e.target.closest("[data-orgassign]");
   if (oa && S.isOwner){ const uid = oa.dataset.orgassign, cur = S.roles[uid] || {}; oa.disabled = true;
@@ -4825,6 +4826,31 @@ function ttGroups(open, now){
       ${l.map(([uu,id,x]) => taskRow(uu, id, x, true, now)).join("")}</details>`; }).join("");
 }
 document.addEventListener("toggle", e => { const d = e.target; if (!d || !d.matches || !d.matches("details[data-ttp]")) return; if (d.open){ TT_OPEN.add(d.dataset.ttp); TT_SHUT.delete(d.dataset.ttp); } else { TT_OPEN.delete(d.dataset.ttp); TT_SHUT.add(d.dataset.ttp); if (TK_OPEN && TK_OPEN.startsWith(d.dataset.ttp + "/")) TK_OPEN = null; } }, true);
+/* Aviso único al AM cuando el Head lo autoriza a mandar los emails desde su Gmail */
+function emailIntro(){
+  if (S.viewAs || S.isLead || !S.uid || $("emIntro")) return;
+  const r = (S.roles||{})[S.uid] || {}, me = (S.members||{})[S.uid] || {};
+  if (!r.canEmail || !r.canEmailAt || Number(me.emailIntroSeen || 0) >= Number(r.canEmailAt)) return;
+  const head = String(nameOf(S.ps||{}, (S.config||{}).headId) || "Alek").split(" (")[0].split(" ")[0];
+  const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "emIntro";
+  w.innerHTML = `<div class="bk mbk em-intro" role="dialog" aria-modal="true" aria-label="Emails desde tu Gmail"><div class="bk-grab"></div>
+    <h3>✉️ Los emails a tus influencers ahora salen de tu Gmail</h3>
+    <p>${esc(head)} te autorizó para que los correos a los influencers que propones salgan de tu cuenta. Así funciona:</p>
+    <ol>
+      <li>Mich contacta por Instagram a los influencers que propones.</li>
+      <li>Si a los <b>10 días</b> no agendaron meet y tienen email, les sale un primer correo <b>desde tu Gmail</b>.</li>
+      <li>Si no contestan, <b>7 días después</b> sale un segundo correo en el mismo hilo. Ahí se detiene.</li>
+      <li>Si contestan, te llega un aviso al celular y la plática sigue en tu Gmail, contigo.</li>
+      <li>Si piden que no les escribamos, ya no se les manda nada.</li>
+    </ol>
+    <p class="mut small">Salen máximo 20 al día, de lunes a viernes de 9 am a 6 pm, y quedan en tus Enviados. Las plantillas las define ${esc(head)}.</p>
+    <p><b>Lo que te toca:</b> conectar tu Gmail y, al proponer influencers, conseguir su email (al menos 40 de cada 60).</p>
+    <div class="tk-acts"><button type="button" class="btn small" data-emi="later">Después</button>${window.STRIKD_GMAIL_CONNECT ? `<button type="button" class="btn small primary" data-emi="con">Conectar mi Gmail</button>` : ""}</div></div>`;
+  document.body.appendChild(w);
+  const seen = () => { const t = Date.now(); ((S.members||{})[S.uid] ||= {}).emailIntroSeen = t; db.doc(`members/${S.uid}`).update({emailIntroSeen:t}).catch(() => {}); };
+  w.addEventListener("click", e => { const b = e.target.closest("[data-emi]"); if (!b && e.target !== w) return;
+    seen(); w.remove(); if (b && b.dataset.emi === "con") window.STRIKD_GMAIL_CONNECT("me"); });
+}
 /* ---------- Emails automáticos a influencers que no cerraron (Lista de Mich) ----------
    Paso 1: 10 días después de que Mich lo contactó sin meet. Paso 2: 7 días después, en el mismo hilo, si no contestó.
    Sale del Gmail del AM si está autorizado y conectado; si no, del correo general. Máx. 20 por cuenta al día, L–V 9 am–6 pm. */
