@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 13:21:00 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 15:52:03 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792502460">
+<link rel="stylesheet" href="/auth.css?v=1792511523">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792502460"></script>
+<script src="/claude-shim.js?v=1792511523"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -57,11 +57,14 @@
 @media (min-width:1100px){
   #view-flow:not([hidden]){display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);column-gap:28px;grid-auto-flow:row dense;align-items:start}
   #view-flow > *{grid-column:2;min-width:0}
-  #view-flow > .row:first-child, #view-flow > #teamLate, #view-flow > #teamChart{grid-column:1/-1}
+  #view-flow > .row:first-child, #view-flow > #teamLate, #view-flow > #flowLb, #view-flow > #teamChart{grid-column:1/-1}
   #view-flow > #teamLoad{grid-column:1;grid-row:3 / span 12}
+  #view-flow > #flowLb{grid-row:3}
+  #view-flow:has(> #flowLb:not([hidden])) > #teamLoad{grid-row:4 / span 12}
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.flow-lb{margin:18px 0 6px}.flow-lb .pg2-h small{font-size:12px;margin-left:auto;font-weight:500;white-space:nowrap}.flow-lb .pg2-h span{white-space:nowrap}
 .tk-due{display:inline-block;font-style:normal;font-size:11.5px;font-weight:700;padding:1px 8px;border-radius:999px;margin:3px 0 1px;width:fit-content}.tk-due.soon{background:#fef3c7;color:#92400e}.tk-due.late{background:#fee2e2;color:#b91c1c}
 .pr.tkr.due-late{box-shadow:inset 3px 0 0 #e5484d}.pr.tkr.due-soon{box-shadow:inset 3px 0 0 #f59e0b}
 .tk-sched{color:#2563eb!important;font-weight:600}
@@ -1548,6 +1551,7 @@ body.mob-open header.top{z-index:31}
   <section class="view" id="view-flow" hidden>
     <div class="row"><h2>Equipo</h2><div class="spacer"></div><span class="mono" id="flowSum" hidden></span></div>
     <div id="teamLate"></div>
+    <div id="flowLb" hidden></div>
     <div id="teamTasks"></div>
     <div id="teamLoad"></div>
     <div class="tf-h"><h3 class="sec-h">Prospectos activos <b id="tfN"></b></h3><button type="button" class="tf-late" id="tfLate" aria-pressed="false">Solo atrasados</button></div>
@@ -2086,6 +2090,9 @@ async function render(){
   renderBoard(ps, ids); // ranking: solo AM
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else { renderMine(); if (michMode() && S.tab==="flow"){ renderFlow(ps); renderTeamChart(); } }
+  { // Influencer: en Equipo también ve el ranking de puntos de los AM (solo consulta)
+    const lb = $("flowLb"), show = michMode() && S.tab==="flow";
+    if (lb){ lb.hidden = !show; if (show){ const h = `<section class="pg2 flow-lb"><div class="pg2-h"><span>Ranking de la semana</span><small class="mut">cierra vie 6 pm</small></div>${boardHtml(ps, ids, S.currentKey, true)}</section>`; if (lb.dataset.h !== h){ lb.innerHTML = h; lb.dataset.h = h; } } } }
   syncAutoV(); inviteSync(); try{ emailIntro(); updNotice(); }catch(_){} renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
