@@ -4,6 +4,7 @@
 //  · Conversación nueva → se asigna sola: opción "load" (menos carga) u opción "best" (mejores resultados, 4 semanas).
 //  · Cada envío queda registrado con quién lo mandó. Envíos siempre por clic de una persona, con idempotency_key.
 const { withPg, userFromReq } = require("../lib/google");
+const resptime = require("../lib/resptime");
 const { publicMedia, mediaPayload, asAttachment, withLink, shapes } = require("../lib/iskmedia");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const enc = encodeURIComponent;
@@ -217,6 +218,8 @@ module.exports = async (req, res) => {
           OWN_CACHE[id] = o.owner;
           if (lead || o.owner === viewId) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by}});
         }
+        // esperando respuesta desde (tiempo de respuesta)
+        try{ const wm = await resptime.waitMap(c, out.map(x => String(x.id))); out.forEach(x => { if (wm[String(x.id)]) x._strikd.waitSince = wm[String(x.id)]; }); }catch(_){}
         T.total = Date.now() - t0; res.setHeader("server-timing", `iskra;dur=${T.iskra}, total;dur=${T.total}`);
         const debug = lead ? {tiempos_ms:T, lista:LIST_CACHE.info, conversaciones_en_lista:list.length, revisadas_esta_vuelta:toCheck.length, pendientes_de_revisar:ids.filter(stale).length - toCheck.length, con_respuesta:out.length, ejemplo_conversacion:list[0] || null} : undefined;
         return {data:{data:out}, mode, debug};
@@ -352,6 +355,12 @@ module.exports = async (req, res) => {
         const q = new URLSearchParams(); ["from","to","period"].forEach(k => { if (input[k]) q.set(k, String(input[k])); });
         const [sum, acc] = await Promise.all([iskra("GET", "/v1/stats/summary" + (q.toString() ? "?" + q : "")), iskra("GET", "/v1/campaigns/accounting" + (q.toString() ? "?" + q : "")).catch(e => ({error:e.message}))]);
         return {data:{summary:sum, campaigns:acc}};
+      }
+      if (op === "resp_stats"){ // tiempo de respuesta por persona (el AM solo recibe el suyo y el del equipo)
+        const from = Number(input.from) || Date.now() - 7 * 864e5, to = Number(input.to) || Date.now();
+        const st = await resptime.stats(c, from, to);
+        if (!lead){ const mine = st.people[viewId] || null; return {data:{from, to, team:st.team, people:mine ? {[viewId]:mine} : {}}}; }
+        return {data:st};
       }
       if (op === "numbers") return {data:await iskra("GET", "/v1/numbers")};
       if (op === "templates") return {data:await iskra("GET", "/v1/templates")};

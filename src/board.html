@@ -53,6 +53,10 @@
 }
 
 .ap-ev:has(.pl-gopen){grid-template-columns:52px 1fr auto}
+.tkm-em{font-size:13px}.tkm-em.no{font-size:11px;color:var(--muted)}
+.ck-w{font-style:normal;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--line2);color:var(--muted);margin-left:6px;white-space:nowrap}.ck-w.mid{background:#fef3c7;color:#92400e}.ck-w.bad{background:#fee2e2;color:#b91c1c}
+.rt{margin-left:auto}.rt.ok b{color:var(--ok-fg,#15803d)}.rt.mid b{color:#b45309}.rt.bad b{color:#e5484d}
+.pf-rt{margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;font-size:14px;background:var(--surface)}.pf-rt small{display:block;color:var(--muted);font-size:12px;margin-top:2px}.pf-rt b.bad{color:#e5484d}.pf-rt b.mid{color:#b45309}
 .chip.elim{cursor:pointer;border:1px solid color-mix(in srgb,#e5484d 40%,transparent);color:#e5484d;background:transparent;font:inherit;font-size:12px;font-weight:600}
 .mi-ef{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}.mi-ef button{font:inherit;font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}.mi-ef button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.mi-ef b{opacity:.7;font-weight:600;margin-left:2px}
 .mi-em{display:block;font-size:12px;color:var(--muted);margin-top:2px}.mi-emadd{font:inherit;font-size:12px;font-weight:600;margin-top:4px;padding:2px 9px;border-radius:999px;border:1px dashed var(--line);background:none;color:var(--fg);align-self:flex-start}
@@ -66,7 +70,7 @@
 .org-chk{display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 2px}.org-chk input{width:18px;height:18px}
 .tkm-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 10px}.tkm-form input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);min-width:0}
 .tkm-form input:nth-child(3),.tkm-form input:nth-child(4),.tkm-form .err,.tkm-form button{grid-column:1/-1}.tkm-form .err{margin:0;color:#e5484d;font-size:13px}.tkm-form button{justify-self:start}
-.tkm-list{display:grid;gap:2px;margin-bottom:10px}.tkm-r{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line2);font-size:14px}
+.tkm-list{display:grid;gap:2px;margin-bottom:10px}.tkm-r{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line2);font-size:14px}
 .tkm-n{display:grid;min-width:0}.tkm-n b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tkm-n small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tkm-f{color:var(--muted);font-variant-numeric:tabular-nums}.tkm-r a{color:var(--fg);font-size:13px}
 .xc-opt{padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px}.xc-opt p{margin:4px 0 8px;font-size:13px;color:var(--muted)}
 .linkish{background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:600;color:var(--fg);text-decoration:underline;cursor:pointer}
@@ -3975,7 +3979,8 @@ function renderPerf(){
     : `<div class="pf-focus good"><span class="eyb">Vas parejo o arriba del equipo</span><b>Sigue así.</b><p>Cuando tengas más prospectos en cada paso, aquí verás dónde se te caen más.</p></div>`;
   box.innerHTML = `<section class="pf">
     <div class="row"><div><h2>Tu avance</h2><p class="sub">Desde que empezaste</p></div></div>
-    <div class="pf-kpis pf-strip"><span><b>${c.att}</b>pitches</span><span><b>${c.gus}</b>les gustó</span><span><b>${c.apr}</b>skeleton ok</span><span><b>${c.pub}</b>publicados</span></div>
+    <div class="pf-kpis pf-strip"><span><b>${c.att}</b>pitches</span><span><b>${c.gus}</b>les gustó</span><span><b>${c.apr}</b>skeleton ok</span><span><b>${c.pub}</b>publicados</span></div>${(() => { const rs = respGet(weekFrom(), Date.now()), p = rs && rs.people && rs.people[meId()], tm = rs && rs.team;
+      return p && p.n ? `<div class="pf-rt">⏱ En WhatsApp respondes en <b class="${rtCls(p.med)}">${fmtRt(p.med)}</b>${tm && tm.med != null ? ` · el equipo en ${fmtRt(tm.med)}` : ""} · ${p.fast}% en menos de 15 min<small>Esta semana · cuenta de 8 am a 8 pm</small></div>` : ""; })()}
     ${perfChart()}
     ${focus}
     <div class="pf-tbl"><div class="pf-row pf-h"><span>Paso</span><span><i class="lg me"></i>Tú <i class="lg tm"></i>Equipo</span><span>Tú</span><span>Equipo</span></div>${rows}</div>
@@ -4261,8 +4266,9 @@ function tkRulesSub(){ if (TK_RULES_SUB || !S.isLead || !db) return; TK_RULES_SU
 function tkProgress(u, x){
   if (x.metric!=="mich" || !x.goal) return null;
   const from = Number(x.from || x.createdAt || 0), to = Number(x.dueAt || 9e15);
-  const n = Object.values(vipItems(u) || {}).filter(v => v && !v.byMich && Number(v.createdAt) >= from && Number(v.createdAt) < to).length;
-  return {n, goal:Number(x.goal), label:"candidatos"};
+  const l = Object.values(vipItems(u) || {}).filter(v => v && !v.byMich && Number(v.createdAt) >= from && Number(v.createdAt) < to);
+  // al menos 2 de cada 3 con su email (40 de 60)
+  return {n:l.length, goal:Number(x.goal), label:"candidatos", em:l.filter(v => v.email).length, emGoal:Math.round(Number(x.goal) * 2 / 3)};
 }
 // Tarea "Lista de Mich": la lista de candidatos que ya cuentan + formulario rápido para agregar sin salir de la tarea
 function tkMichList(u, x){
@@ -4272,12 +4278,12 @@ function tkMichList(u, x){
 function tkMichHtml(k, u, x, lead){
   const d = TKD[k] || {}, list = tkMichList(u, x), fmtN = n => Number(n) >= 1000 ? (Math.round(Number(n)/100)/10) + "K" : String(n||"");
   const handle = l => { const m = String(l||"").match(/instagram\.com\/([^/?#]+)/i); return m ? "@" + m[1] : String(l||""); };
-  const rows = list.map(([,v]) => `<div class="tkm-r"><span class="tkm-n"><b>${esc(v.prospect||"")}</b>${v.notes ? `<small>${esc(v.notes)}</small>` : ""}</span><span class="tkm-f">${esc(fmtN(v.followers))}</span>${safeUrl(v.profile) ? `<a href="${esc(v.profile)}" target="_blank" rel="noopener">${esc(handle(v.profile))}</a>` : ""}</div>`).join("");
+  const rows = list.map(([id,v]) => `<div class="tkm-r"><span class="tkm-n"><b>${esc(v.prospect||"")}</b>${v.notes ? `<small>${esc(v.notes)}</small>` : ""}</span><span class="tkm-f">${esc(fmtN(v.followers))}</span>${v.email ? `<span class="tkm-em" title="${esc(v.email)}">✉</span>` : lead ? `<span class="tkm-em no">sin email</span>` : `<button type="button" class="mi-emadd" data-memail="${u}/${id}">+ email</button>`}${safeUrl(v.profile) ? `<a href="${esc(v.profile)}" target="_blank" rel="noopener">${esc(handle(v.profile))}</a>` : ""}</div>`).join("");
   const form = lead || S.viewAs ? "" : `<div class="tkm-form">
       <input data-tkv="${k}|name" placeholder="Nombre" value="${esc(d.v_name||"")}" autocomplete="off">
       <input data-tkv="${k}|fol" placeholder="Seguidores (48k)" autocapitalize="off" value="${esc(d.v_fol||"")}" autocomplete="off">
       <input data-tkv="${k}|ig" placeholder="Link de Instagram" inputmode="url" value="${esc(d.v_ig||"")}" autocomplete="off" autocapitalize="off">
-      <input data-tkv="${k}|email" type="email" placeholder="Email (opcional)" value="${esc(d.v_email||"")}" autocomplete="off" autocapitalize="off">
+      <input data-tkv="${k}|email" type="email" placeholder="Email (pide al menos 2 de cada 3)" value="${esc(d.v_email||"")}" autocomplete="off" autocapitalize="off">
       <input data-tkv="${k}|why" placeholder="¿Por qué vale la pena? (opcional)" value="${esc(d.v_why||"")}" autocomplete="off">
       ${d.v_err ? `<p class="err">${esc(d.v_err)}</p>` : ""}
       <button type="button" class="btn small primary" data-tkvadd="${k}"${d.v_busy ? " disabled" : ""}>${d.v_busy ? "Agregando…" : "+ Agregar a la lista de Mich"}</button></div>`;
@@ -4345,7 +4351,7 @@ function taskRow(u, id, x, lead, now){
     </div>`;
   return `<div class="pr tkr st-${st}${late?" late":""}${open?" sel":""}" role="button" tabindex="0" data-tkopen="${k}">
       <span class="tk-ring st-${st}" aria-hidden="true">${st==="done" ? "✓" : ""}</span>
-      <span class="pr-m"><b>${esc(x.title)}</b>${sub?`<small>${esc(sub)}${rep && rep.active!==false ? " · ↻ cada " + esc(["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(x.dueAt - OFF).getUTCDay()]) : ""}</small>`:""}${prog ? `<span class="tk-prog${prog.n >= prog.goal ? " ok" : ""}"><i style="width:${Math.min(100, Math.round(prog.n/prog.goal*100))}%"></i></span><small class="tk-pn">${prog.n} de ${prog.goal} ${esc(prog.label)}${prog.n >= prog.goal ? " · ✓ meta cumplida" : ""}</small>` : ""}</span>
+      <span class="pr-m"><b>${esc(x.title)}</b>${sub?`<small>${esc(sub)}${rep && rep.active!==false ? " · ↻ cada " + esc(["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(x.dueAt - OFF).getUTCDay()]) : ""}</small>`:""}${prog ? `<span class="tk-prog${prog.n >= prog.goal ? " ok" : ""}"><i style="width:${Math.min(100, Math.round(prog.n/prog.goal*100))}%"></i></span><small class="tk-pn">${prog.n} de ${prog.goal} ${esc(prog.label)}${prog.emGoal ? ` · ${prog.em} de ${prog.emGoal} con email` : ""}${prog.n >= prog.goal && (!prog.emGoal || prog.em >= prog.emGoal) ? " · ✓ meta cumplida" : ""}</small>` : ""}</span>
       ${thumb ? `<img class="tk-thumb" src="${esc(thumb.url)}" alt="" loading="lazy">` : ""}
       <span class="tk-st st-${st}">${esc(TK_ST[st])}</span>
     </div>${det}`;
@@ -4455,6 +4461,8 @@ document.addEventListener("click", async e => {
     const patch = {status:st, statusAt:now, statusBy:S.uid};
     if (d.rep !== undefined) patch.reply = d.rep;
     const x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
+    { const pg = (st==="review" || st==="done") && x0.metric==="mich" ? tkProgress(k.split("/")[0], x0) : null;
+      if (pg && pg.emGoal && pg.em < pg.emGoal && !confirm(`Llevas ${pg.em} de ${pg.emGoal} candidatos con email. La meta pide al menos ${pg.emGoal}. ¿Enviar de todos modos?`)) return; }
     if ((d.fb||"").trim()) patch.comments = (x0.comments||[]).concat([{by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], text:d.fb.trim(), at:now, st}]);
     if (st==="done"){ patch.doneAt = now; patch.doneBy = S.uid; }
     if (st==="changes" && !(d.fb||"").trim()){ quickToast("Escribe qué hay que ajustar"); return; }
@@ -4874,6 +4882,7 @@ function renderReport(){
       seen:inD(((S.members||{})[u]||{}).seenAt) || actOf(u, day) > 0 || (isToday && presOf(u).st), extra:!team.includes(u) };
   }).filter(r => !r.extra || (r.reg + r.tom + r.ns + r.gus + r.apr + r.pw + r.pub + r.lost) > 0);
   const sum = k => per.reduce((a,r) => a + (r[k]||0), 0);
+  const rsD = respGet(from, isToday ? Date.now() : to);
   const tomorrow = new Date(to - OFF + 12*3600e3).toISOString().slice(0,10);
   const next = calEvents().filter(e => e.kind==="pitch" && e.who && String(e.at).slice(0,10)===tomorrow).sort((a,b) => String(a.at).localeCompare(String(b.at)));
   // WhatsApp (bandeja de ISKRA, si ya cargó) y Mich
@@ -4883,7 +4892,7 @@ function renderReport(){
   const k = (n, l, cls) => `<span class="${cls||""}"><b>${n}</b>${l}</span>`;
   const sec = (t, body) => `<section class="rp-sec"><h3 class="sec-h">${t}</h3>${body}</section>`;
   const row = r => `<div class="rp-p"><div class="rp-ph"><b>${esc(first(r.u))}</b>${r.seen ? `<span class="pres on">${isToday && presOf(r.u).st==="on" ? "en línea" : "entró hoy"}</span>` : `<span class="pres off">no entró</span>`}</div>
-      <div class="rp-pn">${k(fmtMin(actOf(r.u, day)), "activo")}${k(r.reg, "agendó")}${k(r.tom, "pitches")}${k(r.gus + r.apr + r.pw + r.pub, "avances")}${r.late!==null ? k(r.late, "atrasados", r.late ? "bad" : "") : ""}${k(r.tkDone, "tareas hechas")}${r.tkRev ? k(r.tkRev, "por aprobar") : ""}</div></div>`;
+      <div class="rp-pn">${k(fmtMin(actOf(r.u, day)), "activo")}${(() => { const p = rsD && rsD.people && rsD.people[r.u]; return p && p.n ? k(fmtRt(p.med), "respuesta WA", p.med > 30*60e3 ? "bad" : "") : ""; })()}${k(r.reg, "agendó")}${k(r.tom, "pitches")}${k(r.gus + r.apr + r.pw + r.pub, "avances")}${r.late!==null ? k(r.late, "atrasados", r.late ? "bad" : "") : ""}${k(r.tkDone, "tareas hechas")}${r.tkRev ? k(r.tkRev, "por aprobar") : ""}</div></div>`;
   const h = `<div class="rp">
     <div class="rp-top"><div><h2>Reporte del día</h2><p class="sub">${esc(dl)}${S.isOwner && !teamScoped() ? " · todo el equipo" : " · tu equipo"}</p></div>
       <div class="tld-nav"><button type="button" data-rpday="-1" aria-label="Día anterior">‹</button><em>${isToday ? "Hoy" : esc(dl.split(" ")[0])}</em><button type="button" data-rpday="1" aria-label="Día siguiente"${isToday ? " disabled" : ""}>›</button></div></div>
@@ -4893,7 +4902,7 @@ function renderReport(){
     ${sec("Equipo", `<div class="pg2-card">${per.map(row).join("") || `<p class="tt-none">Sin equipo todavía</p>`}</div>`)}
     ${(() => { const ppl = presPeople().map(u => [u, actOf(u, day)]).sort((a,b) => b[1] - a[1]), mx = Math.max(1, ...ppl.map(x => x[1]));
       return sec("Tiempo activo en la app", `<div class="pg2-card rp-act">${ppl.map(([u,n]) => `<div><b>${esc(first(u))}${roleOf(u)==="manager" ? " <small>Manager</small>" : roleOf(u)==="influencer" ? " <small>Influencer</small>" : ""}</b><span class="rp-bar"><i style="width:${Math.round(n/mx*100)}%"></i></span><em>${n ? fmtMin(n) : "—"}</em></div>`).join("") || `<p class="tt-none">Sin datos</p>`}</div><p class="mut small">Cuenta solo el tiempo con la app abierta y usándola; después de 5 min sin tocar nada deja de contar.</p>`); })()}
-    ${sec("WhatsApp y Mich", `<div class="tf-kpis rp-k">${wa ? k(wa.act, "chats con actividad") + k(wa.rep, "respondidos") + k(wa.open, "sin responder", wa.open ? "bad" : "") : k("—", "abre Mensajes para cargar")}${k(sum("wa"), "meets por WhatsApp")}</div>
+    ${sec("WhatsApp y Mich", `<div class="tf-kpis rp-k">${rsD && rsD.team && rsD.team.n ? k(fmtRt(rsD.team.med), "tiempo de respuesta", rsD.team.med > 30*60e3 ? "bad" : "") + k(rsD.team.fast + "%", "en menos de 15 min") + (rsD.team.slow ? k(rsD.team.slow, "tardaron +1 h", "bad") : "") : ""}${wa ? k(wa.act, "chats con actividad") + k(wa.rep, "respondidos") + k(wa.open, "sin responder", wa.open ? "bad" : "") : k("—", "abre Mensajes para cargar")}${k(sum("wa"), "meets por WhatsApp")}</div>
       ${vipAll.length ? `<div class="tf-kpis rp-k k3" style="margin-top:8px">${k(mi.cont, "Mich contactó")}${k(mi.ag, "agendaron con Mich")}${k(mi.nuevos, "propuestos a Mich")}</div>` : ""}`)}
     <p class="mut small">Cada noche a las 9:00 pm te llega una notificación con este resumen. <button type="button" class="linkbtn" data-rptest="1">Mandármelo ahora para probar</button></p>
   </div>`;
@@ -4979,7 +4988,7 @@ function renderTeamLoad(){
     ${presLine(presPeople())}<div class="pg2-card">${rows.map(r => { const [c, l] = lvl(r); return `<details class="tld-p"><summary>
       <div class="tld-top"><b>${esc(first(r.u))}${r.role ? ` <small class="tld-role">${r.role==="manager" ? "Manager" : "Influencer"}</small>` : ""}</b>${presTag(r.u)}<span class="tld-lv ${c}">${l}</span><span class="pr-chev">›</span></div>
       <div class="tld-bar"><i style="width:${Math.round(r.load/max*100)}%"></i></div>
-      <div class="tld-n"><span><b>${r.meets}</b> meet${r.meets===1?"":"s"}</span><span><b>${r.pend}</b> pendiente${r.pend===1?"":"s"}${r.late?` <em>${r.late} tarde</em>`:""}</span><span><b>${r.tk}</b> tarea${r.tk===1?"":"s"}</span></div>
+      <div class="tld-n"><span><b>${r.meets}</b> meet${r.meets===1?"":"s"}</span><span><b>${r.pend}</b> pendiente${r.pend===1?"":"s"}${r.late?` <em>${r.late} tarde</em>`:""}</span><span><b>${r.tk}</b> tarea${r.tk===1?"":"s"}</span>${(() => { const rs = respGet(weekFrom(), Date.now()), p = rs && rs.people && rs.people[r.u]; return p && p.n ? `<span class="rt ${rtCls(p.med)}" title="Mediana de respuesta en WhatsApp esta semana · ${p.fast}% en menos de 15 min">⏱ <b>${fmtRt(p.med)}</b></span>` : ""; })()}</div>
       <div class="tld-days">${r.perDay.map((n,i) => `<span class="${n?"on":""}${days[i]===todayStr?" today":""}" style="${n?`--a:${Math.min(1, .25 + n*.25)}`:""}"><small>${D[i]}</small>${n||""}</span>`).join("")}</div></summary>
       <div class="tld-list">${r.mine.length ? r.mine.sort((a,b) => String(a.at).localeCompare(String(b.at))).map(e => { const d = days.indexOf(String(e.at).slice(0,10)); return `<div><span>${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][d]} ${String(e.at).slice(11,16)}</span>${esc(kind[e.kind] || "")} · ${esc(String(e.label).split(" · ").slice(1).join(" · ") || e.label)}</div>`; }).join("") : `<div class="tld-0">Sin meets en agenda esta semana</div>`}</div></details>`; }).join("") || `<p class="tt-none">Sin equipo todavía</p>`}</div></section>`;
   if (box.dataset.h !== h){ const open = [...box.querySelectorAll("details[open] b")].map(b => b.textContent); box.innerHTML = h; box.dataset.h = h;
@@ -5746,7 +5755,7 @@ async function iskMock(op, input){
   const conv = id => ISK_DEMO.convs.find(x => x.id===id);
   if (op==="whoami") return {configured:true, data:{workspace:{name:"Datos de ejemplo"}}};
   if (op==="conversations") return {configured:true, mode:(S.config && S.config.iskAssign)==="best" ? "best" : "load",
-    data:{data:ISK_DEMO.convs.filter(c => lead || c._strikd.owner===me)}};
+    data:{data:ISK_DEMO.convs.filter(c => lead || c._strikd.owner===me).map(c => (c.last_message && c.last_message.direction==="inbound" && c.unread_count ? {...c, _strikd:{...c._strikd, waitSince:Date.parse(c.last_message.created_at) - 20*60e3}} : c))}};
   if (op==="messages") return {configured:true, data:{data:(ISK_DEMO.msgs[input.id]||[]).slice().reverse()}, sent:ISK_DEMO.sent[input.id]||[]};
   if (op==="explore") return {data:[{m:"GET", path:"/v1/templates", status:200, body:"(ejemplo)"}]};
   if (op==="mediaprobe") return {data:Array.from({length:8}, (_,i) => ({n:i+1, ok:true, respuesta:"{}"}))};
@@ -5755,6 +5764,7 @@ async function iskMock(op, input){
     const c = conv(input.conversation_id); if (c){ c.last_message = m; c.unread_count = 0; c._strikd.lastSender = me; c._strikd.lastSentAt = Date.now(); } return {configured:true, data:{id:"demo"}}; }
   if (op==="discard"){ const c = conv(input.id); if (c) c._strikd = {...c._strikd, discardedAt:input.undo ? null : new Date().toISOString()}; return {configured:true, ok:true}; }
   if (op==="assign"){ const c = conv(input.id); if (c) c._strikd = {...c._strikd, owner:input.owner||null, assignedBy:"manual", escalatedAt:null}; return {configured:true, ok:true}; }
+  if (op==="resp_stats") return {configured:true, data:{team:{n:12, med:9*60e3, fast:70, slow:1}, people:{u_demo_vic:{n:5, med:6*60e3, fast:80, slow:0}, u_demo_rafa:{n:4, med:22*60e3, fast:50, slow:1}, u_demo_mich:{n:3, med:41*60e3, fast:33, slow:1}}}};
   if (op==="escalate"){ const c = conv(input.id); if (c) c._strikd = {...c._strikd, owner:(S.config && S.config.headId) || S.uid, assignedBy:"escalado", escalatedAt:new Date().toISOString()}; return {configured:true, ok:true}; }
   return {configured:true, data:{}};
 }
@@ -5772,6 +5782,22 @@ const iskAt = m => { if (!m || typeof m!=="object") return 0;
   if (v==null || v==="") return 0; if (typeof v==="number" || /^\d+$/.test(String(v))){ const n = Number(v); return n < 1e12 ? n*1000 : n; } return Date.parse(v) || 0; };
 const iskDigits = x => String(x||"").replace(/\D/g,"").slice(-10);
 const ISK_BY = {"prospecto":"ya era su prospecto", "menos-carga":"menos carga", "mejores-resultados":"mejores resultados", "manual":"asignado a mano", "escalado":"pasado al manager", "sin-am":"sin Account Managers"};
+/* ---------- tiempo de respuesta en WhatsApp (se calcula en el servidor; solo cuenta horario laboral 8 am – 8 pm) ---------- */
+function bizMs(a, b){ if (!(b > a)) return 0; let t = a, tot = 0;
+  while (t < b){ const l = new Date(t - OFF), d0 = Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate()) + OFF; tot += Math.max(0, Math.min(b, d0 + 20*3600e3) - Math.max(t, d0 + 8*3600e3)); t = d0 + DAY; }
+  return tot; }
+const fmtRt = ms => ms == null ? "—" : ms < 60e3 ? "<1 min" : ms < 3600e3 ? Math.round(ms/60e3) + " min" : (Math.round(ms/360e3)/10) + " h";
+const RESP = {};
+function respGet(from, to){
+  const k = from + "|" + Math.floor(to / 300e3), r = RESP[k]; if (r && (r.data || r.loading)) return r.data || null;
+  const f = iskFn(); if (!f) return null;
+  RESP[k] = {loading:true};
+  Promise.resolve(f("resp_stats", {from, to})).then(j => { const d = j && (j.data !== undefined ? j.data : j); RESP[k] = {data:d && d.people ? d : {people:{}, team:{}}}; schedule(); })
+    .catch(() => { RESP[k] = {data:{people:{}, team:{}}}; });
+  return null;
+}
+const weekFrom = () => { const d = new Date(Date.now()-OFF), t0 = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()), dow = (new Date(t0).getUTCDay()+6)%7; return t0 - dow*DAY + OFF; };
+const rtCls = ms => ms == null ? "" : ms > 30*60e3 ? "bad" : ms > 15*60e3 ? "mid" : "ok";
 function iskConv(c){
   const ct = c.contact || c.lead || {};
   const phone = c.phone || c.lead_phone || c.contact_phone || ct.phone || c.wa_id || "";
@@ -5780,7 +5806,7 @@ function iskConv(c){
     last:typeof lm==="string" ? lm : iskTxt(lm) || c.last_message_text || c.preview || "", lastDir:typeof lm==="object" && Object.keys(lm).length ? iskDir(lm) : (c.last_direction ? iskDir({direction:c.last_direction}) : ""),
     at:(Date.parse(c.last_message_at || "") || iskAt(lm) || iskAt(c)), unread:Number(c.unread_count || c.unread || 0), owner:x.owner || null, by:x.assignedBy || "", esc:x.escalatedAt ? Date.parse(x.escalatedAt) || 1 : 0,
     lastSender:x.lastSender || null, lastSentAt:x.lastSentAt ? (typeof x.lastSentAt==="number" ? x.lastSentAt : Date.parse(x.lastSentAt)) : 0,
-    disc:x.discardedAt ? (Date.parse(x.discardedAt) || 1) : 0, raw:c};
+    disc:x.discardedAt ? (Date.parse(x.discardedAt) || 1) : 0, waitSince:Number(x.waitSince) || 0, raw:c};
 }
 function iskMatch(phone){
   const d = iskDigits(phone); if (!d) return null;
@@ -5913,7 +5939,8 @@ function renderIskra(){
   const item = x => { const n = nm(x), st = needs(x) ? (x.esc ? "mgr" : "rep") : "";
     return `<button type="button" class="ck${x.id===ISK.sel?" sel":""}${st?" "+st:""}" data-iskc="${esc(x.id)}" data-s="${esc(fold(n+" "+(x.phone||"")))}"${q && !fold(n+" "+(x.phone||"")).includes(fold(q))?" hidden":""}>
       ${iskAv(x, n, "ck-av")}
-      <span class="ck-m"><span class="ck-1"><b>${esc(n)}</b>${st==="mgr" ? `<em class="ck-b mgr">${lead?"Te toca":"Manager"}</em>` : ""}<time>${x.at?ago(x.at):""}</time></span>
+      <span class="ck-m"><span class="ck-1"><b>${esc(n)}</b>${st==="mgr" ? `<em class="ck-b mgr">${lead?"Te toca":"Manager"}</em>` : ""}${(() => { if (!x.waitSince || x.lastDir!=="in" || x.disc) return ""; const w = bizMs(x.waitSince, Date.now()), m = Math.round(w/60e3);
+        return `<em class="ck-w ${w >= 60*60e3 ? "bad" : w >= 15*60e3 ? "mid" : ""}" title="Esperando respuesta (cuenta de 8 am a 8 pm)">esperando ${m < 60 ? Math.max(1,m) + " min" : (Math.round(m/6)/10) + " h"}</em>`; })()}<time>${x.at?ago(x.at):""}</time></span>
       <span class="ck-2"><span class="ck-tx">${x.lastDir==="out"?"Tú: ":""}${esc(String(x.last).slice(0,90)) || "<i>Sin mensajes</i>"}</span>${lead?`<span class="ck-o">${x.owner ? esc(iskWho(x.owner).split(" ")[0]) : "sin dueño"}</span>`:""}</span></span>
       ${x.unread?`<span class="ck-n">${x.unread}</span>`:""}</button>`; };
   let right = `<div class="cw cw-none"><div><b>Elige una conversación</b><p class="mut small">Aquí solo salen los prospectos que ya contestaron.</p></div></div>`;
