@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-20 21:01:56 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-20 21:16:26 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792530116">
+<link rel="stylesheet" href="/auth.css?v=1792530986">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792530116"></script>
+<script src="/claude-shim.js?v=1792530986"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1280,6 +1280,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .set-av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:1px solid var(--line2);font-weight:700;font-size:18px}
 .set-row{display:flex;gap:12px;align-items:center;padding:13px 16px;border-top:1px solid var(--line)}.set-card .set-row:first-child{border-top:0}
 .set-ic{width:28px;text-align:center;font-size:18px}.set-tx{flex:1;min-width:0;display:grid;gap:2px}.set-tx span{font-size:12.5px;color:var(--muted)}
+.tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
 .set-theme button.on{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
@@ -1529,7 +1530,7 @@ body.mob-open header.top{z-index:31}
           </label>
         </div></div>
         <div class="fsec m-only"><span class="fsec-h">¿Cuándo?</span><div class="grid">
-          <label class="f m-only">Fecha y hora del meet <em>*</em><input id="f_meetAt" type="datetime-local"></label>
+          <label class="f m-only">Fecha y hora del meet <em>*</em><input id="f_meetAt" type="datetime-local"><small class="tz-hint" id="f_tzHint" hidden></small></label>
           <div class="slots m-only" id="slotBox"></div>
           <div class="f full inv m-only">
             <label class="chk on" id="mkInvL" hidden><input type="checkbox" id="f_mkinv" checked><span class="box"></span><span>Crear la invitación con link de Google Meet y mandársela al prospecto</span></label>
@@ -1702,6 +1703,20 @@ Del pitch a publicado (líder de equipo):
 
 Puntos por perfil: cada paso se multiplica según el perfil del prospecto. Perfil 1 (nutriólogos y entrenadores) ×1, Perfil 2 (microinfluencers hasta 35K) ×2.5, Perfil 3 (influencers +35K) ×5. Un prospecto que llega a publicado vale 15, 37.5 o 75 puntos.`;
 const meetTs = s => s ? Date.parse(s + ":00-05:00") : NaN;
+/* Zona horaria de quien ve la app. Todo se guarda en hora Cancún; a quien está en otra zona se le muestra
+   y se le pide la hora en la suya. VOFF = cuánto hay que restar a UTC para su hora local (Cancún = OFF). */
+const CUN_TZ = "America/Cancun";
+const devTz = (() => { try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || CUN_TZ; }catch(_){ return CUN_TZ; } })();
+function tzOffMs(tz, ts){ ts = ts || Date.now();
+  try{ const p = {}; new Intl.DateTimeFormat("en-US", {timeZone:tz, hourCycle:"h23", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"}).formatToParts(ts).forEach(x => p[x.type] = x.value);
+    return Math.round((Math.floor(ts/60e3)*60e3 - Date.UTC(+p.year, +p.month-1, +p.day, +p.hour % 24, +p.minute)) / 60e3) * 60e3; }catch(_){ return OFF; } }
+let VTZ = CUN_TZ, VOFF = OFF;
+function setViewerTz(tz){ tz = tz || CUN_TZ; const o = tzOffMs(tz); if (tz === VTZ && o === VOFF) return false; VTZ = tz; VOFF = o; return true; }
+const tzOther = () => VOFF !== OFF;
+const tzName = tz => { const z = String(tz || VTZ); const n = {"America/Cancun":"Cancún","America/Mexico_City":"CDMX","America/Monterrey":"Monterrey","America/Guadalajara":"Guadalajara","America/Tijuana":"Tijuana","America/Hermosillo":"Hermosillo","America/Mazatlan":"Mazatlán","America/Chihuahua":"Chihuahua","America/Merida":"Mérida","America/Bogota":"Bogotá","America/Lima":"Lima","America/Santiago":"Santiago","America/Argentina/Buenos_Aires":"Buenos Aires","America/New_York":"Nueva York","America/Los_Angeles":"Los Ángeles","America/Chicago":"Chicago","Europe/Madrid":"Madrid"}[z]; return n || z.split("/").pop().replace(/_/g, " "); };
+const toV = s => { if (!s || !tzOther() || String(s).length < 16) return s; const t = meetTs(String(s).slice(0,16)); return isNaN(t) ? s : new Date(t - VOFF).toISOString().slice(0,16); }; // hora Cancún → hora de quien ve
+const vTs = s => s ? Date.parse(String(s).slice(0,16) + ":00Z") + VOFF : NaN; // hora de quien ve → instante
+const toC = s => { if (!s || !tzOther()) return s; const t = vTs(s); return isNaN(t) ? s : new Date(t - OFF).toISOString().slice(0,16); }; // hora de quien ve → hora Cancún (como se guarda)
 const effAt = m => m.reschedAt || m.meetAt;
 const meetWeek = m => { const t = meetTs(effAt(m)); return isNaN(t) ? m.week : weekKey(t); };
 
@@ -1715,8 +1730,8 @@ function weekEnd(ts){ // UTC ms of the Friday 18:00 (Cancún) that closes the we
 const weekKey = ts => new Date(weekEnd(ts) - OFF).toISOString().slice(0,10);
 const MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 function keyLabel(k){ const [y,m,d] = k.split("-").map(Number); return `Cierra vie ${d} ${MONTHS[m-1]}`; }
-function fmtLocal(ts){ const d = new Date(ts - OFF); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")}`; }
-function fmtMeetAt(s){ if(!s) return "—"; const [dp,tp] = s.split("T"); const [y,m,d] = dp.split("-").map(Number); return `${d} ${MONTHS[m-1]} ${y}, ${tp||""}`; }
+function fmtLocal(ts){ const d = new Date(ts - VOFF); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")}`; }
+function fmtMeetAt(s){ if(!s) return "—"; s = toV(s); const [dp,tp] = s.split("T"); const [y,m,d] = dp.split("-").map(Number); return `${d} ${MONTHS[m-1]} ${y}, ${tp||""}`; }
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const safeUrl = u => /^https?:\/\//i.test(u||"") ? u : "";
 const $ = id => document.getElementById(id);
@@ -1847,6 +1862,19 @@ document.addEventListener("click", async e => {
     cur.push({id, name:name || id.split("@")[0]}); if (await save(cur)){ XC.open = false; XC.err = ""; quickToast("✓ Agregado · revisando acceso…"); } }
 });
 const CLN = {res:null, busy:false, armed:false};
+function tzHint(){ const h = $("f_tzHint"); if (!h) return; h.hidden = !tzOther(); if (!tzOther()) return;
+  const v = ($("f_meetAt")||{}).value, c = v ? toC(v) : ""; h.textContent = `Pon la hora de ${tzName(VTZ)} (tu hora).${c ? ` En Cancún serán las ${c.slice(11)}${c.slice(0,10) !== v.slice(0,10) ? " del " + Number(c.slice(8,10)) : ""}.` : ""}`; }
+document.addEventListener("input", e => { if (e.target && e.target.id === "f_meetAt") tzHint(); });
+function syncTz(){ const m = (S.members||{})[S.uid] || {}; return setViewerTz((m.tzManual && m.tz) || devTz); }
+const TZ_LIST = ["America/Cancun","America/Mexico_City","America/Tijuana","America/Hermosillo","America/Mazatlan","America/Bogota","America/Lima","America/Santiago","America/Argentina/Buenos_Aires","America/New_York","America/Chicago","America/Los_Angeles","Europe/Madrid"];
+function tzRow(){ const m = (S.members||{})[S.uid] || {}, cur = m.tzManual && m.tz ? m.tz : "";
+  const opts = [...new Set(TZ_LIST.concat(devTz))].map(z => `<option value="${esc(z)}"${cur===z?" selected":""}>${esc(tzName(z))}${z!==CUN_TZ ? ` (${(() => { const d = (OFF - tzOffMs(z)) / 3600e3; return d === 0 ? "igual que Cancún" : (d > 0 ? "+" : "") + d + " h vs Cancún"; })()})` : ""}</option>`).join("");
+  return setRow("🕐", "Tu zona horaria", `Los meets y la agenda se te muestran en ${esc(tzName(VTZ))}${tzOther() ? " · se guardan en hora Cancún" : ""}`,
+    `<select class="inline" data-settz="1" aria-label="Zona horaria"><option value=""${cur?"":" selected"}>Automática (${esc(tzName(devTz))})</option>${opts}</select>`); }
+document.addEventListener("change", async e => { const sel = e.target.closest("[data-settz]"); if (!sel || !S.uid) return;
+  const v = sel.value, m = ((S.members ||= {})[S.uid] ||= {}); m.tz = v || devTz; m.tzManual = !!v;
+  try{ await db.doc(`members/${S.uid}`).update({tz:m.tz, tzManual:m.tzManual}); }catch(_){}
+  syncTz(); const bx = $("setBox"); if (bx) bx.innerHTML = ""; sel.blur(); quickToast(`✓ Zona: ${tzName(VTZ)}`); schedule(); });
 function renderSettings(){
   const box = $("setBox"); if (!box || S.tab!=="settings" || busyIn(box)) return;
   const A = window.STRIKD_ACT, me = window.STRIKD_ME ? window.STRIKD_ME() : null;
@@ -1869,6 +1897,7 @@ function renderSettings(){
       ${setRow("📅", "Google Calendar y Meet", gOn ? `Conectado${g && g.email ? " · " + esc(g.email) : ""}: los meets crean su link solos` : "Necesario para agendar: genera el link de Meet y la invitación", gRight)}
       ${gOn && S.isLead && !S.viewAs ? xcalHtml(g) : ""}
       ${pushRow}
+      ${tzRow()}
     </section>
     <h3 class="set-h">Apariencia</h3>
     <section class="set-card"><div class="set-theme">
@@ -2090,6 +2119,7 @@ function fillWeekSelect(sel, value, withAll){
 }
 
 async function render(){
+  try{ syncTz(); tzHint(); }catch(_){}
   if (!S.boardWeek) S.boardWeek = S.currentKey;
   if (document.visibilityState==="visible") presBeat(false);
   computeTeam();
@@ -2415,7 +2445,7 @@ function parseFol(v){
 }
 // comparar texto sin importar acentos ni mayúsculas (Ramírez = ramirez)
 const fold = v => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-function readForm(){ const o={}; FIELDS.forEach(f=> o[f] = $("f_"+f).value.trim()); o._folRaw = o.followers; if (o.followers) o.followers = String(parseFol(o.followers) || ""); return o; }
+function readForm(){ const o={}; FIELDS.forEach(f=> o[f] = $("f_"+f).value.trim()); if (o.meetAt) o.meetAt = toC(o.meetAt); o._folRaw = o.followers; if (o.followers) o.followers = String(parseFol(o.followers) || ""); return o; }
 /* ---------- horarios libres del team leader al agendar (para no encimar meets) ---------- */
 const SL = {day:"", busy:null, at:0, loading:false, leader:null, googleOk:false};
 const MEET_MIN = 45*60e3, SLOT_STEP = 15*60e3, SLOT_MIN = MEET_MIN; // cada meet dura 45 min; horarios cada 15 min
@@ -2457,11 +2487,11 @@ function renderSlots(){
   const box = $("slotBox"); if (!box || (S.tab!=="mine" && !BOOK.open)) return;
   if (!SL.busy){ slotLoad(); box.innerHTML = `<p class="mut small">Revisando la agenda de tu team leader…</p>`; return; }
   slotLoad();
-  const now = Date.now(), cur = $("f_meetAt").value, curT = meetTs(cur);
-  const days = []; for (let i = 0; days.length < 7 && i < 10; i++){ const d = dayStr(now + i*864e5); if (new Date(d+"T12:00:00Z").getUTCDay() !== 0) days.push(d); }
+  const now = Date.now(), cur = $("f_meetAt").value, curT = vTs(cur);
+  const days = []; for (let i = 0; days.length < 7 && i < 10; i++){ const d = new Date(now + i*864e5 - VOFF).toISOString().slice(0,10); if (new Date(d+"T12:00:00Z").getUTCDay() !== 0) days.push(d); }
   if (!SL.day || !days.includes(SL.day)) SL.day = cur && days.includes(cur.slice(0,10)) ? cur.slice(0,10) : days[0];
   const wk = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-  const times = []; for (let h = 8; h <= 19; h++) for (const mm of [0,15,30,45]){ if (h===19 && mm > 15) continue; const v = `${SL.day}T${String(h).padStart(2,"0")}:${String(mm).padStart(2,"0")}`; const t = meetTs(v); if (t > now + 15*60e3) times.push([v, t]); }
+  const times = []; for (let h = 8; h <= 19; h++) for (const mm of [0,15,30,45]){ if (h===19 && mm > 15) continue; const v = `${SL.day}T${String(h).padStart(2,"0")}:${String(mm).padStart(2,"0")}`; const t = vTs(v); if (t > now + 15*60e3) times.push([v, t]); }
   const ln = SL.leader ? nameOf(S.ps||{}, SL.leader) : "";
   const cl = cur ? slotClash(curT) : null;
   box.innerHTML = `<div class="slots-h"><b>Horarios libres${ln && ln!=="Alguien del equipo" ? ` de ${esc(ln)}` : " de tu team leader"}</b><span class="mut small">cada meet dura 45 min · tachados: se encima con otro meet${SL.googleOk?" · en amarillo: ocupado en su calendario":""}</span><div class="spacer"></div><button type="button" class="btn small" data-slotnext="1">Siguiente libre</button></div>
@@ -2474,7 +2504,7 @@ $("slotBox").addEventListener("click", e => {
   const t = e.target.closest("[data-slot]"); if (t && !t.disabled){ $("f_meetAt").value = t.dataset.slot; $("f_meetAt").dispatchEvent(new Event("input", {bubbles:true})); return renderSlots(); }
   if (e.target.closest("[data-slotnext]")){
     const now = Date.now() + 15*60e3; let t = Math.ceil(now / SLOT_STEP) * SLOT_STEP;
-    for (let i = 0; i < 96*8; i++, t += SLOT_STEP){ const v = new Date(t - OFF).toISOString().slice(0,16), h = Number(v.slice(11,13)), mi = Number(v.slice(14,16)), dow = new Date(t - OFF).getUTCDay();
+    for (let i = 0; i < 96*8; i++, t += SLOT_STEP){ const v = new Date(t - VOFF).toISOString().slice(0,16), h = Number(v.slice(11,13)), mi = Number(v.slice(14,16)), dow = new Date(t - VOFF).getUTCDay();
       if (dow===0 || h < 8 || h > 19 || (h===19 && mi > 15)) continue; if (!slotClash(t)){ $("f_meetAt").value = v; SL.day = v.slice(0,10); $("f_meetAt").dispatchEvent(new Event("input", {bubbles:true})); break; } }
     renderSlots();
   }
@@ -2587,7 +2617,7 @@ $("myList").addEventListener("click", async e => {
   const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]"), can = e.target.closest("[data-cancelled]");
   if (ed){
     const m = myItems()[ed.dataset.edit]; S.editingId = ed.dataset.edit;
-    FIELDS.forEach(f=> $("f_"+f).value = m[f]||"");
+    FIELDS.forEach(f=> $("f_"+f).value = f==="meetAt" ? toV(m[f]||"") : (m[f]||""));
     $("f_p3meet").checked = Number(m.perfil)===3;
     document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = Number(m.perfil)===3 ? b.dataset.perfil!=="3" : b.dataset.perfil==="3");
     syncPerfilUi(); syncInvUi();
@@ -2960,7 +2990,7 @@ function actsHtml(t){
     }
     if (a.input==="bookbuild"){
       const first = (t.m.prospect||"").split(" ")[0], when = (dr.dt||{}).build;
-      const auto = when ? `¡Hola ${first}! Para armar tu programa final y tu página web nos conectamos el ${fmtMeetAt(when)}. Te mando la invitación con el link.`
+      const auto = when ? `¡Hola ${first}! Para armar tu programa final y tu página web nos conectamos el ${fmtMeetAt(toC(when))}. Te mando la invitación con el link.`
         : `¡Hola ${first}! Con tu skeleton aprobado, sigue armar tu programa final y tu página web. ¿Qué día y hora te acomodan para una sesión de trabajo?`;
       const text = dr.msgEdited ? dr.msg : auto, wa = waLink(t.m.phone, text);
       return `<div class="msgbox"><div class="msg-h"><span class="eyb">Agendar meet de programa y web</span>${dr.msgEdited?`<button type="button" class="linkbtn" data-k="${k}" data-msgreset="1">Volver al sugerido</button>`:""}</div>
@@ -3324,7 +3354,7 @@ async function doAct(b){
   const m = (S.all[uid] && S.all[uid][id]) || (uid===S.uid ? S.mine[id] : null);
   if (!m) return;
   const dr = DRAFT[dk(uid,id)] || {dt:{}};
-  const val = f => f==="dt" ? ((dr.dt||{})[act] || "") : (dr[f] ?? "");
+  const val = f => f==="dt" ? toC((dr.dt||{})[act] || "") : (dr[f] ?? "");
   const ref = db.doc(`meets/${uid}/items/${id}`), f = m.flow || {}, now = Date.now();
   const decideA = status => db.doc(`validations/${id}`).set({uid, week:meetWeek(m), status, reason:"", decidedAt:now, perfil:Number(m.perfil)||1});
   switch(act){
@@ -3376,7 +3406,7 @@ async function doAct(b){
       if (q2==="1" && !f.skeletonAt){
         if (dr.file){ Object.assign(patch, await uploadSkeleton(dr.file, now), {skeletonSentAt:now, skeletonLastSentAt:now, skeletonInPitch:true, skelLog:(f.skelLog||[]).concat([{at:now, type:"sent", note:"Mostrado y enviado en el pitch"}])}); done = `Listo: skeleton enviado en el pitch. ${who} da seguimiento a su aprobación.`; }
         else if (dr.resk){
-          const when = dr.dt && dr.dt.skel;
+          const when = dr.dt && toC(dr.dt.skel);
           Object.assign(patch, {skeletonMeetNeeded:true, skeletonMeetSetAt:now, skeletonMeetBookedAt:null, skeletonMeetAt: when || null});
           done = `Listo: se le mandó a ${who} la indicación de agendar el meet de skeleton${when?` para el ${fmtMeetAt(when)}`:""}.`;
         }
@@ -3404,7 +3434,7 @@ async function doAct(b){
       return ref.update({flow:{skeletonNeedsChanges:true, skeletonChangesAt:now, adjMode:mode, adjMeetAt:null, adjMeetBookedAt:null, skelLog:(f.skelLog||[]).concat([{at:now, type:"changes", note, mode}])}});
     }
     case "adj-booked": {
-      const w = (dr.dt||{}).adj; if (!w) throw {msg:"Registra la fecha acordada"};
+      const w = toC((dr.dt||{}).adj); if (!w) throw {msg:"Registra la fecha acordada"};
       if (meetTs(w) <= now) throw {msg:"Elige una fecha futura"};
       return ref.update({flow:{adjMeetAt:w, adjMeetBookedAt:now}});
     }
@@ -3414,12 +3444,12 @@ async function doAct(b){
     }
     case "skel-sched": { const v = val("dt"); if (!v) throw {msg:"Elige la fecha del meet"}; return ref.update({flow:{skeletonMeetAt:v, skeletonMeetSetAt:now, skeletonMeetBookedAt:null}}); }
     case "build-booked": {
-      const w = (dr.dt||{}).build; if (!w) throw {msg:"Registra la fecha acordada"};
+      const w = toC((dr.dt||{}).build); if (!w) throw {msg:"Registra la fecha acordada"};
       await ref.update({flow:{buildMeetAt:w, buildMeetBookedAt:now}});
       return `Listo: meet de programa y web agendado para el ${fmtMeetAt(w)}.`;
     }
     case "skel-booked": {
-      if (!f.skeletonMeetAt){ const w = (dr.dt||{}).book; if (!w) throw {msg:"Registra la fecha acordada"}; return ref.update({flow:{skeletonMeetBookedAt:now, skeletonMeetAt:w}}); }
+      if (!f.skeletonMeetAt){ const w = toC((dr.dt||{}).book); if (!w) throw {msg:"Registra la fecha acordada"}; return ref.update({flow:{skeletonMeetBookedAt:now, skeletonMeetAt:w}}); }
       return ref.update({flow:{skeletonMeetBookedAt:now}});
     }
     case "check": {
@@ -3656,7 +3686,7 @@ function calEvents(teamAll){
   return ev;
 }
 function calHtml(offset, pickKey, selected){
-  const todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
+  const todayStr = new Date(Date.now()-VOFF).toISOString().slice(0,10);
   const t0 = new Date(todayStr + "T00:00:00Z"), dow = (t0.getUTCDay()+6)%7;
   const monday = new Date(t0.getTime() - dow*DAY + offset*7*DAY);
   const days = Array.from({length:7}, (_,i) => new Date(monday.getTime() + i*DAY).toISOString().slice(0,10));
@@ -3664,11 +3694,11 @@ function calHtml(offset, pickKey, selected){
   const byCell = {};
   // overlaps: every meet lasts 30 min plus a 10 min margin, so starts less than 40 min apart collide
   // calendar events use their real end time; panel meets are 30 min. Either way, 10 min of margin after each.
-  const evs0 = calEvents().map(e => { const ts = meetTs(e.at); return {...e, ts, end:(e.endTs && e.endTs > ts ? e.endTs : ts + MEET_MIN)}; }).filter(e => !isNaN(e.ts)).sort((a,b) => a.ts - b.ts);
+  const evs0 = calEvents().map(e => { const ts = meetTs(e.at); return {...e, at:toV(e.at), ts, end:(e.endTs && e.endTs > ts ? e.endTs : ts + MEET_MIN)}; }).filter(e => !isNaN(e.ts)).sort((a,b) => a.ts - b.ts);
   for (let i = 0; i < evs0.length; i++) for (let j = i+1; j < evs0.length && evs0[j].ts < evs0[i].end + 10*60e3; j++){ evs0[i].clash = true; evs0[j].clash = true; }
   const weekClashes = evs0.filter(e => e.clash && days.includes(e.at.slice(0,10)));
   evs0.forEach(e => { const [d, tm] = e.at.split("T"); const h = Number((tm||"0").slice(0,2)); (byCell[`${d}T${pad2(h)}`] = byCell[`${d}T${pad2(h)}`] || []).push(e); });
-  const nowLocal = new Date(Date.now()-OFF).toISOString().slice(0,13);
+  const nowLocal = new Date(Date.now()-VOFF).toISOString().slice(0,13);
   const [y1,m1,d1] = days[0].split("-").map(Number), [y7,m7,d7] = days[6].split("-").map(Number);
   const range = `${d1} ${MONTHS[m1-1]} – ${d7} ${MONTHS[m7-1]} ${y7}`;
   const nav = pickKey ? `data-k="${pickKey}"` : `data-k="__tab"`;
@@ -3696,7 +3726,7 @@ let AG_OFF = 0, AG_DAY = null;
 const isPhone = () => matchMedia("(max-width:640px)").matches;
 function renderAgenda(){
   const box = $("agendaCal"); if (!box) return;
-  const phone = isPhone(), todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
+  const phone = isPhone(), todayStr = new Date(Date.now()-VOFF).toISOString().slice(0,10);
   box.innerHTML = phone ? agendaPhone(AG_OFF) : calHtml(AG_OFF, null, null);
   const dp = $("dayPlan");
   // en celular: hoy y días pasados = tu plan (con acciones, para registrar lo que pasó); días que vienen = su lista
@@ -3713,14 +3743,14 @@ const MONTHS_L = ["enero","febrero","marzo","abril","mayo","junio","julio","agos
 let AG_SEG = "meets";
 // iPhone: mes arriba, semana con flechas a los lados, y dos pestañas: Meets / Pendientes
 function agendaPhone(offset){
-  const todayStr = new Date(Date.now()-OFF).toISOString().slice(0,10);
+  const todayStr = new Date(Date.now()-VOFF).toISOString().slice(0,10);
   // la semana va de lunes a domingo; las flechas avanzan una semana
   const t0 = new Date(todayStr + "T00:00:00Z"), start = new Date(t0.getTime() - ((t0.getUTCDay()+6)%7)*DAY + offset*7*DAY);
   const days = Array.from({length:7}, (_,i) => new Date(start.getTime() + i*DAY).toISOString().slice(0,10));
   const mondayOf = d => { const x = new Date(d + "T00:00:00Z"), w = (x.getUTCDay()+6)%7; return new Date(x.getTime() - w*DAY).toISOString().slice(0,10); };
   [...new Set([mondayOf(days[0]), mondayOf(days[6])])].forEach(m => gcalWatch(m));
   if (!AG_DAY || !days.includes(AG_DAY)) AG_DAY = days.includes(todayStr) ? todayStr : days[0];
-  const evs = calEvents().map(e => { const ts = meetTs(e.at); return {...e, ts, end:(e.endTs && e.endTs > ts ? e.endTs : ts + MEET_MIN)}; }).filter(e => !isNaN(e.ts)).sort((a,b) => a.ts - b.ts);
+  const evs = calEvents().map(e => { const ts = meetTs(e.at); return {...e, at:toV(e.at), ts, end:(e.endTs && e.endTs > ts ? e.endTs : ts + MEET_MIN)}; }).filter(e => !isNaN(e.ts)).sort((a,b) => a.ts - b.ts);
   for (let i = 0; i < evs.length; i++) for (let j = i+1; j < evs.length && evs[j].ts < evs[i].end + 10*60e3; j++){ evs[i].clash = true; evs[j].clash = true; }
   const by = {}; evs.forEach(e => (by[e.at.slice(0,10)] = by[e.at.slice(0,10)] || []).push(e));
   const KIND = {pitch:"Pitch", skel:"Meet de skeleton", build:"Lanzamiento", gcal:"Tu calendario"};
@@ -3734,7 +3764,7 @@ function agendaPhone(offset){
     const pc = S.planCounts || {meets:0, tasks:0, late:0}; nMeets = pc.meets; nTasks = pc.tasks; nLate = pc.late;
   } else {
     const list = by[AG_DAY] || [];
-    const d0 = Date.parse(AG_DAY + "T00:00:00-05:00"), d1e = d0 + DAY;
+    const d0 = vTs(AG_DAY + "T00:00"), d1e = d0 + DAY;
     const tks = []; (michMode() ? [] : planOwners()).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
       tasksFor(uid, id, m, nowTs).filter(t => ownTask(t) && t.due >= d0 && t.due < d1e).slice(0,1).forEach(t => tks.push({...t, m})); }));
     tks.sort((a,b) => a.due - b.due);
@@ -3747,7 +3777,7 @@ function agendaPhone(offset){
 }
 document.addEventListener("click", e => { const pd = e.target.closest("[data-planday]"); if (!pd) return;
   PLAN_DAY = pd.dataset.planday || null; PICK.dayPlan = null;
-  if (isPhone()){ AG_DAY = PLAN_DAY || new Date(Date.now()-OFF).toISOString().slice(0,10); renderAgenda(); }
+  if (isPhone()){ AG_DAY = PLAN_DAY || new Date(Date.now()-VOFF).toISOString().slice(0,10); renderAgenda(); }
   schedule(); setTimeout(() => { const el = $("dayPlan"); el && el.scrollIntoView({behavior:"smooth", block:"start"}); }, 80); });
 document.addEventListener("click", e => { const b = e.target.closest("[data-agseg]"); if (b){ AG_SEG = b.dataset.agseg; renderAgenda(); } });
 document.addEventListener("click", e => { const b = e.target.closest("[data-agday]"); if (b){ AG_DAY = b.dataset.agday; renderAgenda(); } if (e.target.closest("[data-agnew]")) openBook(null); });
@@ -3786,7 +3816,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-gcre
   setTimeout(() => {
     S.gcPrefill = {eventId:g.gid, link:g.link || "", html:g.html || ""};
     $("f_prospect").value = /^meet$/i.test(name) || /^Ocupado/.test(name) ? "" : name;
-    $("f_meetAt").value = String(g.gstart || g.at || "").slice(0,16);
+    $("f_meetAt").value = toV(String(g.gstart || g.at || "").slice(0,16));
     if (g.emails && g.emails[0]) $("f_email").value = g.emails[0];
     if ($("f_mkinv")) $("f_mkinv").checked = false; // ya existe en Google: no se manda otra invitación
     const h = document.querySelector("#bkWrap .bk-h b"); if (h) h.textContent = "Registrar para dar seguimiento";
@@ -3801,9 +3831,9 @@ function renderPlan(){
   const box = $("dayPlan"); if (!box) return;
   if (busyIn(box) || Date.now() <= HOLD_UNTIL) return;
   const now = Date.now(), admin = adminMode();
-  const realToday = new Date(now-OFF).toISOString().slice(0,10);
+  const realToday = new Date(now-VOFF).toISOString().slice(0,10);
   const todayStr = PLAN_DAY || realToday, pastDay = todayStr < realToday, otherDay = todayStr !== realToday;
-  const t0 = Date.parse(todayStr+"T00:00:00-05:00"), eod = t0 + DAY - 1;
+  const t0 = vTs(todayStr+"T00:00"), eod = t0 + DAY - 1;
   if (admin){ const d = new Date(todayStr+"T00:00:00Z"), dow = (d.getUTCDay()+6)%7; gcalWatch(new Date(d.getTime()-dow*DAY).toISOString().slice(0,10)); }
   const owners = planOwners(), sel = PICK.dayPlan; // Influencer: su agenda es solo lo de su lista y sus tareas
   const first = (uid,id,m) => tasksFor(uid,id,m,now).filter(ownTask)[0];
@@ -4250,8 +4280,8 @@ function remOpen(ref, name, kind){
     <div class="bk-h"><b>${ev ? "📅 Agregar a tu agenda" : "＋ Pendiente o recordatorio"}</b><div class="spacer"></div><button type="button" class="btn small" data-remx="1">Cerrar</button></div>
     <div class="grid">
       <label class="f full">${ev ? "¿Qué es?" : "¿Qué hay que hacer?"} <em>*</em><input id="remText" placeholder="${ev ? "Ej. Llamada con Ana para ver su contenido" : "Ej. Se fue de vacaciones: escribirle para reagendar"}" autocomplete="off"></label>
-      <label class="f">Día <em>*</em><input type="date" id="remDay" value="${ev ? new Date(Date.now() - OFF).toISOString().slice(0,10) : today}"></label>
-      <label class="f">Hora<input type="time" id="remTime" value="${ev ? String(new Date(Date.now() - OFF + HR).getUTCHours()).padStart(2,"0") + ":00" : "09:00"}"></label>
+      <label class="f">Día <em>*</em><input type="date" id="remDay" value="${ev ? new Date(Date.now() - VOFF).toISOString().slice(0,10) : today}"></label>
+      <label class="f">Hora<input type="time" id="remTime" value="${ev ? String(new Date(Date.now() - VOFF + HR).getUTCHours()).padStart(2,"0") + ":00" : "09:00"}"></label>
       ${ev ? `<label class="f">Duración<select id="remDur"><option value="15">15 min</option><option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">1 h</option><option value="90">1 h 30</option></select></label>` : ""}
       ${ref ? `<p class="mut small full" style="margin:0 4px">Prospecto: <b>${esc(name||"")}</b></p>` : ""}
       <label class="f full rem-hold"${!ev && (ref || mine.length) ? "" : " hidden"}><span><input type="checkbox" id="remHold" checked> Poner al prospecto en pausa hasta ese día</span><small>Sus pendientes no te salen ni cuentan como atrasados mientras tanto.</small></label>
@@ -4265,7 +4295,7 @@ function remOpen(ref, name, kind){
     if (!e.target.closest("#remGo")) return;
     const text = $("remText").value.trim(), day = $("remDay").value, tm = $("remTime").value || "09:00";
     if (!text || !day){ $("remErr").textContent = "Escribe el recordatorio y el día."; return; }
-    const at = Date.parse(`${day}T${tm}:00-05:00`); if (isNaN(at)){ $("remErr").textContent = "Revisa la fecha."; return; }
+    const at = vTs(`${day}T${tm}`); if (isNaN(at)){ $("remErr").textContent = "Revisa la fecha."; return; }
     const r = ref || ($("remRef") && $("remRef").value) || "", nm = name || (r ? (mine.find(x => x[0]===r)||[])[1] || "" : "");
     const hold = !!(r && $("remHold") && $("remHold").checked);
     $("remGo").disabled = true;
@@ -4484,7 +4514,7 @@ function taskOpen(){
     <div class="row"><span class="err" id="tkErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="tkGo">Asignar tarea</button></div></div>`;
   document.body.appendChild(w);
   w.addEventListener("change", e => { if (e.target.id === "tkMetric"){ $("tkGoalL").hidden = !e.target.value; return; }
-    if (e.target.id === "tkPub"){ $("tkPubL").hidden = !e.target.value; if (e.target.value && !$("tkPubAt").value){ const t = new Date(Date.now() - OFF + DAY); $("tkPubAt").value = t.toISOString().slice(0,10) + "T09:00"; } return; } if (e.target.id !== "tkFile") return;
+    if (e.target.id === "tkPub"){ $("tkPubL").hidden = !e.target.value; if (e.target.value && !$("tkPubAt").value){ const t = new Date(Date.now() - VOFF + DAY); $("tkPubAt").value = t.toISOString().slice(0,10) + "T09:00"; } return; } if (e.target.id !== "tkFile") return;
     const fs = [...e.target.files], big = fs.filter(f => f.size > 15*1024*1024);
     picked = picked.concat(fs.filter(f => f.size <= 15*1024*1024)).slice(0, 10); e.target.value = "";
     $("tkErr").textContent = big.length ? `${big.length === 1 ? "Un archivo pesa" : big.length + " archivos pesan"} más de 15 MB y no se agregó.` : "";
@@ -4509,7 +4539,7 @@ function taskOpen(){
           const up = await assets.upload(file); files.push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || "", at:now}); } }
       catch(err){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = (err && err.message) ? "No se pudo subir: " + err.message : "No se pudo subir un archivo. Intenta otra vez o quítalo."; return; } }
     const rep = $("tkRep").value, metric = $("tkMetric").value, goal = Math.max(1, Number($("tkGoal").value) || 0);
-    const publishAt = $("tkPub").value && $("tkPubAt").value ? meetTs($("tkPubAt").value) : 0;
+    const publishAt = $("tkPub").value && $("tkPubAt").value ? vTs($("tkPubAt").value) : 0;
     if ($("tkPub").value && !(publishAt > now)){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = "Elige una fecha y hora futura para publicarla."; return; }
     if (rep && !due){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = "Elige la primera fecha de entrega (ese día de la semana se repite)."; return; }
     const byName = String(nameOf(S.ps||{}, S.uid)).split(" (")[0];
@@ -4675,7 +4705,7 @@ function michBookOpen(k){
 async function michBookSave(w){
   if (MBK.busy) return;
   const [u, id] = MBK.k.split("/"), x = (S.vip[u]||{})[id]; if (!x) return w.remove();
-  const email = $("mbkEmail").value.trim(), phone = $("mbkPhone").value.trim(), meetAt = $("mbkAt").value, err = $("mbkErr");
+  const email = $("mbkEmail").value.trim(), phone = $("mbkPhone").value.trim(), meetAt = toC($("mbkAt").value), err = $("mbkErr");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "Revisa el email."; return; }
   if (!meetAt || isNaN(meetTs(meetAt))){ err.textContent = "Pon la fecha y hora."; return; }
   MBK.busy = true; $("mbkGo").disabled = true; $("mbkGo").textContent = "Agendando…"; err.textContent = "";
@@ -4747,7 +4777,8 @@ function orgCard(uid, role, extra, n){
 function orgCtl(uid){
   if (!S.isOwner || !uid) return "";
   const r = roleOf(uid), mgrs = Object.keys(S.members).filter(u => roleOf(u)==="manager");
-  return `<div class="org-ctl">
+  const tzU = ((S.members||{})[uid]||{}).tz;
+  return `<div class="org-ctl">${tzU && tzU !== CUN_TZ ? `<span class="mut small">🕐 Zona: ${esc(tzName(tzU))}</span>` : ""}
     <select data-orgrole="${uid}" aria-label="Rol">${["am","manager","influencer"].map(k => `<option value="${k}"${r===k?" selected":""}>${ROLES[k].title}</option>`).join("")}</select>
     ${r==="manager" ? `<input type="email" data-orgmail="${uid}" placeholder="Email para invitaciones de meet" value="${esc((S.roles[uid]||{}).inviteEmail||"")}" aria-label="Email del team leader para invitaciones">` : ""}
     ${r==="am" && uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgassign="${uid}"${(S.roles[uid]||{}).canAssign ? " checked" : ""}> Puede asignar tareas a otros AM</label>
@@ -5130,7 +5161,8 @@ setInterval(() => {
 function presBeat(away){
   if (!S.uid || !db || S.canWrite === false) return;
   const now = Date.now(); if (!away && now - PRES_LAST < 50e3) return; PRES_LAST = away ? 0 : now;
-  const patch = {seenAt:now, away:!!away};
+  const patch = {seenAt:now, away:!!away}, mm = (S.members||{})[S.uid] || {};
+  if (!mm.tzManual && mm.tz !== devTz){ patch.tz = devTz; mm.tz = devTz; }
   if (ACT.day && ACT.min !== ACT.saved){ patch.activeMin = {[ACT.day]:ACT.min}; ACT.saved = ACT.min; const m = (S.members||{})[S.uid]; if (m) (m.activeMin ||= {})[ACT.day] = ACT.min; }
   db.doc(`members/${S.uid}`).update(patch).catch(() => {});
 }
