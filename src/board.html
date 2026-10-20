@@ -1271,6 +1271,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .set-av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:1px solid var(--line2);font-weight:700;font-size:18px}
 .set-row{display:flex;gap:12px;align-items:center;padding:13px 16px;border-top:1px solid var(--line)}.set-card .set-row:first-child{border-top:0}
 .set-ic{width:28px;text-align:center;font-size:18px}.set-tx{flex:1;min-width:0;display:grid;gap:2px}.set-tx span{font-size:12.5px;color:var(--muted)}
+.pl-move{display:flex;flex-direction:column;gap:6px;margin:10px 0}.pl-move .ig{display:flex;gap:8px;flex-wrap:wrap}.pl-move input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 .tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
@@ -3357,6 +3358,14 @@ async function doAct(b){
     case "cancelled": return ref.update({cancelled:true, cancelledAt:now}).then(() => { if (uid===meId()) cancelInvite(m); });
     case "confirmed": return ref.update({flow:{confirmedFor:effAt(m), confirmedAt:now}});
     case "reminded": return ref.update({flow:{remindedFor:effAt(m), remindedAt:now}});
+    case "move": {
+      const kind = b.dataset.kind, v = val("dt"); if (!v) throw {msg:"Elige el nuevo horario"};
+      if (meetTs(v) <= now) throw {msg:"Elige una fecha futura"};
+      if (kind === "pitch"){ (DRAFT[dk(uid,id)] ||= {dt:{}}).dt.resched = (dr.dt||{}).move; dr.moveOpen = false; return doAct({dataset:{act:"resched", uid, id}}); }
+      const fld = {skel:"skeletonMeetAt", build:"buildMeetAt"}[kind]; if (!fld) throw {msg:"No se puede mover este meet"};
+      await ref.update({flow:{[fld]:v}}); dr.moveOpen = false;
+      return `Listo: ${kind==="skel" ? "meet de skeleton" : "sesión de lanzamiento"} movido al ${fmtMeetAt(v)}. Avísale al prospecto.`;
+    }
     case "resched": {
       const v = val("dt"); if (!v) throw {msg:"Elige la nueva fecha"};
       if (meetTs(v) <= now) throw {msg:"Elige una fecha futura"};
@@ -3859,8 +3868,15 @@ function renderPlan(){
   }));
   tks.sort((a,b) => a.due - b.due);
   const hm = ts => fmtLocal(ts).split(", ")[1];
-  const expand = (key, uid, id, m) => {
+  const expand = (key, uid, id, m, ev) => {
     if (sel !== key) return "";
+    // cambiar el horario de un meet que todavía no pasa (pitch, skeleton o lanzamiento)
+    const canMove = ev && !ev.gcal && ev.end > now && !headLite && (admin || uid === meId()) && !S.viewAs;
+    const mdr = DRAFT[dk(uid,id)] || {}, cur = ev ? toV(new Date(ev.ts - OFF).toISOString().slice(0,16)) : "";
+    const moveHtml = canMove ? (mdr.moveOpen ? `<div class="pl-move"><span class="eyb">Nuevo horario${tzOther() ? ` (tu hora · ${esc(tzName())})` : ""}</span>
+        <span class="ig"><input type="datetime-local" data-k="${dk(uid,id)}" data-dt="move" value="${esc((mdr.dt||{}).move || cur)}" aria-label="Nuevo horario"><button type="button" class="btn small primary" data-act="move" data-kind="${ev.kind}" data-uid="${uid}" data-id="${id}">Guardar</button></span>
+        <small class="mut">${ev.kind==="pitch" && m.gcalEventId ? "Se le manda la invitación nueva al prospecto." : "Avísale al prospecto del cambio."}</small></div>`
+      : `<button type="button" class="linkbtn" data-moveopen="${dk(uid,id)}">🕐 Cambiar horario</button>`) : "";
     const t = first(uid,id,m), d = t ? dueInfo(t.due, now) : null;
     const prof = safeUrl(m.profile), link = safeUrl(m.link);
     return `<div class="detail pl-x">
@@ -3870,6 +3886,7 @@ function renderPlan(){
       ${t ? `<div class="d-next ${d.cls}"><div class="d-next-h"><span class="eyb">Lo que sigue</span><span class="sema ${d.cls}"><i></i>${d.txt}</span></div>
         <div class="d-next-t">${esc(t.title)}</div>${t.detail?`<p class="d-next-d">${esc(t.detail)}</p>`:""}<div class="tacts">${actsHtml(t)}</div></div>`
         : `<div class="d-next wait"><div class="d-next-t">${esc(waitText(id,m) || "Nada pendiente de tu lado. Avanza solo.")}</div></div>`}
+      ${moveHtml}
       <button type="button" class="linkbtn" data-journey="${uid}__${id}">Ver su journey completo →</button>
     </div>`;
   };
@@ -3908,7 +3925,7 @@ function renderPlan(){
     const gReg = e.gev && !e.gev.extra && e.gev.gid && admin && e.ts <= now + 7*DAY ? `<button type="button" class="pl-gopen sec" data-gcreg="${esc(e.gev.gid)}">Registrar</button>` : "";
     if (e.gev && e.gev.gid) GCREG[e.gev.gid] = e.gev;
     line += e.gcal ? `<div class="pl-item ${state} gcal">${inner}${gReg}${gOpen}</div>`
-      : `<div class="pl-item ${state}${sel===key?" sel":""}" role="button" tabindex="0" data-pick="${key}">${inner}</div>${expand(key, e.uid, e.id, e.m)}`;
+      : `<div class="pl-item ${state}${sel===key?" sel":""}" role="button" tabindex="0" data-pick="${key}">${inner}</div>${expand(key, e.uid, e.id, e.m, e)}`;
   });
   if (!nowPlaced && evs.length) line += nowMark;
   const waToday = [];
@@ -3994,6 +4011,7 @@ $("dayPlan").addEventListener("click", e => {
   if (e.target.closest("[data-plmore]")){ MORE.plan = !MORE.plan; schedule(); return; }
   if (e.target.closest("[data-allpend]")){ MORE.allPend = !MORE.allPend; schedule(); return; }
   const gm = e.target.closest("[data-pgmore]"); if (gm){ const k = "g:" + gm.dataset.pgmore; MORE[k] = !MORE[k]; schedule(); return; }
+  const mo = e.target.closest("[data-moveopen]"); if (mo){ e.stopPropagation(); draft(mo.dataset.moveopen).moveOpen = true; schedule(); return; }
   const j = e.target.closest("[data-journey]");
   if (j){ PICK.dayPlan = null; PICK.myPath = j.dataset.journey; schedule(); setTimeout(() => $("pathWrap").scrollIntoView({behavior:"smooth", block:"start"}), 80); return; }
   const p = e.target.closest("[data-pick]");
