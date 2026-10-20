@@ -3624,7 +3624,7 @@ function calHtml(offset, pickKey, selected){
   const [y1,m1,d1] = days[0].split("-").map(Number), [y7,m7,d7] = days[6].split("-").map(Number);
   const range = `${d1} ${MONTHS[m1-1]} – ${d7} ${MONTHS[m7-1]} ${y7}`;
   const nav = pickKey ? `data-k="${pickKey}"` : `data-k="__tab"`;
-  let grid = `<div class="cal-h"></div>` + days.map((d,i) => { const [,mm,dd] = d.split("-").map(Number); return `<div class="cal-h${d===todayStr?" today":""}${d<=todayStr?" pick":""}"${d<=todayStr?` data-planday="${d===todayStr?"":d}" title="Ver y registrar lo de este día"`:""}>${DOW[i]} <b>${dd}</b></div>`; }).join("");
+  let grid = `<div class="cal-h"></div>` + days.map((d,i) => { const [,mm,dd] = d.split("-").map(Number); return `<div class="cal-h${d===todayStr?" today":""}${" pick"}" data-planday="${d===todayStr?"":d}" title="Ver lo de este día">${DOW[i]} <b>${dd}</b></div>`; }).join("");
   for (let h = CAL_H0; h <= CAL_H1; h++){
     grid += `<div class="cal-t">${pad2(h)}:00</div>`;
     days.forEach(d => {
@@ -3652,9 +3652,9 @@ function renderAgenda(){
   box.innerHTML = phone ? agendaPhone(AG_OFF) : calHtml(AG_OFF, null, null);
   const dp = $("dayPlan");
   // en celular: hoy y días pasados = tu plan (con acciones, para registrar lo que pasó); días que vienen = su lista
-  const pd0 = PLAN_DAY; PLAN_DAY = phone && AG_DAY && AG_DAY < todayStr ? AG_DAY : (phone ? null : PLAN_DAY);
+  const pd0 = PLAN_DAY; PLAN_DAY = phone && AG_DAY && AG_DAY !== todayStr ? AG_DAY : (phone ? null : PLAN_DAY);
   if (pd0 !== PLAN_DAY){ PICK.dayPlan = null; setTimeout(renderPlan, 0); }
-  dp.hidden = phone && AG_DAY && AG_DAY > todayStr;
+  dp.hidden = false; // cualquier día se ve con el plan y sus acciones
   dp.classList.toggle("seg-meets", phone && AG_SEG==="meets"); dp.classList.toggle("seg-tasks", phone && AG_SEG==="tasks");
   const h = document.querySelector("#view-agenda .ag-top h2");
   if (h){ const d = AG_DAY || todayStr, [y,mm] = d.split("-").map(Number); h.textContent = phone ? MONTHS_L[mm-1].replace(/^./, c => c.toUpperCase()) + (y !== new Date().getFullYear() ? " " + y : "") : "Agenda"; }
@@ -3679,7 +3679,7 @@ function agendaPhone(offset){
   const strip = days.map((d,i) => { const n = (by[d]||[]).length, c = (by[d]||[]).some(e => e.clash);
     return `<button type="button" class="ap-d${d===AG_DAY?" on":""}${d===todayStr?" today":""}" data-agday="${d}"><span>${d===todayStr ? "Hoy" : DOW[(new Date(d + "T12:00:00Z").getUTCDay()+6)%7]}</span><b>${Number(d.slice(8))}</b><i class="${c?"x":""}">${n?"•".repeat(Math.min(n,3)):""}</i></button>`; }).join("");
   const week = `<div class="ap-week"><button type="button" class="ap-nav" data-k="__tab" data-calnav="-1" aria-label="Semana anterior">‹</button><div class="ap-strip">${strip}</div><button type="button" class="ap-nav" data-k="__tab" data-calnav="1" aria-label="Semana siguiente">›</button></div>`;
-  const nowTs = Date.now(), isToday = AG_DAY === todayStr || AG_DAY < todayStr; // días pasados se ven con el plan (abajo)
+  const nowTs = Date.now(), isToday = true; // cualquier día se ve con el plan (abajo), con sus acciones
   // conteos del día para las pestañas
   let nMeets, nTasks, nLate = 0, body = "";
   if (isToday){
@@ -3754,7 +3754,7 @@ function renderPlan(){
   if (busyIn(box) || Date.now() <= HOLD_UNTIL) return;
   const now = Date.now(), admin = adminMode();
   const realToday = new Date(now-OFF).toISOString().slice(0,10);
-  const todayStr = PLAN_DAY && PLAN_DAY < realToday ? PLAN_DAY : realToday, pastDay = todayStr !== realToday;
+  const todayStr = PLAN_DAY || realToday, pastDay = todayStr < realToday, otherDay = todayStr !== realToday;
   const t0 = Date.parse(todayStr+"T00:00:00-05:00"), eod = t0 + DAY - 1;
   if (admin){ const d = new Date(todayStr+"T00:00:00Z"), dow = (d.getUTCDay()+6)%7; gcalWatch(new Date(d.getTime()-dow*DAY).toISOString().slice(0,10)); }
   const owners = planOwners(), sel = PICK.dayPlan; // Influencer: su agenda es solo lo de su lista y sus tareas
@@ -3786,7 +3786,7 @@ function renderPlan(){
   // untimed: what you have to do today (overdue first)
   const tks = [], headLite = headIsLite();
   if (!headLite) owners.forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
-    tasksFor(uid,id,m,now).filter(t => ownTask(t) && t.due <= eod).slice(0,1).forEach(t => tks.push(t));
+    tasksFor(uid,id,m,now).filter(t => ownTask(t) && t.due <= eod && (!otherDay || pastDay || t.due >= t0)).slice(0,1).forEach(t => tks.push(t));
   }));
   tks.sort((a,b) => a.due - b.due);
   const hm = ts => fmtLocal(ts).split(", ")[1];
@@ -3869,7 +3869,7 @@ function renderPlan(){
     + (admin ? "" : Object.values(vipItems(meId())).filter(x => (x.status==="interesado" || x.status==="agendo") && x.statusAt && now - x.statusAt < 3*864e5).slice(0, 3).map(x => `<button type="button" class="pl-item task ok" data-gotab="perf"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b>${PICON[3]} ${esc(x.prospect)} ${x.status==="agendo" ? "ya agendó meet con Mich" : "está interesado"}</b><small>Una de tus propuestas para Mich</small></span><span class="sema ok"><i></i>Nuevo</span></button>`).join(""))
     ; // los chats sin responder ya están en Mensajes (con su número y notificaciones); no se repiten aquí
   // tareas que asignan el Head o el Manager: salen todos los días hasta que se marcan como hechas
-  const myT = taskList(meId()).filter(([,x]) => tkSt(x)!=="done"); // todas las abiertas, aunque sean para otro día
+  const myT = taskList(meId()).filter(([,x]) => tkSt(x)!=="done" && (!otherDay || (x.dueAt >= t0 && x.dueAt <= eod))); // hoy: todas las abiertas; otro día: las que vencen ese día
   // Influencer Outreach: confirmar los meets que ella agendó (aparece 3 días antes, vence 2 h antes). Se guarda en el perfil de su lista.
   const mConf = michMode() ? michRows().filter(([,,x]) => x.meetId && x.meetAt && x.confirmedFor !== x.meetAt && x.status==="agendo")
     .map(([u,id,x]) => ({u, id, x, t:meetTs(x.meetAt)})).filter(c => c.t > now && now >= c.t - 3*DAY).sort((a,b) => a.t - b.t) : [];
@@ -3903,10 +3903,10 @@ function renderPlan(){
   { const late0 = tks.filter(t => t.due < now).length + tLate, pc = {meets:evs.length, tasks:tks.length + myT.length + mConf.length + remDue.length + emDue.length + nRev, late:late0}; const ch = !S.planCounts || ["meets","tasks","late"].some(k => S.planCounts[k] !== pc[k]); S.planCounts = pc; if (ch && isPhone() && S.tab==="agenda") setTimeout(renderAgenda, 0); }
   const late = tks.filter(t => t.due < now).length;
   box.innerHTML = `<section class="plan">
-    <div class="pl-head"><div class="pl-ttl"><h2>${pastDay ? "Ya pasó" : "Hoy"}</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span>${pastDay ? `<button type="button" class="linkbtn pl-today" data-planday="">Volver a hoy</button>` : ""}</div>
+    <div class="pl-head"><div class="pl-ttl"><h2>${pastDay ? "Ya pasó" : otherDay ? "Próximo" : "Hoy"}</h2><span class="pl-date">${DOWL[dd.getUTCDay()]} ${dd.getUTCDate()} de ${MONTHS[dd.getUTCMonth()]}</span>${otherDay ? `<button type="button" class="linkbtn pl-today" data-planday="">Volver a hoy</button>` : ""}</div>
       <div class="pl-stats"><span><b>${evs.length}</b> meet${evs.length===1?"":"s"}</span><span><b>${tks.length + myT.length + mConf.length + remDue.length + emDue.length}</b> pendiente${tks.length===1?"":"s"}</span>${late?`<span class="late"><b>${late}</b> tarde</span>`:""}</div></div>
     <div class="pl-cols">
-      <div class="pl-col"><h3 class="sec-h">Agenda <b>${evs.length}</b><button type="button" class="sec-add" data-remnew="1" data-remkind="event" aria-label="Agregar algo a tu agenda">+</button></h3>${line || `<p class="pl-empty">${pastDay ? "No hubo meets este día." : "Hoy no tienes meets agendados."}</p>`}</div>
+      <div class="pl-col"><h3 class="sec-h">Agenda <b>${evs.length}</b><button type="button" class="sec-add" data-remnew="1" data-remkind="event" aria-label="Agregar algo a tu agenda">+</button></h3>${line || `<p class="pl-empty">${pastDay ? "No hubo meets este día." : otherDay ? "No hay meets este día." : "Hoy no tienes meets agendados."}</p>`}</div>
       <div class="pl-col"><h3 class="sec-h">Pendientes <b>${tks.length + myT.length + mConf.length + remDue.length + emDue.length}</b>${late ? `<em>${late} tarde</em>` : ""}<button type="button" class="sec-add" data-pendadd="1" aria-label="Agregar un pendiente">+</button></h3>${todo || `<p class="pl-empty">Nada pendiente para hoy. Buen trabajo.</p>`}</div>
     </div>
   </section>`;
