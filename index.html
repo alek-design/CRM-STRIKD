@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-21 18:15:05 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-21 19:03:08 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792606505">
+<link rel="stylesheet" href="/auth.css?v=1792609388">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792606505"></script>
+<script src="/claude-shim.js?v=1792609388"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -4810,7 +4810,7 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
   try{ const r = await saveVip(o, ugc ? {kind:"ugc"} : null); if (r && S.myVip && !S.viewAs) S.myVip[r.id] = r.data; ["v_name","v_fol","v_ig","v_why","v_email"].forEach(f => delete d[f]); d.v_busy = false; quickToast(`✓ ${o.prospect} agregado a la lista ${ugc ? "UGC" : "de Mich"}`); schedule(); }
   catch(ex){ fail(ex && ex.dup ? ex.msg : "No se guardó. Revisa tu conexión e intenta de nuevo."); }
 });
-function tkCfHtml(k){ const d = TKD[k] || {}; return (d.cfiles||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name)}`}<button type="button" data-tkcfx="${k}|${i}" aria-label="Quitar">×</button></span>`).join("") + (d.cup ? `<span class="tk-cf tk-cf-up">Subiendo…</span>` : ""); }
+function tkCfHtml(k){ const d = TKD[k] || {}; return (d.cerr && !d.cup ? `<span class="err small" style="flex-basis:100%">${esc(d.cerr)}</span>` : "") + (d.cfiles||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name)}`}<button type="button" data-tkcfx="${k}|${i}" aria-label="Quitar">×</button></span>`).join("") + (d.cup ? `<span class="tk-cf tk-cf-up">Subiendo…</span>` : ""); }
 // pinta las fotos pendientes del comentario aunque la caja esté en uso (no espera al re-render)
 function tkCfPaint(k){ document.querySelectorAll(`[data-tkcfile="${CSS.escape(k)}"]`).forEach(inp => { const box = inp.closest(".tk-cbox"); const c = box && box.querySelector(".tk-cfs"); if (c) c.innerHTML = tkCfHtml(k); }); }
 // HEIC solo se puede mostrar como imagen en Safari; en los demás navegadores sale como archivo para abrir
@@ -4982,9 +4982,9 @@ document.addEventListener("change", async e => { const ci = e.target.closest("[d
   const k = ci.dataset.tkcfile, all = [...ci.files], fs = all.filter(f => f.size <= 15*1024*1024);
   if (fs.length < all.length) quickToast("Algún archivo pesa más de 15 MB y no se subió");
   if (!fs.length){ ci.value = ""; return; }
-  const d = (TKD[k] ||= {}); d.cup = true; tkCfPaint(k);
+  const d = (TKD[k] ||= {}); d.cup = true; d.cerr = ""; tkCfPaint(k);
   try{ const assets = await claude.use("assets"); for (const file of fs){ const up = await assets.upload(file); (d.cfiles ||= []).push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || ""}); } }
-  catch(err){ quickToast(err && err.message ? "No se subió: " + err.message : "No se pudo subir el archivo"); }
+  catch(err){ d.cerr = "No se subió: " + ((err && err.message) || "intenta otra vez"); quickToast(d.cerr); }
   d.cup = false; ci.value = ""; tkCfPaint(k); });
 document.addEventListener("change", async e => { const ed = e.target.closest('input[type="date"][data-tke]'); if (ed){ const [k] = ed.dataset.tke.split("|"); (TKD[k] ||= {}).e_due = ed.value; } });
 document.addEventListener("change", async e => { const inp = e.target.closest("[data-tkfile]"); if (!inp || !inp.files[0]) return;

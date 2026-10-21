@@ -154,6 +154,6 @@ end $$;
 -- ============ Archivos (skeletons y PDFs de plantillas) ============
 insert into storage.buckets (id, name, public) values ('assets', 'assets', true) on conflict (id) do nothing;
 drop policy if exists assets_upload on storage.objects;
-create policy assets_upload on storage.objects for insert to authenticated with check (bucket_id = 'assets' and public.user_level() >= 3);
+create policy assets_upload on storage.objects for insert to authenticated with check (bucket_id = 'assets' and public.user_level() >= 2);
 drop policy if exists assets_delete on storage.objects;
 create policy assets_delete on storage.objects for delete to authenticated using (bucket_id = 'assets' and public.user_level() >= 3);

@@ -4801,7 +4801,7 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
   try{ const r = await saveVip(o, ugc ? {kind:"ugc"} : null); if (r && S.myVip && !S.viewAs) S.myVip[r.id] = r.data; ["v_name","v_fol","v_ig","v_why","v_email"].forEach(f => delete d[f]); d.v_busy = false; quickToast(`✓ ${o.prospect} agregado a la lista ${ugc ? "UGC" : "de Mich"}`); schedule(); }
   catch(ex){ fail(ex && ex.dup ? ex.msg : "No se guardó. Revisa tu conexión e intenta de nuevo."); }
 });
-function tkCfHtml(k){ const d = TKD[k] || {}; return (d.cfiles||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name)}`}<button type="button" data-tkcfx="${k}|${i}" aria-label="Quitar">×</button></span>`).join("") + (d.cup ? `<span class="tk-cf tk-cf-up">Subiendo…</span>` : ""); }
+function tkCfHtml(k){ const d = TKD[k] || {}; return (d.cerr && !d.cup ? `<span class="err small" style="flex-basis:100%">${esc(d.cerr)}</span>` : "") + (d.cfiles||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name)}`}<button type="button" data-tkcfx="${k}|${i}" aria-label="Quitar">×</button></span>`).join("") + (d.cup ? `<span class="tk-cf tk-cf-up">Subiendo…</span>` : ""); }
 // pinta las fotos pendientes del comentario aunque la caja esté en uso (no espera al re-render)
 function tkCfPaint(k){ document.querySelectorAll(`[data-tkcfile="${CSS.escape(k)}"]`).forEach(inp => { const box = inp.closest(".tk-cbox"); const c = box && box.querySelector(".tk-cfs"); if (c) c.innerHTML = tkCfHtml(k); }); }
 // HEIC solo se puede mostrar como imagen en Safari; en los demás navegadores sale como archivo para abrir
@@ -4973,9 +4973,9 @@ document.addEventListener("change", async e => { const ci = e.target.closest("[d
   const k = ci.dataset.tkcfile, all = [...ci.files], fs = all.filter(f => f.size <= 15*1024*1024);
   if (fs.length < all.length) quickToast("Algún archivo pesa más de 15 MB y no se subió");
   if (!fs.length){ ci.value = ""; return; }
-  const d = (TKD[k] ||= {}); d.cup = true; tkCfPaint(k);
+  const d = (TKD[k] ||= {}); d.cup = true; d.cerr = ""; tkCfPaint(k);
   try{ const assets = await claude.use("assets"); for (const file of fs){ const up = await assets.upload(file); (d.cfiles ||= []).push({name:file.name, url:up.url || ("/_blob/" + up.id), type:up.contentType || file.type || ""}); } }
-  catch(err){ quickToast(err && err.message ? "No se subió: " + err.message : "No se pudo subir el archivo"); }
+  catch(err){ d.cerr = "No se subió: " + ((err && err.message) || "intenta otra vez"); quickToast(d.cerr); }
   d.cup = false; ci.value = ""; tkCfPaint(k); });
 document.addEventListener("change", async e => { const ed = e.target.closest('input[type="date"][data-tke]'); if (ed){ const [k] = ed.dataset.tke.split("|"); (TKD[k] ||= {}).e_due = ed.value; } });
 document.addEventListener("change", async e => { const inp = e.target.closest("[data-tkfile]"); if (!inp || !inp.files[0]) return;
