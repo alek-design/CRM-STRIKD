@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-21 04:43:45 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-21 04:46:19 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792557825">
+<link rel="stylesheet" href="/auth.css?v=1792557979">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792557825"></script>
+<script src="/claude-shim.js?v=1792557979"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -2124,7 +2124,7 @@ async function profiles(ids){
   if (!user || !ids.length) return {};
   try { return await user.profiles(ids); } catch(e){ return {}; }
 }
-const nameOf = (ps,id) => (ps[id] && ps[id].name) || (S.members[id] && S.members[id].demoName ? S.members[id].demoName + " (ejemplo)" : "Alguien del equipo");
+const nameOf = (ps,id) => (ps && ps[id] && ps[id].name) || (S.ps && S.ps[id] && S.ps[id].name) || (S.members[id] && S.members[id].name) || (S.members[id] && S.members[id].demoName ? S.members[id].demoName + " (ejemplo)" : "Alguien del equipo");
 const avatarOf = (ps,id) => (ps[id] && ps[id].avatarUrl) || "";
 
 function allWeeks(){
@@ -2151,6 +2151,7 @@ async function render(){
   computeTeam();
   const ids = Object.keys(S.team);
   const ps = await profiles([...new Set(Object.keys(S.members).concat((S.config && S.config.headId) ? [S.config.headId] : []))]); S.ps = ps;
+  { const bw = $("bkWho"); if (bw) [...bw.options].forEach(o => { const t = esc(String(nameOf(ps, o.value))) + (o.value===S.uid ? " (yo)" : ""); if (o.innerHTML !== t) o.innerHTML = t; }); } // si el formulario se abrió antes de cargar los nombres
   renderBoard(ps, ids); // ranking: solo AM
   const typing = document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("rej_");
   if (adminMode()){ if (!typing) renderAdmin(ps); } else { renderMine(); if (michMode() && S.tab==="flow"){ renderFlow(ps); renderTeamChart(); } }
@@ -5572,6 +5573,7 @@ function presBeat(away){
   if (!S.uid || !db || S.canWrite === false) return;
   const now = Date.now(); if (!away && now - PRES_LAST < 50e3) return; PRES_LAST = away ? 0 : now;
   const patch = {seenAt:now, away:!!away}, mm = (S.members||{})[S.uid] || {};
+  { const me = window.STRIKD_ME ? window.STRIKD_ME() : null, nm = me && (me.name || me.email); if (nm && mm.name !== nm){ patch.name = nm; mm.name = nm; } } // respaldo del nombre para que todos lo vean aunque tarde en cargar
   if (!mm.tzManual && mm.tz !== devTz){ patch.tz = devTz; mm.tz = devTz; }
   if (ACT.day && ACT.min !== ACT.saved){ patch.activeMin = {[ACT.day]:ACT.min}; ACT.saved = ACT.min; const m = (S.members||{})[S.uid]; if (m) (m.activeMin ||= {})[ACT.day] = ACT.min; }
   db.doc(`members/${S.uid}`).update(patch).catch(() => {});
