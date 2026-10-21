@@ -6816,8 +6816,7 @@ function renderIskra(){
         ${ISK.tplMedia && ISK.tplMedia.conv===c.id && !(ISK.tplIsk && ISK.tplIsk.conv===c.id) ? `<div class="isk-att"><span class="isk-doc">${ISK.tplMedia.type.startsWith("image/") ? "FOTO" : "PDF"}</span><span>${esc(ISK.tplMedia.name)} · de la plantilla</span><button type="button" class="linkbtn" data-isktplx="1">Quitar</button></div>` : ""}
         ${ISK.err ? `<p class="cw-err">${esc(ISK.err)}</p>` : ""}
         <div class="cw-bar"><input type="file" id="iskFile" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
-          <button type="button" class="cw-ic" data-iskfile="1" title="Foto o PDF" aria-label="Adjuntar foto o PDF">📎</button>
-          <button type="button" class="cw-ic${ISK.rec?" rec":""}" data-iskrec="1" title="${ISK.rec?"Detener y adjuntar":"Nota de voz"}" aria-label="Nota de voz">${ISK.rec?`● ${ISK.recS||0}s`:"🎤"}</button>
+          ${/* fotos, PDF y notas de voz sueltas: la API de ISKRA no manda archivos (llegaban como link). Se quitan hasta que ISKRA lo habilite */""}
           <details class="cw-more cw-tpl"><summary class="cw-ic" title="Plantillas" aria-label="Plantillas">📝</summary><div class="cw-menu up">${iskTplMenu(c)}</div></details>
           <textarea rows="1" data-iskin="1" placeholder="Escribe un mensaje…">${esc(ISK.draft[c.id]||"")}</textarea>
           <button type="button" class="btn small primary cw-send" data-isksend="1"${ISK.busy?" disabled":""}>${demo?"Enviar (ej.)":"Enviar"}</button></div>
