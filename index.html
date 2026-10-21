@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-21 04:46:19 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-21 05:05:35 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792557979">
+<link rel="stylesheet" href="/auth.css?v=1792559135">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792557979"></script>
+<script src="/claude-shim.js?v=1792559135"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1293,6 +1293,11 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .d-meet{display:grid;gap:6px;margin:10px 0}.d-meet .ig{display:flex;gap:8px;flex-wrap:wrap}.d-meet input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 .pl-mv{display:flex;gap:14px;flex-wrap:wrap}.linkbtn.bad{color:#e5484d}.tt-done-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 4px}.tt-done-q{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);flex:1;min-width:140px}
 .has-stage #slotBox,.has-stage .inv,.has-stage #p3meetL,.has-stage #pfGuide{display:none!important}.stage-pick{margin:6px 0 10px}.stage-pick select{font:inherit;font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);width:100%}
+.d-hitos{display:grid;gap:8px;margin:10px 0;padding:12px;border:1px solid var(--line2);border-radius:14px;background:var(--surface)}.d-hitos-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hitos{display:flex;flex-wrap:wrap;gap:6px}.hito{font-size:12.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}.hito.on{color:var(--fg);border-color:var(--fg);font-weight:700}
+.d-log ul{margin:6px 0 0;padding-left:18px;display:grid;gap:6px;font-size:13px}
+.ses-h{display:grid;gap:6px}.ses-h label{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line2);border-radius:12px;font-size:15px;cursor:pointer}.ses-h input{width:20px;height:20px}.ses-h label.on{border-color:var(--fg);font-weight:700}
+.ses-seg{display:flex;gap:6px;flex-wrap:wrap}.ses-seg button{font:inherit;font-size:14px;padding:8px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);cursor:pointer}.ses-seg button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
@@ -2898,6 +2903,12 @@ function stageOf0(id, m){
   if (st==="rejected") return {k:"rejected", t: m.cancelled ? "Rechazado · cancelado" : "Rechazado · falta cancelar"};
   if (st==="valid") return {k:"valid", t: m.reschedAt ? "Validado · reagendado" : "Validado · esperando el meet"};
   if (st==="noshow") return reschedPending(m,v) ? {k:"valid", t:"Reagendado"} : {k:"noshow", t:"No se conectó"};
+  // etapa por hitos (en el orden que hayan pasado)
+  if (f.launchedAt) return {k:"launched", t:"Publicado"};
+  { const nb = [f.contentAt, f.webDoneAt, f.programDoneAt, f.bankDoneAt, f.finalOkAt].filter(Boolean).length;
+    if (f.skeletonApprovedAt && (f.contentAt || nb)) return {k:"build", t: f.finalOkAt ? "Validó todo · falta que publique" : `Lanzamiento · ${nb} de 5 listos`};
+    if (f.skeletonApprovedAt) return {k:"approve", t:"Skeleton validado · falta su contenido"};
+    if (nb) return {k:"approve", t:`Falta validar el skeleton · ${nb} hito${nb===1?"":"s"} listos`}; }
   if (f.interested==null) return {k:"meet", t:"Se conectó · falta si le gustó"};
   if (!f.skeletonAt) return {k:"meet", t: f.skeletonMeetAt ? "Le gustó · meet de skeleton agendado" : "Le gustó · falta su skeleton"};
   if (!f.skeletonSentAt) return {k:"send", t:"Skeleton listo · falta enviarlo"};
@@ -2936,95 +2947,133 @@ function tasksFor(uid, id, m, now){
         add({title:`Mándale el recordatorio a ${p}`, detail:`Su pitch es hoy a las ${at.split("T")[1]}. Mándale el link 2 h antes para que no se le pase.`, due:t-1*HR,
           acts:[{label:"Ya se lo mandé", act:"reminded", input:"remind", kind:"primary"}]});
     } else {
-      add({who:"admin", title:`Resultado del pitch con ${p}`, detail:`Era el ${fmtMeetAt(at)}. En cuanto acabe: ¿se conectó?, ¿le gustó? y adjunta el skeleton que armaron en vivo (queda como enviado). Son 3 minutos.`, due:t + MEET_LEN + QUICK,
-        acts:[{label:"Guardar resultado", act:"meet3", input:"meet3", kind:"primary"}]});
+      add({who:"admin", title:`¿Cómo fue el pitch con ${p}?`, detail:`Era el ${fmtMeetAt(at)}. Marca si se conectó, todo lo que se logró en la sesión y lo que sigue.`, due:t + MEET_LEN + QUICK,
+        acts:[{label:"Registrar avance", act:"session", input:"session", kind:"primary"}]});
     }
   } else if (st==="noshow"){
     add({title:`${p} no se conectó: reagenda o márcalo como perdido`, due:(v.decidedAt||now)+48*HR,
       acts:[{label:"Reagendar", act:"resched", input:"dt", kind:"primary"}, {label:"Perdido", act:"lost", kind:"bad"}]});
   } else if (st==="attended"){
-    if (f.interested==null || (f.interested && !f.skeletonAt)){
-      // todo se contesta en cuanto acaba el meet (es un proceso de 3 minutos): 15 min después de que termina
-      const meetEnd = meetTs(effAt(m)) + MEET_LEN;
-      const due = f.interested==null ? Math.max(meetEnd, v.decidedAt||0) + QUICK : f.skeletonMeetAt ? meetTs(f.skeletonMeetAt) + MEET_LEN + QUICK : f.skeletonMeetNeeded ? Math.max(meetEnd, f.skeletonMeetSetAt||0) + QUICK : Math.max(meetEnd, f.interestedAt||0) + QUICK;
-      add({who:"admin", title:`Resultado del pitch con ${p}`,
-        detail: f.interested==null ? "Ya se conectó. Falta: ¿le gustó? y su skeleton." : f.skeletonMeetAt ? `Le gustó. Falta adjuntar el skeleton (meet para crearlo: ${fmtMeetAt(f.skeletonMeetAt)}).` : "Le gustó. Falta adjuntar su skeleton.",
-        due, acts:[{label:"Guardar resultado", act:"meet3", input:"meet3", kind:"primary"}]});
-      if (f.interested && (f.skeletonMeetNeeded || f.skeletonMeetAt) && !f.skeletonMeetBookedAt){
-        const mt = f.skeletonMeetAt ? meetTs(f.skeletonMeetAt) : null, setAt = f.skeletonMeetSetAt || now;
-        add({who:"admin", title:`Agenda el meet de skeleton con ${p}`,
-          detail: mt ? `Quedó para el ${fmtMeetAt(f.skeletonMeetAt)}. Mándale la invitación a esa hora y márcalo como agendado.` : "Coordina con él fecha y hora para crear su skeleton, mándale la invitación y registra la fecha aquí.",
-          due: setAt + QUICK, acts:[{label:"Ya lo agendé", act:"skel-booked", input:"bookskel", kind:"primary"}]});
+    const sess = {label:"Registrar avance", act:"session", input:"session", kind:"primary"};
+    if (f.launchedAt){
+      // Ya publicado: follow-ups de ventas a la semana, a los 15 y a los 30 días
+      const sfu = f.salesFu || {}, d = SALES_FU.find(x => !sfu[x]);
+      if (d && now >= f.launchedAt + (d - 1) * DAY){
+        const lbl = d===7 ? "1 semana" : `${d} días`;
+        add({who:"admin", title:`Follow-up de ventas con ${p} (${lbl})`, detail:`Publicó el ${fmtLocal(f.launchedAt).split(",")[0]}. Pregúntale cómo va vendiendo y si necesita algo.`,
+          due:f.launchedAt + d * DAY, acts:[{label:"Guardar follow-up", act:"salesfu", input:"salesfu", kind:"primary", day:d}]});
       }
-    } else if (f.interested){
-      // From here on the team leader owns everything until it is published
-      const attAt = (v && v.decidedAt) || now;
-      const skLog = f.skelLog || [];
-      const lastNote = [...skLog].reverse().find(x => x.note && x.type==="changes");
-      const L = o => add({who:"admin", ...o});
-      if (!f.skeletonSentAt){
-        L({title:`Manda el skeleton a ${p}`, detail:`No quedó enviado en el pitch. Mándaselo hoy por WhatsApp${f.skeletonFile?` · ${f.skeletonFile.name}`:""}.`,
-          due:Math.max(attAt, f.skeletonAt || 0) + 24*HR, acts:[{label:"Ya se lo envié", act:"skel-sent", input:"sendskel", kind:"primary"}]});
-      } else if (!(f.skeletonApprovedAt && f.contentAt)){
-        // Paso 3: skeleton approved + content received, side by side
-        if (f.skeletonNeedsChanges && f.adjMode==="meet" && !f.adjMeetAt)
-          L({title:`Agenda el meet de ajustes (25 min) con ${p}`, detail:`Quiere personalizar su skeleton contigo: movimientos, sets, reps y estructura.${lastNote ? ` Lo que pidió: ${lastNote.note}` : ""}`,
-            due:(f.skeletonChangesAt||now) + 24*HR, acts:[{label:"Ya lo agendé", act:"adj-booked", input:"bookadj", kind:"primary"}]});
-        else if (f.skeletonNeedsChanges)
-          L({title:`Ajusta el skeleton de ${p} y reenvíalo`, detail: (f.adjMode==="meet" && f.adjMeetAt ? `Meet de ajustes: ${fmtMeetAt(f.adjMeetAt)}. Reenvíalo en cuanto acabe. ` : "Lo ajustamos nosotros con base en ciencia y su disponibilidad. ") + (lastNote ? `Lo que pidió: ${lastNote.note}` : ""),
-            due: f.adjMode==="meet" && f.adjMeetAt ? meetTs(f.adjMeetAt) + 25*60e3 + QUICK : (f.skeletonChangesAt||now) + 24*HR, acts:[{label:"Ya envié la versión ajustada", act:"skel-resent", input:"resend", kind:"primary"}]});
-        else if (!f.skeletonApprovedAt)
-          L({title:`¿${p} aprobó su skeleton?`, detail:`Se lo mandaste el ${fmtLocal(f.skeletonLastSentAt||f.skeletonSentAt)}. Si pidió cambios, anótalos y ajústalo.`,
-            due:(f.skeletonLastSentAt||f.skeletonSentAt) + 48*HR, acts:[{label:"Sí, lo aprobó", act:"skel-approved", kind:"ok"}, {label:"No, pidió cambios", act:"skel-changes", input:"note", kind:"bad"}]});
-        if (!f.contentAt)
-          L({title:`Pide su contenido a ${p}`, detail:"Fotos, videos, logo y textos para su programa y su página web. Márcalo cuando ya lo tengas completo.",
-            due:(f.skeletonSentAt) + 72*HR, acts:[{label:"Ya tengo su contenido", act:"content-done", kind:"ok"}]});
-      } else {
-        // Paso 4: launch session — program, web page and deposit details, then published
-        const s0 = Math.max(f.skeletonApprovedAt, f.contentAt);
-        // Dos formas de lanzar: rápido (le enviamos todo y él registra sus datos) o acompañado (sesión de lanzamiento juntos)
-        if (!f.launchMode && !f.buildMeetAt && !f.launchedAt && !buildDone(f)){
-          L({title:`¿Cómo quiere lanzar ${p}?`, detail:"Pregúntale si prefiere facilidad y velocidad (le enviamos su programa, su página y su cuenta de creador) o apoyo y estar muy involucrado (sesión de lanzamiento juntos).",
-            due:s0 + 24*HR, acts:[{label:"⚡ Rápido: se lo enviamos", act:"launch-fast", kind:"primary"}, {label:"🤝 Acompañado: sesión", act:"launch-guided"}]});
-        } else if (f.launchMode==="fast" && !buildDone(f)){
-          const sent = f.programDoneAt && f.webDoneAt && f.acctSentAt;
-          if (!sent){ const a = [];
-            if (!f.programDoneAt) a.push({label:"Programa enviado", act:"program-done", kind:"ok"});
-            if (!f.webDoneAt) a.push({label:"Página web enviada", act:"web-done", kind:"ok"});
-            if (!f.acctSentAt) a.push({label:"Cuenta de creador enviada", act:"acct-sent", kind:"ok"});
-            L({title:`Envíale a ${p} su programa, su página y su cuenta`, detail:`Su programa con los ejercicios seleccionados, su página web y su cuenta de creador para que registre sus datos bancarios y fiscales. ${f.programDoneAt?"✓ Programa":"○ Programa"} · ${f.webDoneAt?"✓ Página web":"○ Página web"} · ${f.acctSentAt?"✓ Cuenta":"○ Cuenta"}`,
-              due:(f.launchModeAt || s0) + 24*HR, acts:a});
-          } else
-            L({title:`¿${p} ya registró sus datos bancarios y fiscales?`, detail:`Le mandaste su cuenta de creador el ${fmtLocal(f.acctSentAt)}. Si no, recuérdaselo.`,
-              due:f.acctSentAt + 48*HR, acts:[{label:"Ya los registró", act:"bank-done", kind:"ok"}]});
-        } else if (!f.buildMeetAt && !f.launchedAt && !buildDone(f)){
-          L({title:`Agenda la sesión de lanzamiento con ${p}`, detail:"En esa sesión crean su programa, su página web e ingresan sus datos de depósito en la plataforma.",
-            due:s0 + 48*HR, acts:[{label:"Ya la agendé", act:"build-booked", input:"bookbuild", kind:"primary"}]});
-        } else if (!buildDone(f)){
-          const a = [];
-          if (!f.programDoneAt) a.push({label:"Programa creado", act:"program-done", kind:"ok"});
-          if (!f.webDoneAt) a.push({label:"Página web creada", act:"web-done", kind:"ok"});
-          if (!f.bankDoneAt) a.push({label:"Datos de depósito ingresados", act:"bank-done", kind:"ok"});
-          const bt = f.buildMeetAt ? meetTs(f.buildMeetAt) : s0;
-          L({title:`Sesión de lanzamiento con ${p}`, detail:`${f.buildMeetAt?`Sesión: ${fmtMeetAt(f.buildMeetAt)}. `:""}${f.programDoneAt?"✓ Programa":"○ Programa"} · ${f.webDoneAt?"✓ Página web":"○ Página web"} · ${f.bankDoneAt?"✓ Datos de depósito":"○ Datos de depósito"}`,
-            due:(isNaN(bt) ? s0 : bt) + 24*HR, acts:a});
-        } else if (!f.launchedAt){
-          L({title:`¿${p} ya publicó?`, detail:"Con su programa, su página y sus datos registrados ya puede publicar él mismo. Escríbele para que lo haga y márcalo cuando esté en vivo.", due:Math.max(f.programDoneAt, f.webDoneAt, f.bankDoneAt) + 24*HR,
-            acts:[{label:"Publicado", act:"launched", kind:"ok"}]});
-        } else {
-          // Ya publicado: follow-ups de ventas a la semana, a los 15 y a los 30 días
-          const sfu = f.salesFu || {}, d = SALES_FU.find(x => !sfu[x]);
-          if (d && now >= f.launchedAt + (d - 1) * DAY){
-            const lbl = d===7 ? "1 semana" : `${d} días`;
-            L({title:`Follow-up de ventas con ${p} (${lbl})`, detail:`Publicó el ${fmtLocal(f.launchedAt).split(",")[0]}. Pregúntale cómo va vendiendo: cuántos clientes lleva, qué le funciona y si necesita ayuda para promocionarlo.`,
-              due:f.launchedAt + d * DAY, acts:[{label:"Guardar follow-up", act:"salesfu", input:"salesfu", kind:"primary", day:d}]});
-          }
-        }
+    } else {
+      // cada prospecto lleva su ritmo: lo que manda es el próximo seguimiento que se programó (pendiente o meet)
+      const n = f.next, last = lastActOf(m, v);
+      if (n && n.at){
+        const isMeet = n.kind==="meet";
+        add({who:"admin", title: isMeet ? `Meet con ${p}${n.text ? ` · ${n.text}` : ""}` : `${n.text || "Seguimiento"} · ${p}`,
+          detail: `${isMeet ? `Meet ${fmtLocal(n.at)}` : `Programado para ${fmtLocal(n.at)}`}. Al terminar, registra lo que se avanzó y lo que sigue.${(f.log||[]).length ? ` Última nota: ${(f.log[f.log.length-1].note || "—")}` : ""}`,
+          due: isMeet ? n.at + MEET_LEN : n.at, acts:[sess, {label:"Mañana", act:"next-snooze"}]});
+      } else if (now >= last + IDLE_WARN){
+        const dd = Math.max(1, Math.floor((now - last) / DAY));
+        add({who:"admin", title:`Sin avance con ${p} hace ${dd} día${dd===1?"":"s"}`, detail:"Registra lo que se avanzó o programa el siguiente seguimiento (un mensaje, una llamada o un meet).",
+          due: last + IDLE_LATE, acts:[sess]});
       }
     }
   }
   return T;
 }
+// hitos del journey: se palomean en el orden en que pasen, varios en una misma sesión
+const HITOS = [
+  {k:"pitch", l:"Pitch hecho", on:(f, id) => statusOf(id)==="attended"},
+  {k:"legusto", l:"Le gustó", on:f => f.interested===true},
+  {k:"skel", l:"Skeleton validado", on:f => !!f.skeletonApprovedAt},
+  {k:"content", l:"Contenido recibido", on:f => !!f.contentAt},
+  {k:"web", l:"Página web lista", on:f => !!f.webDoneAt},
+  {k:"program", l:"Programa y ejercicios listos", on:f => !!f.programDoneAt},
+  {k:"bank", l:"Datos bancarios y fiscales", on:f => !!f.bankDoneAt},
+  {k:"final", l:"Validó todo", on:f => !!f.finalOkAt},
+  {k:"launched", l:"Publicado", on:f => !!f.launchedAt}];
+function sessionOpen(uid, id){
+  if (!adminMode()) return;
+  const m = ((S.allEvery||{})[uid]||{})[id] || ((S.all||{})[uid]||{})[id]; if (!m) return;
+  const f = {...(m.flow||{})}, p = m.prospect || "el prospecto", needPitch = statusOf(id) !== "attended";
+  const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "sesWrap";
+  const tomorrow = new Date(Date.now() - VOFF + DAY).toISOString().slice(0,10) + "T10:00";
+  w.innerHTML = `<div class="bk mbk" role="dialog" aria-modal="true" aria-label="Registrar avance"><div class="bk-grab"></div>
+    <div class="bk-h"><b>Registrar avance · ${esc(p)}</b><div class="spacer"></div><button type="button" class="btn small" data-x="1">Cerrar</button></div>
+    ${needPitch ? `<div class="f full"><span class="eyb">¿Se conectó al pitch?</span><div class="ses-seg" id="sesConn"><button type="button" data-conn="yes">Sí</button><button type="button" data-conn="no">No se conectó</button></div></div>` : ""}
+    <div id="sesBody"${needPitch ? " hidden" : ""}>
+      <p class="eyb" style="margin:10px 0 6px">¿Qué se logró? Palomea todo lo que ya está</p>
+      <div class="ses-h">${HITOS.filter(h => h.k!=="pitch").map(h => { const on = h.on(f, id); return `<label class="${on?"on":""}"><input type="checkbox" data-hito="${h.k}"${on?" checked":""}> ${esc(h.l)}</label>`; }).join("")}</div>
+      <label class="f full" style="margin-top:10px">Nota de la sesión (opcional)<textarea id="sesNote" rows="2" placeholder="Ej. Le encantó el skeleton; manda fotos el viernes"></textarea></label>
+      <div class="f full" style="margin-top:6px"><span class="eyb">¿Qué sigue?</span>
+        <div class="ses-seg" id="sesNext"><button type="button" data-nx="follow" class="on">Seguimiento</button><button type="button" data-nx="meet">Meet</button><button type="button" data-nx="none">Nada por ahora</button></div></div>
+      <div id="sesNx" class="grid" style="margin-top:6px">
+        <label class="f full" id="sesTxtL">¿Qué hay que hacer?<input id="sesTxt" placeholder="Ej. Pedirle su contenido · Mandarle la página para que la revise" autocomplete="off"></label>
+        <div class="ses-seg full" id="sesQuick"><button type="button" data-q="0">Hoy</button><button type="button" data-q="1" class="on">Mañana</button><button type="button" data-q="2">En 2 días</button><button type="button" data-q="3">En 3 días</button></div>
+        <label class="f full">Cuándo${tzOther() ? " (tu hora)" : ""}<input type="datetime-local" id="sesAt" value="${tomorrow}"></label>
+        <label class="chk" id="sesInvL" hidden><input type="checkbox" id="sesInv"${mcp && m.email ? " checked" : ""}${mcp && m.email ? "" : " disabled"}> Mandarle invitación con link de Meet${m.email ? "" : " (no tiene email)"}</label>
+      </div>
+      <button type="button" class="linkbtn bad" id="sesLost" style="margin-top:8px">Ya no le interesó · sacarlo del journey</button>
+    </div>
+    <div class="row"><span class="err" id="sesErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="sesGo">Guardar</button></div></div>`;
+  document.body.appendChild(w);
+  let conn = needPitch ? "" : "yes", nx = "follow";
+  const at0 = () => { const v = $("sesAt").value; return v ? vTs(v) : NaN; };
+  w.addEventListener("change", e => { const c = e.target.closest("[data-hito]"); if (c) c.closest("label").classList.toggle("on", c.checked); });
+  w.addEventListener("click", async e => {
+    if (e.target===w || e.target.closest("[data-x]")) return w.remove();
+    const cb = e.target.closest("[data-conn]"); if (cb){ conn = cb.dataset.conn; w.querySelectorAll("[data-conn]").forEach(b => b.classList.toggle("on", b===cb)); $("sesBody").hidden = conn !== "yes"; return; }
+    const nb = e.target.closest("[data-nx]"); if (nb){ nx = nb.dataset.nx; w.querySelectorAll("[data-nx]").forEach(b => b.classList.toggle("on", b===nb)); $("sesNx").hidden = nx==="none"; $("sesInvL").hidden = nx!=="meet"; $("sesQuick").hidden = nx==="meet";
+      $("sesTxtL").firstChild.textContent = nx==="meet" ? "¿Para qué es el meet? (opcional)" : "¿Qué hay que hacer?"; return; }
+    const q = e.target.closest("[data-q]"); if (q){ w.querySelectorAll("[data-q]").forEach(b => b.classList.toggle("on", b===q)); const n = Number(q.dataset.q);
+      const d = new Date(Date.now() - VOFF + n*DAY).toISOString().slice(0,10); $("sesAt").value = d + (n===0 ? "T18:00" : "T10:00"); return; }
+    if (e.target.closest("#sesLost")){ if (!confirm(`¿${p} ya no está interesado? Sale del journey (un líder lo puede reactivar).`)) return;
+      try{ const now = Date.now(); await db.doc(`meets/${uid}/items/${id}`).update({flow:{lostAt:now, lostWhy:"Ya no le interesó", lastActAt:now, log:(f.log||[]).concat([{at:now, by:S.uid, done:[], undone:[], note:"Ya no le interesó"}]).slice(-60)}}); freeIdx(uid, id, m); w.remove(); quickToast(`${p} salió del journey`); schedule(); }catch(_){ $("sesErr").textContent = "No se guardó."; } return; }
+    if (!e.target.closest("#sesGo")) return;
+    const err = t => { $("sesErr").textContent = t; }, now = Date.now(), ref = db.doc(`meets/${uid}/items/${id}`), perfil = Number(m.perfil)||1;
+    if (needPitch && !conn) return err("Marca si se conectó al pitch.");
+    const go = $("sesGo"); go.disabled = true; go.textContent = "Guardando…";
+    try{
+      if (needPitch && conn==="no"){ // no se conectó: reagendar o perdido, como siempre
+        await db.doc(`validations/${id}`).set({uid, week:meetWeek(m), status:"noshow", reason:"", decidedAt:now, perfil});
+        w.remove(); quickToast(`${p} no se conectó: reagenda o márcalo como perdido`); schedule(); return; }
+      const want = {}; w.querySelectorAll("[data-hito]").forEach(c => want[c.dataset.hito] = c.checked);
+      const note = $("sesNote").value.trim(), fl = {}, done = [], undone = [], aw = [], un = [];
+      if (needPitch){ await db.doc(`validations/${id}`).set({uid, week:meetWeek(m), status:"attended", reason:"", decidedAt:now, perfil}); S.validations[id] = {uid, week:meetWeek(m), status:"attended", decidedAt:now, perfil}; done.push("Pitch hecho"); }
+      const H = k => HITOS.find(h => h.k===k), had = k => H(k).on(f, id), lbl = k => H(k).l;
+      const flip = (k, onP, offP, ms) => { if (want[k] && !had(k)){ Object.assign(fl, onP); done.push(lbl(k)); if (ms) aw.push(ms); } else if (!want[k] && had(k)){ Object.assign(fl, offP); undone.push(lbl(k)); if (ms) un.push(ms); } };
+      flip("legusto", {interested:true, interestedAt:now}, {interested:null, interestedAt:null}, "legusto");
+      flip("skel", {skeletonAt:f.skeletonAt || now, skeletonSentAt:f.skeletonSentAt || now, skeletonLastSentAt:f.skeletonLastSentAt || now, skeletonApprovedAt:now, skeletonNeedsChanges:null}, {skeletonApprovedAt:null}, "aprobado");
+      flip("content", {contentAt:now}, {contentAt:null});
+      flip("web", {webDoneAt:now}, {webDoneAt:null}); flip("program", {programDoneAt:now}, {programDoneAt:null}); flip("bank", {bankDoneAt:now}, {bankDoneAt:null});
+      flip("final", {finalOkAt:now}, {finalOkAt:null});
+      flip("launched", {launchedAt:now}, {launchedAt:null}, "publicado");
+      // programa, web y datos: el punto se gana cuando están los tres
+      const wasPW = !!(f.programDoneAt && f.webDoneAt && f.bankDoneAt), isPW = !!(want.program && want.web && want.bank);
+      if (isPW && !wasPW) aw.push("progweb"); if (!isPW && wasPW) un.push("progweb");
+      if (want.skel && !want.legusto && !had("legusto")){ fl.interested = true; fl.interestedAt = fl.interestedAt || now; aw.push("legusto"); done.push(lbl("legusto")); } // si validó skeleton, le gustó
+      let next = null;
+      if (nx !== "none"){
+        const at = at0(); if (isNaN(at)) { go.disabled = false; go.textContent = "Guardar"; return err("Elige cuándo."); }
+        if (nx==="follow" && !$("sesTxt").value.trim()) { go.disabled = false; go.textContent = "Guardar"; return err("Escribe qué hay que hacer (ej. pedirle su contenido)."); }
+        next = {kind:nx, text:$("sesTxt").value.trim(), at, setAt:now, by:S.uid};
+      }
+      if (!done.length && !undone.length && !note && !next) { go.disabled = false; go.textContent = "Guardar"; return err("No hay nada que guardar."); }
+      fl.next = next; fl.lastActAt = now;
+      fl.log = (f.log||[]).concat([{at:now, by:S.uid, done, undone, note, ...(next ? {next:{kind:next.kind, text:next.text, at:next.at}} : {})}]).slice(-60);
+      await ref.update({flow:fl});
+      for (const ms of aw) award(uid, id, ms, now); for (const ms of un) unaward(uid, id, ms);
+      let msg = done.length ? `✓ ${done.join(", ")}` : "✓ Guardado";
+      if (next && next.kind==="meet" && $("sesInv") && $("sesInv").checked && mcp){ const prev = S.bookFor; S.bookFor = uid;
+        try{ const ev = await createInvite({...m, meetAt:new Date(next.at - OFF).toISOString().slice(0,16), notes:next.text || m.notes}); await ref.update({flow:{next:{...next, link:ev.link, gcalEventId:ev.id}}}); msg += " · invitación enviada"; }
+        catch(_){ msg += " · no se pudo mandar la invitación"; } S.bookFor = prev; }
+      w.remove(); quickToast(msg); schedule();
+    }catch(_){ go.disabled = false; go.textContent = "Guardar"; err("No se guardó. Intenta otra vez."); }
+  });
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-session]"); if (!b) return; e.preventDefault(); e.stopPropagation(); const [u, id] = b.dataset.session.split("|"); sessionOpen(u, id); });
+// actividad: el último avance, nota o seguimiento registrado (o el pitch)
+const IDLE_WARN = 1*DAY, IDLE_LATE = 2*DAY;
+const lastActOf = (m, v) => { const f = m.flow || {}; return Math.max(Number(f.lastActAt)||0, (v && v.decidedAt)||0, Number(f.interestedAt)||0, Number(f.skeletonApprovedAt)||0, Number(f.contentAt)||0, Number(f.programDoneAt)||0, Number(f.webDoneAt)||0, Number(f.bankDoneAt)||0, Number(f.revivedAt)||0) || (m.createdAt||0); };
 function collectTasks(owners){
   const now = Date.now(), out = [];
   owners.forEach(([uid, items]) => Object.entries(items||{}).forEach(([id,m]) => out.push(...tasksFor(uid, id, m, now))));
@@ -3079,6 +3128,7 @@ function actsHtml(t){
   const k = dk(t.uid, t.id), dr = DRAFT[k] || {dt:{}};
   const base = a => `data-act="${a.act}" data-uid="${t.uid}" data-id="${t.id}"${a.day?` data-day="${a.day}"`:""}`;
   return t.acts.map(a => {
+    if (a.input==="session") return `<button type="button" class="btn small primary" data-session="${t.uid}|${t.id}">${esc(a.label)}</button>`;
     const btn = `<button class="btn small ${a.kind||""}" ${base(a)}>${esc(a.label)}</button>`;
     if (a.input==="dt") return `<span class="ig"><input type="datetime-local" data-k="${k}" data-dt="${a.act}" value="${esc((dr.dt||{})[a.act]||"")}" aria-label="Nueva fecha">${btn}</span>`;
     if (a.input==="meet3"){
@@ -3295,7 +3345,7 @@ function detailHtml(uid, id, m, isAdmin, cid){
     next = `<div class="d-next wait"><div class="d-next-h"><span class="eyb">Estado</span></div><div class="d-next-t">${esc(w || "Sin pendientes")}</div></div>`;
   }
   // pasos ya hechos: el líder los puede regresar si fue un error (y se quita su punto)
-  if (isAdmin && !S.viewAs){
+  if (false && isAdmin && !S.viewAs){ // reemplazado por "Hitos" (se despalomean en Registrar avance)
     const DONE = [["skel", f.skeletonApprovedAt, "Skeleton aprobado", "−3"], ["content", f.contentAt, "Contenido listo", ""], ["program", f.programDoneAt, "Programa listo", f.webDoneAt && f.bankDoneAt ? "−4" : ""],
       ["web", f.webDoneAt, "Web lista", f.programDoneAt && f.bankDoneAt ? "−4" : ""], ["bank", f.bankDoneAt, "Depósito listo", f.programDoneAt && f.webDoneAt ? "−4" : ""], ["mode", f.launchModeAt, f.launchMode==="fast" ? "Lanzamiento rápido" : "Lanzamiento guiado", ""], ["launched", f.launchedAt, "Publicado", "−5"]].filter(x => x[1]);
     if (DONE.length) next += `<details class="d-done"><summary class="mut small">Pasos hechos (${DONE.length}) · corregir</summary><ul>${DONE.map(([k, at, l, pts]) => `<li><span>✓ ${esc(l)} · ${esc(fmtLocal(at).split(",")[0])}</span><button type="button" class="linkbtn" data-act="undo-step" data-step="${k}" data-uid="${uid}" data-id="${id}">Cambiar${pts ? ` (${pts} pts)` : ""}</button></li>`).join("")}</ul></details>`;
@@ -3325,6 +3375,10 @@ function detailHtml(uid, id, m, isAdmin, cid){
     <label class="f">Canal<select data-k="${k}" data-ef="canal"><option value="organico"${canalOf({canal:val("canal")})==="organico"?" selected":""}>Orgánico · redes</option><option value="whatsapp"${canalOf({canal:val("canal")})==="whatsapp"?" selected":""}>WhatsApp outreach</option></select></label>
     <label class="f">Seguidores<input data-k="${k}" data-ef="followers" value="${esc(val("followers"))}" placeholder="120k"></label>` : "";
   const link = safeUrl(m.link);
+  const hitBox = (statusOf(id)==="attended" || f.interested != null) && !f.lostAt ? `<div class="d-hitos"><div class="d-hitos-h"><span class="eyb">Hitos</span>${isAdmin && !S.viewAs && !michMode() ? `<button type="button" class="btn small primary" data-session="${uid}|${id}">Registrar avance</button>` : ""}</div>
+      <div class="hitos">${HITOS.map(h => `<span class="hito${h.on(f, id) ? " on" : ""}">${h.on(f, id) ? "✓" : "○"} ${esc(h.l)}</span>`).join("")}</div>
+      ${f.next && f.next.at ? `<p class="mut small">Sigue: <b>${esc(f.next.kind==="meet" ? "Meet" : (f.next.text || "Seguimiento"))}</b>${f.next.kind==="meet" && f.next.text ? ` · ${esc(f.next.text)}` : ""} · ${esc(fmtLocal(f.next.at))}</p>` : ""}
+      ${(f.log||[]).length ? `<details class="d-log"><summary class="mut small">Sesiones y notas (${f.log.length})</summary><ul>${f.log.slice().reverse().slice(0, 20).map(x => `<li><b>${esc(fmtLocal(x.at))}</b>${x.done && x.done.length ? ` · ✓ ${esc(x.done.join(", "))}` : ""}${x.undone && x.undone.length ? ` · regresó ${esc(x.undone.join(", "))}` : ""}${x.note ? `<br>${esc(x.note)}` : ""}</li>`).join("")}</ul></details>` : ""}</div>` : "";
   const mAt = effAt(m), mTs = meetTs(mAt), stv = statusOf(id), mine0 = isAdmin || uid === meId();
   const meetBox = mAt && !f.lostAt && !m.cancelled && mTs > now && (stv==="pending" || stv==="valid" || reschedPending(m, S.validations[id])) && mine0 && !S.viewAs && !(michMode() && uid !== meId())
     ? `<div class="d-meet"><span class="eyb">Meet · ${esc(fmtMeetAt(mAt))}</span><span class="ig"><input type="datetime-local" data-k="${k}" data-dt="move" value="${esc((((DRAFT[k]||{}).dt)||{}).move || toV(mAt))}" aria-label="Nuevo horario"><button type="button" class="btn small" data-act="move" data-kind="pitch" data-uid="${uid}" data-id="${id}">🕐 Cambiar horario</button><button type="button" class="btn small bad" data-act="pcancel" data-uid="${uid}" data-id="${id}">Canceló</button></span></div>` : "";
@@ -3344,7 +3398,7 @@ function detailHtml(uid, id, m, isAdmin, cid){
     ${trial}
     <details class="d-data" data-k="${k}"${OPEN[k]?" open":""}>
       <summary><span>Datos del prospecto</span><span class="mut">Toca para ver y editar</span></summary>
-      ${meetBox}
+      ${meetBox}${hitBox}
       <div class="grid d-form">${fields}${fields2}</div>
       <div class="row"><span class="mono" data-msg="${k}"></span><div class="spacer"></div>
         ${Object.keys(ed).length?`<button class="btn small" data-reset="${k}">Descartar cambios</button>`:""}
@@ -3522,6 +3576,7 @@ async function doAct(b){
     case "cancelled": return ref.update({cancelled:true, cancelledAt:now}).then(() => { if (uid===meId()) cancelInvite(m); });
     case "confirmed": return ref.update({flow:{confirmedFor:effAt(m), confirmedAt:now}});
     case "reminded": return ref.update({flow:{remindedFor:effAt(m), remindedAt:now}});
+    case "next-snooze": { const n = f.next || {}; const at = Math.max(Number(n.at)||0, now) + DAY; await ref.update({flow:{next:{...n, at}}}); return `Listo: lo movimos al ${fmtLocal(at)}.`; }
     case "pcancel": { // el prospecto canceló un meet que aún no pasa
       if (!confirm(`¿${m.prospect || "El prospecto"} canceló el meet? Sale del journey${m.gcalEventId ? " y se cancela la invitación" : ""}. Un líder lo puede reactivar.`)) return "";
       await ref.update({cancelled:true, cancelledAt:now, flow:{lostAt:now, lostWhy:"Canceló el meet"}}); freeIdx(uid, id, m);
@@ -3882,6 +3937,8 @@ function calEvents(teamAll){
       ev.push({at:f.adjMeetAt, kind:"skel", label:`Ajustes · ${m.prospect}`, who:uid, key:dk(uid,id), booked:true});
     if (f.buildMeetAt && !f.launchedAt)
       ev.push({at:f.buildMeetAt, kind:"build", label:`Lanzamiento · ${m.prospect}`, who:uid, key:dk(uid,id)});
+    if (f.next && f.next.kind==="meet" && f.next.at && !f.lostAt)
+      ev.push({at:new Date(f.next.at - OFF).toISOString().slice(0,16), kind:"build", label:`Meet · ${m.prospect}${f.next.text ? ` · ${f.next.text}` : ""}`, who:uid, key:dk(uid,id)});
   }));
   // add the admin's real Google Calendar, skipping the ones that are the same meet as a panel event
   const mails = {}; Object.values(S.all).forEach(o => Object.values(o||{}).forEach(m => { if (m.email) mails[m.email.toLowerCase()] = 1; }));
@@ -4058,6 +4115,7 @@ function renderPlan(){
     if (at && !m.noMeet && !f.inviteDeclinedAt && (st==="pending" || st==="valid" || st==="attended" || reschedPending(m, v))) push(at, "pitch", "Pitch");
     if (f.skeletonMeetAt && !f.skeletonAt) push(f.skeletonMeetAt, "skel", "Meet de skeleton");
     if (f.buildMeetAt && !f.launchedAt) push(f.buildMeetAt, "build", "Sesión de lanzamiento");
+    if (f.next && f.next.kind==="meet" && f.next.at) push(new Date(f.next.at - OFF).toISOString().slice(0,16), "build", f.next.text ? `Meet · ${f.next.text}` : "Meet de seguimiento");
   }));
   if (admin){
     const mails = {}; Object.values(S.all).forEach(o => Object.values(o||{}).forEach(m => { if (m.email) mails[m.email.toLowerCase()] = 1; }));
