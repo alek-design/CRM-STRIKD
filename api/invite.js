@@ -36,7 +36,11 @@ module.exports = async (req, res) => {
     // ya tenía cuenta: solo cambiamos su rol
     const { data: ex } = await admin.from("app_users").select("id, role").eq("email", email).maybeSingle();
     if (ex && (ex.role === "head" || ex.id === who.user.id)) return res.status(403).json({error:"Ese correo es del Head: no se le puede cambiar el rol desde aquí."});
-    if (ex){ await admin.from("app_users").update({role, active:true, ...(name?{name}:{})}).eq("id", ex.id); await admin.from("invites").delete().eq("email", email); await setInfl(ex.id); }
+    if (ex){ await admin.from("app_users").update({role, active:true, ...(name?{name}:{})}).eq("id", ex.id); await admin.from("invites").delete().eq("email", email);
+      if (infl) await setInfl(ex.id);
+      else { // que el organigrama diga lo mismo que la cuenta (conserva su manager y permisos)
+        const { data: rd } = await admin.from("docs").select("data").eq("path", "roles/" + ex.id).maybeSingle();
+        await admin.from("docs").upsert({path:"roles/" + ex.id, data:{...((rd && rd.data) || {}), role, updatedAt:Date.now()}}); } }
     return res.status(200).json({ok:true, already:true});
   }
   await setInfl(created.user.id);

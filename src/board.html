@@ -1273,6 +1273,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .set-ic{width:28px;text-align:center;font-size:18px}.set-tx{flex:1;min-width:0;display:grid;gap:2px}.set-tx span{font-size:12.5px;color:var(--muted)}
 .pl-move{display:flex;flex-direction:column;gap:6px;margin:10px 0}.pl-move .ig{display:flex;gap:8px;flex-wrap:wrap}.pl-move input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 .tk-fw{position:relative;display:inline-flex}.tk-fx{position:absolute;top:-7px;right:-7px;min-width:24px;height:24px;padding:0 6px;border-radius:12px;border:1px solid var(--line2);background:var(--bg);color:var(--fg);font-size:14px;line-height:1;cursor:pointer;z-index:1}.tk-fx.armed{font-size:11.5px;font-weight:700;color:#e5484d;border-color:#e5484d}
+.chip.revive{cursor:pointer;background:var(--ok-soft2,#e5f4e4);border-color:var(--ok,#16a34a);color:var(--ok-fg,#166534);font-weight:700}
 .tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
@@ -2157,7 +2158,7 @@ function tally(week){
   const t = {};
   const g = u => (t[u] = t[u] || {pts:0, tom:0, valid:0, noshow:0, rejected:0, legusto:0, aprobado:0, progweb:0, publicado:0});
   Object.values(S.validations).forEach(v => {
-    if (v.week !== week) return;
+    if (v.week !== week || v.void) return;
     const r = g(v.uid);
     if (v.status==="attended"){ r.tom++; r.pts += PTS.tomado * multOf(v.perfil); }
     else if (v.status==="valid") r.valid++;
@@ -2165,7 +2166,7 @@ function tally(week){
     else if (v.status==="rejected") r.rejected++;
   });
   Object.entries(S.pts || {}).forEach(([uid, evs]) => Object.values(evs||{}).forEach(e => {
-    if (e.week !== week || !PTS[e.ms]) return;
+    if (e.week !== week || !PTS[e.ms] || e.void) return;
     const r = g(uid); r[e.ms]++; r.pts += (typeof e.pts==="number" ? e.pts : PTS[e.ms]);
   }));
   return t;
@@ -2187,9 +2188,12 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
   let why = ""; while (!why){ const r = prompt(`¿Por qué eliminas a ${m.prospect || "este prospecto"}? (obligatorio)`, ""); if (r === null) return; why = r.trim(); }
   const future = meetTs(effAt(m)) > Date.now() && m.gcalEventId && !m.fromCalendar && !m.cancelled;
   if (!confirm(`Eliminar a ${m.prospect || "este prospecto"}${future ? " y cancelar su invitación al meet" : ""}?\n\nRazón: ${why}`)) return;
-  const now = Date.now(), f = {...(m.flow||{}), lostAt:now, lostWhy:why, removed:true, removedBy:S.uid};
+  const pv = hasPoints(uid, id) && confirm(`¿Quitarle también a ${String(nameOf(S.ps||{}, uid)).split(" (")[0]} los puntos que ganó con ${m.prospect || "este prospecto"}?\n\nAceptar = se quitan · Cancelar = se quedan`);
+  const now = Date.now(), f = {...(m.flow||{}), lostAt:now, lostWhy:why, removed:true, removedBy:S.uid, ...(pv ? {pointsVoided:true} : {})};
   b.disabled = true;
-  try{ await db.doc(`meets/${uid}/items/${id}`).update({flow:{lostAt:now, lostWhy:why, removed:true, removedBy:S.uid}, ...(future ? {cancelled:true, cancelledAt:now} : {})});
+  try{ await db.doc(`meets/${uid}/items/${id}`).update({flow:{lostAt:now, lostWhy:why, removed:true, removedBy:S.uid, ...(pv ? {pointsVoided:true} : {})}, ...(future ? {cancelled:true, cancelledAt:now} : {})});
+    if (pv) await voidPoints(uid, id, true);
+    freeIdx(uid, id, m);
     m.flow = f; if (future){ m.cancelled = true; try{ await cancelInvite(m); }catch(_){} }
     PICK.dayPlan = null; S.flowPick = null; quickToast(`✓ ${m.prospect || "Prospecto"} eliminado`); schedule(); }
   catch(_){ b.disabled = false; quickToast("No se pudo eliminar. Intenta otra vez."); }
@@ -2215,6 +2219,28 @@ document.addEventListener("change", async e => { const sel = e.target.closest("[
   try{ await moveProspect(oldU, id, newU); PICK.dayPlan = null; quickToast(`✓ Ahora está a nombre de ${nm}`); }
   catch(_){ sel.value = oldU; quickToast("No se pudo cambiar. Intenta otra vez."); }
   sel.disabled = false; schedule(); });
+// registro de duplicados: se libera cuando el prospecto se pierde, elimina o borra, y se vuelve a tomar al reactivarlo
+const idxKeys = m => [igKey((m && m.profile)||""), m && m.email ? "email:" + String(m.email).toLowerCase().replace(/[^a-z0-9._@+-]/g,"") : ""].filter(Boolean);
+async function freeIdx(uid, id, m){ for (const k of idxKeys(m)){ try{ const d = await db.doc(`prospectIndex/${k}`).get(); if (d.exists && d.data().mid===id) await db.doc(`prospectIndex/${k}`).delete(); }catch(_){} } }
+async function claimIdx(uid, id, m){ for (const k of idxKeys(m)){ try{ const d = await db.doc(`prospectIndex/${k}`).get(); if (!d.exists || !d.data().uid) await db.doc(`prospectIndex/${k}`).set({uid, mid:id, at:Date.now()}); }catch(_){} } }
+// anular (o regresar) los puntos que ganó un prospecto: la validación y cada hito
+async function voidPoints(uid, id, on){
+  const v = S.validations[id]; if (v) await db.doc(`validations/${id}`).update({void:on ? true : null}).catch(() => {});
+  for (const ms of Object.keys(PTS)) if (((S.pts||{})[uid]||{})[`${id}_${ms}`]) await db.doc(`points/${uid}/ev/${id}_${ms}`).update({void:on ? true : null}).catch(() => {});
+}
+const hasPoints = (uid, id) => (S.validations[id] && S.validations[id].status==="attended" && !S.validations[id].void) || Object.keys(PTS).some(ms => { const e = ((S.pts||{})[uid]||{})[`${id}_${ms}`]; return e && !e.void; });
+document.addEventListener("click", async e => { const b = e.target.closest("[data-revive]"); if (!b) return; e.preventDefault(); e.stopPropagation();
+  if (!adminMode()) return;
+  const [uid, id] = b.dataset.revive.split("__"), m = (S.allEvery[uid]||{})[id] || (S.all[uid]||{})[id]; if (!m) return;
+  const f = {...(m.flow || {})}; // copia: el guardado actualiza m.flow en el momento
+  if (!confirm(`¿Reactivar a ${m.prospect || "este prospecto"}? Vuelve al journey donde se quedó${f.pointsVoided ? " y recupera sus puntos" : ""}.`)) return;
+  b.disabled = true;
+  try{ await db.doc(`meets/${uid}/items/${id}`).update({flow:{lostAt:null, lostWhy:null, removed:null, removedBy:null, revivedAt:Date.now(), revivedBy:S.uid, ...(f.interested===false ? {interested:null, interestedAt:null} : {}), ...(f.pointsVoided ? {pointsVoided:null} : {})}});
+    if (f.pointsVoided) await voidPoints(uid, id, false);
+    await claimIdx(uid, id, m);
+    m.flow = {...f, lostAt:null, lostWhy:null, removed:null}; quickToast(`✓ ${m.prospect || "Prospecto"} reactivado`); schedule(); }
+  catch(_){ b.disabled = false; quickToast("No se pudo reactivar. Intenta otra vez."); }
+});
 function award(uid, id, ms, at){
   const m = (S.all[uid]||{})[id] || (uid===S.uid ? S.mine[id] : null) || {};
   const mult = multOf(m.perfil);
@@ -2350,7 +2376,7 @@ function renderMine(){
   if (!items.length){ $("myList").innerHTML = `<div class="empty">Todavía no registras meets. Llena el formulario de arriba para sumar tu primero.</div>`; return; }
   $("myList").innerHTML = items.map(([id,m]) => {
     const st = statusOf(id), v = S.validations[id], wk = meetWeek(m);
-    const editable = st==="pending" && !S.readOnly;
+    const editable = (st==="pending" || (st==="valid" && AUTOV.has(id) && !S.validations[id] && !meetPassed(m))) && !S.readOnly;
     let extra = "";
     if (st==="rejected"){
       extra = `<div class="notice ${m.cancelled?"":"bad"} row"><span style="flex:1;min-width:200px">${v.reason?`Motivo: ${esc(v.reason)}. `:""}${m.cancelled?"Marcaste este meet como cancelado.":"Cancela este meet con el prospecto y márcalo aquí."}</span>
@@ -2561,9 +2587,17 @@ $("meetForm").addEventListener("submit", async e => {
     const col = db.collection(`meets/${bookUid()}/items`);
     const now = Date.now();
     if (S.editingId){
-      const prev = myItems()[S.editingId];
-      await col.doc(S.editingId).set({...prev, ...o, updatedAt: now});
-      resetForm(); showResult("ok", "Cambios guardados", `${o.prospect} quedó actualizado.`);
+      const prev = myItems()[S.editingId], eid = S.editingId;
+      const moved = prev && prev.gcalEventId && !prev.cancelled && (prev.meetAt !== o.meetAt || String(prev.email||"").toLowerCase() !== String(o.email||"").toLowerCase());
+      await col.doc(eid).set({...prev, ...o, ...(prev && prev.reschedAt && prev.meetAt !== o.meetAt ? {reschedAt:null} : {}), updatedAt: now});
+      resetForm();
+      if (moved && mcp){
+        showResult("loading", "Actualizando la invitación…", `${o.prospect} · ${fmtMeetAt(o.meetAt)}`);
+        try{ await cancelInvite(prev); const ev = await createInvite({...prev, ...o});
+          await col.doc(eid).update({link: ev.link || prev.link, gcalEventId: ev.id, gcalHtml: ev.html, invitedAt: Date.now()});
+          showResult("ok", "Cambios guardados", `${o.prospect} quedó actualizado y le llegó la invitación nueva.`); }
+        catch(_){ showResult("warn", "Cambios guardados", `${o.prospect} quedó actualizado, pero no se pudo mandar la invitación nueva: mándasela tú.`); }
+      } else showResult("ok", "Cambios guardados", `${o.prospect} quedó actualizado.${moved ? " Conecta Google Calendar para mandarle la invitación nueva, o avísale tú." : ""}`);
     } else {
       const mk = autoInv(), ref = col.doc();
       o.guests = guestUids();
@@ -2577,7 +2611,7 @@ $("meetForm").addEventListener("submit", async e => {
           const iref = db.doc(`prospectIndex/${pkey}`);
           const lease = await iref.acquire({holder:S.uid, ttlMs:8000});
           const cur = lease.acquired ? await iref.get() : null;
-          if (!lease.acquired || (cur.exists && cur.data().uid && !(cur.data().uid===bookUid() && cur.data().mid===ref.id))){ auto = false; dupOf = lease.acquired ? cur.data().uid : "?"; }
+          if (!lease.acquired || (cur.exists && cur.data().uid && !(cur.data().uid===bookUid() && cur.data().mid===ref.id) && !dupDead(cur.data().uid, cur.data().mid))){ auto = false; dupOf = lease.acquired ? cur.data().uid : "?"; }
           else await iref.set({uid:bookUid(), mid:ref.id, at:now});
         }catch(e){ auto = false; }
       }
@@ -2622,7 +2656,10 @@ $("myList").addEventListener("click", async e => {
     const id = del.dataset.del;
     if (del.dataset.armed !== "1"){ del.dataset.armed="1"; del.textContent="Confirmar borrado"; return; }
     del.disabled = true;
-    try{ await db.doc(`meets/${meId()}/items/${id}`).delete(); }catch(ex){ del.disabled=false; del.textContent="No se pudo borrar"; }
+    const m0 = myItems()[id];
+    try{ await db.doc(`meets/${meId()}/items/${id}`).delete();
+      if (m0){ freeIdx(meId(), id, m0); if (m0.gcalEventId && !m0.cancelled && meetTs(effAt(m0)) > Date.now()) cancelInvite(m0).catch(() => {}); } }
+    catch(ex){ del.disabled=false; del.textContent="No se pudo borrar"; }
   }
   if (can){
     can.disabled = true;
@@ -2691,14 +2728,17 @@ $("adminList").addEventListener("click", async e => {
   const b = e.target.closest("button"); if (!b) return;
   const find = id => { for (const [uid,o] of Object.entries(S.all)) if (o[id]) return {uid, m:o[id]}; return null; };
   const decide = (id, status, reason) => { const f = find(id);
-    return db.doc(`validations/${id}`).set({uid:f.uid, week:meetWeek(f.m), status, reason:reason||"", decidedAt:Date.now()}); };
+    return db.doc(`validations/${id}`).set({uid:f.uid, week:meetWeek(f.m), status, reason:reason||"", decidedAt:Date.now(), perfil:Number(f.m.perfil)||1}).then(() => { if (status==="rejected") freeIdx(f.uid, id, f.m); }); };
   try{
     if (b.dataset.set){ b.disabled=true; await decide(b.dataset.id, b.dataset.set); }
     else if (b.dataset.reject){ S.rejecting = b.dataset.reject; S.rejText = ""; schedule(); setTimeout(()=>{ const i=$("rej_"+b.dataset.reject); i&&i.focus(); },60); }
     else if (b.dataset.cancelrej){ S.rejecting=null; schedule(); }
     else if (b.dataset.rejectok){ const id=b.dataset.rejectok; b.disabled=true;
       await decide(id, "rejected", (($("rej_"+id)||{}).value||"").trim().slice(0,300)); S.rejecting=null; }
-    else if (b.dataset.undo){ b.disabled=true; await db.doc(`validations/${b.dataset.undo}`).delete(); }
+    else if (b.dataset.undo){ b.disabled=true; const id = b.dataset.undo, f = find(id);
+      if (AUTOV.has(id) && f) await db.doc(`validations/${id}`).set({uid:f.uid, week:meetWeek(f.m), status:"pending", reason:"", decidedAt:Date.now(), perfil:Number(f.m.perfil)||1}); // el automático vuelve a "por revisar"
+      else await db.doc(`validations/${id}`).delete();
+      if (f) claimIdx(f.uid, id, f.m); }
   }catch(ex){ b.disabled=false; b.textContent="No se guardó, reintenta"; }
 });
 
@@ -3177,7 +3217,7 @@ function detailHtml(uid, id, m, isAdmin, cid){
   return `<div class="detail">
     <div class="d-head">
       <div class="d-id">
-        <div class="d-tags"><span class="chip stage">${esc(sname)}</span>${d?`<span class="sema ${d.cls}"><i></i>${SEMA[d.cls]}</span>`:""}${isAdmin?ownerChip(uid, id):""}${isAdmin && !(m.flow||{}).lostAt ? `<button type="button" class="chip elim" data-elim="${uid}__${id}">Eliminar</button>` : ""}</div>
+        <div class="d-tags"><span class="chip stage">${esc(sname)}</span>${d?`<span class="sema ${d.cls}"><i></i>${SEMA[d.cls]}</span>`:""}${isAdmin?ownerChip(uid, id):""}${isAdmin && !(m.flow||{}).lostAt ? `<button type="button" class="chip elim" data-elim="${uid}__${id}">Eliminar</button>` : ""}${isAdmin && (m.flow||{}).lostAt ? `<button type="button" class="chip revive" data-revive="${uid}__${id}">↺ Reactivar</button>` : ""}</div>
         <h3 class="d-name">${perfilIcon(m, true)}${esc(m.prospect)}</h3>
         <div class="pc-co">${[m.role, m.channel].filter(Boolean).map(esc).join(" · ")}</div>
       </div>
@@ -3235,8 +3275,12 @@ function pathHtml(owners, isAdmin, cid){
   }).join("");
   const rej = [];
   const cancelledN = groups.rejected.length - rej.length;
+  // perdidos y eliminados: se pueden abrir para ver por qué y reactivarlos (líderes)
+  const lostOpen = MORE[cid + "lost"], lostArr = order(groups.lost).sort((a,b) => ((b[2].flow||{}).lostAt||0) - ((a[2].flow||{}).lostAt||0));
   const off = `<div class="offpath">
-    <span class="mono">${groups.lost.length} perdido${groups.lost.length===1?"":"s"} · ${cancelledN} rechazado${cancelledN===1?"":"s"} y cancelado${cancelledN===1?"":"s"}</span>
+    ${isAdmin && groups.lost.length ? `<button type="button" class="more" data-more="${cid}lost">${lostOpen ? "Ocultar perdidos" : `Ver ${groups.lost.length} perdido${groups.lost.length===1?"":"s"}`}</button>` : `<span class="mono">${groups.lost.length} perdido${groups.lost.length===1?"":"s"}</span>`}
+    <span class="mono">· ${cancelledN} rechazado${cancelledN===1?"":"s"} y cancelado${cancelledN===1?"":"s"}</span>
+    ${isAdmin && lostOpen ? `<div class="minis lost-list">${lostArr.map(mini).join("")}</div>` : ""}
   </div>`;
   let detail = "";
   if (sel){
@@ -3384,9 +3428,10 @@ async function doAct(b){
       }
       return `Listo: pitch reagendado para el ${fmtMeetAt(v)}.`;
     }
-    case "lost": return ref.update({flow:{lostAt:now, lostWhy: f.inviteDeclinedAt ? "Rechazó la invitación" : "No se conectó"}});
+    case "lost": { if (!confirm(`¿Marcar a ${m.prospect || "este prospecto"} como perdido? Sale del journey (un líder lo puede reactivar).`)) return "";
+      await ref.update({flow:{lostAt:now, lostWhy: f.inviteDeclinedAt ? "Rechazó la invitación" : "No se conectó"}}); freeIdx(uid, id, m); return; }
     case "want-yes": return ref.update({flow:{interested:true, interestedAt:now}});
-    case "want-no": return ref.update({flow:{interested:false, interestedAt:now, lostAt:now, lostWhy:"No lo quiso"}});
+    case "want-no": await ref.update({flow:{interested:false, interestedAt:now, lostAt:now, lostWhy:"No lo quiso"}}); freeIdx(uid, id, m); return;
     case "undo-q1": return db.doc(`validations/${id}`).set({uid, week:meetWeek(m), status:"valid", reason:"", decidedAt:now});
     case "undo-q2": await unaward(uid, id, "legusto"); return ref.update({flow:{interested:null, interestedAt:null}});
     case "meet3": {
@@ -3400,7 +3445,7 @@ async function doAct(b){
       const q2 = f.interested!=null ? (f.interested ? "1" : "0") : dr.q2;
       if (f.interested==null && q2){
         if (q2==="1"){ patch.interested = true; patch.interestedAt = now; }
-        else { patch.interested = false; patch.interestedAt = now; patch.lostAt = now; patch.lostWhy = "No le gustó"; }
+        else { patch.interested = false; patch.interestedAt = now; patch.lostAt = now; patch.lostWhy = "No le gustó"; freeIdx(uid, id, m); }
       }
       let done = "Guardado.";
       const who = nameOf(S.ps, uid) || "el manager", p = m.prospect || "el prospecto";
@@ -4470,9 +4515,9 @@ function taskRow(u, id, x, lead, now){
       ${thread ? `<div class="tk-thread">${thread}</div>` : ""}
       ${cbox}
       ${lead && michMode() && x.by !== S.uid ? `<p class="mut small">La revisa ${esc(x.byName || "quien la asignó")}.</p>`
-        : st==="done" ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|progress">↺ Reabrir</button>${lead ? "" : `<button class="btn small primary" data-tksave="${k}">Guardar cambios</button>`}${lead && canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
+        : st==="done" ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|progress">↺ Reabrir</button>${lead ? "" : `<button class="btn small primary" data-tksave="${k}">Guardar cambios</button>`}${(lead || x.by === u) && canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
         : lead ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button>${canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
-        : `<div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}${x.by === u ? `<button class="btn small primary" data-tkst="${k}|done">✓ Completar</button>` : `<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button>`}</div>`}
+        : `<div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}${x.by === u ? `<button class="btn small primary" data-tkst="${k}|done">✓ Completar</button>` : `<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button>`}${x.by === u && canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`}
     </div>`;
   return `<div class="pr tkr st-${st}${due ? " due-" + due.cls : ""}${late?" late":""}${open?" sel":""}" role="button" tabindex="0" data-tkopen="${k}">
       <span class="tk-ring st-${st}" aria-hidden="true">${st==="done" ? "✓" : ""}</span>
@@ -4491,6 +4536,13 @@ function tkWho(k, x, kind, text){
   const title = kind==="comment" ? `💬 ${nm} comentó` : `${nm}: ${TK_ST[kind]}`;
   tkNotify(to.filter(t => t !== actor), title, x.title + (text ? ` · ${text}` : ""), k, x.by);
 }
+// borrar una tarea; si viene de una regla que se repite, esa semana ya no se vuelve a crear
+async function tkDelete(u, id){ const x = ((S.tasks||{})[u]||{})[id] || {};
+  try{ await db.doc(`meets/${u}/tasks/${id}`).delete(); }catch(_){ return false; }
+  const m = x.ruleId && String(id).match(/_(\d{4}-\d{2}-\d{2})$/);
+  if (m){ const r = TK_RULES[x.ruleId] || {}, sk = (r.skip || []).concat([`${u}|${m[1]}`]).slice(-200);
+    db.doc(`taskRules/${x.ruleId}`).update({skip:sk}).then(() => { (TK_RULES[x.ruleId] ||= {}).skip = sk; }).catch(() => {}); }
+  delete (S.tasks[u]||{})[id]; return true; }
 async function taskSave(k, patch){
   const [u, id] = k.split("/"), x = ((S.tasks||{})[u]||{})[id]; if (!x) return;
   const prev = {...x}; Object.assign(x, patch); schedule();
@@ -4639,12 +4691,12 @@ document.addEventListener("click", async e => {
       const [u] = k.split("/"); if (u !== S.uid) tkNotify([u], `✎ ${String(nameOf(S.ps||{}, S.uid)).split(" (")[0]} editó una tarea`, patch.title || x0.title, k, x0.by); }
     d.edit = false; delete d.e_title; delete d.e_note; delete d.e_due; quickToast("✓ Tarea actualizada"); schedule(); return; }
   const rdel = e.target.closest("[data-tdel]"); if (rdel){ e.stopPropagation(); if (rdel.dataset.armed!=="1"){ rdel.dataset.armed = "1"; rdel.textContent = "¿Borrar?"; return; } const [u,id] = rdel.dataset.tdel.split("/");
-    try{ await db.doc(`meets/${u}/tasks/${id}`).delete(); delete S.tasks[u][id]; TK_OPEN = ""; schedule(); quickToast("Tarea borrada"); }catch(_){ quickToast("No se pudo borrar"); } return; }
+    if (await tkDelete(u, id)){ TK_OPEN = ""; schedule(); quickToast("Tarea borrada"); } else quickToast("No se pudo borrar"); return; }
   const sv = e.target.closest("[data-tksave]"); if (sv){ e.stopPropagation(); const k = sv.dataset.tksave, d = TKD[k] || {}; if (await taskSave(k, {reply:d.rep ?? ""})){ delete TKD[k]; quickToast("✓ Guardado"); } return; }
   if (e.target.closest(".tk-det")) return;
   const op = e.target.closest("[data-tkopen]"); if (op){ TK_OPEN = TK_OPEN===op.dataset.tkopen ? "" : op.dataset.tkopen; schedule(); return; }
   const r = e.target.closest("[data-tdel]"); if (r){ e.stopPropagation(); if (r.dataset.armed!=="1"){ r.dataset.armed = "1"; r.textContent = "¿Borrar?"; return; } const [u,id] = r.dataset.tdel.split("/");
-    try{ await db.doc(`meets/${u}/tasks/${id}`).delete(); delete S.tasks[u][id]; schedule(); }catch(_){} }
+    if (await tkDelete(u, id)) schedule(); }
 });
 
 document.addEventListener("click", async e => {
@@ -5408,18 +5460,24 @@ function igKey(link){
   }catch(e){ return ""; }
 }
 /* ¿Ya lo registró alguien? (mismo usuario de redes o mismo email) → se avisa y no se envía */
+// un prospecto perdido, eliminado, cancelado, rechazado o ya borrado no bloquea volver a registrarlo
+function dupDead(u, mid){ const m = ((S.allEvery||{})[u]||{})[mid] || ((S.all||{})[u]||{})[mid] || (u===meId() ? myItems()[mid] : null);
+  if (!m) return u===meId() || adminMode(); // borrado (solo lo podemos saber de lo que vemos)
+  return !!((m.flow||{}).lostAt || m.cancelled || statusOf(mid)==="rejected"); }
 async function dupCheck(profile, email){
   const keys = [igKey(profile||""), email ? "email:" + String(email).toLowerCase().replace(/[^a-z0-9._@+-]/g,"") : ""].filter(Boolean);
   const who = u => u===bookUid() ? "tú" : nameOf(S.ps||{}, u);
   for (const k of keys){
     try{ const d = await db.doc(`prospectIndex/${k}`).get(); const v = d.exists ? d.data() : null;
+      if (v && v.uid && dupDead(v.uid, v.mid)) continue;
       if (v && v.uid) return `${k.startsWith("email:") ? "Ese email" : "@" + k.split(":")[1]} ya lo registró ${who(v.uid)}${v.at ? ` el ${fmtLocal(v.at).split(",")[0]}` : ""}.`; }catch(_){}
   }
   const ik = igKey(profile||"");
   if (ik){ try{ const d = await db.doc(`vipIndex/${ik}`).get(); const v = d.exists ? d.data() : null;
     if (v && v.uid) return `@${ik.split(":")[1]} ya está en la lista de Mich (lo propuso ${who(v.uid)}).`; }catch(_){} }
   // también contra lo que ya se ve en el tablero (por si el índice no lo tiene)
-  for (const [u, items] of Object.entries(S.all && Object.keys(S.all).length ? S.all : {[meId()]: myItems()})) for (const m of Object.values(items||{})){
+  for (const [u, items] of Object.entries(S.all && Object.keys(S.all).length ? S.all : {[meId()]: myItems()})) for (const [mid, m] of Object.entries(items||{})){
+    if (dupDead(u, mid)) continue;
     if (ik && igKey(m.profile||"")===ik) return `@${ik.split(":")[1]} ya lo registró ${who(u)}.`;
     if (email && m.email && m.email.toLowerCase()===String(email).toLowerCase()) return `Ese email ya lo registró ${who(u)}.`;
   }
