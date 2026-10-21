@@ -1283,6 +1283,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .mi-meet,.mi-reply{display:block;font-size:12.5px;margin-top:3px}.mi-reply{color:var(--fg2);font-style:italic;font-size:13.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
 .d-meet{display:grid;gap:6px;margin:10px 0}.d-meet .ig{display:flex;gap:8px;flex-wrap:wrap}.d-meet input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 .pl-mv{display:flex;gap:14px;flex-wrap:wrap}.linkbtn.bad{color:#e5484d}.tt-done-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 4px}.tt-done-q{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);flex:1;min-width:140px}
+.stage-pick{margin:6px 0 10px}.stage-pick select{font:inherit;font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);width:100%}
 .tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
@@ -1510,6 +1511,16 @@ body.mob-open header.top{z-index:31}
           <span class="eyb">¿De dónde vino?</span>
           <button type="button" role="radio" data-canal="organico">Orgánico · redes</button>
           <button type="button" role="radio" data-canal="whatsapp"><span class="wa-b">WA</span> WhatsApp outreach</button>
+        </div>
+        <div class="stage-pick" id="stagePick" hidden>
+          <label class="f">¿En qué etapa está?<select id="f_stage">
+            <option value="">Nuevo · por agendar su meet</option>
+            <option value="pitch">Ya tuvo el pitch · le gustó, falta su skeleton</option>
+            <option value="skeleton">Skeleton enviado · esperando aprobación y contenido</option>
+            <option value="build">Creación de programa y página (lanzamiento)</option>
+            <option value="launched">Ya publicado</option>
+          </select></label>
+          <p class="mut small" id="stageHint" hidden>Entra directo a esa etapa, ya validado y sin invitación. No suma puntos por los pasos que se saltó. La fecha del meet es opcional (la del pitch, si la sabes).</p>
         </div>
         <input type="checkbox" id="f_p3meet" hidden>
         <div class="p3-opts" id="p3meetL" role="radiogroup" aria-label="¿Qué quieres hacer con este influencer?" hidden>
@@ -1868,6 +1879,7 @@ const CLN = {res:null, busy:false, armed:false};
 function tzHint(){ const h = $("f_tzHint"); if (!h) return; h.hidden = !tzOther(); if (!tzOther()) return;
   const v = ($("f_meetAt")||{}).value, c = v ? toC(v) : ""; h.textContent = `Pon la hora de ${tzName(VTZ)} (tu hora).${c ? ` En Cancún serán las ${c.slice(11)}${c.slice(0,10) !== v.slice(0,10) ? " del " + Number(c.slice(8,10)) : ""}.` : ""}`; }
 document.addEventListener("input", e => { if (e.target && e.target.id === "f_meetAt") tzHint(); });
+document.addEventListener("change", e => { if (e.target && e.target.id === "f_stage"){ $("stageHint").hidden = !e.target.value; } });
 function syncTz(){ const m = (S.members||{})[S.uid] || {}; return setViewerTz((m.tzManual && m.tz) || devTz); }
 const TZ_LIST = ["America/Cancun","America/Mexico_City","America/Tijuana","America/Hermosillo","America/Mazatlan","America/Bogota","America/Lima","America/Santiago","America/Argentina/Buenos_Aires","America/New_York","America/Chicago","America/Los_Angeles","Europe/Madrid"];
 function tzRow(){ const m = (S.members||{})[S.uid] || {}, cur = m.tzManual && m.tz ? m.tz : "";
@@ -2124,6 +2136,7 @@ function fillWeekSelect(sel, value, withAll){
 
 async function render(){
   try{ syncTz(); tzHint(); }catch(_){}
+  try{ const sp = $("stagePick"); if (sp) sp.hidden = !(adminMode() && !S.editingId); }catch(_){}
   if (!S.boardWeek) S.boardWeek = S.currentKey;
   if (document.visibilityState==="visible") presBeat(false);
   computeTeam();
@@ -2570,8 +2583,15 @@ $("slotBox").addEventListener("click", e => {
   }
 });
 $("f_meetAt").addEventListener("change", () => { SL.day = ($("f_meetAt").value||"").slice(0,10) || SL.day; renderSlots(); });
+const entryStage = () => adminMode() && !S.editingId && $("f_stage") ? $("f_stage").value : "";
 function validate(o){
   const p = Number(o.perfil)||0;
+  if (entryStage()){ // prospecto que ya viene avanzado (lo registra un líder)
+    if (!o.prospect) return "Escribe el nombre del prospecto.";
+    if (o.profile && !safeUrl(o.profile)) return "El link al perfil debe empezar con https://";
+    if (o.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return "Revisa el email del prospecto.";
+    if (o.meetAt && isNaN(meetTs(o.meetAt))) return "Revisa la fecha del meet.";
+    return ""; }
   if (!p) return "Elige el perfil del prospecto.";
   if (p===3 && $("f_p3meet").checked){
     if (o._folRaw && !o.followers) return "No entendí los seguidores: escribe por ejemplo 350k o 350,000.";
@@ -2595,7 +2615,7 @@ function validate(o){
   if (o.link && !safeUrl(o.link)) return "El link debe empezar con https://";
   return "";
 }
-function resetForm(){ S.waPrefill = null; S.gcPrefill = null; S.bkGuests = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Enviar a validación"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
+function resetForm(){ if ($("f_stage")){ $("f_stage").value = ""; $("stageHint").hidden = true; } S.waPrefill = null; S.gcPrefill = null; S.bkGuests = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Enviar a validación"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
 $("cancelEdit").addEventListener("click", resetForm);
 /* ---------- resultado claro al registrar: cargando → listo / con aviso / error ---------- */
 const RS_IC = {ok:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>', warn:'<svg viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"/></svg>', err:'<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>', loading:""};
@@ -2617,6 +2637,30 @@ $("meetForm").addEventListener("submit", async e => {
   if (err){ $("formErr").textContent = err; $("formErr").hidden=false; return; }
   $("formErr").hidden = true; $("submitBtn").disabled = true;
   o.perfil = Number(o.perfil)||0; o.followers = o.followers ? Number(o.followers) : "";
+  const stg = entryStage();
+  if (stg){ // entra directo a una etapa del journey: validado, sin invitación y sin puntos por lo que se saltó
+    try{
+      const u = bookUid(), ref = db.collection(`meets/${u}/items`).doc(), now = Date.now();
+      const { dmsg } = {dmsg: (o.profile || o.email) ? await dupCheck(o.profile, o.email) : ""};
+      if (dmsg){ showResult("warn", "Ese prospecto ya está registrado", dmsg + " No se envió."); $("submitBtn").disabled = false; return; }
+      const meetAt = o.meetAt || new Date(now - OFF).toISOString().slice(0,16);
+      const fl = {interested:true, interestedAt:now};
+      if (stg !== "pitch") Object.assign(fl, {skeletonAt:now, skeletonSentAt:now, skeletonLastSentAt:now, skelLog:[{at:now, type:"sent", note:"Entró en esta etapa"}]});
+      if (stg === "build" || stg === "launched") Object.assign(fl, {skeletonApprovedAt:now, contentAt:now});
+      if (stg === "launched") Object.assign(fl, {programDoneAt:now, webDoneAt:now, bankDoneAt:now, launchedAt:now});
+      const item = {...o, perfil:Number(o.perfil)||1, meetAt, ...(o.meetAt ? {} : {noMeet:true}), createdAt:now, updatedAt:now, week:weekKey(now), entryStage:stg, entryBy:S.uid, flow:fl};
+      await ref.set(item);
+      const vdoc = {uid:u, week:weekKey(meetTs(meetAt) || now), status:"attended", reason:"", decidedAt:now, perfil:Number(o.perfil)||1, void:true, entryStage:stg}; // sin punto por el pitch que no se registró aquí
+      await db.doc(`validations/${ref.id}`).set(vdoc); S.validations[ref.id] = vdoc;
+      const pk = igKey(o.profile) || (o.email ? "email:" + o.email.toLowerCase().replace(/[^a-z0-9._@+-]/g,"") : "");
+      if (pk) db.doc(`prospectIndex/${pk}`).set({uid:u, mid:ref.id, at:now}).catch(() => {});
+      ((S.allEvery[u] ||= {}))[ref.id] = item; scopeAll();
+      resetForm(); if (BOOK.open) closeBook();
+      showResult("ok", "Prospecto agregado", `${o.prospect} entró en la etapa: ${$("f_stage") ? ({pitch:"Pitch", skeleton:"Skeleton y contenido", build:"Lanzamiento", launched:"Publicado"})[stg] : stg}, a nombre de ${String(nameOf(S.ps||{}, u)).split(" (")[0]}.`);
+    }catch(_){ showResult("err", "No se guardó", "Revisa tu conexión e intenta de nuevo. Tus datos siguen en el formulario."); }
+    finally{ $("submitBtn").disabled = false; }
+    return;
+  }
   if (o.perfil===3 && !S.editingId && !$("f_p3meet").checked){
     { const dm = await dupCheck(o.profile, ""); if (dm){ showResult("warn", "Ese perfil ya está registrado", dm + " No se envió."); $("submitBtn").disabled = false; return; } }
     try{ await saveVip(o); resetForm(); if (BOOK.open) closeBook(); showResult("ok", "Agregado a la lista de Mich", `${o.prospect} ya está en la lista; Mich hace el primer contacto.`); }
@@ -3820,7 +3864,7 @@ function calEvents(teamAll){
     const st = statusOf(id), f = m.flow || {}, v = S.validations[id];
     if (f.lostAt || st==="rejected") return;
     const at = effAt(m);
-    if (at && !f.inviteDeclinedAt && (st==="pending" || st==="valid" || st==="attended" || reschedPending(m, v)))
+    if (at && !m.noMeet && !f.inviteDeclinedAt && (st==="pending" || st==="valid" || st==="attended" || reschedPending(m, v)))
       ev.push({at, kind:"pitch", label:`Pitch · ${m.prospect}`, who:uid, key:dk(uid,id)});
     if (f.skeletonMeetAt && !f.skeletonAt)
       ev.push({at:f.skeletonMeetAt, kind:"skel", label:`Skeleton · ${m.prospect}`, who:uid, key:dk(uid,id), booked:!!f.skeletonMeetBookedAt});
@@ -4001,7 +4045,7 @@ function renderPlan(){
     if (f.lostAt || st==="rejected") return;
     const push = (at, kind, label) => { const ts = meetTs(at); if (!isNaN(ts) && ts >= t0 && ts <= eod) evs.push({ts, end:ts+MEET_MIN, kind, label, uid, id, m}); };
     const at = effAt(m);
-    if (at && !f.inviteDeclinedAt && (st==="pending" || st==="valid" || st==="attended" || reschedPending(m, v))) push(at, "pitch", "Pitch");
+    if (at && !m.noMeet && !f.inviteDeclinedAt && (st==="pending" || st==="valid" || st==="attended" || reschedPending(m, v))) push(at, "pitch", "Pitch");
     if (f.skeletonMeetAt && !f.skeletonAt) push(f.skeletonMeetAt, "skel", "Meet de skeleton");
     if (f.buildMeetAt && !f.launchedAt) push(f.buildMeetAt, "build", "Sesión de lanzamiento");
   }));
