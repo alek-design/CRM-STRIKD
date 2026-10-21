@@ -4989,7 +4989,7 @@ function taskOpen(){
     if (!title || !who){ $("tkErr").textContent = "Escribe la tarea y elige para quién."; return; }
     const teamTo = () => tkInfl() ? tkAssignees().filter(u => u!==(S.config||{}).headId && roleOf(u)!=="manager" && roleOf(u)!=="influencer") : Object.keys(S.team||{}).filter(u => u!==S.uid && u!==(S.config||{}).headId);
     const to = [...new Set(whos.flatMap(v => v==="__team" ? teamTo() : [v]))];
-    const dueAt = due ? Date.parse(due + "T18:00:00-05:00") : 0, now = Date.now();
+    const dueAt = due ? Date.parse(due + "T23:59:00-05:00") : 0, now = Date.now();
     $("tkGo").disabled = true;
     let files = [];
     if (picked.length){
@@ -5053,9 +5053,9 @@ document.addEventListener("click", async e => {
     if (st==="done"){ patch.doneAt = now; patch.doneBy = S.uid; }
     else if (wasDone){ patch.doneAt = 0; patch.reopenedAt = now; patch.reopenedBy = S.uid; } // reabrir una completada
     if (st==="changes" && !(d.fb||"").trim()){ quickToast("Escribe qué hay que ajustar"); return; }
-    if (st==="changes" && Number(d.ext) > 0){ // días extra para entregar los ajustes: nueva fecha a las 6 pm (hora Cancún), contando desde hoy si ya venció
+    if (st==="changes" && Number(d.ext) > 0){ // días extra para entregar los ajustes: nueva fecha a las 11:59 pm (hora Cancún), contando desde hoy si ya venció
       const base = Math.max(Number(x0.dueAt)||0, now), day = new Date(base - OFF + Number(d.ext)*DAY).toISOString().slice(0,10);
-      patch.dueAt = Date.parse(day + "T18:00:00-05:00"); patch.dueSoonAt = null; patch.lateAt = null;
+      patch.dueAt = Date.parse(day + "T23:59:00-05:00"); patch.dueSoonAt = null; patch.lateAt = null;
       patch.comments = (patch.comments || (x0.comments||[])).concat([{by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], text:`📅 Nueva fecha de entrega: ${fmtLocal(patch.dueAt).split(",")[0]} (+${d.ext} día${Number(d.ext)===1?"":"s"})`, at:now+1, sys:true}]); }
     const ok = await taskSave(k, patch); if (ok){ tkWho(k, x0, st, (d.fb||"").trim()); delete TKD[k]; if (st==="done" || st==="review") TK_OPEN = ""; quickToast(wasDone && st!=="done" ? "↺ Reabierta" : "✓ " + TK_ST[st]); schedule(); } return; }
   const cm = e.target.closest("[data-tkcmt]"); if (cm){ e.stopPropagation(); const k = cm.dataset.tkcmt, d = TKD[k] || {}, x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
@@ -5082,7 +5082,7 @@ document.addEventListener("click", async e => {
     const patch = {};
     if (d.e_title !== undefined){ const t = d.e_title.trim(); if (!t){ quickToast("La tarea necesita un título"); return; } if (t !== x0.title) patch.title = t; }
     if (d.e_note !== undefined && d.e_note.trim() !== (x0.note||"")) patch.note = d.e_note.trim();
-    if (d.e_due !== undefined){ const du = d.e_due ? Date.parse(d.e_due + "T18:00:00-05:00") : 0; if (du !== (x0.dueAt||0)){ patch.dueAt = du; patch.dueSoonAt = null; patch.lateAt = null; } }
+    if (d.e_due !== undefined){ const du = d.e_due ? Date.parse(d.e_due + "T23:59:00-05:00") : 0; if (du !== (x0.dueAt||0)){ patch.dueAt = du; patch.dueSoonAt = null; patch.lateAt = null; } }
     if (d.e_pub !== undefined && x0.publishAt){ const pt = vTs(d.e_pub); if (!(pt > Date.now())){ quickToast("Elige una fecha y hora futura para publicarla (o toca Publicar ahora)"); return; } if (pt !== x0.publishAt) patch.publishAt = pt; }
     if (d.e_to !== undefined && d.e_to !== k.split("/")[0]){ // pasarla a otra persona: se mueve completa (entrega, comentarios y archivos)
       const [ou, oid] = k.split("/"), nu = d.e_to, ref = db.collection(`meets/${nu}/tasks`).doc(), data = {...x0, ...patch, movedFrom:ou, movedAt:Date.now(), status:tkSt(x0)==="done" ? "done" : "todo"};
@@ -5576,7 +5576,7 @@ function rulesHtml(){
   if (!rules.length) return "";
   const ppl = r => { const head = (S.config||{}).headId; return r.to === "__team" ? Object.keys(S.members||{}).filter(u => u!==head && (roleOf(u)==="am" || !roleOf(u)) && (S.isOwner || roleOf(r.by)==="influencer" || mgrOf(u)===r.by || !mgrOf(u))) : (Array.isArray(r.to) ? r.to : []); };
   return `<section class="pg2 tt-rules"><div class="pg2-card">${rules.map(([id, r]) => { const ex = new Set(r.exclude || []);
-    return `<div class="rl"><div class="rl-h"><b>${esc(r.title)}</b><small>Cada ${esc(DOWS[Number(r.weekday)]||"semana")} · 6 pm${tkListMetric(r.metric) && r.goal ? ` · meta ${r.goal}${r.metric==="ugc" ? " UGC" : ""}` : ""}</small></div>
+    return `<div class="rl"><div class="rl-h"><b>${esc(r.title)}</b><small>Cada ${esc(DOWS[Number(r.weekday)]||"semana")} · 11:59 pm${tkListMetric(r.metric) && r.goal ? ` · meta ${r.goal}${r.metric==="ugc" ? " UGC" : ""}` : ""}</small></div>
       <div class="rl-p">${ppl(r).map(u => `<button type="button" class="rl-u${ex.has(u) ? " off" : ""}" data-rlu="${esc(id)}|${esc(u)}" title="${ex.has(u) ? "No le llega · toca para volver a incluir" : "Le llega · toca para quitar"}">${ex.has(u) ? "" : "✓ "}${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</button>`).join("")}</div>
       ${RLED.id === id ? `<div class="tkm-form rl-ed"><input data-rled="title" value="${esc(RLED.title)}" placeholder="Título" aria-label="Título">
         <select data-rled="weekday" aria-label="Día de entrega">${DOWS.map((d,i) => `<option value="${i}"${Number(RLED.weekday)===i ? " selected" : ""}>Cada ${d}</option>`).join("")}</select>
