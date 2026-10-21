@@ -9,6 +9,7 @@ const taskrules = require("../lib/taskrules");
 const reminders = require("../lib/reminders");
 const resptime = require("../lib/resptime");
 const emailauto = require("../lib/emailauto");
+const weekfreeze = require("../lib/weekfreeze");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const arr = j => Array.isArray(j) ? j : (j && (j.data || j.items || j.conversations || j.messages || j.results)) || [];
 async function get(path, ms){
@@ -37,6 +38,7 @@ module.exports = async (req, res) => {
       let recordatorios = null; try{ recordatorios = await reminders.run(c); }catch(e){ recordatorios = {error:String(e.message || e)}; }
       let respuesta = null; try{ respuesta = await resptime.run(c, get); }catch(e){ respuesta = {error:String(e.message || e)}; }
       let emails = null; try{ emails = await emailauto.run(c); }catch(e){ emails = {error:String(e.message || e)}; }
+      let semana = null; try{ semana = await weekfreeze.run(c); }catch(e){ semana = {error:String(e.message || e)}; }
       const list = arr(await get("/v1/conversations?limit=100"));
       const since = new Date(Date.now() - 30*60e3).toISOString();
       // último mensaje QUE ESCRIBIÓ EL PROSPECTO por conversación: solo eso avisa (no lo que manda el equipo)
@@ -91,7 +93,7 @@ module.exports = async (req, res) => {
           errs.push(...(sendTo.lastErrors || []));
         }
       }
-      return {ok:true, ...(reporte ? {reporte} : {}), ...(semanales ? {semanales} : {}), ...(recordatorios ? {recordatorios} : {}), ...(respuesta ? {tiempo_respuesta:respuesta} : {}), ...(emails ? {emails} : {}), revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(autos.length ? {automaticos:autos} : {}), ...(errs.length ? {errores:errs.slice(0,3)} : {})};
+      return {ok:true, ...(semana ? {semana} : {}), ...(reporte ? {reporte} : {}), ...(semanales ? {semanales} : {}), ...(recordatorios ? {recordatorios} : {}), ...(respuesta ? {tiempo_respuesta:respuesta} : {}), ...(emails ? {emails} : {}), revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(autos.length ? {automaticos:autos} : {}), ...(errs.length ? {errores:errs.slice(0,3)} : {})};
     });
     res.status(out.status || 200).json(out);
   }catch(err){ res.status(500).json({error:String(err.message || err)}); }

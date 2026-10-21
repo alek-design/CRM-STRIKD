@@ -35,6 +35,27 @@ module.exports = async (req, res) => {
         await c.query("update public.docs set data = data || $2::jsonb, version=version+1, updated_at=now() where path=$1", [`meets/${uid}/items/${mid}`, JSON.stringify(patch)]);
         return {ok:true};
       }
+      // Mich mueve o cancela un meet que ella agendó (queda a nombre del AM, por eso lo hace el servidor)
+      if (body.op === "resched" || body.op === "cancel"){
+        const [uid, vid] = String(body.vip || "").split("/");
+        if (!ID.test(uid||"") || !ID.test(vid||"")) return {status:400, error:"Falta el perfil"};
+        const vpath = `meets/${uid}/vip/${vid}`, v = (await c.query("select data from public.docs where path=$1", [vpath])).rows[0];
+        if (!v || !v.data.meetId) return {status:404, error:"Ese perfil no tiene meet."};
+        const ipath = `meets/${uid}/items/${v.data.meetId}`, it = (await c.query("select data from public.docs where path=$1", [ipath])).rows[0];
+        const now = Date.now();
+        if (body.op === "resched"){
+          const meetAt = String(body.meetAt || "");
+          if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(meetAt)) return {status:400, error:"Pon la nueva fecha y hora."};
+          if (!it) return {status:404, error:"Ese meet ya no existe."};
+          const f = it.data.flow || {};
+          await c.query("update public.docs set data = jsonb_deep_merge(data, $2::jsonb), version=version+1, updated_at=now() where path=$1", [ipath, JSON.stringify({reschedAt:meetAt, updatedAt:now, flow:{reschedCount:(f.reschedCount||0)+1, confirmedFor:meetAt, confirmedAt:now, inviteDeclinedAt:null}})]);
+          await c.query("update public.docs set data = data || $2::jsonb, version=version+1, updated_at=now() where path=$1", [vpath, JSON.stringify({meetAt, statusAt:now})]);
+          return {ok:true, mid:v.data.meetId, uid, item:it.data};
+        }
+        if (it) await c.query("update public.docs set data = jsonb_deep_merge(data, $2::jsonb), version=version+1, updated_at=now() where path=$1", [ipath, JSON.stringify({cancelled:true, cancelledAt:now, flow:{lostAt:now, lostWhy:"Canceló el meet (Mich)"}})]);
+        await c.query("update public.docs set data = data || $2::jsonb, version=version+1, updated_at=now() where path=$1", [vpath, JSON.stringify({status:"contactado", statusAt:now, meetId:null, meetAt:null, meetCancelledAt:now})]);
+        return {ok:true, item:it ? it.data : null};
+      }
       const [uid, vid] = String(body.vip || "").split("/");
       if (!ID.test(uid||"") || !ID.test(vid||"")) return {status:400, error:"Falta el perfil"};
       const m = body.meet || {};
@@ -44,7 +65,10 @@ module.exports = async (req, res) => {
       const vpath = `meets/${uid}/vip/${vid}`;
       const v = (await c.query("select data from public.docs where path=$1", [vpath])).rows[0];
       if (!v) return {status:404, error:"Ese perfil ya no está en la lista."};
-      if (v.data.meetId) return {status:409, error:"Ese influencer ya tiene meet registrado."};
+      if (v.data.meetId){
+        const old = (await c.query("select data from public.docs where path=$1", [`meets/${uid}/items/${v.data.meetId}`])).rows[0];
+        if (old && !old.data.cancelled && !(old.data.flow || {}).lostAt) return {status:409, error:"Ese influencer ya tiene meet registrado."};
+      }
       const x = v.data, now = Date.now(), mid = crypto.randomBytes(10).toString("hex");
       const item = {perfil:3, prospect:x.prospect||"", profile:x.profile||"", followers:x.followers||0, notes:x.notes||"", channel:"Mich (contacto directo)",
         email, phone:String(m.phone||"").trim(), meetAt, link:"", source:"mich", bookedBy:me.id, createdAt:now, updatedAt:now, week:String(m.week||""), vipId:vid,

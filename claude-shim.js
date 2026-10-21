@@ -403,6 +403,11 @@
   window.STRIKD_GMAIL_CONNECT = async (kind) => { const t = (await sb.auth.getSession()).data.session.access_token; location.href = "/api/google/connect?token=" + encodeURIComponent(t) + "&gmail=" + (kind === "general" ? "general" : "me"); };
   window.STRIKD_GMAIL_DISCONNECT = async (kind) => { const t = (await sb.auth.getSession()).data.session.access_token;
     await fetch("/api/gmail", {method:"POST", headers:{authorization:"Bearer " + t, "content-type":"application/json"}, body:JSON.stringify({disconnect:kind === "general" ? "general" : "me"})}); };
+  window.STRIKD_SETACTIVE = async (id, on) => {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch("/api/invite", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify({setActive:{id, on}})});
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "No se pudo guardar"); return j;
+  };
   window.STRIKD_RESETPW = async (uid) => {
     const { data } = await sb.auth.getSession();
     const r = await fetch("/api/invite", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify({resetFor:uid})});

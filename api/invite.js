@@ -12,6 +12,19 @@ module.exports = async (req, res) => {
   const { data: me } = await admin.from("app_users").select("role").eq("id", who.user.id).maybeSingle();
   if (!me || me.role !== "head") return res.status(403).json({error:"Solo el Head puede dar de alta personas"});
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+  // dar de baja (o reactivar) a alguien: ya no entra, no sale en el ranking ni recibe tareas; su historial se queda
+  if (body.setActive){
+    const id = String(body.setActive.id || ""), on = !!body.setActive.on;
+    if (!/^[0-9a-f-]{36}$/i.test(id) || id === who.user.id) return res.status(400).json({error:"Usuario no válido"});
+    const { data: t } = await admin.from("app_users").select("role").eq("id", id).maybeSingle();
+    if (!t) return res.status(404).json({error:"No existe ese usuario"});
+    if (t.role === "head") return res.status(403).json({error:"No se puede dar de baja al Head"});
+    const { error: ea } = await admin.from("app_users").update({active:on}).eq("id", id);
+    if (ea) return res.status(500).json({error:ea.message});
+    const { data: md } = await admin.from("docs").select("data").eq("path", "members/" + id).maybeSingle();
+    await admin.from("docs").upsert({path:"members/" + id, data:{...((md && md.data) || {}), inactive:!on, ...(on ? {} : {inactiveAt:Date.now()})}});
+    return res.status(200).json({ok:true});
+  }
   // contraseña temporal nueva para alguien del equipo (no se puede ver la actual, solo reemplazarla)
   if (body.resetFor){
     const id = String(body.resetFor);
