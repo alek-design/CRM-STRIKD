@@ -246,7 +246,9 @@
       if (file.size > 20*1024*1024) throw {code:"too_large"};
       const ext = (file.name.match(/\.[a-z0-9]+$/i) || [""])[0].toLowerCase();
       const id = crypto.randomUUID().replace(/-/g, "") + ext;
-      // primero con permiso firmado del servidor (sirve para todo el equipo y para PDF); si no, directo
+      // 1) permiso firmado del servidor (todo el equipo, fotos y PDF hasta 20 MB)
+      let firstErr = null;
+      const guess = file.type || (/\.pdf$/i.test(file.name) ? "application/pdf" : /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : "");
       try{
         const t = (await sb.auth.getSession()).data.session.access_token;
         const r = await fetch("/api/upload", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + t}, body:JSON.stringify({sign:true, name:file.name, type:file.type, size:file.size})});
@@ -255,13 +257,19 @@
           // con el tipo correcto aunque el teléfono no lo mande (PDF o HEIC sin tipo), para que se vea bien al abrirlo
           const body = file.type === j.contentType ? file : new File([file], file.name || j.id, {type:j.contentType});
           const up = await sb.storage.from("assets").uploadToSignedUrl(j.id, j.token, body, {contentType:j.contentType});
-          if (up.error) throw {code:"upload_failed", message:up.error.message};
-          return {id:j.id, url:"/_blob/" + j.id, sizeBytes:file.size, contentType:j.contentType};
-        }
-        if (r.status === 400 || r.status === 413) throw {code: r.status === 413 ? "too_large" : "unsupported_type", message:j.error};
-      }catch(err){ if (err && err.code) throw err; }
-      const { error } = await sb.storage.from("assets").upload(id, file, {contentType:file.type || undefined});
-      if (error) throw {code: /mime|type/i.test(error.message) ? "unsupported_type" : "upload_failed", message:error.message};
+          if (!up.error) return {id:j.id, url:"/_blob/" + j.id, sizeBytes:file.size, contentType:j.contentType};
+          firstErr = {code:"upload_failed", message:up.error.message};
+        } else if (r.status === 400 || r.status === 413) throw {code: r.status === 413 ? "too_large" : "unsupported_type", message:j.error, final:true};
+        else firstErr = {code:"upload_failed", message:j.error || ("Error " + r.status)};
+      }catch(err){ if (err && err.final) throw err; firstErr = firstErr || {code:"upload_failed", message:(err && err.message) || String(err)}; }
+      // 2) respaldo: lo sube el servidor directo (hasta 3 MB, fotos y PDF)
+      if (file.size <= 3*1024*1024 && /^(image\/(jpeg|png|webp)|application\/pdf)$/i.test(guess) && window.STRIKD_UPLOAD){
+        try{ const f2 = file.type === guess ? file : new File([file], file.name || "archivo", {type:guess}); const j = await window.STRIKD_UPLOAD(f2, file.name || "archivo");
+          return {id:"", url:j.url, sizeBytes:file.size, contentType:j.type || guess}; }catch(e2){ firstErr = firstErr || {code:"upload_failed", message:e2.message}; }
+      }
+      // 3) último intento: directo al almacenamiento
+      const { error } = await sb.storage.from("assets").upload(id, file, {contentType:file.type || guess || undefined});
+      if (error) throw {code: "upload_failed", message:(firstErr && firstErr.message) || error.message};
       return {id, url:"/_blob/" + id, sizeBytes:file.size, contentType:file.type};
     }
   };
