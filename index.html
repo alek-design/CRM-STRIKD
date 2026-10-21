@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-21 04:16:17 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-21 04:24:03 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792556177">
+<link rel="stylesheet" href="/auth.css?v=1792556643">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792556177"></script>
+<script src="/claude-shim.js?v=1792556643"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1060,9 +1060,9 @@ label.f em{color:var(--bad);font-style:normal}
 .mt-form{display:grid;gap:8px;background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:12px}
 
 /* Mi lista: encabezado compacto, toggle arriba a la derecha y 3 indicadores */
-#view-mich .mi-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap}#view-mich .mi-head .sub{margin:2px 0 0}
+#view-mich .mi-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}#view-mich .mi-head .sub{margin:2px 0 0}
 .mi-pill{flex:none;padding:6px 6px 6px 12px;font-size:13px;gap:8px}
-.mi-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 12px}
+.mi-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0 12px}
 .mi-kpi{background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:10px 12px;display:grid;gap:2px}
 .mi-kpi b{font-size:24px;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.mi-kpi span{font-size:12px;color:var(--muted);font-weight:600}
 .mi-kpi.pub b{color:var(--ok-fg)}
@@ -1181,11 +1181,13 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .mi-pill.on{border-color:var(--ok-line);background:var(--ok-soft2);color:var(--ok-fg)}.mi-pill.on i{background:var(--ok-fg)}.mi-pill.on i::after{transform:translateX(14px)}
 .mi-hint{margin:6px 0 12px;font-size:12.5px;color:var(--muted)}
 .mi-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.mi-bar input{flex:1;min-width:180px}
-.mi-list{display:grid;gap:8px}
+.mi-list{display:grid;gap:8px;grid-template-columns:minmax(0,1fr)}#miBox,#view-mich>*{min-width:0}.mi-row{min-width:0}
 .mi-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line2);color:var(--fg);text-decoration:none;transition:opacity .2s,transform .1s}
 .mi-row:active{transform:scale(.99)}.mi-row.done{opacity:.7}
 .mi-av{width:44px!important;height:44px!important;font-size:16px!important}
-.mi-m{flex:1;min-width:0;display:grid;gap:2px}.mi-m b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mi-m small{color:var(--muted);font-size:12.5px}.mi-n{font-size:12.5px;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mi-m{flex:1;min-width:0;display:grid;gap:4px}.mi-m b{font-size:15px;overflow-wrap:anywhere}.mi-m small{color:var(--muted);font-size:12.5px}
+.mi-n{display:block;font-size:13.5px;line-height:1.45;color:var(--fg2);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:2px;white-space:pre-wrap;overflow-wrap:anywhere}
+.mi-nm{display:flex;align-items:center;gap:6px;min-width:0}.mi-nm .mi-emed{flex:none;margin:0}.mi-row{align-items:flex-start}.mi-row .mi-av{margin-top:2px}.mi-row .mi-ig,.mi-row .mi-st,.mi-row .mi-ic{align-self:center}
 .mi-ig{flex:none;font-weight:700;font-size:13px;padding:7px 12px;border-radius:999px;background:linear-gradient(45deg,#f09433,#dc2743 50%,#bc1888);color:#fff}
 .mi-st{flex:none;font-size:12.5px;font-weight:700;color:var(--ok-fg)}
 .mi-ic{flex:none;width:36px;height:36px;border-radius:50%;border:1px solid var(--line2);background:none;color:var(--fg);font-size:16px;cursor:pointer}
@@ -1287,7 +1289,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .d-done{margin:10px 0;display:grid;gap:4px}.d-done li{display:flex;gap:8px;align-items:center;font-size:13.5px}.d-done ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .rl-ed{margin-top:4px}.rl-acts{display:flex;gap:14px;flex-wrap:wrap}
 .tk-ext{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
-.mi-meet,.mi-reply{display:block;font-size:12px;margin-top:3px}.mi-reply{color:var(--fg2);font-style:italic}
+.mi-meet,.mi-reply{display:block;font-size:12.5px;margin-top:3px}.mi-reply{color:var(--fg2);font-style:italic;font-size:13.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
 .tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
@@ -4321,11 +4323,9 @@ function renderMich(){
     const locked = qt.until && !done(x);
     return `<a class="mi-row${done(x)?" done":""}${locked?" locked":""}" href="${esc(locked ? "#" : (url||"#"))}" target="_blank" rel="noopener" data-mgo="${k}">
       <span class="ck-av mi-av">${ini(x.prospect)}${h?`<img src="https://unavatar.io/instagram/${encodeURIComponent(h)}?fallback=false" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>
-      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><button type="button" class="mi-emed" data-medit="${k}" title="Editar o borrar">✎</button><small>${isUgc(x) ? `<span class="ugc-tag">UGC</span> ` : ""}${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}${x.emailOptout ? " · pidió baja" : x.emailRepliedAt ? " · contestó el email" : x.email2At ? " · 2 emails enviados" : x.email1At ? " · email 1 enviado" : ""} <button type="button" class="mi-emed" data-memail="${k}" title="Corregir o quitar el email">✎</button>${!x.emailOptout && !x.emailRepliedAt ? `<button type="button" class="mi-emed" data-meoptout="${k}" title="Ya no escribirle nunca por email">Pidió baja</button>` : ""}</span>${!x.meetId && !x.email2At && !x.emailOptout && !x.emailRepliedAt && !isUgc(x) ? (x.emailSkip
+      <span class="mi-m"><span class="mi-nm"><b>${esc(x.prospect||h||"Sin nombre")}</b><button type="button" class="mi-emed" data-medit="${k}" title="Editar o borrar">✎</button></span><small>${isUgc(x) ? `<span class="ugc-tag">UGC</span> ` : ""}${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}${x.emailOptout ? " · pidió baja" : x.emailRepliedAt ? " · contestó el email" : x.email2At ? " · 2 emails enviados" : x.email1At ? " · email 1 enviado" : ""} <button type="button" class="mi-emed" data-memail="${k}" title="Corregir o quitar el email">✎</button>${!x.emailOptout && !x.emailRepliedAt ? `<button type="button" class="mi-emed" data-meoptout="${k}" title="Ya no escribirle nunca por email">Pidió baja</button>` : ""}</span>${!x.meetId && !x.email2At && !x.emailOptout && !x.emailRepliedAt && !isUgc(x) ? (x.emailSkip
           ? `<button type="button" class="mi-esk off" data-meskip="${u}/${id}" title="Toca para volver a programarlo">✉ No se le enviará email · Reactivar</button>`
-          : `<button type="button" class="mi-esk" data-meskip="${u}/${id}" title="Si por estrategia no conviene escribirle, toca para no enviarle">${x.email1At ? `✉ Se le mandará el email 2${Number(x.email1At) + 7*DAY > Date.now() ? ` el ${esc(fmtLocal(Number(x.email1At) + 7*DAY).split(",")[0])}` : ""} · Detener` : `✉ Se le escribirá por email${x.contactedAt ? (Number(x.contactedAt) + 10*DAY > Date.now() ? ` el ${esc(fmtLocal(Number(x.contactedAt) + 10*DAY).split(",")[0])}` : " en el próximo envío") : ""} · No enviar`}</button>`) : ""}` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}</span>
-      ${x.meetId && x.meetAt ? `<span class="mi-meet">📅 Meet ${esc(fmtMeetAt(x.meetAt))}<button type="button" class="mi-emed" data-mresched="${k}">🕐 Cambiar</button><button type="button" class="mi-emed" data-mcancel="${k}">Cancelar</button></span>` : ""}
-      ${x.emailRepliedAt && x.emailReplySnippet ? `<span class="mi-reply">💬 Contestó: “${esc(String(x.emailReplySnippet).slice(0, 160))}”</span>` : ""}
+          : `<button type="button" class="mi-esk" data-meskip="${u}/${id}" title="Si por estrategia no conviene escribirle, toca para no enviarle">${x.email1At ? `✉ Se le mandará el email 2${Number(x.email1At) + 7*DAY > Date.now() ? ` el ${esc(fmtLocal(Number(x.email1At) + 7*DAY).split(",")[0])}` : ""} · Detener` : `✉ Se le escribirá por email${x.contactedAt ? (Number(x.contactedAt) + 10*DAY > Date.now() ? ` el ${esc(fmtLocal(Number(x.contactedAt) + 10*DAY).split(",")[0])}` : " en el próximo envío") : ""} · No enviar`}</button>`) : ""}` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}${x.meetId && x.meetAt ? `<span class="mi-meet">📅 Meet ${esc(fmtMeetAt(x.meetAt))} <button type="button" class="mi-emed" data-mresched="${k}">🕐 Cambiar</button><button type="button" class="mi-emed" data-mcancel="${k}">Cancelar</button></span>` : ""}${x.emailRepliedAt && x.emailReplySnippet ? `<span class="mi-reply">💬 Contestó: “${esc(String(x.emailReplySnippet).slice(0, 800))}”</span>` : ""}</span>
       ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${!x.meetId && !x.email1At ? `<button type="button" class="mi-ic mi-back" data-mundo="${k}" aria-label="Regresar a pendientes" title="Regresar a pendientes (no se contactó)">↺</button>` : ""}${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
         : `<span class="mi-ig">Abrir</span>${MICH.on ? "" : `<button type="button" class="mi-ic" data-mdone="${k}" aria-label="Marcar como contactado" title="Marcar como contactado">✓</button>`}`}
     </a>`; }).join("")}</div>`
