@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-21 23:04:14 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-21 23:06:12 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792623854">
+<link rel="stylesheet" href="/auth.css?v=1792623972">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792623854"></script>
+<script src="/claude-shim.js?v=1792623972"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -4277,7 +4277,9 @@ function renderPlan(){
     + (admin ? "" : Object.values(vipItems(meId())).filter(x => (x.status==="interesado" || x.status==="agendo") && x.statusAt && now - x.statusAt < 3*864e5).slice(0, 3).map(x => `<button type="button" class="pl-item task ok" data-gotab="perf"><span class="pl-check" aria-hidden="true"></span><span class="pl-body"><b>${PICON[3]} ${esc(x.prospect)} ${x.status==="agendo" ? "ya agendó meet con Mich" : "está interesado"}</b><small>Una de tus propuestas para Mich</small></span><span class="sema ok"><i></i>Nuevo</span></button>`).join(""))
     ; // los chats sin responder ya están en Mensajes (con su número y notificaciones); no se repiten aquí
   // tareas que asignan el Head o el Manager: salen todos los días hasta que se marcan como hechas
-  const myT = taskList(meId()).filter(([,x]) => tkSt(x)!=="done" && (!otherDay || (x.dueAt >= t0 && x.dueAt <= eod))); // hoy: todas las abiertas; otro día: las que vencen ese día
+  const myT = taskList(meId()).filter(([,x]) => tkSt(x)!=="done" && tkSt(x)!=="review" && (!otherDay || (x.dueAt >= t0 && x.dueAt <= eod))); // hoy: todas las abiertas; otro día: las que vencen ese día
+  // ya enviadas a aprobación: no son pendientes tuyos; van aparte hasta que las aprueben o pidan ajustes
+  const myRev = otherDay ? [] : taskList(meId()).filter(([,x]) => tkSt(x)==="review").sort((a,b) => (b[1].statusAt||0) - (a[1].statusAt||0));
   // Influencer Outreach: confirmar los meets que ella agendó (aparece 3 días antes, vence 2 h antes). Se guarda en el perfil de su lista.
   const mConf = michMode() ? michRows().filter(([,,x]) => x.meetId && x.meetAt && x.confirmedFor !== x.meetAt && x.status==="agendo")
     .map(([u,id,x]) => ({u, id, x, t:meetTs(x.meetAt)})).filter(c => c.t > now && now >= c.t - 3*DAY).sort((a,b) => a.t - b.t) : [];
@@ -4316,7 +4318,7 @@ function renderPlan(){
   const repHtml = replied.length ? `<section class="pg2"><div class="pg2-h"><span>Contestaron tu email</span><b>${replied.length}</b></div><div class="pg2-card">${replied.map(([id,x]) => { const k = `${meId()}/${id}`;
       return `<div class="pr vem"><span class="pr-m"><b>${esc(x.prospect||"Influencer")}</b><small>${esc(fmtLocal(x.emailRepliedAt))}${x.email ? " · " + esc(x.email) : ""}</small>${x.emailReplySnippet ? `<span class="mi-reply">“${esc(String(x.emailReplySnippet).slice(0, 220))}”</span>` : ""}</span>
         <span class="rem-acts">${x.email ? `<button type="button" class="btn small" data-vemcopy="${esc(x.email)}">Copiar email</button>` : ""}<button type="button" class="btn small" data-vrdone="${k}" data-how="no">No le interesa</button><button type="button" class="btn small primary" data-vrdone="${k}">✓ Ya le contesté</button></span></div>`; }).join("")}</div></section>` : "";
-  const taskHtml = remHtml + repHtml + confHtml + emHtml + (myT.length || myDoneAny ? `<section class="pg2">${onlyTasks && myT.length ? "" : `<div class="pg2-h"><span>Tareas</span>${myT.length ? `<b>${myT.length}</b>` : ""}</div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}${doneBox(myDone, ([id,x]) => taskRow(meId(), id, x, false, now), "tkDoneMine")}</div></section>` : "")
+  const taskHtml = remHtml + repHtml + confHtml + emHtml + (myT.length || myRev.length || myDoneAny ? `<section class="pg2">${onlyTasks && myT.length ? "" : `<div class="pg2-h"><span>Tareas</span>${myT.length ? `<b>${myT.length}</b>` : ""}</div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}${myRev.length ? `<details class="tt-done tt-rev"${MORE.tkRevMine ? " open" : ""}><summary data-tkdonet="tkRevMine">Enviadas · esperando aprobación (${myRev.length})</summary>${myRev.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}</details>` : ""}${doneBox(myDone, ([id,x]) => taskRow(meId(), id, x, false, now), "tkDoneMine")}</div></section>` : "")
     + (assigned.some(([,,x]) => tkSt(x)==="review") ? `<section class="pg2"><div class="pg2-h"><span>Por aprobar</span><b>${nRev}</b></div><div class="pg2-card">${assigned.filter(([,,x]) => tkSt(x)==="review").map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "")
     + (asgOpen.length || asgDoneAny ? `<section class="pg2"><div class="pg2-h"><span>Tareas que asignaste</span>${asgOpen.length ? `<b>${asgOpen.length}</b>` : ""}</div><div class="pg2-card">${asgOpen.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}${doneBox(asgDone, ([u,id,x]) => taskRow(u, id, x, true, now), "tkDoneAsg")}</div></section>` : "");
   if (headLite) todo += `<p class="lite-note">Lo operativo lo lleva ${esc(headLiteMgrs())} · <button type="button" class="linkbtn" data-gotab="board">ver Equipo</button></p>`;
@@ -4908,6 +4910,7 @@ function taskRow(u, id, x, lead, now){
       ${d.edit ? editForm : `${x.note ? `<p class="tk-note">${esc(x.note)}</p>` : ""}${files ? `<div class="tk-files">${files}</div>` : ""}${canEdit ? `<button type="button" class="linkbtn tk-editbtn" data-tkedit="${k}">✎ Editar tarea</button>` : ""}`}
       ${prog ? tkMichHtml(k, u, x, lead) : ""}
       ${lead ? `${x.reply ? `<div class="tk-rep"><b>Entrega</b><p>${esc(x.reply)}</p></div>` : ""}`
+        : st==="review" ? `${x.reply ? `<div class="tk-rep"><b>Tu entrega</b><p>${esc(x.reply)}</p></div>` : ""}`
         : `<label class="f">Tu avance o entrega<textarea rows="3" data-tkrep="${k}" placeholder="Escribe lo que hiciste, links, dudas…">${esc(d.rep ?? x.reply ?? "")}</textarea></label>
           ${d.edit ? "" : `<div class="tk-files"><label class="tk-up">${d.up ? "Subiendo…" : "📎 Subir archivo o foto"}<input type="file" accept="image/*,application/pdf" data-tkfile="${k}" multiple hidden></label></div>`}`}
       <div class="tk-sec">Comentarios${(x.comments||[]).length ? ` <b>${x.comments.length}</b>` : ""}</div>
@@ -4916,6 +4919,7 @@ function taskRow(u, id, x, lead, now){
       ${lead && michMode() && x.by !== S.uid ? `<p class="mut small">La revisa ${esc(x.byName || "quien la asignó")}.</p>`
         : st==="done" ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|progress">↺ Reabrir</button>${lead ? "" : `<button class="btn small primary" data-tksave="${k}">Guardar cambios</button>`}${(lead || x.by === u) && canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
         : lead ? `<div class="tk-acts"><select class="tk-ext" data-tkext="${k}" aria-label="Días extra para los ajustes" title="Días extra para entregar los ajustes">${[0,1,2,3,5,7].map(n => `<option value="${n}"${Number(d.ext||0)===n ? " selected" : ""}>${n ? `+${n} día${n===1?"":"s"}` : "Misma fecha"}</option>`).join("")}</select><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button>${canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
+        : st==="review" ? `<p class="mut small tk-wait">Enviada a aprobación${x.statusAt ? ` el ${esc(fmtLocal(x.statusAt))}` : ""}. Te avisamos cuando ${esc(String(x.byName || "quien la asignó").split(" ")[0])} la apruebe o pida ajustes.</p><div class="tk-acts"><button class="btn small" data-tkst="${k}|progress">↺ Retirar para editar</button></div>`
         : `<div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}${x.by === u ? `<button class="btn small primary" data-tkst="${k}|done">✓ Completar</button>` : `<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button>`}${x.by === u && canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`}
     </div>`;
   return `<div class="pr tkr st-${st}${due ? " due-" + due.cls : ""}${late?" late":""}${open?" sel":""}" role="button" tabindex="0" data-tkopen="${k}">
