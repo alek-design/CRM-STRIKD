@@ -4423,7 +4423,9 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
 function tkCfHtml(k){ const d = TKD[k] || {}; return (d.cfiles||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name)}`}<button type="button" data-tkcfx="${k}|${i}" aria-label="Quitar">×</button></span>`).join("") + (d.cup ? `<span class="tk-cf tk-cf-up">Subiendo…</span>` : ""); }
 // pinta las fotos pendientes del comentario aunque la caja esté en uso (no espera al re-render)
 function tkCfPaint(k){ document.querySelectorAll(`[data-tkcfile="${CSS.escape(k)}"]`).forEach(inp => { const box = inp.closest(".tk-cbox"); const c = box && box.querySelector(".tk-cfs"); if (c) c.innerHTML = tkCfHtml(k); }); }
-const tkIsImg = f => /^image\//.test((f && f.type) || "") || /\.(png|jpe?g|gif|webp|heic|heif|avif)$/i.test((f && f.name) || "");
+// HEIC solo se puede mostrar como imagen en Safari; en los demás navegadores sale como archivo para abrir
+const canHeic = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent || "");
+const tkIsImg = f => { const t = (f && f.type) || "", n = (f && f.name) || ""; if (/heic|heif/i.test(t + " " + n) && !canHeic) return false; return /^image\//.test(t) || /\.(png|jpe?g|gif|webp|heic|heif|avif)$/i.test(n); };
 // vencida / por vencer (hoy o mañana) — no aplica a completadas ni a las que esperan aprobación
 function tkDue(x, now){
   const st = tkSt(x); if (!x.dueAt || st==="done" || st==="review") return null;

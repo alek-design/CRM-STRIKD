@@ -252,7 +252,9 @@
         const r = await fetch("/api/upload", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + t}, body:JSON.stringify({sign:true, name:file.name, type:file.type, size:file.size})});
         const j = await r.json().catch(() => ({}));
         if (r.ok && j.token){
-          const up = await sb.storage.from("assets").uploadToSignedUrl(j.id, j.token, file, {contentType:j.contentType});
+          // con el tipo correcto aunque el teléfono no lo mande (PDF o HEIC sin tipo), para que se vea bien al abrirlo
+          const body = file.type === j.contentType ? file : new File([file], file.name || j.id, {type:j.contentType});
+          const up = await sb.storage.from("assets").uploadToSignedUrl(j.id, j.token, body, {contentType:j.contentType});
           if (up.error) throw {code:"upload_failed", message:up.error.message};
           return {id:j.id, url:"/_blob/" + j.id, sizeBytes:file.size, contentType:j.contentType};
         }
