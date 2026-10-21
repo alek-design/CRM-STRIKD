@@ -1036,6 +1036,35 @@ label.f em{color:var(--bad);font-style:normal}
 
 
 .mi-q{width:100%;box-sizing:border-box;margin:0 0 10px}
+/* Contactos: lista del funnel */
+.ct-f{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+.ct-f input[type=search]{flex:1 1 240px;min-width:0}
+.ct-f select{flex:1 1 150px;min-width:0}
+.ct-sum{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.ct-sum button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font:inherit;font-size:13px;color:inherit;cursor:pointer}
+.ct-sum button.on{border-color:var(--ink,currentColor);font-weight:600}
+.ct-list{display:grid;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.ct-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.5fr) minmax(0,1fr) minmax(0,1.7fr) minmax(0,.9fr);gap:12px;align-items:center;padding:10px 14px;border:0;border-top:1px solid var(--line);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.ct-row:first-child{border-top:0}
+.ct-row.hd{cursor:default;font-size:12px;text-transform:uppercase;letter-spacing:.04em;opacity:.65;background:none}
+.ct-row:not(.hd):hover{background:color-mix(in srgb, currentColor 5%, transparent)}
+.ct-list.solo .ct-row{grid-template-columns:minmax(0,1.6fr) minmax(0,1.5fr) minmax(0,1.7fr) minmax(0,.9fr)}
+.ct-list.solo .ct-who{display:none}
+.ct-row > span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ct-n b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-row small{display:block;opacity:.7;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-st{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:color-mix(in srgb, currentColor 10%, transparent);margin-bottom:2px}
+.ct-st.pub{background:#d8f5e3;color:#11653a}.ct-st.lost{background:#fde2e1;color:#9b1c1c}.ct-st.rej{background:#eee;color:#555}
+.ct-age{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.ct-age i{width:8px;height:8px;border-radius:50%;flex:none;background:#2fb36b}
+.ct-age.soon i{background:#e5b100}.ct-age.late i{background:#d93a3a}.ct-age.off i{background:#bbb}
+.ct-more{margin:10px auto 0;display:block}
+@media (max-width:760px){
+  .ct-row.hd{display:none}
+  .ct-row,.ct-list.solo .ct-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 10px}
+  .ct-n{grid-column:1}.ct-age{grid-column:2;grid-row:1;justify-self:end}
+  .ct-c,.ct-who,.ct-stg{grid-column:1 / -1}
+}
 .mi-act{display:flex;align-items:center;gap:8px;width:100%;font:inherit;text-align:left;background:var(--surface);border:1px dashed var(--line2);border-radius:12px;padding:9px 12px;margin:-2px 0 10px;color:var(--fg);cursor:pointer}
 .mi-act b{font-size:13.5px}.mi-act span{font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mi-act em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--muted)}
 .mi-act:not(.none){border-style:solid;border-color:var(--ok-line);background:var(--ok-soft2)}
@@ -1424,6 +1453,7 @@ body.mob-open header.top{z-index:31}
       <button role="tab" data-tab="mich" id="tabMich" hidden>Mi lista</button>
       <button role="tab" data-tab="msgs" id="tabMsgs">Mensajes<span class="count" id="msgCount" hidden>0</span></button>
       <button role="tab" data-tab="flow" id="tabFlow" hidden>Pipeline<span class="count late" id="lateCount" hidden>0</span></button>
+      <button role="tab" data-tab="contacts" id="tabContacts">Contactos</button>
       <button role="tab" data-tab="funnel" id="tabFunnel" hidden>Resultados</button>
       <button role="tab" data-tab="report" id="tabReport" hidden>Reporte del día</button>
       <button role="tab" data-tab="perf" id="tabPerf" hidden>Mi desempeño</button>
@@ -1604,6 +1634,18 @@ body.mob-open header.top{z-index:31}
       <select class="inline" id="funCanal" aria-label="Canal"><option value="">Todos los canales</option><option value="organico">Orgánico · redes</option><option value="whatsapp">WhatsApp outreach</option></select>
       <select class="inline" id="funPeriod" aria-label="Periodo"><option value="">Todo</option><option value="30">Últimos 30 días</option><option value="7">Últimos 7 días</option></select></div>
     <div id="funnelBox"></div>
+  </section>
+
+  <section class="view" id="view-contacts" hidden>
+    <div class="row"><div><h2>Contactos</h2><p class="sub" id="ctSub">Todos los que entraron al funnel y en qué etapa van o se quedaron.</p></div><div class="spacer"></div><button type="button" class="btn small" id="ctXls" hidden>Descargar Excel</button></div>
+    <div class="ct-f">
+      <input type="search" id="ctQ" placeholder="Buscar nombre, @usuario, email o teléfono" aria-label="Buscar">
+      <select class="inline" id="ctEst" aria-label="Estado" hidden><option value="act">Activos en el proceso</option><option value="pub">Publicados</option><option value="lost">Perdidos</option><option value="rej">Rechazados</option><option value="">Todos</option></select>
+      <select class="inline" id="ctStep" aria-label="Etapa"><option value="">Todas las etapas</option></select>
+      <select class="inline" id="ctWho" aria-label="Persona" hidden><option value="">Todo el equipo</option></select>
+      <select class="inline" id="ctCanal" aria-label="Canal"><option value="">Todos los canales</option><option value="organico">Orgánico · redes</option><option value="whatsapp">WhatsApp outreach</option></select>
+    </div>
+    <div id="ctBox"></div>
   </section>
 
   <section class="view" id="view-perf" hidden>
@@ -1787,7 +1829,7 @@ function showTab(t){
   document.querySelectorAll(".subnav [data-go]").forEach(b => b.classList.toggle("on", b.dataset.go===t));
   closeAcct();
   if (t==="admin" || t==="rules" || (t==="org" && !S.isOwner)) t = S.tab = "board";
-  ["board","mine","mich","msgs","flow","agenda","funnel","report","vip","wa","perf","org","hist","rules","settings"].forEach(v => $("view-"+v).hidden = v!==t);
+  ["board","mine","mich","msgs","flow","agenda","contacts","funnel","report","vip","wa","perf","org","hist","rules","settings"].forEach(v => $("view-"+v).hidden = v!==t);
   try{ localStorage.setItem("meets_tab", t); }catch(e){}
   schedule();
 }
@@ -2154,7 +2196,7 @@ async function render(){
   { // Influencer: en Equipo también ve el ranking de puntos de los AM (solo consulta)
     const lb = $("flowLb"), show = michMode() && S.tab==="flow";
     if (lb){ lb.hidden = !show; if (show){ const h = `<section class="pg2 flow-lb"><div class="pg2-h"><span>Ranking de la semana</span><small class="mut">cierra vie 6 pm</small></div>${boardHtml(ps, ids, S.currentKey, true)}</section>`; if (lb.dataset.h !== h){ lb.innerHTML = h; lb.dataset.h = h; } } } }
-  syncAutoV(); inviteSync(); try{ emailIntro(); updNotice(); }catch(_){} renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps);
+  syncAutoV(); inviteSync(); try{ emailIntro(); updNotice(); }catch(_){} renderMyVip(); renderWa(); renderMyWa(); renderMsgs(); renderTpl(); renderInbox(); renderIskra(); renderSlots(); syncMsgSeg(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps); renderContacts();
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -5288,11 +5330,11 @@ function applyRole(saved){
   if (lead){
     if (!downloads) claude.use("downloads").then(d => { downloads = d; $("xlsBtn").hidden = !d; });
     syncAdminSubs();
-    if (first) showTab(["msgs","flow","agenda","funnel","vip","wa","org","board"].includes(saved) ? saved : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
+    if (first) showTab(["msgs","flow","agenda","contacts","funnel","vip","wa","org","board"].includes(saved) ? saved : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
     else showTab("agenda");
   } else {
     startMemberSide();
-    if (first) showTab(["agenda","msgs","perf","board"].includes(saved) ? saved : saved==="mine" ? "agenda" : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
+    if (first) showTab(["agenda","msgs","perf","contacts","board"].includes(saved) ? saved : saved==="mine" ? "agenda" : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
     else showTab("agenda");
   }
   schedule();
@@ -7155,6 +7197,91 @@ function funnelCard(title, fun, isTeam){
     <div class="fn-times"><span>Registro → pitch <b>${d(t.pitch)}</b></span><span>Pitch → skeleton enviado <b>${d(t.send)}</b></span><span>Envío → aprobado <b>${d(t.appr)}</b></span><span>Aprobado → publicado <b>${d(t.pub)}</b></span></div>
   </section>`;
 }
+/* ---------- Contactos: todos los que entraron al funnel ----------
+   AM: solo los suyos · Head, Manager e Influencer: todo el equipo */
+const CT = {lim:60};
+function ctAll(){ return !S.viewAs && (S.isLead || michMode()); }
+function ctRows(){
+  const src = ctAll() ? Object.entries(S.allEvery && Object.keys(S.allEvery).length ? S.allEvery : S.all) : [[S.viewAs || meId(), myItems()]];
+  const out = [];
+  src.forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
+    if (!m) return;
+    const sg = stageOf(id, m), sp = stepOf(id, m), f = m.flow || {};
+    const est = sp==="lost" ? "lost" : sp==="rejected" ? "rej" : sp===5 ? "pub" : "act";
+    out.push({uid, id, m, sg, sp, est, last:lastActOf(m, S.validations[id]), paused: !!(f.holdUntil && f.holdUntil > Date.now())});
+  }));
+  return out;
+}
+const CT_EST = {act:"Activo", pub:"Publicado", lost:"Perdido", rej:"Rechazado"};
+function ctFiltered(rows, skipEst){
+  const q = $("ctQ").value.trim().toLowerCase(), est = $("ctEst").value, step = $("ctStep").value, who = ctAll() ? $("ctWho").value : "", canal = $("ctCanal").value;
+  const dq = q.replace(/\D/g, "");
+  return rows.filter(r => (skipEst || !est || r.est===est) && (!step || String(r.sp)===step) && (!who || r.uid===who) && (!canal || canalOf(r.m)===canal)
+    && (!q || [r.m.prospect, r.m.profile, r.m.email].some(x => String(x||"").toLowerCase().includes(q)) || (dq.length >= 3 && String(r.m.phone||"").replace(/\D/g, "").includes(dq))));
+}
+function renderContacts(){
+  $("tabContacts").hidden = false;
+  const box = $("ctBox"); if (!box || S.tab!=="contacts" || busyIn($("view-contacts"))) return;
+  const all = ctAll(), rows = ctRows(), now = Date.now();
+  $("ctSub").textContent = all ? "Todos los que entraron al funnel del equipo y en qué etapa van o se quedaron." : "Todos tus prospectos que entraron al funnel y en qué etapa van o se quedaron.";
+  const sh = `<option value="">Todas las etapas</option>` + STEPS.map(s => `<option value="${s.n}">${esc(s.name)}</option>`).join("");
+  if ($("ctStep").dataset.h !== sh){ const v = $("ctStep").value; $("ctStep").innerHTML = sh; $("ctStep").dataset.h = sh; $("ctStep").value = v; }
+  $("ctWho").hidden = !all;
+  if (all){
+    const ppl = [...new Set(rows.map(r => r.uid))].sort((a,b) => String(nameOf(S.ps,a)).localeCompare(String(nameOf(S.ps,b))));
+    const wh = `<option value="">Todo el equipo</option>` + ppl.map(u => `<option value="${esc(u)}">${esc(nameOf(S.ps,u))}</option>`).join("");
+    if ($("ctWho").dataset.h !== wh){ const v = $("ctWho").value; $("ctWho").innerHTML = wh; $("ctWho").dataset.h = wh; $("ctWho").value = v; }
+  }
+  $("ctXls").hidden = !downloads;
+  // conteo por estado con los demás filtros aplicados
+  const base = ctFiltered(rows, true), cnt = {act:0, pub:0, lost:0, rej:0}; base.forEach(r => cnt[r.est]++);
+  const est = $("ctEst").value;
+  const sum = `<div class="ct-sum">${["act","pub","lost","rej"].map(k => `<button type="button" data-ctest="${k}" class="${est===k?"on":""}">${{act:"Activos",pub:"Publicados",lost:"Perdidos",rej:"Rechazados"}[k]} <b>${cnt[k]}</b></button>`).join("")}<button type="button" data-ctest="" class="${est===""?"on":""}">Todos <b>${base.length}</b></button></div>`;
+  const list = ctFiltered(rows).sort((a,b) => b.last - a.last);
+  const age = r => {
+    const d = now - r.last, txt = d < DAY ? "Hoy" : `Hace ${humanize(d)}`;
+    const cls = r.est!=="act" || r.paused ? "off" : d >= IDLE_LATE ? "late" : d >= IDLE_WARN ? "soon" : "";
+    return `<span class="ct-age ${cls}" title="Último movimiento: ${esc(fmtLocal(r.last))}"><i></i>${txt}</span>`;
+  };
+  const row = r => { const m = r.m, stepN = typeof r.sp==="number" ? (STEPS.find(s => s.n===r.sp)||{}).name : "";
+    return `<button type="button" class="ct-row" data-ctopen="${esc(r.uid)}__${esc(r.id)}">
+      <span class="ct-n"><b>${perfilIcon(m)}${esc(m.prospect||"Sin nombre")}</b><small>${esc(m.profile||m.role||m.channel||"")}</small></span>
+      <span class="ct-c"><small>${esc(m.email||"Sin email")}</small><small>${esc(m.phone||"Sin teléfono")}</small></span>
+      <span class="ct-who"><small>${esc(nameOf(S.ps, r.uid))}</small></span>
+      <span class="ct-stg"><span class="ct-st ${r.est}">${r.est==="act" ? esc(stepN||"Activo") : CT_EST[r.est]}</span><small>${esc(r.sg.t)}</small></span>
+      ${age(r)}
+    </button>`; };
+  const shown = list.slice(0, CT.lim);
+  box.innerHTML = sum + (list.length ? `<div class="ct-list${all?"":" solo"}"><div class="ct-row hd"><span>Prospecto</span><span>Contacto</span><span class="ct-who">${all?"A nombre de":""}</span><span>Etapa</span><span>Último mov.</span></div>${shown.map(row).join("")}</div>`
+    + (list.length > CT.lim ? `<button type="button" class="btn small ct-more" data-ctmore="1">Ver ${Math.min(60, list.length - CT.lim)} más (${list.length - CT.lim} restantes)</button>` : "")
+    : `<p class="mono hint">No hay contactos con estos filtros.</p>`);
+}
+$("ctQ").addEventListener("input", () => { CT.lim = 60; clearTimeout(CT.t); CT.t = setTimeout(renderContactsNow, 200); });
+function renderContactsNow(){ const a = document.activeElement; const keep = a && a.id==="ctQ"; if (keep) a.blur(); renderContacts(); if (keep){ a.focus(); const n = a.value.length; try{ a.setSelectionRange(n, n); }catch(_){} } }
+["ctEst","ctStep","ctWho","ctCanal"].forEach(id => $(id).addEventListener("change", e => { CT.lim = 60; e.target.blur(); schedule(); }));
+$("ctBox").addEventListener("click", e => {
+  const es = e.target.closest("[data-ctest]"); if (es){ $("ctEst").value = es.dataset.ctest; CT.lim = 60; schedule(); return; }
+  if (e.target.closest("[data-ctmore]")){ CT.lim += 60; schedule(); return; }
+  const o = e.target.closest("[data-ctopen]"); if (!o) return;
+  const key = o.dataset.ctopen, uid = key.split("__")[0];
+  if (ctAll()){ S.flowPick = (S.team||{})[uid] ? uid : ""; PICK.teamPath = key; if (o.querySelector(".ct-st.lost")) MORE["teamPathlost"] = true; $("flowLate").checked = false; showTab("flow");
+    setTimeout(() => { const el = document.querySelector('#teamPath .mini.sel') || document.querySelector('#teamPath [data-close]') || $("teamPath"); el && el.scrollIntoView({behavior:"smooth", block:"center"}); }, 150); }
+  else { PICK.myPath = key; $("onlyToday").checked = false; showTab("board"); setTimeout(() => { const el = document.querySelector('#myPath .mini.sel') || document.querySelector('#myPath [data-close]') || $("pathWrap"); el && el.scrollIntoView({behavior:"smooth", block:"center"}); }, 150); }
+});
+$("ctXls").addEventListener("click", async () => {
+  const b = $("ctXls"); b.disabled = true;
+  try{
+    const X = await loadXlsx(), list = ctFiltered(ctRows()).sort((a,c) => c.last - a.last);
+    const data = list.map(r => ({"Prospecto": r.m.prospect||"", "Perfil": r.m.profile||"", "Email": r.m.email||"", "Teléfono": r.m.phone||"", "A nombre de": nameOf(S.ps, r.uid),
+      "Canal": canalOf(r.m)==="whatsapp" ? "WhatsApp" : "Orgánico", "Estado": CT_EST[r.est], "Etapa": typeof r.sp==="number" ? (STEPS.find(s => s.n===r.sp)||{}).name||"" : "", "Detalle": r.sg.t,
+      "Entró": r.m.createdAt ? fmtLocal(r.m.createdAt) : "", "Último movimiento": fmtLocal(r.last)}));
+    const wb = X.utils.book_new(), ws = X.utils.json_to_sheet(data.length ? data : [{"Sin contactos":""}]);
+    ws["!cols"] = [24,26,30,16,20,12,12,20,40,16,18].map(w => ({wch:w})); ws["!autofilter"] = {ref: ws["!ref"]};
+    X.utils.book_append_sheet(wb, ws, "Contactos");
+    await downloads.save({filename:`contactos-funnel-${new Date(Date.now()-OFF).toISOString().slice(0,10)}.xlsx`, data: X.write(wb, {bookType:"xlsx", type:"array"})});
+  }catch(e){ quickToast(e && e.code==="declined" ? "Descarga cancelada." : "No se pudo generar el Excel."); }
+  b.disabled = false;
+});
 function renderFunnel(ps){
   if (!S.viewAs) $("tabFunnel").hidden = !(S.isLead || resultsView());
   $("tabReport").hidden = !(adminMode() || resultsView() || michMode());
