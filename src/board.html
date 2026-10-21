@@ -1036,7 +1036,7 @@ label.f em{color:var(--bad);font-style:normal}
 
 
 .mi-q{width:100%;box-sizing:border-box;margin:0 0 10px}
-/* Contactos: lista del funnel */
+/* Contactos: lista del funnel (AM: suyos · líderes: todos) */
 .ct-f{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
 .ct-f input[type=search]{flex:1 1 240px;min-width:0}
 .ct-f select{flex:1 1 150px;min-width:0}
@@ -1059,6 +1059,8 @@ label.f em{color:var(--bad);font-style:normal}
 .ct-age i{width:8px;height:8px;border-radius:50%;flex:none;background:#2fb36b}
 .ct-age.soon i{background:#e5b100}.ct-age.late i{background:#d93a3a}.ct-age.off i{background:#bbb}
 .ct-more{margin:10px auto 0;display:block}
+.ct-ed{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:0 4px;margin-left:4px;cursor:pointer;border-radius:6px}.ct-ed:hover{color:var(--fg);background:color-mix(in srgb, currentColor 10%, transparent)}
+.ct-row[role=button]:focus-visible{outline:2px solid var(--fg);outline-offset:-2px}
 @media (max-width:760px){
   .ct-row.hd{display:none}
   .ct-row,.ct-list.solo .ct-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 10px}
@@ -3809,12 +3811,21 @@ async function doAct(b){
     const m = (S.all[uid] && S.all[uid][id]) || (uid===S.uid ? S.mine[id] : null); if (!m) return;
     const ed = EDRAFT[k] || {}, msg = box.querySelector(`[data-msg="${k}"]`);
     if (!Object.keys(ed).length){ if (msg) msg.textContent = "No hay cambios por guardar."; return; }
+    sv.disabled = true;
+    const r = await saveProspectEdit(uid, id, m, ed);
+    if (r){ sv.disabled = false; if (msg) msg.textContent = r; return; }
+      delete EDRAFT[k]; if (document.activeElement) document.activeElement.blur(); schedule();
+  });
+});
+
+/* guarda los datos editados de un prospecto (pipeline y Contactos). Regresa "" o el error */
+async function saveProspectEdit(uid, id, m, ed){
     const o = {}; EDIT_FIELDS.forEach(([f]) => { o[f] = String(ed[f] ?? m[f] ?? "").trim(); });
     const wa = (m.canal || "")==="whatsapp";
-    const err = !o.prospect || (!o.email && !m.fromCalendar && !wa) || (!o.profile && !wa) ? "Nombre, email y perfil no pueden quedar vacíos."
+    const miss = [!o.prospect && "nombre", !o.email && !m.fromCalendar && !wa && "email", !o.profile && !wa && "link al perfil"].filter(Boolean);
+    const err = miss.length ? `Falta ${miss.join(" y ")}.`
       : o.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email) ? "Revisa el email." : ((o.profile && !safeUrl(o.profile)) || (o.link && !safeUrl(o.link))) ? "Los links deben empezar con https://" : "";
-    if (err){ if (msg) msg.textContent = err; return; }
-    sv.disabled = true;
+    if (err) return err;
     try{
       const patch = {...o};
       if (adminMode()) patch.adminEditedAt = Date.now(); else patch.updatedAt = Date.now();
@@ -3823,7 +3834,7 @@ async function doAct(b){
       const keysChanged = String(o.profile||"") !== String(m.profile||"") || String(o.email||"").toLowerCase() !== String(m.email||"").toLowerCase();
       if (keysChanged){
         for (const kk of idxKeys(o)){ const d = await db.doc(`prospectIndex/${kk}`).get().catch(() => null);
-          if (d && d.exists && d.data().uid && d.data().mid !== id && !dupDead(d.data().uid, d.data().mid)){ sv.disabled = false; if (msg) msg.textContent = `${kk.startsWith("email:") ? "Ese email" : "Ese perfil"} ya lo registró ${d.data().uid===meId() ? "tú" : nameOf(S.ps||{}, d.data().uid)}.`; return; } }
+          if (d && d.exists && d.data().uid && d.data().mid !== id && !dupDead(d.data().uid, d.data().mid))return `${kk.startsWith("email:") ? "Ese email" : "Ese perfil"} ya lo registró ${d.data().uid===meId() ? "tú" : nameOf(S.ps||{}, d.data().uid)}.`; }
         await freeIdx(uid, id, m); await claimIdx(uid, id, o);
       }
       if (idChanged && !adminMode()){
@@ -3842,11 +3853,9 @@ async function doAct(b){
       }
       await db.doc(`meets/${uid}/items/${id}`).update(patch);
       if (patch.autoValid === false){ AUTOV.delete(id); quickToast("Cambiaste sus datos: vuelve a revisión de tu manager"); }
-      delete EDRAFT[k]; if (document.activeElement) document.activeElement.blur(); schedule();
-    }catch(ex){ sv.disabled = false; if (msg) msg.textContent = "No se guardó. Intenta de nuevo."; }
-  });
-});
-
+      Object.assign(m, patch); return "";
+    }catch(ex){ return "No se guardó. Intenta de nuevo."; }
+}
 /* ---------- Agenda: the admin's week from the page's own data (pitches + skeleton meets) ---------- */
 const CAL_H0 = 8, CAL_H1 = 20; // hours shown, Cancún time
 const DOW = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
@@ -7244,13 +7253,13 @@ function renderContacts(){
     return `<span class="ct-age ${cls}" title="Último movimiento: ${esc(fmtLocal(r.last))}"><i></i>${txt}</span>`;
   };
   const row = r => { const m = r.m, stepN = typeof r.sp==="number" ? (STEPS.find(s => s.n===r.sp)||{}).name : "";
-    return `<button type="button" class="ct-row" data-ctopen="${esc(r.uid)}__${esc(r.id)}">
-      <span class="ct-n"><b>${perfilIcon(m)}${esc(m.prospect||"Sin nombre")}</b><small>${esc(m.profile||m.role||m.channel||"")}</small></span>
+    return `<div role="button" tabindex="0" class="ct-row" data-ctopen="${esc(r.uid)}__${esc(r.id)}">
+      <span class="ct-n"><b>${perfilIcon(m)}${esc(m.prospect||"Sin nombre")}${ctCanEdit(r.uid) ? `<button type="button" class="ct-ed" data-ctedit="${esc(r.uid)}__${esc(r.id)}" title="Editar datos" aria-label="Editar datos">✎</button>` : ""}</b><small>${esc(m.profile||m.role||m.channel||"")}</small></span>
       <span class="ct-c"><small>${esc(m.email||"Sin email")}</small><small>${esc(m.phone||"Sin teléfono")}</small></span>
       <span class="ct-who"><small>${esc(nameOf(S.ps, r.uid))}</small></span>
       <span class="ct-stg"><span class="ct-st ${r.est}">${r.est==="act" ? esc(stepN||"Activo") : CT_EST[r.est]}</span><small>${esc(r.sg.t)}</small></span>
       ${age(r)}
-    </button>`; };
+    </div>`; };
   const shown = list.slice(0, CT.lim);
   box.innerHTML = sum + (list.length ? `<div class="ct-list${all?"":" solo"}"><div class="ct-row hd"><span>Prospecto</span><span>Contacto</span><span class="ct-who">${all?"A nombre de":""}</span><span>Etapa</span><span>Último mov.</span></div>${shown.map(row).join("")}</div>`
     + (list.length > CT.lim ? `<button type="button" class="btn small ct-more" data-ctmore="1">Ver ${Math.min(60, list.length - CT.lim)} más (${list.length - CT.lim} restantes)</button>` : "")
@@ -7262,12 +7271,54 @@ function renderContactsNow(){ const a = document.activeElement; const keep = a &
 $("ctBox").addEventListener("click", e => {
   const es = e.target.closest("[data-ctest]"); if (es){ $("ctEst").value = es.dataset.ctest; CT.lim = 60; schedule(); return; }
   if (e.target.closest("[data-ctmore]")){ CT.lim += 60; schedule(); return; }
+  const ce = e.target.closest("[data-ctedit]"); if (ce){ e.stopPropagation(); return ctEditOpen(ce.dataset.ctedit); }
   const o = e.target.closest("[data-ctopen]"); if (!o) return;
   const key = o.dataset.ctopen, uid = key.split("__")[0];
   if (ctAll()){ S.flowPick = (S.team||{})[uid] ? uid : ""; PICK.teamPath = key; if (o.querySelector(".ct-st.lost")) MORE["teamPathlost"] = true; $("flowLate").checked = false; showTab("flow");
     setTimeout(() => { const el = document.querySelector('#teamPath .mini.sel') || document.querySelector('#teamPath [data-close]') || $("teamPath"); el && el.scrollIntoView({behavior:"smooth", block:"center"}); }, 150); }
   else { PICK.myPath = key; $("onlyToday").checked = false; showTab("board"); setTimeout(() => { const el = document.querySelector('#myPath .mini.sel') || document.querySelector('#myPath [data-close]') || $("pathWrap"); el && el.scrollIntoView({behavior:"smooth", block:"center"}); }, 150); }
 });
+$("ctBox").addEventListener("keydown", e => { if ((e.key==="Enter" || e.key===" ") && e.target.matches(".ct-row[data-ctopen]")){ e.preventDefault(); e.target.click(); } });
+function ctCanEdit(uid){ return !S.viewAs && (adminMode() || uid===meId()); }
+function ctFind(uid, id){ return ((S.allEvery||{})[uid]||{})[id] || ((S.all||{})[uid]||{})[id] || (uid===meId() ? (myItems()||{})[id] : null); }
+function ctEditOpen(key){
+  const [uid, id] = key.split("__"), m = ctFind(uid, id); if (!m || !ctCanEdit(uid)) return;
+  const lead = adminMode(), v = f => esc(m[f] ?? "");
+  const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "ctEdWrap";
+  w.innerHTML = `<div class="bk mbk" role="dialog" aria-modal="true" aria-label="Editar contacto"><div class="bk-h"><b>Editar contacto</b><div class="spacer"></div><button type="button" class="btn small" data-x="1">Cerrar</button></div>
+    <div class="grid">
+      <label class="f full">Nombre<input data-cf="prospect" value="${v("prospect")}"></label>
+      <label class="f">Especialidad<input data-cf="role" value="${v("role")}"></label>
+      <label class="f">¿Por dónde lo contactaste?<select data-cf="channel">${m.channel && CHANNELS.includes(m.channel) ? "" : `<option value="${esc(m.channel || "")}" selected>${esc(m.channel || "Sin dato")}</option>`}${CHANNELS.map(c => `<option${m.channel===c?" selected":""}>${c}</option>`).join("")}</select></label>
+      <label class="f full">Link al perfil<input type="url" data-cf="profile" value="${v("profile")}" autocapitalize="off"></label>
+      <label class="f">Email<input type="email" data-cf="email" value="${v("email")}" autocapitalize="off"></label>
+      <label class="f">Teléfono / WhatsApp<input type="tel" data-cf="phone" value="${v("phone")}"></label>
+      ${lead ? `<label class="f">Seguidores<input data-cf="followers" value="${esc(m.followers ? fmtFol(m.followers) : "")}" placeholder="120k"></label>
+      <label class="f">Canal<select data-cf="canal"><option value="organico"${canalOf(m)==="organico"?" selected":""}>Orgánico · redes</option><option value="whatsapp"${canalOf(m)==="whatsapp"?" selected":""}>WhatsApp outreach</option></select></label>
+      <label class="f">Perfil (puntos)<select data-cf="perfil">${[1,2,3].map(n => `<option value="${n}"${(Number(m.perfil)||1)===n?" selected":""}>Perfil ${n} · ×${PMULT[n]}</option>`).join("")}</select></label>` : ""}
+      <label class="f full">Notas<textarea rows="3" data-cf="notes">${v("notes")}</textarea></label>
+    </div>
+    ${!lead ? `<p class="mut small">Si cambias nombre, perfil o email de un prospecto ya validado, tu manager lo vuelve a ver.</p>` : ""}
+    <div class="row"><span class="err" id="ctEdErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="ctEdGo">Guardar</button></div></div>`;
+  document.body.appendChild(w);
+  const first = w.querySelector("[data-cf]"); first && first.focus();
+  const close = () => { w.remove(); document.removeEventListener("keydown", esc0); };
+  const esc0 = e => { if (e.key==="Escape") close(); }; document.addEventListener("keydown", esc0);
+  w.addEventListener("click", async e => {
+    if (e.target===w || e.target.closest("[data-x]")) return close();
+    if (!e.target.closest("#ctEdGo")) return;
+    const ed = {}; w.querySelectorAll("[data-cf]").forEach(el => { const f = el.dataset.cf, val = el.value.trim();
+      const cur = f==="followers" ? (m.followers ? fmtFol(m.followers) : "") : f==="canal" ? canalOf(m) : f==="perfil" ? String(Number(m.perfil)||1) : String(m[f] ?? "");
+      if (val !== cur.trim()) ed[f] = val; });
+    if (ed.profile && !/^https?:\/\//i.test(ed.profile)) ed.profile = "https://" + ed.profile.replace(/^\/+/, "");
+    if (ed.followers !== undefined && ed.followers && !parseFol(ed.followers)) return $("ctEdErr").textContent = "No entendí los seguidores: escribe por ejemplo 350k.";
+    if (!Object.keys(ed).length) return close();
+    const g = $("ctEdGo"); g.disabled = true; g.textContent = "Guardando…"; $("ctEdErr").textContent = "";
+    const r = await saveProspectEdit(uid, id, m, ed);
+    if (r){ $("ctEdErr").textContent = r; g.disabled = false; g.textContent = "Guardar"; return; }
+    close(); quickToast("✓ Datos guardados"); schedule();
+  });
+}
 $("ctXls").addEventListener("click", async () => {
   const b = $("ctXls"); b.disabled = true;
   try{
