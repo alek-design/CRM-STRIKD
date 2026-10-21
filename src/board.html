@@ -1281,6 +1281,8 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .rl-ed{margin-top:4px}.rl-acts{display:flex;gap:14px;flex-wrap:wrap}
 .tk-ext{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 .mi-meet,.mi-reply{display:block;font-size:12.5px;margin-top:3px}.mi-reply{color:var(--fg2);font-style:italic;font-size:13.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.d-meet{display:grid;gap:6px;margin:10px 0}.d-meet .ig{display:flex;gap:8px;flex-wrap:wrap}.d-meet input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
+.pl-mv{display:flex;gap:14px;flex-wrap:wrap}.linkbtn.bad{color:#e5484d}.tt-done-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 4px}.tt-done-q{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);flex:1;min-width:140px}
 .tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
@@ -2208,7 +2210,7 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
   try{ await db.doc(`meets/${uid}/items/${id}`).update({flow:{lostAt:now, lostWhy:why, removed:true, removedBy:S.uid, ...(pv ? {pointsVoided:true} : {})}, ...(future ? {cancelled:true, cancelledAt:now} : {})});
     if (pv) await voidPoints(uid, id, true);
     freeIdx(uid, id, m);
-    m.flow = f; if (future){ m.cancelled = true; try{ await cancelInvite(m); }catch(_){} }
+    m.flow = f; if (future){ m.cancelled = true; if (uid === meId()){ try{ await cancelInvite(m); }catch(_){} } else invOwnerNote(uid, m, "eliminó"); }
     PICK.dayPlan = null; S.flowPick = null; quickToast(`✓ ${m.prospect || "Prospecto"} eliminado`); schedule(); }
   catch(_){ b.disabled = false; quickToast("No se pudo eliminar. Intenta otra vez."); }
 });
@@ -2584,11 +2586,12 @@ function validate(o){
   if (p===2 && !o.followers) return "Pon los seguidores aproximados.";
   if (p===2 && Number(o.followers) > 35000) return "Con más de 35K va como Perfil 3, en la lista de Mich.";
   if (!S.editingId && !S.gcPrefill && !autoInv() && (curPerfil()!==3 || $("f_p3meet").checked)) return "Conecta tu Google Calendar para agendar: el link de Meet se genera solo.";
-  if (!o.prospect || !o.channel || (!o.email && !S.gcPrefill) || !o.meetAt) return "Completa los campos marcados con *.";
+  const fromCal = !!(S.gcPrefill || (S.editingId && (myItems()[S.editingId]||{}).fromCalendar));
+  if (!o.prospect || !o.channel || (!o.email && !fromCal) || !o.meetAt) return "Completa los campos marcados con *.";
   if (isNaN(meetTs(o.meetAt))) return "Revisa la fecha y hora del meet.";
   if (!S.gcPrefill){ const c = slotClash(meetTs(o.meetAt)); if (c && c.hard) return `A esa hora tu team leader ya tiene ${SLOT_KIND[c.kind]||"un meet"}. Elige otro horario libre.`; }
   if (o.profile && !safeUrl(o.profile)) return "El link al perfil debe empezar con https://";
-  if ((o.email || !S.gcPrefill) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return "Revisa el email del prospecto.";
+  if ((o.email || !fromCal) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) return "Revisa el email del prospecto.";
   if (o.link && !safeUrl(o.link)) return "El link debe empezar con https://";
   return "";
 }
@@ -2777,6 +2780,9 @@ $("adminList").addEventListener("click", async e => {
     else if (b.dataset.undo){ b.disabled=true; const id = b.dataset.undo, f = find(id);
       if (AUTOV.has(id) && f) await db.doc(`validations/${id}`).set({uid:f.uid, week:meetWeek(f.m), status:"pending", reason:"", decidedAt:Date.now(), perfil:Number(f.m.perfil)||1}); // el automático vuelve a "por revisar"
       else await db.doc(`validations/${id}`).delete();
+      if (f && f.m.cancelled && meetTs(effAt(f.m)) > Date.now()){ // ya lo habían cancelado por el rechazo: vuelve a estar activo y hay que reenviar la invitación
+        await db.doc(`meets/${f.uid}/items/${id}`).update({cancelled:false, cancelledAt:null, needInvite:true}).catch(() => {});
+        if (window.STRIKD_NOTIFY && f.uid !== S.uid) window.STRIKD_NOTIFY({to:[f.uid], title:"↺ Se quitó el rechazo de un meet", body:`${f.m.prospect || "Prospecto"}: vuelve a estar activo. Reenvíale la invitación desde tus pendientes.`, url:"/?tab=agenda", tag:"unrej-" + id}); }
       if (f) claimIdx(f.uid, id, f.m); }
   }catch(ex){ b.disabled=false; b.textContent="No se guardó, reintenta"; }
 });
@@ -2859,6 +2865,9 @@ function tasksFor(uid, id, m, now){
       due:f.inviteDeclinedAt+24*HR, acts:[{label:"Reagendar", act:"resched", input:"dt", kind:"primary"}, {label:"Perdido", act:"lost", kind:"bad"}]});
     return T;
   }
+  if (m.needInvite && !m.cancelled && meetTs(effAt(m)) > now && (st==="pending" || st==="valid"))
+    add({title:`Reenvíale la invitación a ${p}`, detail:`Se quitó el rechazo y el meet del ${fmtMeetAt(effAt(m))} vuelve a estar activo, pero la invitación se había cancelado.`, due:now + 2*HR,
+      acts:[{label:"Mandar invitación", act:"reinvite", kind:"primary"}]});
   if (st==="pending"){
     add({who:"admin", title:`${m.dupOf ? "Posible duplicado: revisa" : "Valida o rechaza"} el meet de ${p}`, due:(m.createdAt||now)+24*HR,
       detail:`${PERFILES[m.perfil]?PERFILES[m.perfil].name+" ("+PERFILES[m.perfil].short+(m.followers?", "+fmtFol(m.followers)+" seguidores":"")+") · ":""}${m.role?m.role+" · ":""}Contactado por ${m.channel||"—"} · Meet ${fmtMeetAt(effAt(m))}`,
@@ -3012,7 +3021,7 @@ const DRAFT = {}, EDRAFT = {}, OPEN = {};
 const dk = (uid, id) => `${uid}__${id}`;
 const draft = k => (DRAFT[k] = DRAFT[k] || {dt:{}});
 function actsHtml(t){
-  if (michMode() && t.uid !== meId()) return ""; // Influencer: en Equipo solo consulta; en sus propios prospectos sí actúa
+  if (michMode() && (t.uid !== meId() || t.who !== "member")) return ""; // Influencer: en Equipo solo consulta; en lo suyo solo sus pasos (validar o el resultado del pitch son de los líderes)
   const k = dk(t.uid, t.id), dr = DRAFT[k] || {dt:{}};
   const base = a => `data-act="${a.act}" data-uid="${t.uid}" data-id="${t.id}"${a.day?` data-day="${a.day}"`:""}`;
   return t.acts.map(a => {
@@ -3200,7 +3209,7 @@ function waitText(id, m){
 const EDIT_FIELDS = [
   ["prospect","Nombre","text"],["role","Especialidad","text"],
   ["channel","¿Por dónde lo contactaste?","channel"],["profile","Link al perfil","url"],["email","Email","email"],
-  ["phone","Teléfono / WhatsApp","tel"],["meetAt","Fecha y hora del meet","datetime-local"],["link","Link del meet","url"],["notes","Notas","area"]];
+  ["phone","Teléfono / WhatsApp","tel"],["link","Link del meet","url"],["notes","Notas","area"]]; // la fecha del meet se cambia con "Cambiar horario" (reagenda e invita)
 const CHANNELS = ["LinkedIn","Instagram","Facebook","TikTok","WhatsApp","Email","Referido","Otro"];
 function detailHtml(uid, id, m, isAdmin, cid){
   const now = Date.now(), k = dk(uid,id), f = m.flow || {};
@@ -3262,6 +3271,9 @@ function detailHtml(uid, id, m, isAdmin, cid){
     <label class="f">Canal<select data-k="${k}" data-ef="canal"><option value="organico"${canalOf({canal:val("canal")})==="organico"?" selected":""}>Orgánico · redes</option><option value="whatsapp"${canalOf({canal:val("canal")})==="whatsapp"?" selected":""}>WhatsApp outreach</option></select></label>
     <label class="f">Seguidores<input data-k="${k}" data-ef="followers" value="${esc(val("followers"))}" placeholder="120k"></label>` : "";
   const link = safeUrl(m.link);
+  const mAt = effAt(m), mTs = meetTs(mAt), stv = statusOf(id), mine0 = isAdmin || uid === meId();
+  const meetBox = mAt && !f.lostAt && !m.cancelled && mTs > now && (stv==="pending" || stv==="valid" || reschedPending(m, S.validations[id])) && mine0 && !S.viewAs && !(michMode() && uid !== meId())
+    ? `<div class="d-meet"><span class="eyb">Meet · ${esc(fmtMeetAt(mAt))}</span><span class="ig"><input type="datetime-local" data-k="${k}" data-dt="move" value="${esc((((DRAFT[k]||{}).dt)||{}).move || toV(mAt))}" aria-label="Nuevo horario"><button type="button" class="btn small" data-act="move" data-kind="pitch" data-uid="${uid}" data-id="${id}">🕐 Cambiar horario</button><button type="button" class="btn small bad" data-act="pcancel" data-uid="${uid}" data-id="${id}">Canceló</button></span></div>` : "";
   return `<div class="detail">
     <div class="d-head">
       <div class="d-id">
@@ -3278,6 +3290,7 @@ function detailHtml(uid, id, m, isAdmin, cid){
     ${trial}
     <details class="d-data" data-k="${k}"${OPEN[k]?" open":""}>
       <summary><span>Datos del prospecto</span><span class="mut">Toca para ver y editar</span></summary>
+      ${meetBox}
       <div class="grid d-form">${fields}${fields2}</div>
       <div class="row"><span class="mono" data-msg="${k}"></span><div class="spacer"></div>
         ${Object.keys(ed).length?`<button class="btn small" data-reset="${k}">Descartar cambios</button>`:""}
@@ -3435,6 +3448,9 @@ async function uploadSkeleton(file, now){
   catch(ex){ throw {msg: ex && ex.code==="too_large" ? "Archivo muy pesado" : ex && ex.code==="unsupported_type" ? "Usa PDF o imagen" : "No se pudo subir"}; }
   return {skeletonAt:now, skeletonFile:{id:up.id, name:file.name, type:up.contentType||file.type||""}};
 }
+// la invitación de Google vive en el calendario de quien agendó: si otra persona mueve o cancela el meet, se le avisa a él
+function invOwnerNote(uid, m, what, when){ if (!window.STRIKD_NOTIFY) return;
+  window.STRIKD_NOTIFY({to:[uid], title:`📅 ${String(nameOf(S.ps||{}, S.uid)).split(" (")[0]} ${what} un meet`, body:`${m.prospect || "Prospecto"}${when ? ` · ahora ${fmtMeetAt(when)}` : ""}. Actualiza la invitación en tu Google Calendar.`, url:"/?tab=agenda", tag:"inv-" + (m.gcalEventId||"")}); }
 async function doAct(b){
   const act = b.dataset.act, uid = b.dataset.uid, id = b.dataset.id;
   const m = (S.all[uid] && S.all[uid][id]) || (uid===S.uid ? S.mine[id] : null);
@@ -3452,6 +3468,18 @@ async function doAct(b){
     case "cancelled": return ref.update({cancelled:true, cancelledAt:now}).then(() => { if (uid===meId()) cancelInvite(m); });
     case "confirmed": return ref.update({flow:{confirmedFor:effAt(m), confirmedAt:now}});
     case "reminded": return ref.update({flow:{remindedFor:effAt(m), remindedAt:now}});
+    case "pcancel": { // el prospecto canceló un meet que aún no pasa
+      if (!confirm(`¿${m.prospect || "El prospecto"} canceló el meet? Sale del journey${m.gcalEventId ? " y se cancela la invitación" : ""}. Un líder lo puede reactivar.`)) return "";
+      await ref.update({cancelled:true, cancelledAt:now, flow:{lostAt:now, lostWhy:"Canceló el meet"}}); freeIdx(uid, id, m);
+      if (m.vipId) db.doc(`meets/${uid}/vip/${m.vipId}`).update({meetId:null, meetAt:null, status:"contactado", statusAt:now}).catch(() => {});
+      if (m.gcalEventId && uid === meId() && mcp){ try{ await cancelInvite(m); }catch(_){} return "Listo: meet cancelado y se le avisó al prospecto."; }
+      if (m.gcalEventId && uid !== meId()){ invOwnerNote(uid, m, "canceló"); return `Listo. La invitación está en el calendario de ${first(nameOf(S.ps||{}, uid))}: ya le avisamos para que la cancele.`; }
+      return "Listo: meet cancelado."; }
+    case "reinvite": { // reenviar la invitación (después de quitar un rechazo)
+      if (!mcp) throw {msg:"Conecta tu Google Calendar en Ajustes para mandar la invitación."};
+      const ev = await createInvite({...m, meetAt:effAt(m)});
+      await ref.update({link:ev.link || m.link, gcalEventId:ev.id, gcalHtml:ev.html, invitedAt:now, needInvite:null});
+      return "Listo: le llegó la invitación al prospecto."; }
     case "move": {
       const kind = b.dataset.kind, v = val("dt"); if (!v) throw {msg:"Elige el nuevo horario"};
       if (meetTs(v) <= now) throw {msg:"Elige una fecha futura"};
@@ -3466,6 +3494,7 @@ async function doAct(b){
       // rescheduling means they already talked, so the reminder for the new date counts as done
       await ref.update({reschedAt:v, flow:{reschedCount:(f.reschedCount||0)+1, confirmedFor:v, confirmedAt:now, inviteDeclinedAt:null}});
       if (m.vipId) db.doc(`meets/${uid}/vip/${m.vipId}`).update({meetAt:v}).catch(() => {}); // la Lista de Mich ve la hora nueva
+      if (m.gcalEventId && uid !== meId()){ invOwnerNote(uid, m, "cambió de horario", v); return `Listo: pitch reagendado para el ${fmtMeetAt(v)}. La invitación está en el calendario de ${first(nameOf(S.ps||{}, uid))}: ya le avisamos para que la actualice.`; }
       if (m.gcalEventId && mcp){
         // new time, new invitation: drop the old event and send a fresh one
         try{
@@ -3639,8 +3668,8 @@ async function doAct(b){
     if (!Object.keys(ed).length){ if (msg) msg.textContent = "No hay cambios por guardar."; return; }
     const o = {}; EDIT_FIELDS.forEach(([f]) => { o[f] = String(ed[f] ?? m[f] ?? "").trim(); });
     const wa = (m.canal || "")==="whatsapp";
-    const err = !o.prospect || !o.email || !o.meetAt || (!o.profile && !wa) ? "Nombre, email, perfil y fecha no pueden quedar vacíos."
-      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email) ? "Revisa el email." : ((o.profile && !safeUrl(o.profile)) || (o.link && !safeUrl(o.link))) ? "Los links deben empezar con https://" : "";
+    const err = !o.prospect || (!o.email && !m.fromCalendar && !wa) || (!o.profile && !wa) ? "Nombre, email y perfil no pueden quedar vacíos."
+      : o.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email) ? "Revisa el email." : ((o.profile && !safeUrl(o.profile)) || (o.link && !safeUrl(o.link))) ? "Los links deben empezar con https://" : "";
     if (err){ if (msg) msg.textContent = err; return; }
     sv.disabled = true;
     try{
@@ -4004,7 +4033,7 @@ function renderPlan(){
     const moveHtml = canMove ? (mdr.moveOpen ? `<div class="pl-move"><span class="eyb">Nuevo horario${tzOther() ? ` (tu hora · ${esc(tzName())})` : ""}</span>
         <span class="ig"><input type="datetime-local" data-k="${dk(uid,id)}" data-dt="move" value="${esc((mdr.dt||{}).move || cur)}" aria-label="Nuevo horario"><button type="button" class="btn small primary" data-act="move" data-kind="${ev.kind}" data-uid="${uid}" data-id="${id}">Guardar</button></span>
         <small class="mut">${ev.kind==="pitch" && m.gcalEventId ? "Se le manda la invitación nueva al prospecto." : "Avísale al prospecto del cambio."}</small></div>`
-      : `<button type="button" class="linkbtn" data-moveopen="${dk(uid,id)}">🕐 Cambiar horario</button>`) : "";
+      : `<span class="pl-mv"><button type="button" class="linkbtn" data-moveopen="${dk(uid,id)}">🕐 Cambiar horario</button>${ev.kind==="pitch" ? `<button type="button" class="linkbtn bad" data-act="pcancel" data-uid="${uid}" data-id="${id}">Canceló</button>` : ""}</span>`) : "";
     const t = first(uid,id,m), d = t ? dueInfo(t.due, now) : null;
     const prof = safeUrl(m.profile), link = safeUrl(m.link);
     return `<div class="detail pl-x">
@@ -4111,17 +4140,21 @@ function renderPlan(){
       ${remDue.map(r => `<div class="pr rem${r.at < now - 12*HR ? " late" : ""}"><span class="rem-ic">⏰</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}</small></span><span class="rem-acts"><button type="button" class="btn small" data-remedit="${r.id}">Editar</button><button type="button" class="btn small" data-remsnooze="${r.id}">Mañana</button><button type="button" class="btn small primary" data-remdone="${r.id}">✓ Hecho</button></span></div>`).join("")}
       ${remNext.length ? `<details class="tt-done rem-next"${MORE.remNext ? " open" : ""}><summary data-remnextt="1">Programados (${remNext.length})</summary>${remNext.map(r => `<div class="pr rem"><span class="rem-ic">🗓</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}${r.hold ? " · ⏸ en pausa" : ""}</small></span><button type="button" class="btn small" data-remedit="${r.id}">Editar</button><button type="button" class="pr-x" data-remdel="${r.id}">Borrar</button></div>`).join("")}</details>` : ""}
     </div></section>` : "";
-  const recentDone = x => tkSt(x)==="done" && now - (x.doneAt||x.statusAt||0) < 7*DAY;
+  const recentDone = x => tkSt(x)==="done" && (MORE.tkAllDone || now - (x.doneAt||x.statusAt||0) < 7*DAY);
   const myDone = otherDay ? [] : taskList(meId()).filter(([,x]) => recentDone(x)).sort((a,b) => (b[1].doneAt||0) - (a[1].doneAt||0));
   const asgDone = otherDay ? [] : assigned.filter(([,,x]) => recentDone(x)).sort((a,b) => (b[2].doneAt||0) - (a[2].doneAt||0));
-  const doneBox = (list, row, key) => list.length ? `<details class="tt-done"${MORE[key] ? " open" : ""}><summary data-tkdonet="${key}">Completadas (${list.length})</summary>${list.map(row).join("")}</details>` : "";
+  const dq = fold(String(MORE.tkDoneQ||"").trim());
+  const myDoneAny = otherDay ? 0 : taskList(meId()).filter(([,x]) => tkSt(x)==="done").length, asgDoneAny = otherDay ? 0 : assigned.filter(([,,x]) => tkSt(x)==="done").length;
+  const doneBox = (list, row, key) => (key==="tkDoneMine" ? myDoneAny : asgDoneAny) ? `<details class="tt-done"${MORE[key] ? " open" : ""}><summary data-tkdonet="${key}">Completadas${MORE.tkAllDone ? " · todas" : " · 7 días"} (${list.length})</summary>
+    <div class="tt-done-bar"><button type="button" class="linkbtn" data-tkalldone="1">${MORE.tkAllDone ? "Solo las de 7 días" : "Ver todas las completadas"}</button>${MORE.tkAllDone ? `<input type="search" class="tt-done-q" data-tkdoneq="1" placeholder="Buscar tarea" value="${esc(MORE.tkDoneQ||"")}">` : ""}</div>
+    ${list.filter(r => !dq || fold(String((r[2] || r[1] || {}).title||"")).includes(dq)).map(row).join("")}</details>` : "";
   const replied = admin || michMode() ? [] : Object.entries(vipItems(meId()) || {}).filter(([,x]) => x && x.emailRepliedAt && !x.replyHandledAt).sort((a,b) => (b[1].emailRepliedAt||0) - (a[1].emailRepliedAt||0));
   const repHtml = replied.length ? `<section class="pg2"><div class="pg2-h"><span>Contestaron tu email</span><b>${replied.length}</b></div><div class="pg2-card">${replied.map(([id,x]) => { const k = `${meId()}/${id}`;
       return `<div class="pr vem"><span class="pr-m"><b>${esc(x.prospect||"Influencer")}</b><small>${esc(fmtLocal(x.emailRepliedAt))}${x.email ? " · " + esc(x.email) : ""}</small>${x.emailReplySnippet ? `<span class="mi-reply">“${esc(String(x.emailReplySnippet).slice(0, 220))}”</span>` : ""}</span>
         <span class="rem-acts">${x.email ? `<button type="button" class="btn small" data-vemcopy="${esc(x.email)}">Copiar email</button>` : ""}<button type="button" class="btn small" data-vrdone="${k}" data-how="no">No le interesa</button><button type="button" class="btn small primary" data-vrdone="${k}">✓ Ya le contesté</button></span></div>`; }).join("")}</div></section>` : "";
-  const taskHtml = remHtml + repHtml + confHtml + emHtml + (myT.length || myDone.length ? `<section class="pg2">${onlyTasks && myT.length ? "" : `<div class="pg2-h"><span>Tareas</span>${myT.length ? `<b>${myT.length}</b>` : ""}</div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}${doneBox(myDone, ([id,x]) => taskRow(meId(), id, x, false, now), "tkDoneMine")}</div></section>` : "")
+  const taskHtml = remHtml + repHtml + confHtml + emHtml + (myT.length || myDoneAny ? `<section class="pg2">${onlyTasks && myT.length ? "" : `<div class="pg2-h"><span>Tareas</span>${myT.length ? `<b>${myT.length}</b>` : ""}</div>`}<div class="pg2-card">${myT.map(([id,x]) => taskRow(meId(), id, x, false, now)).join("")}${doneBox(myDone, ([id,x]) => taskRow(meId(), id, x, false, now), "tkDoneMine")}</div></section>` : "")
     + (assigned.some(([,,x]) => tkSt(x)==="review") ? `<section class="pg2"><div class="pg2-h"><span>Por aprobar</span><b>${nRev}</b></div><div class="pg2-card">${assigned.filter(([,,x]) => tkSt(x)==="review").map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}</div></section>` : "")
-    + (asgOpen.length || asgDone.length ? `<section class="pg2"><div class="pg2-h"><span>Tareas que asignaste</span>${asgOpen.length ? `<b>${asgOpen.length}</b>` : ""}</div><div class="pg2-card">${asgOpen.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}${doneBox(asgDone, ([u,id,x]) => taskRow(u, id, x, true, now), "tkDoneAsg")}</div></section>` : "");
+    + (asgOpen.length || asgDoneAny ? `<section class="pg2"><div class="pg2-h"><span>Tareas que asignaste</span>${asgOpen.length ? `<b>${asgOpen.length}</b>` : ""}</div><div class="pg2-card">${asgOpen.map(([u,id,x]) => taskRow(u, id, x, true, now)).join("")}${doneBox(asgDone, ([u,id,x]) => taskRow(u, id, x, true, now), "tkDoneAsg")}</div></section>` : "");
   if (headLite) todo += `<p class="lite-note">Lo operativo lo lleva ${esc(headLiteMgrs())} · <button type="button" class="linkbtn" data-gotab="board">ver Equipo</button></p>`;
   todo = taskHtml + todo + (totalPend > PEND_CAP ? `<button type="button" class="pend-all" data-allpend="1">${allPend ? "Ver menos" : `Ver todos los pendientes (${totalPend})`}</button>` : "");
   const dd = new Date(todayStr + "T12:00:00Z"), past = evs.filter(e => e.end < now).length;
@@ -4317,7 +4350,7 @@ function renderMich(){
       <span class="mi-m"><span class="mi-nm"><b>${esc(x.prospect||h||"Sin nombre")}</b><button type="button" class="mi-emed" data-medit="${k}" title="Editar o borrar">✎</button></span><small>${isUgc(x) ? `<span class="ugc-tag">UGC</span> ` : ""}${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}${x.emailOptout ? " · pidió baja" : x.emailRepliedAt ? " · contestó el email" : x.email2At ? " · 2 emails enviados" : x.email1At ? " · email 1 enviado" : ""} <button type="button" class="mi-emed" data-memail="${k}" title="Corregir o quitar el email">✎</button>${!x.emailOptout && !x.emailRepliedAt ? `<button type="button" class="mi-emed" data-meoptout="${k}" title="Ya no escribirle nunca por email">Pidió baja</button>` : ""}</span>${!x.meetId && !x.email2At && !x.emailOptout && !x.emailRepliedAt && !isUgc(x) ? (x.emailSkip
           ? `<button type="button" class="mi-esk off" data-meskip="${u}/${id}" title="Toca para volver a programarlo">✉ No se le enviará email · Reactivar</button>`
           : `<button type="button" class="mi-esk" data-meskip="${u}/${id}" title="Si por estrategia no conviene escribirle, toca para no enviarle">${x.email1At ? `✉ Se le mandará el email 2${Number(x.email1At) + 7*DAY > Date.now() ? ` el ${esc(fmtLocal(Number(x.email1At) + 7*DAY).split(",")[0])}` : ""} · Detener` : `✉ Se le escribirá por email${x.contactedAt ? (Number(x.contactedAt) + 10*DAY > Date.now() ? ` el ${esc(fmtLocal(Number(x.contactedAt) + 10*DAY).split(",")[0])}` : " en el próximo envío") : ""} · No enviar`}</button>`) : ""}` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}${x.meetId && x.meetAt ? `<span class="mi-meet">📅 Meet ${esc(fmtMeetAt(x.meetAt))} <button type="button" class="mi-emed" data-mresched="${k}">🕐 Cambiar</button><button type="button" class="mi-emed" data-mcancel="${k}">Cancelar</button></span>` : ""}${x.emailRepliedAt && x.emailReplySnippet ? `<span class="mi-reply">💬 Contestó: “${esc(String(x.emailReplySnippet).slice(0, 800))}”</span>` : ""}</span>
-      ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${!x.meetId && !x.email1At ? `<button type="button" class="mi-ic mi-back" data-mundo="${k}" aria-label="Regresar a pendientes" title="Regresar a pendientes (no se contactó)">↺</button>` : ""}${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
+      ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${st==="contactado" && !x.meetId ? `<button type="button" class="mi-emed" data-mint="${k}|interesado" title="Respondió con interés">Interesado</button><button type="button" class="mi-emed" data-mint="${k}|descartado" title="No le interesa">No le interesa</button>` : (st==="interesado" || st==="descartado") && !x.meetId ? `<button type="button" class="mi-emed" data-mint="${k}|contactado" title="Regresar a contactado">↺</button>` : ""}${!x.meetId && !x.email1At ? `<button type="button" class="mi-ic mi-back" data-mundo="${k}" aria-label="Regresar a pendientes" title="Regresar a pendientes (no se contactó)">↺</button>` : ""}${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
         : `<span class="mi-ig">Abrir</span>${MICH.on ? "" : `<button type="button" class="mi-ic" data-mdone="${k}" aria-label="Marcar como contactado" title="Marcar como contactado">✓</button>`}`}
     </a>`; }).join("")}</div>`
     : `<div class="empty">${rows.length ? (MICH.f==="nuevo" ? "🎉 No hay pendientes. Cuando el equipo proponga más influencers aparecen aquí." : "Nada por aquí.") : "Todavía no hay influencers en la lista. Aparecen cuando el equipo registra un Perfil 3 (35K+)."}</div>`);
@@ -4441,6 +4474,9 @@ $("view-mich").addEventListener("click", e => {
   const me0 = e.target.closest("[data-medit]"); if (me0){ e.preventDefault(); e.stopPropagation(); return vipEditOpen(me0.dataset.medit); }
   const mr = e.target.closest("[data-mresched]"); if (mr){ e.preventDefault(); e.stopPropagation(); return michMeetMove(mr.dataset.mresched); }
   const mc = e.target.closest("[data-mcancel]"); if (mc){ e.preventDefault(); e.stopPropagation(); return michMeetCancel(mc.dataset.mcancel, mc); }
+  const mi = e.target.closest("[data-mint]"); if (mi){ e.preventDefault(); e.stopPropagation(); const [k, st] = mi.dataset.mint.split("|"), [u, id] = k.split("/"), x = (S.vip[u]||{})[id]; if (!x) return;
+    const prev = {status:x.status, statusAt:x.statusAt}; Object.assign(x, {status:st, statusAt:Date.now()}); renderMich();
+    db.doc(`meets/${u}/vip/${id}`).update({status:st, statusAt:x.statusAt, statusBy:S.uid}).then(() => quickToast(st==="interesado" ? "✓ Interesado" : st==="descartado" ? "Listo: no le interesa" : "Regresó a contactado")).catch(() => { Object.assign(x, prev); renderMich(); quickToast("No se guardó"); }); return; }
   const vr = e.target.closest("[data-vrdone]"); if (vr){ e.preventDefault(); e.stopPropagation(); return vipReplyDone(vr.dataset.vrdone, vr.dataset.how); }
   const mk = e.target.closest("[data-mikind]"); if (mk){ e.preventDefault(); MICH.kind = mk.dataset.mikind; return renderMich(); }
   const ef = e.target.closest("[data-mief]"); if (ef){ e.preventDefault(); MICH.ef = ef.dataset.mief; return renderMich(); }
@@ -4571,6 +4607,7 @@ document.addEventListener("click", async e => {
     document.body.appendChild(w); return; }
   const rpm = e.target.closest("[data-rpmine]"); if (rpm){ RPT.mine = rpm.dataset.rpmine === "1"; const bx = $("reportBox"); if (bx) bx.dataset.h = ""; schedule(); return; }
   const nt = e.target.closest("[data-remnextt]"); if (nt){ MORE.remNext = !MORE.remNext; return; }
+  const tad = e.target.closest("[data-tkalldone]"); if (tad){ e.preventDefault(); MORE.tkAllDone = !MORE.tkAllDone; MORE.tkDoneQ = ""; schedule(); return; }
   const tdt = e.target.closest("[data-tkdonet]"); if (tdt){ MORE[tdt.dataset.tkdonet] = !MORE[tdt.dataset.tkdonet]; return; }
   const dn = e.target.closest("[data-remdone]"), sn = e.target.closest("[data-remsnooze]"), dl = e.target.closest("[data-remdel]"); if (!dn && !sn && !dl) return;
   e.stopPropagation(); const u = meId(), id = (dn || sn || dl).dataset.remdone || (dn || sn || dl).dataset.remsnooze || (dn || sn || dl).dataset.remdel, r = (REM[u]||{})[id]; if (!r) return;
@@ -4601,7 +4638,7 @@ function taskAssignedByMe(){ const out = []; Object.entries(S.tasks||{}).forEach
     const headU = S.config && S.config.headId;
     if (x.by===meId() || (S.isOwner && !teamScoped()) || (teamScoped() && S.team && S.team[u]) || (adminMode() && roleOf(u)==="influencer") || michMode()) out.push([u,id,x]); })); // Mich: sus tareas las ven el Head y el Manager // la Influencer ve todas las del equipo
   const ord = {review:0, changes:1, progress:2, todo:3, done:4};
-  return out.sort((a,b) => ord[tkSt(a[2])] - ord[tkSt(b[2])] || (b[2].createdAt||0) - (a[2].createdAt||0)).filter(([,,x]) => tkSt(x)!=="done" || Date.now() - (x.doneAt||0) < 3*864e5); }
+  return out.sort((a,b) => ord[tkSt(a[2])] - ord[tkSt(b[2])] || (b[2].createdAt||0) - (a[2].createdAt||0)).filter(([,,x]) => tkSt(x)!=="done" || MORE.tkAllDone || Date.now() - (x.doneAt||0) < 3*864e5); }
 /* Estatus: Por hacer → En progreso (AM) → Esperando aprobación (AM) → Necesita ajustes / Completado (Head o Manager) */
 const TK_ST = {todo:"Por hacer", progress:"En progreso", review:"Esperando aprobación", changes:"Necesita ajustes", done:"Completado"};
 const tkSt = x => x.status || (x.doneAt ? "done" : "todo");
@@ -4697,6 +4734,9 @@ function taskRow(u, id, x, lead, now){
       <label class="f">Tarea<input data-tke="${k}|title" value="${esc(d.e_title ?? x.title)}"></label>
       <label class="f">Detalle<textarea rows="2" data-tke="${k}|note">${esc(d.e_note ?? x.note ?? "")}</textarea></label>
       <label class="f">Para cuándo<input type="date" data-tke="${k}|due" value="${esc(d.e_due ?? (x.dueAt ? new Date(x.dueAt - OFF).toISOString().slice(0,10) : ""))}"></label>
+      ${(() => { const ppl = [...new Set((tkAssigner() ? [S.uid].concat(tkAssignees()) : Object.keys(S.members||{}).concat((S.config||{}).headId ? [S.config.headId] : [])).concat([u]))];
+        return `<label class="f">Para<select data-tke="${k}|to">${ppl.map(p => `<option value="${p}"${(d.e_to ?? u)===p ? " selected" : ""}>${esc(String(nameOf(S.ps||{}, p)).split(" (")[0])}${p===S.uid ? " (tú)" : ""}</option>`).join("")}</select></label>`; })()}
+      ${x.publishAt && x.publishAt > Date.now() ? `<label class="f">Se publica el${tzOther() ? ` (tu hora)` : ""}<input type="datetime-local" data-tke="${k}|pub" value="${esc(d.e_pub ?? new Date(x.publishAt - VOFF).toISOString().slice(0,16))}"></label><button type="button" class="linkbtn" data-tkpubnow="${k}">Publicar ahora</button>` : ""}
       <div class="tk-files">${(x.files||[]).map((f,i) => `<span class="tk-cf">${tkIsImg(f) ? `<img src="${esc(f.url)}" alt="">` : `📄 ${esc(f.name||"archivo")}`}<button type="button" data-tkfdel="${k}|${i}" aria-label="Quitar">×</button></span>`).join("")}<label class="tk-up">${d.up ? "Subiendo…" : "📷 Agregar foto"}<input type="file" accept="image/*,application/pdf" data-tkfile="${k}" multiple hidden></label></div>
       ${x.ruleId && (TK_RULES[x.ruleId]||{active:true}).active!==false ? `<button type="button" class="linkbtn" data-tkstoprule="${esc(x.ruleId)}">Dejar de repetir cada semana</button>` : ""}
       <div class="tk-acts"><button class="btn small" data-tkecancel="${k}">Cancelar</button><button class="btn small primary" data-tkesave="${k}">Guardar cambios</button></div></div>`;
@@ -4724,6 +4764,7 @@ function taskRow(u, id, x, lead, now){
 /* Aviso al celular de quien le corresponde: el AM le avisa a quien asignó (y al revisar, también a los líderes); el líder le avisa al AM */
 function tkNotify(to, title, body, k, owner){ if (!window.STRIKD_NOTIFY) return; window.STRIKD_NOTIFY({to:[...new Set(to.filter(Boolean))], title, body, url:`/?tab=agenda&task=${encodeURIComponent(k)}`, tag:"task-" + k, taskOwner:owner}); }
 function tkWho(k, x, kind, text){
+  if (x && x.publishAt && x.publishAt > Date.now()) return; // programada: nadie se entera hasta que se publique
   const [u] = k.split("/"), actor = S.uid, nm = String(nameOf(S.ps||{}, actor)).split(" (")[0];
   const leads = Object.keys(S.members||{}).filter(m => roleOf(m)==="manager").concat(S.config && S.config.headId ? [S.config.headId] : []);
   const fromAssignee = actor === u;
@@ -4886,10 +4927,24 @@ document.addEventListener("click", async e => {
     const patch = {};
     if (d.e_title !== undefined){ const t = d.e_title.trim(); if (!t){ quickToast("La tarea necesita un título"); return; } if (t !== x0.title) patch.title = t; }
     if (d.e_note !== undefined && d.e_note.trim() !== (x0.note||"")) patch.note = d.e_note.trim();
-    if (d.e_due !== undefined){ const du = d.e_due ? Date.parse(d.e_due + "T18:00:00-05:00") : 0; if (du !== (x0.dueAt||0)) patch.dueAt = du; }
+    if (d.e_due !== undefined){ const du = d.e_due ? Date.parse(d.e_due + "T18:00:00-05:00") : 0; if (du !== (x0.dueAt||0)){ patch.dueAt = du; patch.dueSoonAt = null; patch.lateAt = null; } }
+    if (d.e_pub !== undefined && x0.publishAt){ const pt = vTs(d.e_pub); if (!(pt > Date.now())){ quickToast("Elige una fecha y hora futura para publicarla (o toca Publicar ahora)"); return; } if (pt !== x0.publishAt) patch.publishAt = pt; }
+    if (d.e_to !== undefined && d.e_to !== k.split("/")[0]){ // pasarla a otra persona: se mueve completa (entrega, comentarios y archivos)
+      const [ou, oid] = k.split("/"), nu = d.e_to, ref = db.collection(`meets/${nu}/tasks`).doc(), data = {...x0, ...patch, movedFrom:ou, movedAt:Date.now(), status:tkSt(x0)==="done" ? "done" : "todo"};
+      try{ await ref.set(data); await db.doc(`meets/${ou}/tasks/${oid}`).delete(); delete (S.tasks[ou]||{})[oid]; ((S.tasks ||= {})[nu] ||= {})[ref.id] = data; }catch(_){ quickToast("No se pudo pasar la tarea"); return; }
+      const who = String(nameOf(S.ps||{}, S.uid)).split(" (")[0];
+      if (nu !== S.uid && !(data.publishAt && data.publishAt > Date.now())) tkNotify([nu], `Nueva tarea de ${who}`, data.title, `${nu}/${ref.id}`, nu);
+      if (ou !== S.uid && window.STRIKD_NOTIFY) window.STRIKD_NOTIFY({to:[ou], title:`${who} pasó una tarea a otra persona`, body:data.title, url:"/?tab=agenda", tag:"tkmv-" + oid});
+      delete TKD[k]; TK_OPEN = ""; taskSubs(); quickToast(`✓ Ahora es de ${String(nameOf(S.ps||{}, nu)).split(" (")[0]}`); schedule(); return; }
     if (Object.keys(patch).length){ patch.editedAt = Date.now(); if (!(await taskSave(k, patch))) return;
-      const [u] = k.split("/"); if (u !== S.uid) tkNotify([u], `✎ ${String(nameOf(S.ps||{}, S.uid)).split(" (")[0]} editó una tarea`, patch.title || x0.title, k, x0.by); }
-    d.edit = false; delete d.e_title; delete d.e_note; delete d.e_due; quickToast("✓ Tarea actualizada"); schedule(); return; }
+      const [u] = k.split("/"), pubNow = patch.publishAt === null || (x0.publishAt && patch.publishAt && patch.publishAt <= Date.now());
+      if (u !== S.uid && pubNow) tkNotify([u], `Nueva tarea de ${String(nameOf(S.ps||{}, S.uid)).split(" (")[0]}`, patch.title || x0.title, k, x0.by);
+      else if (u !== S.uid && !(x0.publishAt && x0.publishAt > Date.now())) tkNotify([u], `✎ ${String(nameOf(S.ps||{}, S.uid)).split(" (")[0]} editó una tarea`, patch.title || x0.title, k, x0.by); }
+    d.edit = false; delete d.e_title; delete d.e_note; delete d.e_due; delete d.e_pub; delete d.e_to; quickToast("✓ Tarea actualizada"); schedule(); return; }
+  const pn = e.target.closest("[data-tkpubnow]"); if (pn){ e.stopPropagation(); const k = pn.dataset.tkpubnow, x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
+    if (!(await taskSave(k, {publishAt:null, publishedAt:Date.now()}))) return;
+    const [u] = k.split("/"); if (u !== S.uid) tkNotify([u], `Nueva tarea de ${String(nameOf(S.ps||{}, S.uid)).split(" (")[0]}`, x0.title, k, u);
+    const d = TKD[k] || {}; d.edit = false; delete d.e_pub; quickToast("✓ Publicada"); schedule(); return; }
   const rdel = e.target.closest("[data-tdel]"); if (rdel){ e.stopPropagation(); if (rdel.dataset.armed!=="1"){ rdel.dataset.armed = "1"; rdel.textContent = "¿Borrar?"; return; } const [u,id] = rdel.dataset.tdel.split("/");
     if (await tkDelete(u, id)){ TK_OPEN = ""; schedule(); quickToast("Tarea borrada"); } else quickToast("No se pudo borrar"); return; }
   const sv = e.target.closest("[data-tksave]"); if (sv){ e.stopPropagation(); const k = sv.dataset.tksave, d = TKD[k] || {}; if (await taskSave(k, {reply:d.rep ?? ""})){ delete TKD[k]; quickToast("✓ Guardado"); } return; }
@@ -5379,6 +5434,7 @@ function rulesHtml(){
 }
 // botones que llevan a otra pantalla (fuera del plan del día, que tiene su propio manejo)
 document.addEventListener("click", e => { const g = e.target.closest("[data-gotab]"); if (!g || g.closest("#dayPlan")) return; e.preventDefault(); showTab(g.dataset.gotab); window.scrollTo({top:0, behavior:"smooth"}); });
+document.addEventListener("change", e => { const q = e.target.closest("[data-tkdoneq]"); if (q){ MORE.tkDoneQ = q.value; q.blur(); schedule(); } });
 const RLED = {};
 document.addEventListener("input", e => { const i = e.target.closest("[data-rled]"); if (i) RLED[i.dataset.rled] = i.value; });
 document.addEventListener("change", e => { const i = e.target.closest("select[data-rled]"); if (i) RLED[i.dataset.rled] = i.value; });
