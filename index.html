@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-21 03:43:18 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-21 03:57:56 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792554198">
+<link rel="stylesheet" href="/auth.css?v=1792555076">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792554198"></script>
+<script src="/claude-shim.js?v=1792555076"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1283,6 +1283,9 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .pl-move{display:flex;flex-direction:column;gap:6px;margin:10px 0}.pl-move .ig{display:flex;gap:8px;flex-wrap:wrap}.pl-move input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 .tk-fw{position:relative;display:inline-flex}.tk-fx{position:absolute;top:-7px;right:-7px;min-width:24px;height:24px;padding:0 6px;border-radius:12px;border:1px solid var(--line2);background:var(--bg);color:var(--fg);font-size:14px;line-height:1;cursor:pointer;z-index:1}.tk-fx.armed{font-size:11.5px;font-weight:700;color:#e5484d;border-color:#e5484d}
 .chip.revive{cursor:pointer;background:var(--ok-soft2,#e5f4e4);border-color:var(--ok,#16a34a);color:var(--ok-fg,#166534);font-weight:700}
+.mi-emed{font:inherit;font-size:11.5px;font-weight:600;margin-left:4px;padding:1px 8px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--fg2);cursor:pointer}.mi-back{font-size:15px}
+.d-done{margin:10px 0;display:grid;gap:4px}.d-done li{display:flex;gap:8px;align-items:center;font-size:13.5px}.d-done ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.rl-ed{margin-top:4px}.rl-acts{display:flex;gap:14px;flex-wrap:wrap}
 .tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
@@ -1476,7 +1479,7 @@ body.mob-open header.top{z-index:31}
         <details class="lb-how"><summary>¿Cómo se ganan puntos?</summary><p>Cada paso vale más conforme el prospecto se acerca a publicar: pitch tomado 1 · le gustó 2 · aprobó skeleton 3 · lanzamiento 4 · publicado 5. Por perfil: 🍎 ×1 · 📷 ×2.5 · 👑 ×5. Se reinicia cada viernes a las 6 pm.</p></details>
       </div>
       <div class="spacer"></div>
-
+      <button type="button" class="linkbtn" data-gotab="hist">Semanas pasadas →</button>
     </div>
     <div id="board" class="lbwrap"><div class="empty">Aún no hay nadie en el tablero. Cada persona aparece al abrir la página por primera vez.</div></div>
     </div></div>
@@ -1650,7 +1653,7 @@ body.mob-open header.top{z-index:31}
   </section>
 
   <section class="view" id="view-hist" hidden>
-    <div><h2>Leaderboards pasados</h2><p class="sub">Resultado final de cada semana, con su ganador.</p></div>
+    <div class="row"><div><h2>Semanas pasadas</h2><p class="sub">Resultado final de cada semana, con su ganador.</p></div><div class="spacer"></div><button type="button" class="btn small" data-gotab="board">← Ranking de esta semana</button></div>
     <div id="histList" class="hlist"></div>
   </section>
 
@@ -1766,11 +1769,11 @@ function showTab(t){
   if (t==="wa" && !adminMode()) t = "funnel"; // WhatsApp outreach: solo Head y líderes
   if (t==="funnel" && !adminMode() && !resultsView()) t = "agenda";
   S.tab = t;
-  const navT = t==="wa" ? "funnel" : (t==="flow" || t==="perf") ? "board" : t;
+  const navT = t==="wa" ? "funnel" : (t==="flow" || t==="perf" || t==="hist") ? "board" : t;
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab===navT)));
   document.querySelectorAll(".subnav [data-go]").forEach(b => b.classList.toggle("on", b.dataset.go===t));
   closeAcct();
-  if (t==="admin" || t==="hist" || t==="rules" || (t==="org" && !S.isOwner)) t = S.tab = "board";
+  if (t==="admin" || t==="rules" || (t==="org" && !S.isOwner)) t = S.tab = "board";
   ["board","mine","mich","msgs","flow","agenda","funnel","report","vip","wa","perf","org","hist","rules","settings"].forEach(v => $("view-"+v).hidden = v!==t);
   try{ localStorage.setItem("meets_tab", t); }catch(e){}
   schedule();
@@ -2339,11 +2342,12 @@ function renderBoard(ps, ids){
   const past = allWeeks().filter(k => k < S.currentKey);
   if (!past.length){ $("histList").innerHTML = `<div class="empty">Todavía no cierra ninguna semana. El primer resultado aparece aquí el viernes a las 6:00 pm.</div>`; return; }
   $("histList").innerHTML = past.map(k => {
-    const pt = tally(k); const best = Math.max(0, ...Object.values(pt).map(x=>x.pts));
-    const winners = best>0 ? Object.keys(pt).filter(id=>pt[id].pts===best).map(id=>esc(nameOf(ps,id))) : [];
+    const pt = tally(k), inRank = id => ids.includes(id); // solo quienes compiten (AM)
+    const best = Math.max(0, ...Object.entries(pt).filter(([id]) => inRank(id)).map(([,x]) => x.pts));
+    const winners = best>0 ? Object.keys(pt).filter(id => inRank(id) && pt[id].pts===best).map(id=>esc(nameOf(ps,id))) : [];
     return `<section class="hweek">
       <div class="row"><div><h3>Semana que cerró el ${keyLabel(k).replace("Cierra ","")}, 6:00 pm</h3>
-        <p class="sub">${winners.length ? `Ganador: <b class="win">${winners.join(" y ")}</b> · ${best} punto${best===1?"":"s"}` : "Sin meets tomados esa semana"}</p></div></div>
+        <p class="sub">${winners.length ? `Ganador: <b class="win">${winners.join(" y ")}</b> · ${fmtPts(best)} punto${best===1?"":"s"}` : "Sin puntos esa semana"}</p></div></div>
       ${boardHtml(ps, ids, k, false)}
     </section>`;
   }).join("");
@@ -3201,6 +3205,12 @@ function detailHtml(uid, id, m, isAdmin, cid){
     const w = waitText(id, m) || (isAdmin ? "" : "Siguiente paso a cargo del admin.");
     next = `<div class="d-next wait"><div class="d-next-h"><span class="eyb">Estado</span></div><div class="d-next-t">${esc(w || "Sin pendientes")}</div></div>`;
   }
+  // pasos ya hechos: el líder los puede regresar si fue un error (y se quita su punto)
+  if (isAdmin && !S.viewAs){
+    const DONE = [["skel", f.skeletonApprovedAt, "Skeleton aprobado", "−3"], ["content", f.contentAt, "Contenido listo", ""], ["program", f.programDoneAt, "Programa listo", f.webDoneAt && f.bankDoneAt ? "−4" : ""],
+      ["web", f.webDoneAt, "Web lista", f.programDoneAt && f.bankDoneAt ? "−4" : ""], ["bank", f.bankDoneAt, "Depósito listo", f.programDoneAt && f.webDoneAt ? "−4" : ""], ["mode", f.launchModeAt, f.launchMode==="fast" ? "Lanzamiento rápido" : "Lanzamiento guiado", ""], ["launched", f.launchedAt, "Publicado", "−5"]].filter(x => x[1]);
+    if (DONE.length) next += `<details class="d-done"><summary class="mut small">Pasos hechos (${DONE.length}) · corregir</summary><ul>${DONE.map(([k, at, l, pts]) => `<li><span>✓ ${esc(l)} · ${esc(fmtLocal(at).split(",")[0])}</span><button type="button" class="linkbtn" data-act="undo-step" data-step="${k}" data-uid="${uid}" data-id="${id}">Cambiar${pts ? ` (${pts} pts)` : ""}</button></li>`).join("")}</ul></details>`;
+  }
   // trial history
   const log = (f.trial && f.trial.log) || [];
   const trial = log.length ? `<div class="d-trial"><span class="eyb">Semana de prueba</span>
@@ -3443,6 +3453,15 @@ async function doAct(b){
     case "want-no": await ref.update({flow:{interested:false, interestedAt:now, lostAt:now, lostWhy:"No lo quiso"}}); freeIdx(uid, id, m); return;
     case "undo-q1": return db.doc(`validations/${id}`).set({uid, week:meetWeek(m), status:"valid", reason:"", decidedAt:now});
     case "undo-q2": await unaward(uid, id, "legusto"); return ref.update({flow:{interested:null, interestedAt:null}});
+    case "undo-step": { const k = b.dataset.step;
+      const L = {skel:"skeleton aprobado", content:"contenido listo", program:"programa listo", web:"web lista", bank:"depósito listo", mode:"modo de lanzamiento", launched:"publicado"}[k];
+      if (!L || !confirm(`¿Regresar "${L}" de ${m.prospect || "este prospecto"}? Vuelve a quedar pendiente${["skel","launched"].includes(k) || (["program","web","bank"].includes(k) && f.programDoneAt && f.webDoneAt && f.bankDoneAt) ? " y se quita su punto" : ""}.`)) return "";
+      if (k==="skel"){ await ref.update({flow:{skeletonApprovedAt:null, skelLog:(f.skelLog||[]).concat([{at:now, type:"undo", note:"Se regresó la aprobación"}])}}); await unaward(uid, id, "aprobado"); }
+      else if (k==="content") await ref.update({flow:{contentAt:null}});
+      else if (k==="program" || k==="web" || k==="bank"){ await ref.update({flow:{[{program:"programDoneAt", web:"webDoneAt", bank:"bankDoneAt"}[k]]:null}}); await unaward(uid, id, "progweb"); }
+      else if (k==="mode") await ref.update({flow:{launchMode:null, launchModeAt:null}});
+      else if (k==="launched"){ await ref.update({flow:{launchedAt:null}}); await unaward(uid, id, "publicado"); }
+      return `Listo: "${L}" regresó a pendiente.`; }
     case "meet3": {
       const st0 = statusOf(id);
       if (st0!=="attended"){
@@ -3980,7 +3999,8 @@ function renderPlan(){
     // meet que se agendó directo en Google (no está en el panel): se puede registrar para seguir su flujo
     const gReg = e.gev && !e.gev.extra && e.gev.gid && admin && e.ts <= now + 7*DAY ? `<button type="button" class="pl-gopen sec" data-gcreg="${esc(e.gev.gid)}">Registrar</button>` : "";
     if (e.gev && e.gev.gid) GCREG[e.gev.gid] = e.gev;
-    line += e.gcal ? `<div class="pl-item ${state} gcal">${inner}${gReg}${gOpen}</div>`
+    const mAct = e.manual ? `<span class="ma-row"><button type="button" class="ma" data-remedit="${esc(e.manual)}">Editar</button><button type="button" class="ma" data-remdone="${esc(e.manual)}">✓ Hecho</button></span>` : "";
+    line += e.gcal ? `<div class="pl-item ${state} gcal">${inner}${mAct}${gReg}${gOpen}</div>`
       : `<div class="pl-item ${state}${sel===key?" sel":""}" role="button" tabindex="0" data-pick="${key}">${inner}</div>${expand(key, e.uid, e.id, e.m, e)}`;
   });
   if (!nowPlaced && evs.length) line += nowMark;
@@ -4035,8 +4055,8 @@ function renderPlan(){
       return `<div class="pr vem"><span class="pr-m"><b>${esc(x.prospect||"Influencer")}</b><small>Mich lo contactó hace ${d0} días y no cerró · ${x.email ? esc(x.email) : "sin email"}</small></span>
         <span class="rem-acts">${x.email ? `<button type="button" class="btn small" data-vemcopy="${esc(x.email)}">Copiar email</button>` : `<button type="button" class="btn small" data-memail="${k}">+ email</button>`}<button type="button" class="btn small primary" data-vemdone="${k}">✓ Ya le escribí</button></span></div>`; }).join("")}</div></section>` : "";
   const remHtml = remDue.length || remNext.length ? `<section class="pg2"><div class="pg2-h"><span>Recordatorios</span>${remDue.length ? `<b>${remDue.length}</b>` : ""}</div><div class="pg2-card">
-      ${remDue.map(r => `<div class="pr rem${r.at < now - 12*HR ? " late" : ""}"><span class="rem-ic">⏰</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}</small></span><span class="rem-acts"><button type="button" class="btn small" data-remsnooze="${r.id}">Mañana</button><button type="button" class="btn small primary" data-remdone="${r.id}">✓ Hecho</button></span></div>`).join("")}
-      ${remNext.length ? `<details class="tt-done rem-next"${MORE.remNext ? " open" : ""}><summary data-remnextt="1">Programados (${remNext.length})</summary>${remNext.map(r => `<div class="pr rem"><span class="rem-ic">🗓</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}${r.hold ? " · ⏸ en pausa" : ""}</small></span><button type="button" class="pr-x" data-remdel="${r.id}">Borrar</button></div>`).join("")}</details>` : ""}
+      ${remDue.map(r => `<div class="pr rem${r.at < now - 12*HR ? " late" : ""}"><span class="rem-ic">⏰</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}</small></span><span class="rem-acts"><button type="button" class="btn small" data-remedit="${r.id}">Editar</button><button type="button" class="btn small" data-remsnooze="${r.id}">Mañana</button><button type="button" class="btn small primary" data-remdone="${r.id}">✓ Hecho</button></span></div>`).join("")}
+      ${remNext.length ? `<details class="tt-done rem-next"${MORE.remNext ? " open" : ""}><summary data-remnextt="1">Programados (${remNext.length})</summary>${remNext.map(r => `<div class="pr rem"><span class="rem-ic">🗓</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}${r.hold ? " · ⏸ en pausa" : ""}</small></span><button type="button" class="btn small" data-remedit="${r.id}">Editar</button><button type="button" class="pr-x" data-remdel="${r.id}">Borrar</button></div>`).join("")}</details>` : ""}
     </div></section>` : "";
   const recentDone = x => tkSt(x)==="done" && now - (x.doneAt||x.statusAt||0) < 7*DAY;
   const myDone = otherDay ? [] : taskList(meId()).filter(([,x]) => recentDone(x)).sort((a,b) => (b[1].doneAt||0) - (a[1].doneAt||0));
@@ -4237,10 +4257,10 @@ function renderMich(){
     const locked = qt.until && !done(x);
     return `<a class="mi-row${done(x)?" done":""}${locked?" locked":""}" href="${esc(locked ? "#" : (url||"#"))}" target="_blank" rel="noopener" data-mgo="${k}">
       <span class="ck-av mi-av">${ini(x.prospect)}${h?`<img src="https://unavatar.io/instagram/${encodeURIComponent(h)}?fallback=false" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>
-      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${isUgc(x) ? `<span class="ugc-tag">UGC</span> ` : ""}${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}${x.emailOptout ? " · pidió baja" : x.emailRepliedAt ? " · contestó el email" : x.email2At ? " · 2 emails enviados" : x.email1At ? " · email 1 enviado" : ""}</span>${!x.meetId && !x.email1At && !x.emailOptout ? (x.emailSkip
+      <span class="mi-m"><b>${esc(x.prospect||h||"Sin nombre")}</b><small>${isUgc(x) ? `<span class="ugc-tag">UGC</span> ` : ""}${h?`@${esc(h)} · `:""}${fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}${x.emailOptout ? " · pidió baja" : x.emailRepliedAt ? " · contestó el email" : x.email2At ? " · 2 emails enviados" : x.email1At ? " · email 1 enviado" : ""} <button type="button" class="mi-emed" data-memail="${k}" title="Corregir o quitar el email">✎</button>${!x.emailOptout && !x.emailRepliedAt ? `<button type="button" class="mi-emed" data-meoptout="${k}" title="Ya no escribirle nunca por email">Pidió baja</button>` : ""}</span>${!x.meetId && !x.email2At && !x.emailOptout && !x.emailRepliedAt && !isUgc(x) ? (x.emailSkip
           ? `<button type="button" class="mi-esk off" data-meskip="${u}/${id}" title="Toca para volver a programarlo">✉ No se le enviará email · Reactivar</button>`
-          : `<button type="button" class="mi-esk" data-meskip="${u}/${id}" title="Si por estrategia no conviene escribirle, toca para no enviarle">✉ Se le escribirá por email${x.contactedAt ? (Number(x.contactedAt) + 10*DAY > Date.now() ? ` el ${esc(fmtLocal(Number(x.contactedAt) + 10*DAY).split(",")[0])}` : " en el próximo envío") : ""} · No enviar</button>`) : ""}` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}</span>
-      ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
+          : `<button type="button" class="mi-esk" data-meskip="${u}/${id}" title="Si por estrategia no conviene escribirle, toca para no enviarle">${x.email1At ? `✉ Se le mandará el email 2${Number(x.email1At) + 7*DAY > Date.now() ? ` el ${esc(fmtLocal(Number(x.email1At) + 7*DAY).split(",")[0])}` : ""} · Detener` : `✉ Se le escribirá por email${x.contactedAt ? (Number(x.contactedAt) + 10*DAY > Date.now() ? ` el ${esc(fmtLocal(Number(x.contactedAt) + 10*DAY).split(",")[0])}` : " en el próximo envío") : ""} · No enviar`}</button>`) : ""}` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}</span>
+      ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${!x.meetId && !x.email1At ? `<button type="button" class="mi-ic mi-back" data-mundo="${k}" aria-label="Regresar a pendientes" title="Regresar a pendientes (no se contactó)">↺</button>` : ""}${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
         : `<span class="mi-ig">Abrir</span>${MICH.on ? "" : `<button type="button" class="mi-ic" data-mdone="${k}" aria-label="Marcar como contactado" title="Marcar como contactado">✓</button>`}`}
     </a>`; }).join("")}</div>`
     : `<div class="empty">${rows.length ? (MICH.f==="nuevo" ? "🎉 No hay pendientes. Cuando el equipo proponga más influencers aparecen aquí." : "Nada por aquí.") : "Todavía no hay influencers en la lista. Aparecen cuando el equipo registra un Perfil 3 (35K+)."}</div>`);
@@ -4248,17 +4268,21 @@ function renderMich(){
 // agregar o corregir el email de un influencer de la lista (Mich o el AM que lo propuso)
 async function vipEmailAsk(k){
   const [u, id] = k.split("/"), x = (S.vip[u]||{})[id] || (u===meId() ? (S.myVip||{})[id] : null); if (!x) return;
-  const v = (prompt(`Email de ${x.prospect || "este perfil"}:`, x.email || "") || "").trim().toLowerCase(); if (!v) return;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){ quickToast("Ese email no se ve bien"); return; }
-  const prev = x.email; x.email = v; schedule();
-  try{ await db.doc(`meets/${u}/vip/${id}`).update({email:v}); quickToast("✓ Email guardado"); }catch(_){ x.email = prev; schedule(); quickToast("No se guardó"); }
+  const raw = prompt(x.email ? `Email de ${x.prospect || "este perfil"} (déjalo vacío para quitarlo):` : `Email de ${x.prospect || "este perfil"}:`, x.email || ""); if (raw === null) return;
+  const v = raw.trim().toLowerCase();
+  if (!v && !x.email) return;
+  if (!v && !confirm(`¿Quitar el email de ${x.prospect || "este perfil"}? Ya no le saldrán emails automáticos.`)) return;
+  if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){ quickToast("Ese email no se ve bien"); return; }
+  if (v === (x.email || "")) return;
+  const prev = x.email; x.email = v || null; schedule();
+  try{ await db.doc(`meets/${u}/vip/${id}`).update({email:v || null, emailEditedAt:Date.now(), emailEditedBy:S.uid}); quickToast(v ? "✓ Email guardado" : "Email quitado"); }catch(_){ x.email = prev; schedule(); quickToast("No se guardó"); }
 }
 async function michMark(k, status){
   const [u, id] = k.split("/"), x = (S.vip[u]||{})[id]; if (!x) return;
   if (status==="contactado"){ const q = michQuota(); if (q.until){ const t = $("miToast"); t.hidden = false; t.innerHTML = `<span>🧊 En pausa: vuelves en ${esc(fmtLeft(q.until - Date.now()))}</span>`; clearTimeout(MICH.tT); MICH.tT = setTimeout(() => { t.hidden = true; }, 3000); return; } }
-  const prev = {status:x.status||"nuevo", statusAt:x.statusAt||0}, now = Date.now();
+  const prev = {status:x.status||"nuevo", statusAt:x.statusAt||0, contactedAt:x.contactedAt||null, contactedBy:x.contactedBy||null, tpl:x.tpl||null, tplName:x.tplName||null}, now = Date.now();
   const at = MICH.tpl && S.michTpl && S.michTpl[MICH.tpl];
-  const patch = status==="contactado" ? {status, statusAt:now, contactedAt:now, contactedBy:meId(), ...(at ? {tpl:MICH.tpl, tplName:at.name} : {})} : {status, statusAt:now};
+  const patch = status==="contactado" ? {status, statusAt:now, contactedAt:now, contactedBy:meId(), ...(at ? {tpl:MICH.tpl, tplName:at.name} : {})} : {status, statusAt:now, contactedAt:null, contactedBy:null, tpl:null, tplName:null};
   Object.assign(x, patch); schedule();
   clearTimeout(MICH.tT); MICH.undo = {k, prev};
   const t = $("miToast"); t.hidden = false; t.innerHTML = `<span>${status==="contactado" ? `✓ ${esc(x.prospect||"Perfil")} contactado` : "Regresó a por contactar"}</span><button type="button" data-mtundo="1">Deshacer</button>`;
@@ -4282,6 +4306,11 @@ $("view-mich").addEventListener("click", e => {
     const v = !x.emailSkip; x.emailSkip = v; renderMich(); quickToast(v ? "✓ No se le enviará email" : "✓ Se le escribirá por email");
     db.doc(`meets/${u}/vip/${id}`).update({emailSkip:v, emailSkipBy:S.uid, emailSkipAt:Date.now()}).catch(() => { x.emailSkip = !v; renderMich(); quickToast("No se guardó"); }); return; }
   const ea = e.target.closest("[data-memail]"); if (ea){ e.preventDefault(); e.stopPropagation(); vipEmailAsk(ea.dataset.memail); return; }
+  const oo = e.target.closest("[data-meoptout]"); if (oo){ e.preventDefault(); e.stopPropagation();
+    const [u, id] = oo.dataset.meoptout.split("/"), x = (S.vip[u]||{})[id]; if (!x) return;
+    if (!confirm(`¿${x.prospect || "Este perfil"} pidió que ya no le escribamos? No se le volverá a mandar ningún email automático.`)) return;
+    x.emailOptout = Date.now(); renderMich();
+    db.doc(`meets/${u}/vip/${id}`).update({emailOptout:x.emailOptout, emailOptoutBy:S.uid}).then(() => quickToast("✓ Ya no se le escribirá")).catch(() => { delete x.emailOptout; renderMich(); quickToast("No se guardó"); }); return; }
   const bk = e.target.closest("[data-mbook]"); if (bk){ e.preventDefault(); e.stopPropagation(); return michBookOpen(bk.dataset.mbook); }
   const dn = e.target.closest("[data-mdone]"), un = e.target.closest("[data-mundo]"), tu = e.target.closest("[data-mtundo]");
   if (dn){ e.preventDefault(); e.stopPropagation(); return michMark(dn.dataset.mdone, "contactado"); }
@@ -4336,27 +4365,33 @@ const TSUB = {};
 const REM = {}, REMSUB = {};
 function remSub(){ const u = meId(); if (!u || REMSUB[u] || !db) return; REMSUB[u] = db.collection(`meets/${u}/reminders`).onSnapshot(sn => { REM[u] = {}; sn.docs.forEach(d => REM[u][d.id] = {...d.data(), id:d.id}); schedule(); }, () => {}); }
 function remList(){ remSub(); return Object.values(REM[meId()] || {}); }
-function remOpen(ref, name, kind){
+function remOpen(ref, name, kind, edit){
+  if (edit){ ref = edit.ref || ""; name = edit.name || ""; kind = edit.kind || ""; }
   const ev = kind==="event";
+  const eDay = edit ? new Date(edit.at - VOFF).toISOString().slice(0,10) : "", eTime = edit ? new Date(edit.at - VOFF).toISOString().slice(11,16) : "";
   const today = new Date(Date.now() - OFF + (ref ? DAY : 0)).toISOString().slice(0,10); // manual: hoy · desde un prospecto: mañana
   const mine = Object.entries(michMode() ? {} : myItems()).filter(([,m]) => m && m.prospect && !(m.flow||{}).lostAt).map(([id,m]) => [`${meId()}__${id}`, m.prospect]).sort((a,b) => String(a[1]).localeCompare(String(b[1])));
   const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "remWrap";
   w.innerHTML = `<div class="bk mbk" role="dialog" aria-modal="true" aria-label="Nuevo recordatorio"><div class="bk-grab"></div>
     <div class="bk-h"><b>${ev ? "📅 Agregar a tu agenda" : "＋ Pendiente o recordatorio"}</b><div class="spacer"></div><button type="button" class="btn small" data-remx="1">Cerrar</button></div>
     <div class="grid">
-      <label class="f full">${ev ? "¿Qué es?" : "¿Qué hay que hacer?"} <em>*</em><input id="remText" placeholder="${ev ? "Ej. Llamada con Ana para ver su contenido" : "Ej. Se fue de vacaciones: escribirle para reagendar"}" autocomplete="off"></label>
-      <label class="f">Día <em>*</em><input type="date" id="remDay" value="${ev ? new Date(Date.now() - VOFF).toISOString().slice(0,10) : today}"></label>
-      <label class="f">Hora<input type="time" id="remTime" value="${ev ? String(new Date(Date.now() - VOFF + HR).getUTCHours()).padStart(2,"0") + ":00" : "09:00"}"></label>
-      ${ev ? `<label class="f">Duración<select id="remDur"><option value="15">15 min</option><option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">1 h</option><option value="90">1 h 30</option></select></label>` : ""}
+      <label class="f full">${ev ? "¿Qué es?" : "¿Qué hay que hacer?"} <em>*</em><input id="remText" placeholder="${ev ? "Ej. Llamada con Ana para ver su contenido" : "Ej. Se fue de vacaciones: escribirle para reagendar"}" value="${esc(edit ? edit.text || "" : "")}" autocomplete="off"></label>
+      <label class="f">Día <em>*</em><input type="date" id="remDay" value="${edit ? eDay : ev ? new Date(Date.now() - VOFF).toISOString().slice(0,10) : today}"></label>
+      <label class="f">Hora<input type="time" id="remTime" value="${edit ? eTime : ev ? String(new Date(Date.now() - VOFF + HR).getUTCHours()).padStart(2,"0") + ":00" : "09:00"}"></label>
+      ${ev ? `<label class="f">Duración<select id="remDur">${[[15,"15 min"],[30,"30 min"],[45,"45 min"],[60,"1 h"],[90,"1 h 30"]].map(([v,l]) => `<option value="${v}"${(Number(edit && edit.dur) || 30)===v ? " selected" : ""}>${l}</option>`).join("")}</select></label>` : ""}
       ${ref ? `<p class="mut small full" style="margin:0 4px">Prospecto: <b>${esc(name||"")}</b></p>` : ""}
-      <label class="f full rem-hold"${!ev && (ref || mine.length) ? "" : " hidden"}><span><input type="checkbox" id="remHold" checked> Poner al prospecto en pausa hasta ese día</span><small>Sus pendientes no te salen ni cuentan como atrasados mientras tanto.</small></label>
-      ${ref ? "" : mine.length ? `<label class="f full">Prospecto (opcional)<select id="remRef"><option value="">Ninguno</option>${mine.map(([k,n]) => `<option value="${k}">${esc(n)}</option>`).join("")}</select></label>` : ""}
+      <label class="f full rem-hold"${!edit && !ev && (ref || mine.length) ? "" : " hidden"}><span><input type="checkbox" id="remHold" checked> Poner al prospecto en pausa hasta ese día</span><small>Sus pendientes no te salen ni cuentan como atrasados mientras tanto.</small></label>
+      ${ref || edit ? "" : mine.length ? `<label class="f full">Prospecto (opcional)<select id="remRef"><option value="">Ninguno</option>${mine.map(([k,n]) => `<option value="${k}">${esc(n)}</option>`).join("")}</select></label>` : ""}
     </div>
     <p class="mut small" style="margin:8px 6px 0">${ev ? "Sale en tu agenda, cuenta como ocupado cuando alguien agenda contigo y te llega una notificación." : "Te sale en tus pendientes ese día y te llega una notificación a esa hora."}</p>
-    <div class="row"><span class="err" id="remErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="remGo">Guardar</button></div></div>`;
+    <div class="row">${edit ? `<button type="button" class="pr-x" id="remDelE">Borrar</button>` : ""}<span class="err" id="remErr"></span><div class="spacer"></div><button type="button" class="btn primary" id="remGo">${edit ? "Guardar cambios" : "Guardar"}</button></div></div>`;
   document.body.appendChild(w);
   w.addEventListener("click", async e => {
     if (e.target===w || e.target.closest("[data-remx]")) return w.remove();
+    const dE = e.target.closest("#remDelE"); if (dE && edit){ if (dE.dataset.armed !== "1"){ dE.dataset.armed = "1"; dE.textContent = "¿Borrar?"; return; }
+      try{ await db.doc(`meets/${meId()}/reminders/${edit.id}`).delete(); delete (REM[meId()]||{})[edit.id];
+        if (edit.hold && edit.ref){ const [ou, oid] = edit.ref.split("__"); db.doc(`meets/${ou}/items/${oid}`).update({flow:{holdUntil:null}}).catch(() => {}); }
+        w.remove(); SL.at = 0; schedule(); quickToast("Borrado"); }catch(_){ $("remErr").textContent = "No se pudo borrar."; } return; }
     if (!e.target.closest("#remGo")) return;
     const text = $("remText").value.trim(), day = $("remDay").value, tm = $("remTime").value || "09:00";
     if (!text || !day){ $("remErr").textContent = "Escribe el recordatorio y el día."; return; }
@@ -4364,6 +4399,13 @@ function remOpen(ref, name, kind){
     const r = ref || ($("remRef") && $("remRef").value) || "", nm = name || (r ? (mine.find(x => x[0]===r)||[])[1] || "" : "");
     const hold = !!(r && $("remHold") && $("remHold").checked);
     $("remGo").disabled = true;
+    if (edit){ // editar: texto, día, hora y duración
+      const patch = {text, at, notifiedAt:null, ...(ev ? {dur:Number(($("remDur")||{}).value)||30} : {})};
+      try{ await db.doc(`meets/${meId()}/reminders/${edit.id}`).update(patch); Object.assign((REM[meId()]||{})[edit.id] || {}, patch);
+        if (edit.hold && edit.ref){ const [ou, oid] = edit.ref.split("__"); db.doc(`meets/${ou}/items/${oid}`).update({flow:{holdUntil:at}}).catch(() => {}); }
+        w.remove(); SL.at = 0; schedule(); quickToast(`✓ Guardado · ${fmtLocal(at)}`); }
+      catch(_){ $("remGo").disabled = false; $("remErr").textContent = "No se pudo guardar."; }
+      return; }
     try{ const u = meId(), refd = db.collection(`meets/${u}/reminders`).doc(), data = {text, at, ref:r, name:nm, createdAt:Date.now(), done:false, hold, ...(ev ? {kind:"event", dur:Number(($("remDur")||{}).value)||30} : {})};
       if (hold){ const [ou, oid] = r.split("__"); await db.doc(`meets/${ou}/items/${oid}`).update({flow:{holdUntil:at, holdBy:S.uid, holdNote:text}}); const mm = ((S.all||{})[ou]||{})[oid] || (ou===meId() ? myItems()[oid] : null); if (mm) (mm.flow ||= {}).holdUntil = at; }
       await refd.set(data); ((REM[u] ||= {}))[refd.id] = {...data, id:refd.id}; w.remove(); SL.at = 0; schedule(); quickToast(ev ? `✓ Agregado a tu agenda · ${fmtLocal(at)}` : `✓ Te lo recuerdo el ${fmtLocal(at)}`); }
@@ -4374,6 +4416,7 @@ function remOpen(ref, name, kind){
 document.addEventListener("click", async e => {
   const ac = e.target.closest("[data-adjcopy]"); if (ac){ e.stopPropagation(); try{ await navigator.clipboard.writeText(ac.dataset.adjcopy); quickToast("✓ Pregunta copiada"); }catch(_){ quickToast("No se pudo copiar"); } return; }
   const as = e.target.closest("[data-adjset]"); if (as){ e.stopPropagation(); (DRAFT[as.dataset.k] ||= {dt:{}}).adj = as.dataset.adjset; as.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("on", b===as)); return; }
+  const re = e.target.closest("[data-remedit]"); if (re){ e.stopPropagation(); const r = (REM[meId()]||{})[re.dataset.remedit]; if (r) remOpen("", "", "", {...r, id:re.dataset.remedit}); return; }
   const nw = e.target.closest("[data-remnew]"); if (nw){ e.stopPropagation(); const ch = $("addWrap"); if (ch) ch.remove(); return remOpen(nw.dataset.remref || "", nw.dataset.remname || "", nw.dataset.remkind || ""); }
   const pa = e.target.closest("[data-pendadd]"); if (pa){ e.stopPropagation();
     if (!((adminMode() && !S.viewAs) || tkAssigner())) return remOpen("", "", "");
@@ -4822,12 +4865,12 @@ const ROLES = {
 const roleOf = u => (S.roles[u] && S.roles[u].role) || "am";
 const mgrOf = u => (S.roles[u] && S.roles[u].managerId) || "";
 function computeTeam(){
-  const ams = Object.keys(S.members).filter(u => roleOf(u)==="am");
-  let ids = ams;
-  // cada AM es de su manager; los que no tienen manager asignado son del primero (igual que en el organigrama)
-  const firstMgr = Object.keys(S.members).filter(u => roleOf(u)==="manager")[0] || "";
   const headU = (S.config && S.config.headId) || (S.isOwner ? S.uid : "");
-  const mine = m => ams.filter(u => u!==headU && (mgrOf(u) || firstMgr)===m);
+  const ams = Object.keys(S.members).filter(u => roleOf(u)==="am" && u !== headU); // el Head nunca cuenta como AM (ranking, resultados, reporte, Excel)
+  let ids = ams;
+  // cada AM es de su manager; los que no tienen manager (o cuyo manager ya no lo es) son del primero (igual que en el organigrama)
+  const mgrList = Object.keys(S.members).filter(u => roleOf(u)==="manager"), firstMgr = mgrList[0] || "";
+  const mine = m => ams.filter(u => (mgrList.includes(mgrOf(u)) ? mgrOf(u) : firstMgr)===m);
   if (S.isLead && !S.isOwner) ids = mine(S.uid);
   if (S.viewMgr && S.viewMgr!=="__mgr") ids = mine(S.viewMgr);
   S.team = Object.fromEntries(ids.map(u => [u, S.members[u]]));
@@ -4869,8 +4912,8 @@ function orgCtl(uid){
 function renderOrg(){
   const box = $("orgBox"); if (!box || busyIn(box) || !S.isOwner) return;
   const all = Object.keys(S.members), head = (S.config && S.config.headId) || (S.isOwner ? S.uid : "");
-  const mgrs = all.filter(u => roleOf(u)==="manager"), ams = all.filter(u => roleOf(u)==="am");
-  const amsOf = m => ams.filter(u => mgrOf(u)===m || (!mgrOf(u) && mgrs[0]===m));
+  const mgrs = all.filter(u => roleOf(u)==="manager"), ams = all.filter(u => roleOf(u)==="am" && u !== head);
+  const amsOf = m => ams.filter(u => (mgrs.includes(mgrOf(u)) ? mgrOf(u) : mgrs[0]) === m);
   const unassigned = mgrs.length ? [] : ams;
   let i = 0;
   const amRow = list => list.length ? `<div class="org-row">${list.map(u => orgCard(u, "am", orgCtl(u), ++i)).join("")}</div>` : `<div class="org-row"><div class="org-card am empty"><p class="org-d">Aún no hay Account Managers asignados.</p></div></div>`;
@@ -4916,8 +4959,12 @@ $("orgBox").addEventListener("change", async e => {
   const uid = (r || g).dataset.orgrole || (r || g).dataset.orgmgr;
   const cur = S.roles[uid] || {};
   const next = r ? {...cur, role:r.value, ...(r.value==="manager" ? {managerId:""} : {})} : {...cur, role:cur.role || "am", managerId:g.value};
+  // deja de ser Manager: sus AM pasan a "sin manager" (van con el primer manager) en vez de quedar fuera de todo equipo
+  const orphans = r && roleOf(uid)==="manager" && r.value!=="manager" ? Object.keys(S.members||{}).filter(u => mgrOf(u)===uid) : [];
+  if (r && !confirm(`¿Cambiar a ${String(nameOf(S.ps||{}, uid)).split(" (")[0]} a ${ROLES[r.value].title}? Cambia lo que puede ver y hacer${r.value==="am" ? ", y entra al Ranking" : roleOf(uid)==="am" ? ", y sale del Ranking" : ""}.${orphans.length ? `\n\nSus ${orphans.length} AM quedan sin manager asignado (se van con el primer manager).` : ""}`)){ r.value = roleOf(uid); return; }
   e.target.disabled = true;
-  try{ await db.doc(`roles/${uid}`).set({...next, updatedAt:Date.now()}); }catch(ex){ e.target.disabled = false; }
+  try{ await db.doc(`roles/${uid}`).set({...next, updatedAt:Date.now()});
+    for (const u of orphans){ await db.doc(`roles/${u}`).set({...(S.roles[u]||{role:"am"}), managerId:"", updatedAt:Date.now()}).catch(() => {}); } }catch(ex){ e.target.disabled = false; }
 });
 function applyRole(saved){
   const lead = S.isOwner || (roleOf(S.uid)==="manager" && S.canEdit === true);
@@ -5173,9 +5220,36 @@ function rulesHtml(){
   return `<section class="pg2 tt-rules"><div class="pg2-card">${rules.map(([id, r]) => { const ex = new Set(r.exclude || []);
     return `<div class="rl"><div class="rl-h"><b>${esc(r.title)}</b><small>Cada ${esc(DOWS[Number(r.weekday)]||"semana")} · 6 pm${tkListMetric(r.metric) && r.goal ? ` · meta ${r.goal}${r.metric==="ugc" ? " UGC" : ""}` : ""}</small></div>
       <div class="rl-p">${ppl(r).map(u => `<button type="button" class="rl-u${ex.has(u) ? " off" : ""}" data-rlu="${esc(id)}|${esc(u)}" title="${ex.has(u) ? "No le llega · toca para volver a incluir" : "Le llega · toca para quitar"}">${ex.has(u) ? "" : "✓ "}${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</button>`).join("")}</div>
-      <button type="button" class="linkbtn" data-tkstoprule="${esc(id)}">Dejar de repetir</button></div>`; }).join("")}</div>
+      ${RLED.id === id ? `<div class="tkm-form rl-ed"><input data-rled="title" value="${esc(RLED.title)}" placeholder="Título" aria-label="Título">
+        <select data-rled="weekday" aria-label="Día de entrega">${DOWS.map((d,i) => `<option value="${i}"${Number(RLED.weekday)===i ? " selected" : ""}>Cada ${d}</option>`).join("")}</select>
+        <input data-rled="note" value="${esc(RLED.note)}" placeholder="Detalle (opcional)" aria-label="Detalle">
+        ${tkListMetric(r.metric) ? `<input data-rled="goal" type="number" min="1" max="500" inputmode="numeric" value="${esc(RLED.goal)}" aria-label="Meta">` : ""}
+        <p class="mut small" style="margin:0">Se aplica desde la próxima; la tarea abierta de esta semana también cambia su título y detalle.</p>
+        <div class="tk-acts"><button type="button" class="btn small" data-rledx="1">Cancelar</button><button type="button" class="btn small primary" data-rledsave="${esc(id)}">Guardar regla</button></div></div>`
+      : `<div class="rl-acts"><button type="button" class="linkbtn" data-rledit="${esc(id)}">✎ Editar regla</button><button type="button" class="linkbtn" data-tkstoprule="${esc(id)}">Dejar de repetir</button></div>`}</div>`; }).join("")}</div>
     <p class="mut small" style="margin:6px 4px 0">Toca a una persona para que ya no le llegue (o para volver a incluirla).</p></section>`;
 }
+// botones que llevan a otra pantalla (fuera del plan del día, que tiene su propio manejo)
+document.addEventListener("click", e => { const g = e.target.closest("[data-gotab]"); if (!g || g.closest("#dayPlan")) return; e.preventDefault(); showTab(g.dataset.gotab); window.scrollTo({top:0, behavior:"smooth"}); });
+const RLED = {};
+document.addEventListener("input", e => { const i = e.target.closest("[data-rled]"); if (i) RLED[i.dataset.rled] = i.value; });
+document.addEventListener("change", e => { const i = e.target.closest("select[data-rled]"); if (i) RLED[i.dataset.rled] = i.value; });
+document.addEventListener("click", async e => {
+  const ed = e.target.closest("[data-rledit]"); if (ed){ e.stopPropagation(); const r = TK_RULES[ed.dataset.rledit]; if (!r) return;
+    Object.keys(RLED).forEach(k => delete RLED[k]); Object.assign(RLED, {id:ed.dataset.rledit, title:r.title||"", note:r.note||"", weekday:Number(r.weekday)||0, goal:r.goal||""}); const bx = $("setBox"); if (bx) bx.innerHTML = ""; schedule(); return; }
+  if (e.target.closest("[data-rledx]")){ e.stopPropagation(); Object.keys(RLED).forEach(k => delete RLED[k]); const bx = $("setBox"); if (bx) bx.innerHTML = ""; schedule(); return; }
+  const sv = e.target.closest("[data-rledsave]"); if (!sv) return; e.stopPropagation();
+  const rid = sv.dataset.rledsave, r = TK_RULES[rid]; if (!r) return;
+  const title = String(RLED.title||"").trim(); if (!title){ quickToast("La regla necesita un título"); return; }
+  const patch = {title, note:String(RLED.note||"").trim(), weekday:Number(RLED.weekday)||0, ...(tkListMetric(r.metric) ? {goal:Math.max(1, Number(RLED.goal)||Number(r.goal)||1)} : {}), editedAt:Date.now(), editedBy:S.uid};
+  sv.disabled = true;
+  try{ await db.doc(`taskRules/${rid}`).update(patch); Object.assign(r, patch);
+    // la tarea abierta de esta semana también cambia título, detalle y meta
+    for (const [u, o] of Object.entries(S.tasks||{})) for (const [tid, x] of Object.entries(o||{})) if (x && x.ruleId===rid && tkSt(x)!=="done")
+      await db.doc(`meets/${u}/tasks/${tid}`).update({title:patch.title, note:patch.note, ...(patch.goal ? {goal:patch.goal} : {})}).then(() => Object.assign(x, {title:patch.title, note:patch.note, ...(patch.goal ? {goal:patch.goal} : {})})).catch(() => {});
+    Object.keys(RLED).forEach(k => delete RLED[k]); const bx = $("setBox"); if (bx) bx.innerHTML = ""; quickToast("✓ Regla actualizada"); schedule(); }
+  catch(_){ sv.disabled = false; quickToast("No se guardó"); }
+});
 document.addEventListener("click", async e => { const b = e.target.closest("[data-rlu]"); if (!b) return; e.stopPropagation();
   const [rid, u] = b.dataset.rlu.split("|"), r = TK_RULES[rid]; if (!r) return;
   const ex = new Set(r.exclude || []), nm = String(nameOf(S.ps||{}, u)).split(" (")[0], removing = !ex.has(u);
