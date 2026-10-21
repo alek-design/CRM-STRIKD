@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-21 04:39:56 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-21 04:43:45 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792557596">
+<link rel="stylesheet" href="/auth.css?v=1792557825">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792557596"></script>
+<script src="/claude-shim.js?v=1792557825"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1292,7 +1292,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .mi-meet,.mi-reply{display:block;font-size:12.5px;margin-top:3px}.mi-reply{color:var(--fg2);font-style:italic;font-size:13.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
 .d-meet{display:grid;gap:6px;margin:10px 0}.d-meet .ig{display:flex;gap:8px;flex-wrap:wrap}.d-meet input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 .pl-mv{display:flex;gap:14px;flex-wrap:wrap}.linkbtn.bad{color:#e5484d}.tt-done-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 4px}.tt-done-q{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);flex:1;min-width:140px}
-.stage-pick{margin:6px 0 10px}.stage-pick select{font:inherit;font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);width:100%}
+.has-stage #slotBox,.has-stage .inv,.has-stage #p3meetL,.has-stage #pfGuide{display:none!important}.stage-pick{margin:6px 0 10px}.stage-pick select{font:inherit;font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);width:100%}
 .tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
@@ -1888,7 +1888,7 @@ const CLN = {res:null, busy:false, armed:false};
 function tzHint(){ const h = $("f_tzHint"); if (!h) return; h.hidden = !tzOther(); if (!tzOther()) return;
   const v = ($("f_meetAt")||{}).value, c = v ? toC(v) : ""; h.textContent = `Pon la hora de ${tzName(VTZ)} (tu hora).${c ? ` En Cancún serán las ${c.slice(11)}${c.slice(0,10) !== v.slice(0,10) ? " del " + Number(c.slice(8,10)) : ""}.` : ""}`; }
 document.addEventListener("input", e => { if (e.target && e.target.id === "f_meetAt") tzHint(); });
-document.addEventListener("change", e => { if (e.target && e.target.id === "f_stage"){ $("stageHint").hidden = !e.target.value; } });
+document.addEventListener("change", e => { if (e.target && e.target.id === "f_stage"){ $("stageHint").hidden = !e.target.value; if (!curPerfil()) $("f_perfil").value = "1"; syncPerfilUi(); } });
 function syncTz(){ const m = (S.members||{})[S.uid] || {}; return setViewerTz((m.tzManual && m.tz) || devTz); }
 const TZ_LIST = ["America/Cancun","America/Mexico_City","America/Tijuana","America/Hermosillo","America/Mazatlan","America/Bogota","America/Lima","America/Santiago","America/Argentina/Buenos_Aires","America/New_York","America/Chicago","America/Los_Angeles","Europe/Madrid"];
 function tzRow(){ const m = (S.members||{})[S.uid] || {}, cur = m.tzManual && m.tz ? m.tz : "";
@@ -2624,7 +2624,7 @@ function validate(o){
   if (o.link && !safeUrl(o.link)) return "El link debe empezar con https://";
   return "";
 }
-function resetForm(){ if ($("f_stage")){ $("f_stage").value = ""; $("stageHint").hidden = true; } S.waPrefill = null; S.gcPrefill = null; S.bkGuests = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Enviar a validación"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
+function resetForm(){ if ($("f_stage")){ $("f_stage").value = ""; $("stageHint").hidden = true; $("meetForm").classList.remove("has-stage"); } S.waPrefill = null; S.gcPrefill = null; S.bkGuests = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Enviar a validación"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
 $("cancelEdit").addEventListener("click", resetForm);
 /* ---------- resultado claro al registrar: cargando → listo / con aviso / error ---------- */
 const RS_IC = {ok:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>', warn:'<svg viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"/></svg>', err:'<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>', loading:""};
@@ -5779,6 +5779,12 @@ function syncPerfilUi(){
     <span><em>Dónde buscar:</em> ${esc(g.where)}</span><span><em>Canal:</em> ${esc(g.channel)}</span><span><em>Estrategia:</em> ${esc(g.how)}</span><span><em>Objetivo:</em> ${esc(g.goal)}</span></div>`;
   if (!vip) syncInvUi(); else { $("mkInvL").hidden = true; $("invHint").hidden = true; $("linkWrap").hidden = true; }
   if (p3m && !S.editingId){ $("formTitle").textContent = "Registrar meet de influencer"; $("submitBtn").textContent = "Enviar a validación"; }
+  // prospecto que ya viene avanzado: sin meet obligatorio, sin horarios ni invitación
+  const stg = typeof entryStage === "function" ? entryStage() : "";
+  $("meetForm").classList.toggle("has-stage", !!stg);
+  { const lb = $("f_meetAt").closest("label"); if (lb){ lb.firstChild.textContent = stg ? "Fecha del pitch (opcional) " : "Fecha y hora del meet "; const em = lb.querySelector("em"); if (em) em.hidden = !!stg; } }
+  { const el = $("f_emailLbl"), em = el && el.querySelector("em"); if (stg && el){ el.firstChild.textContent = "Email (opcional) "; if (em) em.hidden = true; } }
+  if (stg){ $("p3meetL").hidden = true; document.querySelectorAll("#meetForm .m-only").forEach(el => el.hidden = false); $("formTitle").textContent = "Agregar prospecto en su etapa"; $("submitBtn").textContent = "Agregar en esa etapa"; }
 }
 $("canalPick").addEventListener("click", e => { const b = e.target.closest("[data-canal]"); if (!b) return; $("f_canal").value = b.dataset.canal; syncPerfilUi(); });
 $("p3meetL").addEventListener("click", e => { const b = e.target.closest("[data-p3]"); if (!b || b.disabled) return; $("f_p3meet").checked = b.dataset.p3==="1"; syncPerfilUi(); });
