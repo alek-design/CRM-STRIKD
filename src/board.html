@@ -2867,8 +2867,9 @@ const reschedPending = (m, v) => !!(v && v.status==="noshow" && m.reschedAt && (
 function humanize(ms){ const h = Math.round(ms/HR); if (h < 1) return "menos de 1 h"; if (h < 24) return `${h} h`; const d = Math.round(h/24); return `${d} día${d===1?"":"s"}`; }
 /* Semáforo: green = more than 24 h left · yellow = due within 24 h · red = overdue · deep red = overdue more than 48 h */
 const SEMA = {crit:"Muy atrasado", late:"Atrasado", soon:"Vence pronto", ok:"A tiempo"};
-function dueInfo(due, now){
+function dueInfo(due, now, soonMs){
   const diff = due - now;
+  if (soonMs && diff >= 0) return diff < soonMs ? {cls:"soon", txt:`Sin avance · se pone en rojo en ${humanize(diff)}`} : {cls:"ok", txt:`A tiempo · ${fmtLocal(due)}`};
   if (diff < -48*HR) return {cls:"crit", txt:`Muy atrasado · ${humanize(-diff)}`};
   if (diff < 0) return {cls:"late", txt:`Atrasado ${humanize(-diff)}`};
   if (diff < 24*HR) return {cls:"soon", txt:`Vence en ${humanize(diff)} · ${fmtLocal(due).split(", ")[1]}`};
@@ -2877,7 +2878,7 @@ function dueInfo(due, now){
 function semaChip(uid, id, m, isAdmin){
   const now = Date.now(), t = tasksFor(uid, id, m, now).filter(x => isAdmin ? true : x.who==="member")[0];
   if (!t) return "";
-  const d = dueInfo(t.due, now);
+  const d = dueInfo(t.due, now, t.soon);
   return `<span class="sema ${d.cls}" title="${esc(t.title)}"><i></i>${SEMA[d.cls]}</span>`;
 }
 const LEGEND = `<div class="legend"><span class="sema ok"><i></i>A tiempo · más de 24 h</span><span class="sema soon"><i></i>Vence en menos de 24 h</span><span class="sema late"><i></i>Atrasado</span><span class="sema crit"><i></i>Muy atrasado · más de 48 h</span></div>`;
@@ -2965,7 +2966,7 @@ function tasksFor(uid, id, m, now){
       } else if (now >= last + IDLE_WARN){
         const dd = Math.max(1, Math.floor((now - last) / DAY));
         add({who:"admin", title:`Sin avance con ${p} hace ${dd} día${dd===1?"":"s"}`, detail:"Registra lo que se avanzó o programa el siguiente seguimiento (un mensaje, una llamada o un meet).",
-          due: last + IDLE_LATE, acts:[sess]});
+          due: last + IDLE_LATE, soon: IDLE_LATE - IDLE_WARN, acts:[sess]});
       }
     }
   }
@@ -3063,7 +3064,7 @@ function sessionOpen(uid, id){
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-session]"); if (!b) return; e.preventDefault(); e.stopPropagation(); const [u, id] = b.dataset.session.split("|"); sessionOpen(u, id); });
 // actividad: el último avance, nota o seguimiento registrado (o el pitch)
-const IDLE_WARN = 1*DAY, IDLE_LATE = 2*DAY;
+const IDLE_WARN = 3*DAY, IDLE_LATE = 6*DAY; // verde hasta 2 días sin avance, amarillo del 3 al 5, rojo después
 const lastActOf = (m, v) => { const f = m.flow || {}; return Math.max(Number(f.lastActAt)||0, (v && v.decidedAt)||0, Number(f.interestedAt)||0, Number(f.skeletonApprovedAt)||0, Number(f.contentAt)||0, Number(f.programDoneAt)||0, Number(f.webDoneAt)||0, Number(f.bankDoneAt)||0, Number(f.revivedAt)||0) || (m.createdAt||0); };
 function collectTasks(owners){
   const now = Date.now(), out = [];
@@ -3279,7 +3280,7 @@ function actsHtml(t){
   }).join("");
 }
 function taskHtml(t, showWho){
-  const d = dueInfo(t.due, Date.now());
+  const d = dueInfo(t.due, Date.now(), t.soon);
   const who = showWho ? (t.who==="admin" ? `<span class="chip info">Tú</span>` : `<span class="chip muted">${esc(nameOf(S.ps, t.uid))}</span>`) : "";
   return `<div class="task ${d.cls}">
     <div class="tmain"><div class="tt">${esc(t.title)}</div>
@@ -3311,7 +3312,7 @@ function detailHtml(uid, id, m, isAdmin, cid){
   const st = stepOf(id, m), stepN = typeof st==="number" ? st : 0;
   const tlist = tasksFor(uid, id, m, now).filter(x => isAdmin || x.who==="member");
   const t = tlist[0];
-  const d = t ? dueInfo(t.due, now) : null;
+  const d = t ? dueInfo(t.due, now, t.soon) : null;
   const sname = stepN ? `${STEPS[stepN-1].goal?"Meta":"Paso "+stepN} · ${STEPS[stepN-1].name}` : (st==="lost" ? "Perdido" : "Rechazado");
   const prof = safeUrl(m.profile);
   // journey progress
@@ -3325,7 +3326,7 @@ function detailHtml(uid, id, m, isAdmin, cid){
     // each person only acts on their own tasks: the admin sees the manager's as information, and vice versa
     const mine = tt => isAdmin ? tt.who==="admin" : tt.who==="member";
     const manager = nameOf(S.ps, uid);
-    next = tlist.map(tt => { const dd = dueInfo(tt.due, now), own = mine(tt);
+    next = tlist.map(tt => { const dd = dueInfo(tt.due, now, tt.soon), own = mine(tt);
       return `<div class="d-next ${dd.cls}${own?"":" other"}">
         <div class="d-next-h"><span class="eyb">${own ? (isAdmin ? "Te toca a ti" : "Siguiente paso") : `Le toca a ${esc(isAdmin ? manager : "tu manager")}`}</span><span class="sema ${dd.cls}"><i></i>${dd.txt}</span></div>
         <div class="d-next-t">${esc(tt.title)}</div>${tt.detail?`<p class="d-next-d">${esc(tt.detail)}</p>`:""}
@@ -3410,7 +3411,7 @@ function pathHtml(owners, isAdmin, cid){
   const order = arr => arr.map(x => [...x, firstTask(...x)]).sort((a,b)=> (a[3]?a[3].due:9e15) - (b[3]?b[3].due:9e15));
   const sel = PICK[cid];
   const mini = ([uid,id,m,t]) => {
-    const d = t ? dueInfo(t.due, now) : null, key = `${uid}__${id}`;
+    const d = t ? dueInfo(t.due, now, t.soon) : (statusOf(id)==="attended" && !(m.flow||{}).launchedAt && !(m.flow||{}).lostAt ? {cls:"ok"} : null), key = `${uid}__${id}`; // en verde mientras tenga avance reciente
     const toCancel = statusOf(id)==="rejected" && !m.cancelled;
     const tag = toCancel && d ? "Cancelar" : "";
     return `<button class="mini ${d?d.cls:""}${sel===key?" sel":""}" data-pick="${key}" title="${esc(m.prospect)}">
@@ -3422,7 +3423,7 @@ function pathHtml(owners, isAdmin, cid){
   const LIMIT = 5;
   const cols = STEPS.map(s => {
     const arr = order(groups[s.n]);
-    const cnt = {crit:0, late:0, soon:0, ok:0}; arr.forEach(x => { if (x[3]) cnt[dueInfo(x[3].due, now).cls]++; });
+    const cnt = {crit:0, late:0, soon:0, ok:0}; arr.forEach(x => { if (x[3]) cnt[dueInfo(x[3].due, now, x[3].soon).cls]++; });
     const red = cnt.crit + cnt.late;
     const open = MORE[cid+s.n], shown = open ? arr : arr.slice(0, LIMIT);
     const acc = MORE["acc" + cid + s.n];
@@ -4137,7 +4138,7 @@ function renderPlan(){
         <span class="ig"><input type="datetime-local" data-k="${dk(uid,id)}" data-dt="move" value="${esc((mdr.dt||{}).move || cur)}" aria-label="Nuevo horario"><button type="button" class="btn small primary" data-act="move" data-kind="${ev.kind}" data-uid="${uid}" data-id="${id}">Guardar</button></span>
         <small class="mut">${ev.kind==="pitch" && m.gcalEventId ? "Se le manda la invitación nueva al prospecto." : "Avísale al prospecto del cambio."}</small></div>`
       : `<span class="pl-mv"><button type="button" class="linkbtn" data-moveopen="${dk(uid,id)}">🕐 Cambiar horario</button>${ev.kind==="pitch" ? `<button type="button" class="linkbtn bad" data-act="pcancel" data-uid="${uid}" data-id="${id}">Canceló</button>` : ""}</span>`) : "";
-    const t = first(uid,id,m), d = t ? dueInfo(t.due, now) : null;
+    const t = first(uid,id,m), d = t ? dueInfo(t.due, now, t.soon) : null;
     const prof = safeUrl(m.profile), link = safeUrl(m.link);
     return `<div class="detail pl-x">
       <div class="pl-xh"><div><div class="d-tags"><span class="chip stage">${esc(stageOf(id,m).t)}</span>${admin?ownerChip(uid, id):""}${admin && !(m.flow||{}).lostAt ? `<button type="button" class="chip elim" data-elim="${uid}__${id}">Eliminar</button>` : ""}</div>
@@ -4161,7 +4162,7 @@ function renderPlan(){
     if (!nowPlaced && e.ts > now){ line += nowMark; nowPlaced = true; }
     const state = e.end < now ? "past" : e.ts <= now ? "live" : "next";
     const t = e.gcal ? null : first(e.uid, e.id, e.m), key = e.gcal ? "" : `ev|${e.uid}__${e.id}|${e.ts}`;
-    const d = t ? dueInfo(t.due, now) : null;
+    const d = t ? dueInfo(t.due, now, t.soon) : null;
     // acciones del meet según el momento: antes recordar, al empezar unirse, después ¿se conectó?
     const mins = Math.round((e.ts - now)/60e3), link = !e.gcal && e.m ? safeUrl(e.m.link) : "", isPitch = !e.gcal && e.kind==="pitch";
     const rel = mins > 60 ? `en ${Math.round(mins/60)} h` : mins > 0 ? `en ${mins} min` : "";
@@ -4201,7 +4202,7 @@ function renderPlan(){
   const totalPend = groups.reduce((a,g) => a + g.items.length, 0);
   let todo = groups.map(g => { const late = g.items.filter(t => t.due < now).length, open = true, lim = Math.min(g.items.length, budget); budget -= lim; if (lim <= 0) return "";
     return `<section class="pg2"><div class="pg2-h"><span>${esc(g.k)}</span><b>${g.items.length}</b></div><div class="pg2-card">
-      ${g.items.slice(0, lim).map(t => { const d = dueInfo(t.due, now), key = `tk|${t.uid}__${t.id}`, nm = (t.m && t.m.prospect) || t.title;
+      ${g.items.slice(0, lim).map(t => { const d = dueInfo(t.due, now, t.soon), key = `tk|${t.uid}__${t.id}`, nm = (t.m && t.m.prospect) || t.title;
         const quick = (t.acts||[]).find(a => !a.input), sub = [admin ? String(nameOf(S.ps,t.uid)).split(" (")[0] : "", t.m ? stageOf(t.id, t.m).t : ""].filter(Boolean).join(" · ");
         return `<div class="pr ${d.cls}${sel===key?" sel":""}" role="button" tabindex="0" data-pick="${key}">
           <span class="pr-av">${esc((String(nm).trim()[0]||"?").toUpperCase())}</span>
@@ -6236,7 +6237,7 @@ function renderMsgs(){
   if (S.tab !== "msgs" || busyIn(box) || Date.now() <= HOLD_UNTIL) return;
   const now = Date.now();
   const card = x => {
-    const text = MSGD[x.k] ?? x.text, wa = waLink(x.m.phone, text), d = dueInfo(x.due, now);
+    const text = MSGD[x.k] ?? x.text, wa = waLink(x.m.phone, text), d = dueInfo(x.due, now, x.soon);
     // si el prospecto ya tiene chat en ISKRA, se manda directo desde el número de STRIKD
     const ic = iskConvForPhone(x.m.phone), isk = !!(ic && iskFn() && (adminMode() || ic.owner===meId()));
     return `<div class="msg-card ${d.cls}">
