@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-21 03:57:56 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-21 04:07:23 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792555076">
+<link rel="stylesheet" href="/auth.css?v=1792555643">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792555076"></script>
+<script src="/claude-shim.js?v=1792555643"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -1286,6 +1286,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .mi-emed{font:inherit;font-size:11.5px;font-weight:600;margin-left:4px;padding:1px 8px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--fg2);cursor:pointer}.mi-back{font-size:15px}
 .d-done{margin:10px 0;display:grid;gap:4px}.d-done li{display:flex;gap:8px;align-items:center;font-size:13.5px}.d-done ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .rl-ed{margin-top:4px}.rl-acts{display:flex;gap:14px;flex-wrap:wrap}
+.tk-ext{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 .tz-hint{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .set-theme{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .set-theme button{font:inherit;font-weight:600;display:grid;gap:8px;justify-items:center;padding:12px;border-radius:14px;border:1px solid var(--line2);background:none;color:var(--fg);cursor:pointer}
@@ -4537,16 +4538,16 @@ function taskRow(u, id, x, lead, now){
   const sub = lead ? [String(nameOf(S.ps||{}, u)).split(" (")[0], x.dueAt ? fmtLocal(x.dueAt).split(",")[0] : ""].filter(Boolean).join(" · ") : [x.byName && x.by !== u ? "de " + x.byName : "", x.dueAt ? (late ? "tarde" : "para " + fmtLocal(x.dueAt).split(",")[0]) : ""].filter(Boolean).join(" · ");
   // imágenes con vista previa; los demás archivos (PDF, etc.) como chip
   // quien subió el archivo (o quien asignó la tarea / el Head) lo puede quitar mientras no la haya enviado
-  const canDelF = f => !S.viewAs && st!=="done" && st!=="review" && (f.by===S.uid || x.by===S.uid || S.isOwner);
+  const canDelF = f => !S.viewAs && st!=="done" && st!=="review" && (f.by===S.uid || x.by===S.uid);
   const fdel = (f, i) => canDelF(f) ? `<button type="button" class="tk-fx" data-tkfdel="${k}|${i}" aria-label="Quitar archivo" title="Quitar">×</button>` : "";
   const files = (x.files||[]).map((f, i) => `<span class="tk-fw">` + (tkIsImg(f) ? `<a class="tk-img" href="${esc(f.url)}" target="_blank" rel="noopener" title="${esc(f.name||"imagen")}"><img src="${esc(f.url)}" alt="${esc(f.name||"imagen")}" loading="lazy"></a>`
     : `<a class="tk-file" href="${esc(f.url)}" target="_blank" rel="noopener">${/pdf/i.test(f.type||f.name||"") ? "📄" : "📎"} ${esc(f.name||"archivo")}</a>`) + fdel(f, i) + `</span>`).join("");
   const thumb = (x.files||[]).find(tkIsImg);
   const prog = tkProgress(u, x), rep = x.ruleId ? (TK_RULES[x.ruleId] || {active:true}) : null;
   const d = TKD[k] || {};
-  const canEdit = !S.viewAs && (x.by===S.uid || S.isOwner);
+  const canEdit = !S.viewAs && x.by===S.uid; // solo quien la creó la edita o la borra
   const imgOrFile = f => tkIsImg(f) ? `<a class="tk-img sm" href="${esc(f.url)}" target="_blank" rel="noopener"><img src="${esc(f.url)}" alt="${esc(f.name||"imagen")}" loading="lazy"></a>` : `<a class="tk-file" href="${esc(f.url)}" target="_blank" rel="noopener">📄 ${esc(f.name||"archivo")}</a>`;
-  const thread = (x.comments||[]).map(c => `<div class="tk-c${c.by===S.uid?" me":""}"><div class="tk-c-h"><b>${esc(c.byName||"")}</b><span>${esc(fmtLocal(c.at||0))}</span>${!S.viewAs && (c.by===S.uid || S.isOwner) ? `<button type="button" class="tk-cdel" data-tkcdel="${k}|${c.at||0}|${esc(c.by||"")}" aria-label="Borrar comentario">Borrar</button>` : ""}</div>${c.text ? `<p>${esc(c.text)}</p>` : ""}${(c.files||[]).length ? `<div class="tk-files">${c.files.map(imgOrFile).join("")}</div>` : ""}</div>`).join("");
+  const thread = (x.comments||[]).map(c => `<div class="tk-c${c.by===S.uid?" me":""}"><div class="tk-c-h"><b>${esc(c.byName||"")}</b><span>${esc(fmtLocal(c.at||0))}</span>${!S.viewAs && c.by===S.uid ? `<button type="button" class="tk-cdel" data-tkcdel="${k}|${c.at||0}|${esc(c.by||"")}" aria-label="Borrar comentario">Borrar</button>` : ""}</div>${c.text ? `<p>${esc(c.text)}</p>` : ""}${(c.files||[]).length ? `<div class="tk-files">${c.files.map(imgOrFile).join("")}</div>` : ""}</div>`).join("");
   const cbox = `<div class="tk-cbox"><textarea rows="2" data-tkfb="${k}" placeholder="Escribe un comentario…">${esc(d.fb ?? "")}</textarea>
       <div class="tk-files tk-cfs">${tkCfHtml(k)}</div>
       <div class="tk-cbar"><label class="tk-up">${d.cup ? "Subiendo…" : "📎 Foto o PDF"}<input type="file" accept="image/*,application/pdf" data-tkcfile="${k}" multiple hidden></label><button class="btn small" data-tkcmt="${k}">Comentar</button></div></div>`;
@@ -4568,7 +4569,7 @@ function taskRow(u, id, x, lead, now){
       ${cbox}
       ${lead && michMode() && x.by !== S.uid ? `<p class="mut small">La revisa ${esc(x.byName || "quien la asignó")}.</p>`
         : st==="done" ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|progress">↺ Reabrir</button>${lead ? "" : `<button class="btn small primary" data-tksave="${k}">Guardar cambios</button>`}${(lead || x.by === u) && canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
-        : lead ? `<div class="tk-acts"><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button>${canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
+        : lead ? `<div class="tk-acts"><select class="tk-ext" data-tkext="${k}" aria-label="Días extra para los ajustes" title="Días extra para entregar los ajustes">${[0,1,2,3,5,7].map(n => `<option value="${n}"${Number(d.ext||0)===n ? " selected" : ""}>${n ? `+${n} día${n===1?"":"s"}` : "Misma fecha"}</option>`).join("")}</select><button class="btn small" data-tkst="${k}|changes">Necesita ajustes</button><button class="btn small primary" data-tkst="${k}|done">✓ Completado</button>${canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`
         : `<div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}${x.by === u ? `<button class="btn small primary" data-tkst="${k}|done">✓ Completar</button>` : `<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button>`}${x.by === u && canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`}
     </div>`;
   return `<div class="pr tkr st-${st}${due ? " due-" + due.cls : ""}${late?" late":""}${open?" sel":""}" role="button" tabindex="0" data-tkopen="${k}">
@@ -4677,6 +4678,7 @@ function taskOpen(){
   setTimeout(() => $("tkTitle").focus(), 50);
 }
 document.addEventListener("input", e => { const tv = e.target.closest("[data-tkv]"); if (tv){ const [k, fld] = tv.dataset.tkv.split("|"); (TKD[k] ||= {})["v_" + fld] = tv.value; }
+  const xt = e.target.closest("[data-tkext]"); if (xt){ (TKD[xt.dataset.tkext] ||= {}).ext = Number(xt.value)||0; }
   const ed = e.target.closest("[data-tke]"); if (ed){ const [k, fld] = ed.dataset.tke.split("|"); (TKD[k] ||= {})["e_" + fld] = ed.value; }
   const r = e.target.closest("[data-tkrep]"), f = e.target.closest("[data-tkfb]");
   if (r) (TKD[r.dataset.tkrep] ||= {}).rep = r.value; if (f) (TKD[f.dataset.tkfb] ||= {}).fb = f.value; });
@@ -4713,6 +4715,10 @@ document.addEventListener("click", async e => {
     if (st==="done"){ patch.doneAt = now; patch.doneBy = S.uid; }
     else if (wasDone){ patch.doneAt = 0; patch.reopenedAt = now; patch.reopenedBy = S.uid; } // reabrir una completada
     if (st==="changes" && !(d.fb||"").trim()){ quickToast("Escribe qué hay que ajustar"); return; }
+    if (st==="changes" && Number(d.ext) > 0){ // días extra para entregar los ajustes: nueva fecha a las 6 pm (hora Cancún), contando desde hoy si ya venció
+      const base = Math.max(Number(x0.dueAt)||0, now), day = new Date(base - OFF + Number(d.ext)*DAY).toISOString().slice(0,10);
+      patch.dueAt = Date.parse(day + "T18:00:00-05:00"); patch.dueSoonAt = null; patch.lateAt = null;
+      patch.comments = (patch.comments || (x0.comments||[])).concat([{by:S.uid, byName:String(nameOf(S.ps||{}, S.uid)).split(" (")[0], text:`📅 Nueva fecha de entrega: ${fmtLocal(patch.dueAt).split(",")[0]} (+${d.ext} día${Number(d.ext)===1?"":"s"})`, at:now+1, sys:true}]); }
     const ok = await taskSave(k, patch); if (ok){ tkWho(k, x0, st, (d.fb||"").trim()); delete TKD[k]; if (st==="done" || st==="review") TK_OPEN = ""; quickToast(wasDone && st!=="done" ? "↺ Reabierta" : "✓ " + TK_ST[st]); schedule(); } return; }
   const cm = e.target.closest("[data-tkcmt]"); if (cm){ e.stopPropagation(); const k = cm.dataset.tkcmt, d = TKD[k] || {}, x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
     const text = (d.fb||"").trim(), cf = d.cfiles || [];
