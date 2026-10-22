@@ -279,6 +279,7 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 /* la lista de chats nunca más ancha que la pantalla (nombres largos + "esperando" ya no empujan) */
 .ck-m{grid-template-columns:minmax(0,1fr)}.cl,.cl-h{min-width:0}
 @media (max-width:760px){.cv2{grid-template-columns:minmax(0,1fr)!important}#view-msgs{min-width:0;overflow-x:hidden}}
+.cpmail{display:block;margin:6px 0 2px;font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:5px 12px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -7038,7 +7039,7 @@ function iskSeenMark(c){ if (!c || !S.uid || S.viewAs || document.visibilityStat
   ISKSEEN[c.id] = t; try{ localStorage.setItem("strikd_iskseen_" + S.uid, JSON.stringify(ISKSEEN)); }catch(_){}
   db.doc(`meets/${S.uid}/iskseen/${c.id}`).set({at:t}).catch(() => {}); }
 const iskUnread = x => { iskSeenSub(); return x.unread && iskPend(x) && !((ISKSEEN[x.id]||0) >= (x.at||0)) ? x.unread : 0; };
-function iskBubbles(c){ const ms = ISK.msgs[c.id]; return !ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}${x.failed?" failed":""}">${iskMediaHtml(x)}${x.t?`<p>${esc(x.t)}</p>`:""}<span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`; }
+function iskBubbles(c){ const ms = ISK.msgs[c.id]; return !ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}${x.failed?" failed":""}">${iskMediaHtml(x)}${x.t?`<p>${esc(x.t)}</p>`:""}${x.d==="in" && x.t ? [...new Set((String(x.t).match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)||[]).map(e => e.toLowerCase()))].map(em => `<button type="button" class="cpmail" data-cpmail="${esc(em)}" title="${esc(em)}">📋 Copiar correo</button>`).join("") : ""}<span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`; }
 function renderIskra(){
   const box = $("iskBox"); if (!box) return;
   const on = !!iskFn();
@@ -7210,6 +7211,9 @@ document.addEventListener("input", e => { const qi = e.target.closest("[data-isk
   document.querySelectorAll("#iskBox .ck").forEach(b => b.hidden = !!q && !(b.dataset.s||"").includes(q)); });
 document.addEventListener("input", e => { const ta = e.target.closest("[data-iskin]"); if (ta){ ta.style.height = "auto"; ta.style.height = Math.min(170, ta.scrollHeight) + "px"; } });
 document.addEventListener("keydown", e => { const ta = e.target.closest && e.target.closest("[data-iskin]"); if (ta && e.key==="Enter" && !e.shiftKey && !e.isComposing && !matchMedia("(pointer:coarse)").matches) /* en celular ⏎ es salto de línea, como WhatsApp; se manda con ➤ */{ e.preventDefault(); const b = document.querySelector("[data-isksend]"); b && b.click(); } });
+document.addEventListener("click", async e => { const b = e.target.closest("[data-cpmail]"); if (!b) return; e.stopPropagation();
+  const v = b.dataset.cpmail; try{ await navigator.clipboard.writeText(v); }catch(_){ const t = document.createElement("textarea"); t.value = v; document.body.appendChild(t); t.select(); try{ document.execCommand("copy"); }catch(__){} t.remove(); }
+  quickToast("✓ Correo copiado"); });
 document.addEventListener("click", e => { const a = e.target.closest("[data-iskwa]"); if (!a || !ISK.sel) return;
   const c = ISK.convs.find(x => x.id===ISK.sel), txt = (ISK.draft[ISK.sel] || "").trim(); if (!c) return;
   const u = waLink(c.phone, txt); if (u) a.href = txt ? u : u.replace(/\?text=$/, ""); }, true);
