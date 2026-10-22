@@ -9,7 +9,13 @@
     if (!document.body) return; document.body.classList.toggle("kb", kb);
     if (kb && Date.now() - last > 250){ last = Date.now(); const cv = document.querySelector("#view-msgs:not([hidden]) .cv2.has-sel");
       if (cv && cv.contains(document.activeElement)) requestAnimationFrame(() => { const th = document.getElementById("iskThread"); if (th) th.scrollTop = th.scrollHeight; }); } };
-  vv.addEventListener("resize", upd); vv.addEventListener("scroll", () => document.documentElement.style.setProperty("--vvt", Math.round(vv.offsetTop) + "px")); document.addEventListener("focusin", () => setTimeout(upd, 60)); document.addEventListener("focusout", () => setTimeout(upd, 120));
+  // iPhone: al cerrarse el teclado la vista a veces se queda corrida (barra flotando a media pantalla y un hueco negro). Se reacomoda a la fuerza
+  let wasSmall = false;
+  const fixAfterKb = () => { requestAnimationFrame(() => { window.scrollTo(window.scrollX, window.scrollY); document.documentElement.style.setProperty("--vvt", "0px");
+    const isl = document.getElementById("island"); if (isl){ isl.style.transform = "translateX(-50%) translateZ(0)"; requestAnimationFrame(() => { isl.style.transform = ""; }); } }); };
+  vv.addEventListener("resize", () => { upd(); const small = vv.height < window.innerHeight - 80; if (wasSmall && !small) fixAfterKb(); wasSmall = small; });
+  document.addEventListener("focusout", () => setTimeout(() => { if (!(document.activeElement && document.activeElement.matches && document.activeElement.matches("input,textarea,[contenteditable]"))) fixAfterKb(); }, 250));
+  vv.addEventListener("scroll", () => document.documentElement.style.setProperty("--vvt", Math.round(vv.offsetTop) + "px")); document.addEventListener("focusin", () => setTimeout(upd, 60)); document.addEventListener("focusout", () => setTimeout(upd, 120));
 })();
 // menús desplegables (📝, ⋯): se cierran al tocar fuera
 document.addEventListener("click", e => { document.querySelectorAll("details.cw-more[open]").forEach(d => { if (!d.contains(e.target)){ d.removeAttribute("open"); if (typeof schedule === "function") setTimeout(schedule, 0); } }); }, true);

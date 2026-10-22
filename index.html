@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 03:57:49 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 14:03:29 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792641469">
+<link rel="stylesheet" href="/auth.css?v=1792677809">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792641469"></script>
+<script src="/claude-shim.js?v=1792677809"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -18,7 +18,13 @@
     if (!document.body) return; document.body.classList.toggle("kb", kb);
     if (kb && Date.now() - last > 250){ last = Date.now(); const cv = document.querySelector("#view-msgs:not([hidden]) .cv2.has-sel");
       if (cv && cv.contains(document.activeElement)) requestAnimationFrame(() => { const th = document.getElementById("iskThread"); if (th) th.scrollTop = th.scrollHeight; }); } };
-  vv.addEventListener("resize", upd); vv.addEventListener("scroll", () => document.documentElement.style.setProperty("--vvt", Math.round(vv.offsetTop) + "px")); document.addEventListener("focusin", () => setTimeout(upd, 60)); document.addEventListener("focusout", () => setTimeout(upd, 120));
+  // iPhone: al cerrarse el teclado la vista a veces se queda corrida (barra flotando a media pantalla y un hueco negro). Se reacomoda a la fuerza
+  let wasSmall = false;
+  const fixAfterKb = () => { requestAnimationFrame(() => { window.scrollTo(window.scrollX, window.scrollY); document.documentElement.style.setProperty("--vvt", "0px");
+    const isl = document.getElementById("island"); if (isl){ isl.style.transform = "translateX(-50%) translateZ(0)"; requestAnimationFrame(() => { isl.style.transform = ""; }); } }); };
+  vv.addEventListener("resize", () => { upd(); const small = vv.height < window.innerHeight - 80; if (wasSmall && !small) fixAfterKb(); wasSmall = small; });
+  document.addEventListener("focusout", () => setTimeout(() => { if (!(document.activeElement && document.activeElement.matches && document.activeElement.matches("input,textarea,[contenteditable]"))) fixAfterKb(); }, 250));
+  vv.addEventListener("scroll", () => document.documentElement.style.setProperty("--vvt", Math.round(vv.offsetTop) + "px")); document.addEventListener("focusin", () => setTimeout(upd, 60)); document.addEventListener("focusout", () => setTimeout(upd, 120));
 })();
 // menús desplegables (📝, ⋯): se cierran al tocar fuera
 document.addEventListener("click", e => { document.querySelectorAll("details.cw-more[open]").forEach(d => { if (!d.contains(e.target)){ d.removeAttribute("open"); if (typeof schedule === "function") setTimeout(schedule, 0); } }); }, true);
