@@ -367,7 +367,8 @@ module.exports = async (req, res) => {
       if (op === "templates"){ // ISKRA llama "templates" a sus Quick replies. Si no regresa lista, probar variantes y devolver qué contestó cada una
         const hasArr = (o, d) => Array.isArray(o) ? o.length > 0 : (o && typeof o==="object" && d < 4 ? Object.values(o).some(v => hasArr(v, d+1)) : false);
         const tried = [];
-        for (const path of ["/v1/templates", "/v1/templates?limit=100", "/v1/templates?scope=workspace", "/v1/templates?scope=all", "/v1/templates?include=all", "/v1/templates?type=quick_reply", "/v1/templates?type=quick_replies", "/v1/templates?kind=quick_reply", "/v1/templates?source=library", "/v1/templates?source=quick_replies", "/v1/templates?include=quick_replies", "/v1/templates?scope=shared", "/v1/quick-replies", "/v1/quick_replies", "/v1/snippets"]){
+        // probado: Quick replies no salen por la API (13 variantes). /v1/templates solo regresa los moldes de Meta cuando se le pasa el número
+        for (const path of ["/v1/templates"]){
           try{ const j = await iskra("GET", path); if (hasArr(j, 0)) return {data:j, from:path, tried};
             tried.push({path, ok:true, body:JSON.stringify(j).slice(0, 400)}); }
           catch(e){ tried.push({path, ok:false, status:e.status || 0, body:String(e.message).slice(0, 200)}); }
@@ -375,7 +376,7 @@ module.exports = async (req, res) => {
         try{ // ¿las filtra por número que envía?
           const nj = await iskra("GET", "/v1/numbers"), arr = Array.isArray(nj) ? nj : (nj.data || nj.numbers || []);
           for (const n of arr.slice(0, 3)){ const nid = n.id || n.number_id; if (!nid) continue;
-            for (const q of ["number_id", "sender_number_id"]){ const path = `/v1/templates?${q}=${encodeURIComponent(nid)}`;
+            for (const q of ["number_id"]){ const path = `/v1/templates?${q}=${encodeURIComponent(nid)}`;
               try{ const j = await iskra("GET", path); if (hasArr(j, 0)) return {data:j, from:path, tried}; tried.push({path, ok:true, body:JSON.stringify(j).slice(0, 200)}); }
               catch(e){ tried.push({path, ok:false, status:e.status || 0, body:String(e.message).slice(0, 200)}); } } }
         }catch(_){}
