@@ -285,8 +285,11 @@ module.exports = async (req, res) => {
         const cfg = media ? ((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data || {} : {};
         const shapeN = 0; // ISKRA confirmó (prueba de 8 formatos): /v1/messages/reply solo acepta text o template_id; ignora archivos
         if (media && iskapp.configured()){ // archivo real por la ruta de la app de ISKRA (send-whatsapp), autorizada por ISKRA
-          const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type, como:"archivo"};
-          j = await iskapp.sendMedia({conversation_id:input.conversation_id, text, media:pm});
+          // como la app de ISKRA: el archivo va solo (con texto, su ruta manda solo el texto) y el texto después, como mensaje aparte
+          try{ const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type, como:"archivo"};
+            j = await iskapp.sendMedia({conversation_id:input.conversation_id, text:"", media:pm}); }
+          catch(e){ mediaErr = String(e.message || e); if (!text) throw e; }
+          if (text) j = await iskra("POST", "/v1/messages/reply", {...base, idempotency_key:base.idempotency_key + "-t", text});
         } else if (media && shapeN){ // formato de archivo confirmado con la prueba
           const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type, como:"adjunto " + shapeN};
           j = await iskra("POST", "/v1/messages/reply", {...base, ...shapes(pm, text, shapeN)});
