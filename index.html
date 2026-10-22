@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 01:11:10 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 01:17:55 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792631470">
+<link rel="stylesheet" href="/auth.css?v=1792631875">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792631470"></script>
+<script src="/claude-shim.js?v=1792631875"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -6641,7 +6641,10 @@ function iskFn(){
 }
 const ISK = {st:null, who:null, convs:[], sel:null, msgs:{}, sent:{}, draft:{}, busy:false, err:"", raw:null, at:0, loading:false, timer:null, filter:"", mode:"load"};
 const iskArr = j => { const d = j && (j.data !== undefined ? j.data : j); return Array.isArray(d) ? d : (d && (d.data || d.items || d.conversations || d.messages || d.results)) || []; };
-const iskTxt = m => String(m.text || m.body || m.content || m.message || (m.template && (m.template.name || m.template)) || "");
+const iskMediaLbl = m => { const md = m.media || m.attachment || (Array.isArray(m.attachments) && m.attachments[0]) || null;
+  const t = String((md && (md.type || md.mime_type)) || m.media_type || m.message_type || m.type || "").toLowerCase(), has = md || m.media_url || /image|audio|voice|document|file|video|pdf/.test(t);
+  if (!has) return ""; return /image/.test(t) ? "📷 Foto" : /audio|voice|ptt/.test(t) ? "🎤 Nota de voz" : /video/.test(t) ? "🎬 Video" : "📄 " + String((md && (md.filename || md.name)) || m.filename || "Archivo"); };
+const iskTxt = m => String(m.text || m.body || m.content || m.message || (m.template && (m.template.name || m.template)) || iskMediaLbl(m) || "");
 const iskDir = m => /^(in|inbound|incoming|received|lead)/i.test(String(m.direction || m.dir || m.from_type || (m.from_me===false?"in":m.from_me?"out":"") || m.type || "")) ? "in" : "out";
 const iskAt = m => { if (!m || typeof m!=="object") return 0;
   const v = m.created_at ?? m.createdAt ?? m.sent_at ?? m.sentAt ?? m.timestamp ?? m.ts ?? m.date ?? m.time ?? m.last_activity_at ?? m.lastActivityAt ?? m.last_message_at ?? m.lastMessageAt ?? m.updated_at ?? m.updatedAt;
@@ -6712,7 +6715,7 @@ async function iskTail(id){
   const cur = ISK.msgs[id] || [], since = cur.filter(x => !x.local).reduce((a, x) => Math.max(a, x.at || 0), 0) || (Date.now() - 600e3);
   try{
     const j = await fn("tail", {id, since});
-    const add = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m), at:iskAt(m), st:m.status||"", media:iskMedia(m)}));
+    const add = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m) || (iskMedia(m) ? "" : "📎 Archivo o nota de voz"), at:iskAt(m), st:m.status||"", media:iskMedia(m)}));
     if (!add.length || ISK.sel!==id) return;
     const same = (a, b) => a.d===b.d && a.t===b.t && Math.abs((a.at||0) - (b.at||0)) < 3000;
     let list = cur.slice(), changed = false;
@@ -6745,7 +6748,7 @@ function iskMediaHtml(x){
 async function iskThread(id, quiet){
   try{ const j = await iskFn()("messages", {id, limit:50});
     (ISK.raw3 ||= {})[id] = iskArr(j).filter(m => m && (m.media || m.media_url || m.type && m.type!=="text" || m.attachments || m.document || m.image)).slice(0, 3).concat(iskArr(j).slice(0, 2));
-    let ms = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m), at:iskAt(m), st:m.status||"", media:iskMedia(m)}));
+    let ms = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m) || (iskMedia(m) ? "" : "📎 Archivo o nota de voz"), at:iskAt(m), st:m.status||"", media:iskMedia(m)}));
     ms = ms.some(x => x.at) ? ms.sort((a,b) => a.at-b.at) : ms.reverse(); // la API da lo más nuevo primero
     const pend = (ISK.msgs[id]||[]).filter(x => x.local && (x.failed || Date.now() - x.at < 90e3) && !ms.some(y => y.d==="out" && y.t===x.t));
     const mine = (ISK.sent[id]||[]).filter(x => Date.now() - x.at < 90e3);
@@ -6896,7 +6899,8 @@ async function iskRecToggle(){
   if (ISK.rec){ ISK.rec.stop(); return; }
   if (!navigator.mediaDevices || !window.MediaRecorder){ ISK.err = "Este navegador no puede grabar audio."; return schedule(); }
   let stream; try{ stream = await navigator.mediaDevices.getUserMedia({audio:true}); }catch(err){ ISK.err = "Da permiso al micrófono para grabar."; return schedule(); }
-  const mt = ["audio/ogg;codecs=opus","audio/webm;codecs=opus","audio/mp4","audio/webm"].find(t => MediaRecorder.isTypeSupported(t)) || "";
+  // formatos que WhatsApp acepta: m4a (AAC, iPhone/Safari) u ogg/opus; webm no (Chrome) → se avisa al adjuntar
+  const mt = ["audio/mp4;codecs=mp4a.40.2","audio/mp4","audio/aac","audio/ogg;codecs=opus","audio/webm;codecs=opus","audio/webm"].find(t => { try{ return MediaRecorder.isTypeSupported(t); }catch(_){ return false; } }) || "";
   const rec = new MediaRecorder(stream, mt ? {mimeType:mt} : {}), chunks = [];
   rec.ondataavailable = ev => ev.data && ev.data.size && chunks.push(ev.data);
   rec.onstop = () => { stream.getTracks().forEach(t => t.stop()); clearInterval(ISK.recT); ISK.rec = null; ISK.recS = 0;
