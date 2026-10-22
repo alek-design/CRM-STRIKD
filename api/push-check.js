@@ -53,7 +53,7 @@ module.exports = async (req, res) => {
       const ids = list.map(x => String(x.id));
       const seen = {}; (await c.query("select * from public.push_seen where conversation_id = any($1)", [ids])).rows.forEach(r => seen[r.conversation_id] = r);
       const first = !(await c.query("select 1 from public.push_seen limit 1")).rows[0];
-      const owners = {}; (await c.query("select conversation_id, owner, discarded_at from public.iskra_owner where conversation_id = any($1)", [ids]).catch(() => ({rows:[]}))).rows.forEach(r => owners[r.conversation_id] = r);
+      const owners = {}; (await c.query("select conversation_id, owner, discarded_at, noreply_at from public.iskra_owner where conversation_id = any($1)", [ids]).catch(() => ({rows:[]}))).rows.forEach(r => owners[r.conversation_id] = r);
       const leadRows = (await c.query("select id, role from public.app_users where role in ('head','manager') and active")).rows;
       const leads = leadRows.map(r => r.id), headId = (leadRows.find(r => r.role === "head") || leadRows[0] || {}).id || null;
       await auto.ensure(c);
@@ -62,7 +62,8 @@ module.exports = async (req, res) => {
       const autos = [];
       let sent = 0, n = 0, dest = 0; const errs = [];
       const isLead = new Set(leads);
-      const unreadFor = u => list.filter(cv => Number(cv.unread_count || 0) > 0 && !(owners[String(cv.id)] && owners[String(cv.id)].discarded_at)
+      const nrDone = cv => { const o = owners[String(cv.id)]; return !!(o && o.noreply_at && new Date(o.noreply_at).getTime() >= (Date.parse(cv.last_message_at || "") || 0)); };
+      const unreadFor = u => list.filter(cv => Number(cv.unread_count || 0) > 0 && !nrDone(cv) && !(owners[String(cv.id)] && owners[String(cv.id)].discarded_at)
         && (isLead.has(u) || (owners[String(cv.id)] && owners[String(cv.id)].owner === u))).length;
       for (const cv of list){
         const id = String(cv.id), at = cv.last_message_at; if (!at) continue;

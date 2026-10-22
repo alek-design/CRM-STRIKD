@@ -70,6 +70,8 @@ create table if not exists public.iskra_owner (conversation_id text primary key,
 alter table public.iskra_owner add column if not exists replied_at timestamptz;
 alter table public.iskra_owner add column if not exists discarded_at timestamptz;
 alter table public.iskra_owner add column if not exists discarded_by uuid;
+alter table public.iskra_owner add column if not exists noreply_at timestamptz;
+alter table public.iskra_owner add column if not exists noreply_by uuid;
 create table if not exists public.iskra_seen (conversation_id text primary key, last_at timestamptz, last_dir text, replied boolean default false, checked_at timestamptz);
 alter table public.iskra_seen add column if not exists real boolean;
 alter table public.iskra_seen enable row level security;
@@ -235,7 +237,7 @@ module.exports = async (req, res) => {
             if (p.owner){ await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1 and owner is null", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
           }
           OWN_CACHE[id] = o.owner;
-          if (lead || o.owner === viewId) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by}});
+          if (lead || o.owner === viewId) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by, noReplyAt:o.noreply_at}});
         }
         // esperando respuesta desde (tiempo de respuesta)
         try{ const wm = await resptime.waitMap(c, out.map(x => String(x.id))); out.forEach(x => { if (wm[String(x.id)]) x._strikd.waitSince = wm[String(x.id)]; }); }catch(_){}
@@ -366,6 +368,14 @@ module.exports = async (req, res) => {
         out.sort((a, b) => a.n - b.n);
         LIST_CACHE.at = 0; delete MSG_CACHE[input.conversation_id];
         return {data:out, url:pm.url};
+      }
+      if (op === "noreply"){ // "no necesita respuesta": su último mensaje ya no cuenta como pendiente ni en el tiempo de respuesta (si vuelve a escribir, cuenta otra vez)
+        await mustOwn(input.id); const id = String(input.id);
+        if (input.undo){ await c.query("update public.iskra_owner set noreply_at=null, noreply_by=null where conversation_id=$1", [id]); return {ok:true}; }
+        await c.query("update public.iskra_owner set noreply_at=now(), noreply_by=$2 where conversation_id=$1", [id, me.id]);
+        await c.query(`insert into public.iskra_wait (conversation_id, since, last_seen) values ($1, null, now())
+          on conflict (conversation_id) do update set since=null, last_seen=greatest(coalesce(public.iskra_wait.last_seen, now()), now())`, [id]).catch(() => {});
+        LIST_CACHE.at = 0; return {ok:true};
       }
       if (op === "discard"){ // descartar (o regresar) una conversación: deja de salir en la bandeja
         await mustOwn(input.id);
