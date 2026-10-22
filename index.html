@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 01:45:28 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 01:46:44 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792633528">
+<link rel="stylesheet" href="/auth.css?v=1792633604">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792633528"></script>
+<script src="/claude-shim.js?v=1792633604"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -6718,16 +6718,20 @@ async function iskTail(id){
     const j = await fn("tail", {id, since});
     const add = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m) || (iskMedia(m) ? "" : "📎 Archivo o nota de voz"), at:iskAt(m), st:m.status||"", media:iskMedia(m)}));
     if (!add.length || ISK.sel!==id) return;
-    // llegó un archivo (la vía rápida no trae la foto/audio): recargar el chat con la cuenta del panel para verlo
-    if (ISK.media && add.some(m => m.t === "📎 Archivo o nota de voz")) setTimeout(() => iskThread(id, true, true), 300);
+    const PH = "📎 Archivo o nota de voz";
     const same = (a, b) => a.d===b.d && a.t===b.t && Math.abs((a.at||0) - (b.at||0)) < 3000;
-    let list = cur.slice(), changed = false;
+    // la vía rápida trae los archivos sin el archivo: es el mismo mensaje si ya hay uno con archivo (o vacío) casi a la misma hora
+    const sameFile = (x, m) => m.t===PH && x.d===m.d && (x.media || x.t===PH || x.t==="") && Math.abs((x.at||0) - (m.at||0)) < 120e3;
+    let list = cur.slice(), changed = false, newFile = false;
     add.forEach(m => {
-      if (list.some(x => !x.local && same(x, m))) return;
+      if (list.some(x => (!x.local && same(x, m)) || sameFile(x, m))) return;
+      if (m.t===PH) newFile = true;
       const li = list.findIndex(x => x.local && x.d==="out" && x.t===m.t); if (li >= 0) list.splice(li, 1); // ya llegó el que mandamos
       list.push(m); changed = true;
     });
     if (!changed) return;
+    // llegó un archivo nuevo: recargar el chat con la cuenta del panel para verlo (una vez)
+    if (newFile && ISK.media) setTimeout(() => iskThread(id, true, true), 300);
     list.sort((a, b) => (a.at||0) - (b.at||0)); ISK.msgs[id] = list;
     const cv = ISK.convs.find(x => x.id===id), last = add.sort((a, b) => (a.at||0) - (b.at||0)).slice(-1)[0];
     if (cv && last){ cv.last = last.t; cv.lastDir = last.d; cv.at = Math.max(cv.at||0, last.at||0); }
@@ -6745,7 +6749,7 @@ function iskMediaHtml(x){
   const md = x.media; if (!md) return "";
   const t = md.type || "", u = esc(md.url);
   if (/image/i.test(t)) return `<a href="${u}" target="_blank" rel="noopener"><img class="bmedia" src="${u}" alt=""${md.guess ? ` onerror="this.replaceWith(document.createTextNode('📄 Abrir archivo'))"` : ""}></a>`;
-  if (/audio|voice|ptt/i.test(t)) return `<audio controls preload="none" src="${u}"></audio>`;
+  if (/audio|voice|ptt/i.test(t)) return `<audio controls preload="metadata" src="${u}"></audio>`;
   return `<a class="bdoc" href="${u}" target="_blank" rel="noopener">📄 ${esc(md.name || "Documento")}</a>`;
 }
 async function iskThread(id, quiet, force){
