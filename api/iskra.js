@@ -364,7 +364,16 @@ module.exports = async (req, res) => {
         return {data:st};
       }
       if (op === "numbers") return {data:await iskra("GET", "/v1/numbers")};
-      if (op === "templates") return {data:await iskra("GET", "/v1/templates")};
+      if (op === "templates"){ // ISKRA llama "templates" a sus Quick replies. Si no regresa lista, probar variantes y devolver qué contestó cada una
+        const hasArr = (o, d) => Array.isArray(o) ? o.length > 0 : (o && typeof o==="object" && d < 4 ? Object.values(o).some(v => hasArr(v, d+1)) : false);
+        const tried = [];
+        for (const path of ["/v1/templates", "/v1/templates?limit=100", "/v1/templates?scope=workspace", "/v1/templates?scope=all", "/v1/templates?include=all", "/v1/quick-replies", "/v1/quick_replies", "/v1/snippets"]){
+          try{ const j = await iskra("GET", path); if (hasArr(j, 0)) return {data:j, from:path, tried};
+            tried.push({path, ok:true, body:JSON.stringify(j).slice(0, 400)}); }
+          catch(e){ tried.push({path, ok:false, status:e.status || 0, body:String(e.message).slice(0, 200)}); }
+        }
+        return {data:[], tried};
+      }
       throw Object.assign(new Error("Operación no permitida"), {status:400});
     });
     res.json({configured:true, ...out});
