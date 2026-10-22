@@ -655,7 +655,9 @@ a.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line2)}
 .ast-res textarea{width:100%;font:inherit;font-size:13px;background:var(--bg);color:var(--fg);border:1px solid var(--line2);border-radius:10px;padding:8px 10px}
 #tplBox .msg-acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .tpl-card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:6px;margin-top:8px;background:var(--bg)}.tpl-card.off{opacity:.5}
-.tpl-vr{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:start;font-size:12.5px}.tpl-vr p{margin:0;color:var(--fg2);white-space:pre-wrap}
+.tpl-vr{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 8px;align-items:start;font-size:12.5px;padding:6px 0;border-top:1px solid var(--line)}.tpl-vr:first-of-type{border-top:0}.tpl-vr>*{min-width:0}.tpl-vr p{margin:0;color:var(--fg2);white-space:pre-wrap;overflow-wrap:anywhere}
+.tpl-vr .chip,.tpl-vr .num{grid-column:2;justify-self:start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tpl-card{min-width:0;overflow:hidden}.tpl-card .msg-top{min-width:0}.tpl-card .msg-top b{overflow-wrap:anywhere}
 .tpl-vr .num{font-size:11.5px;color:var(--muted);white-space:nowrap}.tpl-vr.win .tpl-tag{background:var(--ok);color:var(--bg)}
 .tpl-tag{font-size:10.5px;font-weight:800;background:var(--raised);border:1px solid var(--line2);border-radius:5px;padding:1px 6px}
 .tpl-v{display:grid;gap:6px;grid-column:1/-1}.tpl-v textarea{width:100%;font:inherit;font-size:13px;background:var(--bg);color:var(--fg);border:1px solid var(--line2);border-radius:10px;padding:8px 10px}
