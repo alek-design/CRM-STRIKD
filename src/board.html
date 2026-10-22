@@ -1392,7 +1392,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
 .tk-ext{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
 .mi-meet,.mi-reply{display:block;font-size:12.5px;margin-top:3px}.mi-reply{color:var(--fg2);font-style:italic;font-size:13.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
 .d-meet{display:grid;gap:6px;margin:10px 0}.d-meet .ig{display:flex;gap:8px;flex-wrap:wrap}.d-meet input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)}
-.pl-mv{display:flex;gap:14px;flex-wrap:wrap}.linkbtn.bad{color:#e5484d}.tt-done-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 4px}.tt-done-q{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);flex:1;min-width:140px}
+.pl-mv{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.linkbtn.bad{color:#e5484d}.tt-done-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 4px}.tt-done-q{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);flex:1;min-width:140px}
 .has-stage #slotBox,.has-stage .inv,.has-stage #p3meetL,.has-stage #pfGuide{display:none!important}.stage-pick{margin:6px 0 10px}.stage-pick select{font:inherit;font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);width:100%}
 .d-hitos{display:grid;gap:8px;margin:10px 0;padding:12px;border:1px solid var(--line2);border-radius:14px;background:var(--surface)}.d-hitos-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .hitos{display:flex;flex-wrap:wrap;gap:6px}.hito{font-size:12.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}.hito.on{color:var(--fg);border-color:var(--fg);font-weight:700}
@@ -2354,7 +2354,7 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
   try{ await db.doc(`meets/${uid}/items/${id}`).update({flow:{lostAt:now, lostWhy:why, removed:true, removedBy:S.uid, ...(pv ? {pointsVoided:true} : {})}, ...(future ? {cancelled:true, cancelledAt:now} : {})});
     if (pv) await voidPoints(uid, id, true);
     freeIdx(uid, id, m);
-    m.flow = f; if (future){ m.cancelled = true; if (uid === meId()){ try{ await cancelInvite(m); }catch(_){} } else invOwnerNote(uid, m, "eliminó"); }
+    m.flow = f; if (future){ m.cancelled = true; if (calOwner(uid, m) === S.uid){ try{ await cancelInvite(m); }catch(_){} } else invOwnerNote(uid, m, "eliminó"); }
     PICK.dayPlan = null; S.flowPick = null; quickToast(`✓ ${m.prospect || "Prospecto"} eliminado`); schedule(); }
   catch(_){ b.disabled = false; quickToast("No se pudo eliminar. Intenta otra vez."); }
 });
@@ -3674,7 +3674,8 @@ async function uploadSkeleton(file, now){
   return {skeletonAt:now, skeletonFile:{id:up.id, name:file.name, type:up.contentType||file.type||""}};
 }
 // la invitación de Google vive en el calendario de quien agendó: si otra persona mueve o cancela el meet, se le avisa a él
-function invOwnerNote(uid, m, what, when){ if (!window.STRIKD_NOTIFY) return;
+const calOwner = (uid, m) => (m && m.bookedBy) || uid;
+function invOwnerNote(uid, m, what, when){ if (!window.STRIKD_NOTIFY) return; uid = calOwner(uid, m);
   window.STRIKD_NOTIFY({to:[uid], title:`📅 ${String(nameOf(S.ps||{}, S.uid)).split(" (")[0]} ${what} un meet`, body:`${m.prospect || "Prospecto"}${when ? ` · ahora ${fmtMeetAt(when)}` : ""}. Actualiza la invitación en tu Google Calendar.`, url:"/?tab=agenda", tag:"inv-" + (m.gcalEventId||"")}); }
 async function doAct(b){
   const act = b.dataset.act, uid = b.dataset.uid, id = b.dataset.id;
@@ -3699,7 +3700,7 @@ async function doAct(b){
       await ref.update({cancelled:true, cancelledAt:now, flow:{lostAt:now, lostWhy:"Canceló el meet"}}); freeIdx(uid, id, m);
       if (m.vipId) db.doc(`meets/${uid}/vip/${m.vipId}`).update({meetId:null, meetAt:null, status:"contactado", statusAt:now}).catch(() => {});
       if (m.gcalEventId && uid === meId() && mcp){ try{ await cancelInvite(m); }catch(_){} return "Listo: meet cancelado y se le avisó al prospecto."; }
-      if (m.gcalEventId && uid !== meId()){ invOwnerNote(uid, m, "canceló"); return `Listo. La invitación está en el calendario de ${first(nameOf(S.ps||{}, uid))}: ya le avisamos para que la cancele.`; }
+      if (m.gcalEventId && calOwner(uid, m) !== S.uid){ invOwnerNote(uid, m, "canceló"); return `Listo. La invitación está en el calendario de ${first(nameOf(S.ps||{}, calOwner(uid, m)))}: ya le avisamos para que la cancele.`; }
       return "Listo: meet cancelado."; }
     case "reinvite": { // reenviar la invitación (después de quitar un rechazo)
       if (!mcp) throw {msg:"Conecta tu Google Calendar en Ajustes para mandar la invitación."};
@@ -3720,7 +3721,7 @@ async function doAct(b){
       // rescheduling means they already talked, so the reminder for the new date counts as done
       await ref.update({reschedAt:v, flow:{reschedCount:(f.reschedCount||0)+1, confirmedFor:v, confirmedAt:now, inviteDeclinedAt:null}});
       if (m.vipId) db.doc(`meets/${uid}/vip/${m.vipId}`).update({meetAt:v}).catch(() => {}); // la Lista de Mich ve la hora nueva
-      if (m.gcalEventId && uid !== meId()){ invOwnerNote(uid, m, "cambió de horario", v); return `Listo: pitch reagendado para el ${fmtMeetAt(v)}. La invitación está en el calendario de ${first(nameOf(S.ps||{}, uid))}: ya le avisamos para que la actualice.`; }
+      if (m.gcalEventId && calOwner(uid, m) !== S.uid){ invOwnerNote(uid, m, "cambió de horario", v); return `Listo: pitch reagendado para el ${fmtMeetAt(v)}. La invitación está en el calendario de ${first(nameOf(S.ps||{}, calOwner(uid, m)))}: ya le avisamos para que la actualice.`; }
       if (m.gcalEventId && mcp){
         // new time, new invitation: drop the old event and send a fresh one
         try{
@@ -4269,12 +4270,12 @@ function renderPlan(){
   const expand = (key, uid, id, m, ev) => {
     if (sel !== key) return "";
     // cambiar el horario de un meet que todavía no pasa (pitch, skeleton o lanzamiento)
-    const canMove = ev && !ev.gcal && ev.end > now && !headLite && (admin || uid === meId()) && !S.viewAs;
+    const canMove = ev && !ev.gcal && ev.end > now && (admin || uid === meId()) && !S.viewAs;
     const mdr = DRAFT[dk(uid,id)] || {}, cur = ev ? toV(new Date(ev.ts - OFF).toISOString().slice(0,16)) : "";
     const moveHtml = canMove ? (mdr.moveOpen ? `<div class="pl-move"><span class="eyb">Nuevo horario${tzOther() ? ` (tu hora · ${esc(tzName())})` : ""}</span>
         <span class="ig"><input type="datetime-local" data-k="${dk(uid,id)}" data-dt="move" value="${esc((mdr.dt||{}).move || cur)}" aria-label="Nuevo horario"><button type="button" class="btn small primary" data-act="move" data-kind="${ev.kind}" data-uid="${uid}" data-id="${id}">Guardar</button></span>
         <small class="mut">${ev.kind==="pitch" && m.gcalEventId ? "Se le manda la invitación nueva al prospecto." : "Avísale al prospecto del cambio."}</small></div>`
-      : `<span class="pl-mv"><button type="button" class="linkbtn" data-moveopen="${dk(uid,id)}">🕐 Cambiar horario</button>${ev.kind==="pitch" ? `<button type="button" class="linkbtn bad" data-act="pcancel" data-uid="${uid}" data-id="${id}">Canceló</button>` : ""}</span>`) : "";
+      : `<span class="pl-mv"><button type="button" class="btn small" data-moveopen="${dk(uid,id)}">🕐 Reagendar</button>${ev.kind==="pitch" ? `<button type="button" class="btn small bad" data-act="pcancel" data-uid="${uid}" data-id="${id}">Canceló</button>` : ""}</span>`) : "";
     const t = first(uid,id,m), d = t ? dueInfo(t.due, now, t.soon) : null;
     const prof = safeUrl(m.profile), link = safeUrl(m.link);
     return `<div class="detail pl-x">
