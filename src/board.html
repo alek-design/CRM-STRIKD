@@ -1059,7 +1059,7 @@ label.f em{color:var(--bad);font-style:normal}
 .ct-age i{width:8px;height:8px;border-radius:50%;flex:none;background:#2fb36b}
 .ct-age.soon i{background:#e5b100}.ct-age.late i{background:#d93a3a}.ct-age.off i{background:#bbb}
 .ct-more{margin:10px auto 0;display:block}
-.isk-tplbox{flex-wrap:wrap}.isk-vars{flex-basis:100%;display:grid;gap:6px;margin-top:6px}.isk-var{margin:0}.isk-var textarea{width:100%;box-sizing:border-box;font:inherit}
+.isk-tplbox{flex-wrap:wrap}.h24-list{display:grid;gap:6px;margin:6px 0}.h24-b{display:grid;gap:2px;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:8px 12px;cursor:pointer}.h24-b small{color:var(--muted);font-size:12px}.h24-b.on{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}.h24-b:disabled{opacity:.55;cursor:not-allowed}.h24-bar{justify-content:flex-end}.isk-vars{flex-basis:100%;display:grid;gap:6px;margin-top:6px}.isk-var{margin:0}.isk-var textarea{width:100%;box-sizing:border-box;font:inherit}
 .ct-ed{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:0 4px;margin-left:4px;cursor:pointer;border-radius:6px}.ct-ed:hover{color:var(--fg);background:color-mix(in srgb, currentColor 10%, transparent)}
 .ct-row[role=button]:focus-visible{outline:2px solid var(--fg);outline-offset:-2px}
 @media (max-width:760px){
@@ -6362,7 +6362,7 @@ $("msgBox").addEventListener("click", async e => {
 });
 
 /* ---------- Plantillas A/B + asistente de respuestas ---------- */
-const TRIG = {auto:"Respuesta automática", interesado:"Interesado", pregunta:"Pregunta", precio:"Pregunta precio", objecion:"Objeción / duda", no_interesado:"No le interesa", general:"General"};
+const TRIG = {auto:"Respuesta automática", interesado:"Interesado", pregunta:"Pregunta", precio:"Pregunta precio", objecion:"Objeción / duda", no_interesado:"No le interesa", general:"General", h24:"Después de 24 h (plantilla aprobada de ISKRA)"};
 let TPL_FORM = null; const TPLF = {}; let sampleFn, sampleTried = false;
 const AST = {pick:"", reply:"", busy:false, res:null, err:"", text:null};
 async function getSample(){ if (!sampleTried){ sampleTried = true; try{ sampleFn = await claude.use("sample"); }catch(e){ sampleFn = null; } } return sampleFn; }
@@ -6795,6 +6795,19 @@ function iskOwnerOpts(sel){
   return `<option value="">Sin dueño</option>` + ids.map(id => `<option value="${esc(id)}"${id===sel?" selected":""}>${esc(iskWho(id))}</option>`).join("");
 }
 // plantillas por categoría para contestar rápido (variante A/B como en Plantillas)
+// ventana de WhatsApp: pasadas 24 h desde el último mensaje del cliente solo se pueden mandar plantillas aprobadas
+function iskClosed(c){
+  const ms = ISK.msgs[c.id]; if (!ms) return false; // aún no carga: no bloquear
+  const lastIn = ms.filter(x => x.d==="in" && x.at).reduce((a, x) => Math.max(a, x.at), 0);
+  return !lastIn || Date.now() - lastIn > 24*3600e3;
+}
+function iskH24List(c){
+  const l = Object.entries(S.tpls||{}).filter(([,t]) => t.active!==false && t.trigger==="h24");
+  if (!l.length) return `<p class="mut small">No hay plantillas en <b>Después de 24 h</b>. ${adminMode() ? "Créalas en Mensajes → Plantillas, con su plantilla aprobada de ISKRA." : "Pídele a tu líder que las cree."}</p>`;
+  return `<div class="h24-list">` + l.map(([id,t]) => { const v = (t.variants||{}).a || {}, ok = Object.values(t.variants||{}).some(x => x && x.iskTplId);
+    const on = ISK.tplUsed && ISK.tplUsed.id===id && ISK.tplUsed.conv===c.id;
+    return `<button type="button" class="h24-b${on ? " on" : ""}" data-isktpl="${esc(id)}"${ok ? "" : " disabled"}><b>${esc(t.name||"Plantilla")}</b><small>${ok ? esc(String(v.text||"").slice(0, 90)) : "Sin plantilla de ISKRA conectada: no se puede mandar"}</small></button>`; }).join("") + `</div>`;
+}
 function iskTplMenu(c){
   const groups = {};
   Object.entries(S.tpls||{}).filter(([,t]) => t.active!==false).forEach(([id,t]) => { const k = t.trigger || "general"; (groups[k] ||= []).push([id,t]); });
@@ -6869,13 +6882,15 @@ function renderIskra(){
         ${ISK.tplMedia && ISK.tplMedia.conv===c.id && !(ISK.tplIsk && ISK.tplIsk.conv===c.id) ? `<div class="isk-att"><span class="isk-doc">${ISK.tplMedia.type.startsWith("image/") ? "FOTO" : "PDF"}</span><span>${esc(ISK.tplMedia.name)} · de la plantilla</span><button type="button" class="linkbtn" data-isktplx="1">Quitar</button></div>` : ""}
         ${ISK.err ? `<p class="cw-err">${esc(ISK.err)}</p>` : ""}
         ${!ISK.media && S.isOwner && ISK.mediaMissing && ISK.mediaMissing.length ? `<p class="mut small">Fotos y PDF: falta en Vercel ${esc(ISK.mediaMissing.join(", "))} (y hacer Redeploy).</p>` : ""}
+        ${iskClosed(c) ? `<div class="h24"><p class="cw-warn">Pasaron más de 24 h desde su último mensaje. WhatsApp solo deja mandar una plantilla aprobada:</p>${iskH24List(c)}
+          <div class="cw-bar h24-bar"><span class="spacer"></span><button type="button" class="btn small primary cw-send" data-isksend="1"${ISK.busy || !(ISK.tplIsk && ISK.tplIsk.conv===c.id) ? " disabled" : ""}>Enviar plantilla</button></div></div>` : `
         <div class="cw-bar"><input type="file" id="iskFile" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
           ${/* fotos, PDF y notas de voz: solo cuando el servidor tiene la ruta de archivos de ISKRA configurada (si no, llegaban como link) */""}
           ${ISK.media ? `<button type="button" class="cw-ic" data-iskfile="1" title="Foto o PDF" aria-label="Adjuntar foto o PDF">📎</button>
           <button type="button" class="cw-ic${ISK.rec?" rec":""}" data-iskrec="1" title="${ISK.rec?"Detener y adjuntar":"Nota de voz"}" aria-label="Nota de voz">${ISK.rec?`● ${ISK.recS||0}s`:"🎤"}</button>` : ""}
           <details class="cw-more cw-tpl"><summary class="cw-ic" title="Plantillas" aria-label="Plantillas">📝</summary><div class="cw-menu up">${iskTplMenu(c)}</div></details>
           <textarea rows="1" data-iskin="1" placeholder="Escribe un mensaje…">${esc(ISK.draft[c.id]||"")}</textarea>
-          <button type="button" class="btn small primary cw-send" data-isksend="1"${ISK.busy?" disabled":""}>${demo?"Enviar (ej.)":"Enviar"}</button></div>
+          <button type="button" class="btn small primary cw-send" data-isksend="1"${ISK.busy?" disabled":""}>${demo?"Enviar (ej.)":"Enviar"}</button></div>`}
       </div>` : `<div class="cw-c"><p class="mut small">Esta conversación es de ${esc(iskWho(c.owner))}.</p></div>`}
     </div>`;
   }
@@ -7052,6 +7067,7 @@ document.addEventListener("click", async e => {
     const boxSet = v => { const ta = document.querySelector("[data-iskin]"); if (ta){ ta.value = v; ta.style.height = "auto"; if (v) ta.style.height = Math.min(140, ta.scrollHeight) + "px"; } };
     const id = ISK.sel, text = (ISK.draft[id]||"").trim(), att = ISK.att && ISK.att.id===id ? ISK.att : null;
     const ti = ISK.tplIsk && ISK.tplIsk.conv===id ? ISK.tplIsk : null;
+    { const c0 = ISK.convs.find(x => x.id===id); if (c0 && iskClosed(c0) && !ti){ ISK.err = "Pasaron 24 h: elige una plantilla de 'Después de 24 h'."; return schedule(); } }
     if (ti && !ISK.busy){
       const {names} = iskTplVars(ti), vars = {}; names.forEach(n => vars[n] = String((ti.vals||{})[n] || "").replace(/\s*[\r\n\t]+\s*/g, " ").replace(/ {2,}/g, " ").trim()); // WhatsApp no acepta saltos de línea en variables
       const miss = names.filter(n => !vars[n]); if (miss.length){ ISK.err = `Llena ${miss.map(n => "{{" + n + "}}").join(" y ")} antes de mandar.`; return schedule(); }
