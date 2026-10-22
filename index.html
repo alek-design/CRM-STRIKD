@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 22:00:08 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 22:03:25 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792706408">
+<link rel="stylesheet" href="/auth.css?v=1792706605">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792706408"></script>
+<script src="/claude-shim.js?v=1792706605"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -297,6 +297,7 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .ai-card{margin-bottom:14px}.ai-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}.ai-m{display:grid;gap:2px;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:8px 10px;cursor:pointer}.ai-m small{color:var(--muted);font-size:11.5px}.ai-m.on{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}.ai-m:disabled{cursor:default;opacity:.8}
 .ai-st{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin:6px 0}.ai-faq{margin-top:10px;display:grid;gap:6px}.ai-q{display:flex;gap:8px;align-items:center;font-size:13px}.ai-q span{flex:1;min-width:0}.ai-q em{font-style:normal;font-weight:700;color:var(--muted)}
 @media (max-width:640px){.ai-modes{grid-template-columns:1fr}}
+.chip.kw{background:var(--raised);color:var(--fg2)}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -6553,14 +6554,14 @@ function aiPanel(){
   const d = AIS.data || {}, md = (S.config && S.config.aiMode) || "off", own = S.isOwner && !S.viewAs;
   const opt = (k, l, sub) => `<button type="button" class="ai-m${md===k ? " on" : ""}" data-aimode="${k}"${own ? "" : " disabled"}><b>${l}</b><small>${sub}</small></button>`;
   const tn = id => (S.tpls[id] && S.tpls[id].name) || "Plantilla borrada";
-  return `<section class="fn-card ai-card"><div class="fn-h"><h3>🤖 Respuestas con IA</h3></div>
-    <p class="mut small">Lee cada mensaje nuevo de los prospectos. Si una de sus plantillas contesta exactamente lo que preguntan y está segura, la manda sola (con su nombre). Si no, no manda nada: marca el chat <b>🙋 Revisar</b> con la razón y les avisa. Nunca escribe textos propios.</p>
-    ${AIS.data && !d.key ? `<p class="notice">Falta la llave de la API de Claude en Vercel (<code>ANTHROPIC_API_KEY</code>). Mientras no esté, la IA está apagada.</p>` : ""}
+  return `<section class="fn-card ai-card"><div class="fn-h"><h3>🤖 Respuestas automáticas</h3></div>
+    <p class="mut small">Cada mensaje nuevo de un prospecto se compara con las <b>🔑 palabras clave</b> de sus plantillas (se ponen al editar cada plantilla). Si coincide con una sola, se manda sola con su nombre; si coincide con varias, no manda nada y marca <b>🙋 Revisar</b>. Nunca escribe textos propios.${d.key ? " Con la IA activada, lo que no coincide lo revisa la IA." : ""}</p>
+    ${(() => { const n = Object.values(S.tpls||{}).filter(t => t.active!==false && (t.kw||[]).length && !["auto","h24"].includes(t.trigger)).length; return `<p class="mut small">${n ? `<b>${n}</b> plantilla${n===1?"":"s"} con palabras clave.` : `<b>Ninguna plantilla tiene palabras clave todavía:</b> edita una (p. ej. la de precio) y llena “Contestar sola cuando escriban…”.`}${AIS.data && !d.key ? " · IA no conectada (opcional)." : ""}</p>`; })()}
     <div class="ai-modes">${opt("off", "Apagada", "No hace nada")}${opt("test", "Prueba", "Solo muestra en el chat qué habría contestado")}${opt("on", "Encendida", "Contesta sola lo que está segura")}</div>
     ${own ? "" : `<p class="mut small">Solo el Head puede cambiar esto.</p>`}
     ${AIS.data ? `<p class="ai-st"><span><b>${d.sent||0}</b> contestó sola</span><span><b>${d.would||0}</b> habría contestado (prueba)</span><span><b>${d.flag||0}</b> marcó para revisar</span><span class="mut">últimos 30 días</span></p>` : AIS.err ? `<p class="mut small">No se pudo leer: ${esc(AIS.err)}</p>` : `<p class="mut small">Cargando…</p>`}
     ${(d.byTpl||[]).length ? `<p class="mut small">Más usadas: ${(d.byTpl||[]).sort((a,b) => b.n - a.n).slice(0,5).map(x => `${esc(tn(x.tpl))} (${x.n})`).join(" · ")}</p>` : ""}
-    ${(d.faq||[]).length ? `<div class="ai-faq"><b>Preguntas frecuentes sin plantilla</b><p class="mut small">Lo que más preguntan y la IA no pudo contestar. Si se repite, conviene hacerle plantilla.</p>
+    ${(d.faq||[]).length ? `<div class="ai-faq"><b>Preguntas frecuentes sin plantilla</b><p class="mut small">Lo que más preguntan y no se pudo contestar solo. Si se repite, conviene hacerle plantilla o agregar palabras clave.</p>
       ${(d.faq||[]).map(x => `<div class="ai-q"><span>${esc(x.q)}</span><em>${x.n}×</em><button type="button" class="btn small" data-aifaq="${esc(x.q)}">+ Plantilla</button></div>`).join("")}</div>` : ""}
   </section>`;
 }
@@ -6591,6 +6592,7 @@ function renderTpl(){
   const form = TPL_FORM ? `<div class="wa-form"><h3>${f.id?"Editar":"Nueva"} plantilla</h3>
       <label class="f">Nombre<input data-tplf="name" value="${esc(f.name||"")}" placeholder="Ej. Respuesta a automático con PDF"></label>
       <label class="f">¿Cuándo se usa?<select data-tplf="trigger">${Object.entries(TRIG).map(([k,l]) => `<option value="${k}"${(f.trigger||"auto")===k?" selected":""}>${l}</option>`).join("")}</select></label>
+      ${["auto","h24"].includes(f.trigger||"auto") ? "" : `<label class="f">Contestar sola cuando escriban… <small class="mut">(palabras o frases separadas por coma; vacío = solo a mano)</small><input data-tplf="kw" value="${esc(f.kw||"")}" placeholder="Ej. cuánto cuesta, precio, costo, cuánto cobran"></label>`}
       ${(f.trigger||"auto")==="auto" ? `<label class="tpl-auto"><input type="checkbox" data-tplf="autoSend"${f.autoSend?" checked":""}><span><b>Mandar sola</b> cuando detecte respuesta automática (contestan en menos de 90 s a nuestro primer mensaje). Alterna A/B/C.</span></label>` : ""}
       ${vIn("a")}${vIn("b")}${vIn("c")}
       <div class="row"><span class="err" id="tplErr"></span><div class="spacer"></div><button type="button" class="btn small" data-tplcancel="1">Cancelar</button><button type="button" class="btn small primary" data-tplsave="1">Guardar</button></div></div>` : "";
@@ -6600,7 +6602,7 @@ function renderTpl(){
     // tarjeta limpia: solo el mensaje completo como le llega (sin códigos de ISKRA ni el texto repetido)
     const vrow = (k, s) => { const vf = t.variants[k]||{}, full = (vf.iskTplId || vf.iskTplName) ? (iskFullHtml(vf) || esc(iskFullText(vf))) : "";
       return `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span>${full ? `<div class="tpl-full">${full}</div>` : `<p>${esc(vf.text||"")}</p>`}${!vf.iskTplId && vf.fileId ? `<span class="chip muted">📎 ${esc(vf.fileName||"PDF")} · link</span>` : ""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`; };
-    return `<div class="tpl-card${t.active===false?" off":""}"><div class="msg-top"><b>${esc(t.name)}</b><span class="chip info">${esc(TRIG[t.trigger]||t.trigger)}</span>${t.autoSend?`<span class="chip ok">🤖 Se manda sola</span>`:""}${t.active===false?`<span class="chip muted">Pausada</span>`:""}<div class="spacer"></div>
+    return `<div class="tpl-card${t.active===false?" off":""}"><div class="msg-top"><b>${esc(t.name)}</b><span class="chip info">${esc(TRIG[t.trigger]||t.trigger)}</span>${t.autoSend?`<span class="chip ok">🤖 Se manda sola</span>`:""}${t.active===false?`<span class="chip muted">Pausada</span>`:""}${(t.kw||[]).length && !["auto","h24"].includes(t.trigger) ? `<span class="chip kw" title="Se contesta sola cuando escriben esto (si la respuesta automática está encendida)">🔑 ${esc(t.kw.slice(0,4).join(", "))}${t.kw.length > 4 ? "…" : ""}</span>` : ""}<div class="spacer"></div>
       ${lead ? `<button type="button" class="linkbtn" data-tpledit="${id}">Editar</button><button type="button" class="linkbtn" data-tpltoggle="${id}">${t.active===false?"Activar":"Pausar"}</button><button type="button" class="linkbtn danger" data-tpldel="${id}">Eliminar</button>` : ""}</div>
       ${vrow("a", sa)}${hasB ? vrow("b", sb) : ""}${hasC ? vrow("c", sc) : ""}</div>`; };
   // bloques: automática · chat (dentro de 24 h, por tipo) · después de 24 h
@@ -6687,7 +6689,7 @@ $("tplBox").addEventListener("click", async e => {
   if (q("[data-tplnew]")){ const tr = q("[data-tplnew]").dataset.trig; TPL_FORM = tr ? true : !TPL_FORM; TPLF.cur = {trigger:tr || "auto"}; if (tr) setTimeout(() => { const f = document.querySelector("#tplBox .wa-form"); f && f.scrollIntoView({behavior:"smooth", block:"start"}); }, 80); return schedule(); }
   if (q("[data-tplcancel]")){ TPL_FORM = null; TPLF.cur = null; return schedule(); }
   if (q("[data-tpledit]")){ const id = q("[data-tpledit]").dataset.tpledit, t = S.tpls[id]; const va = (t.variants||{}).a||{}, vb = (t.variants||{}).b||{}, vc = (t.variants||{}).c||{};
-    TPLF.cur = {id, name:t.name, trigger:t.trigger, autoSend:!!t.autoSend, atext:va.text, afileId:va.fileId, afileName:va.fileName, aisk:(iskTplRef(va)||{}).id||"", btext:vb.text, bfileId:vb.fileId, bfileName:vb.fileName, bisk:(iskTplRef(vb)||{}).id||"", ctext:vc.text, cfileId:vc.fileId, cfileName:vc.fileName, cisk:(iskTplRef(vc)||{}).id||""}; TPL_FORM = true; return schedule(); }
+    TPLF.cur = {id, name:t.name, trigger:t.trigger, autoSend:!!t.autoSend, kw:(t.kw||[]).join(", "), atext:va.text, afileId:va.fileId, afileName:va.fileName, aisk:(iskTplRef(va)||{}).id||"", btext:vb.text, bfileId:vb.fileId, bfileName:vb.fileName, bisk:(iskTplRef(vb)||{}).id||"", ctext:vc.text, cfileId:vc.fileId, cfileName:vc.fileName, cisk:(iskTplRef(vc)||{}).id||""}; TPL_FORM = true; return schedule(); }
   if (q("[data-tplautonew]")){ TPL_FORM = true; TPLF.cur = {trigger:"auto", autoSend:true, name:"Segundo intento (respuesta automática)", ...AUTO_DRAFT}; return schedule(); }
   if (q("[data-tpldel]")){ const id = q("[data-tpldel]").dataset.tpldel, t = S.tpls[id]; if (!t || !confirm(`¿Eliminar la plantilla "${t.name || "sin nombre"}"?\n\nYa no saldrá en el panel ni en el chat.`)) return;
     // se marca como eliminada (no se borra el doc): así la carga inicial del servidor no la vuelve a crear
@@ -6697,7 +6699,7 @@ $("tplBox").addEventListener("click", async e => {
     const f = TPLF.cur || {}, err = $("tplErr");
     if (!f.name || !f.atext){ if (err) err.textContent = "Ponle nombre y el texto de la variante A."; return; }
     const trig = f.trigger||"auto", autoSend = trig==="auto" && !!f.autoSend;
-    const doc = {name:f.name.trim(), trigger:trig, active:true, autoSend, updatedAt:Date.now(),
+    const doc = {name:f.name.trim(), trigger:trig, active:true, autoSend, updatedAt:Date.now(), kw:["auto","h24"].includes(trig) ? [] : String(f.kw||"").split(/[,\n]/).map(x => x.trim()).filter(x => x.length >= 3).slice(0, 30),
       variants:Object.fromEntries(["a","b","c"].map(k => { const t = ISKT.list && ISKT.list.find(x => x.id===f[k+"isk"]);
         return [k, {text:(f[k+"text"]||"").trim(), fileId:f[k+"fileId"]||"", fileName:f[k+"fileName"]||"", iskTplId:f[k+"isk"]||"", iskTplName:t ? t.name : ""}]; }))};
     try{
