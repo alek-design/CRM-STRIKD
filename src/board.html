@@ -1089,6 +1089,8 @@ label.f em{color:var(--bad);font-style:normal}
 .ct-age i{width:8px;height:8px;border-radius:50%;flex:none;background:#2fb36b}
 .ct-age.soon i{background:#e5b100}.ct-age.late i{background:#d93a3a}.ct-age.off i{background:#bbb}
 .ct-more{margin:10px auto 0;display:block}
+.tk-prio{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;margin-right:6px;vertical-align:1px}.tk-prio.p-urgente{background:#fde2e1;color:#9b1c1c}.tk-prio.p-alta{background:#fff0d6;color:#8a4b00}
+.tkr.prio-urgente{box-shadow:inset 3px 0 0 #d93a3a}
 .isk-tplbox{flex-wrap:wrap}.ogg-play{font:inherit;font-size:14px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:8px 14px;cursor:pointer;margin-bottom:4px}.tpl-chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 4px 8px;border-bottom:1px solid var(--line);margin-bottom:4px;position:sticky;top:0;background:var(--surface);z-index:1}.tpl-chips button{border:1px solid var(--line2);background:var(--surface);color:inherit;font:inherit;font-size:12.5px;border-radius:999px;padding:4px 10px;cursor:pointer;white-space:nowrap}.tpl-chips button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.tpl-chips span{opacity:.7}.tpl-chips .tpl-x{order:99;margin-left:auto;border:0;background:none;font-size:15px;padding:4px 8px}.tpl-hint{padding:6px 8px 2px;margin:0}.h24-list{display:grid;gap:6px;margin:6px 0}.h24-b{display:grid;gap:2px;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:8px 12px;cursor:pointer}.h24-b small{color:var(--muted);font-size:12px}.h24-b.on{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}.h24-b:disabled{opacity:.55;cursor:not-allowed}.h24-bar{justify-content:flex-end}.isk-vars{flex-basis:100%;display:grid;gap:6px;margin-top:6px}.isk-var{margin:0}.isk-var textarea{width:100%;box-sizing:border-box;font:inherit}
 .ct-ed{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:0 4px;margin-left:4px;cursor:pointer;border-radius:6px}.ct-ed:hover{color:var(--fg);background:color-mix(in srgb, currentColor 10%, transparent)}
 .ct-row[role=button]:focus-visible{outline:2px solid var(--fg);outline-offset:-2px}
@@ -4851,12 +4853,17 @@ function taskSubs(){
 }
 // tareas programadas: quien la recibe no la ve hasta su hora de publicación
 const tkHidden = (u, x) => x && x.publishAt && x.publishAt > Date.now() && x.by !== S.uid && u === meId() && !adminMode();
-function taskList(u){ return Object.entries((S.tasks||{})[u] || {}).filter(([,x]) => !tkHidden(u, x)).sort((a,b) => (a[1].dueAt||9e15) - (b[1].dueAt||9e15)); }
+// prioridad: urgente > alta > media (media es la normal y no lleva etiqueta)
+const TK_PRIO = {urgente:{l:"Urgente", n:0, i:"🔴"}, alta:{l:"Alta", n:1, i:"🟠"}, media:{l:"Media", n:2, i:""}};
+const tkPrioN = x => (TK_PRIO[x && x.prio] || TK_PRIO.media).n;
+const tkPrioTag = x => x && TK_PRIO[x.prio] && x.prio !== "media" ? `<span class="tk-prio p-${x.prio}">${TK_PRIO[x.prio].i} ${TK_PRIO[x.prio].l}</span>` : "";
+const tkPrioSel = (attrs, val) => `<select ${attrs}>${["urgente","alta","media"].map(k => `<option value="${k}"${(val||"media")===k ? " selected" : ""}>${TK_PRIO[k].i ? TK_PRIO[k].i + " " : ""}${TK_PRIO[k].l}</option>`).join("")}</select>`;
+function taskList(u){ return Object.entries((S.tasks||{})[u] || {}).filter(([,x]) => !tkHidden(u, x)).sort((a,b) => tkPrioN(a[1]) - tkPrioN(b[1]) || (a[1].dueAt||9e15) - (b[1].dueAt||9e15)); }
 function taskAssignedByMe(){ const out = []; Object.entries(S.tasks||{}).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,x]) => { if (u===meId() || x.by===u) return; // las tareas personales (que alguien se crea a sí mismo) no las ve nadie más
     const headU = S.config && S.config.headId;
     if (x.by===meId() || (S.isOwner && !teamScoped()) || (teamScoped() && S.team && S.team[u]) || (adminMode() && roleOf(u)==="influencer") || michMode()) out.push([u,id,x]); })); // Mich: sus tareas las ven el Head y el Manager // la Influencer ve todas las del equipo
   const ord = {review:0, changes:1, progress:2, todo:3, done:4};
-  return out.sort((a,b) => ord[tkSt(a[2])] - ord[tkSt(b[2])] || (b[2].createdAt||0) - (a[2].createdAt||0)).filter(([,,x]) => tkSt(x)!=="done" || MORE.tkAllDone || Date.now() - (x.doneAt||0) < 3*864e5); }
+  return out.sort((a,b) => ord[tkSt(a[2])] - ord[tkSt(b[2])] || tkPrioN(a[2]) - tkPrioN(b[2]) || (b[2].createdAt||0) - (a[2].createdAt||0)).filter(([,,x]) => tkSt(x)!=="done" || MORE.tkAllDone || Date.now() - (x.doneAt||0) < 3*864e5); }
 /* Estatus: Por hacer → En progreso (AM) → Esperando aprobación (AM) → Necesita ajustes / Completado (Head o Manager) */
 const TK_ST = {todo:"Por hacer", progress:"En progreso", review:"Esperando aprobación", changes:"Necesita ajustes", done:"Completado"};
 const tkSt = x => x.status || (x.doneAt ? "done" : "todo");
@@ -4951,6 +4958,7 @@ function taskRow(u, id, x, lead, now){
   const editForm = `<div class="tk-edit">
       <label class="f">Tarea<input data-tke="${k}|title" value="${esc(d.e_title ?? x.title)}"></label>
       <label class="f">Detalle<textarea rows="2" data-tke="${k}|note">${esc(d.e_note ?? x.note ?? "")}</textarea></label>
+      <label class="f">Prioridad${tkPrioSel(`data-tke="${k}|prio"`, d.e_prio ?? x.prio)}</label>
       <label class="f">Para cuándo<input type="date" data-tke="${k}|due" value="${esc(d.e_due ?? (x.dueAt ? new Date(x.dueAt - OFF).toISOString().slice(0,10) : ""))}"></label>
       ${(() => { const ppl = [...new Set((tkAssigner() ? [S.uid].concat(tkAssignees()) : Object.keys(S.members||{}).concat((S.config||{}).headId ? [S.config.headId] : [])).concat([u]))];
         return `<label class="f">Para<select data-tke="${k}|to">${ppl.map(p => `<option value="${p}"${(d.e_to ?? u)===p ? " selected" : ""}>${esc(String(nameOf(S.ps||{}, p)).split(" (")[0])}${p===S.uid ? " (tú)" : ""}</option>`).join("")}</select></label>`; })()}
@@ -4974,9 +4982,9 @@ function taskRow(u, id, x, lead, now){
         : st==="review" ? `<p class="mut small tk-wait">Enviada a aprobación${x.statusAt ? ` el ${esc(fmtLocal(x.statusAt))}` : ""}. Te avisamos cuando ${esc(String(x.byName || "quien la asignó").split(" ")[0])} la apruebe o pida ajustes.</p><div class="tk-acts"><button class="btn small" data-tkst="${k}|progress">↺ Retirar para editar</button></div>`
         : `<div class="tk-acts">${st!=="progress" ? `<button class="btn small" data-tkst="${k}|progress">En progreso</button>` : `<button class="btn small" data-tksave="${k}">Guardar</button>`}${x.by === u ? `<button class="btn small primary" data-tkst="${k}|done">✓ Completar</button>` : `<button class="btn small primary" data-tkst="${k}|review">Enviar a aprobación</button>`}${x.by === u && canEdit ? `<button class="pr-x" data-tdel="${k}">Borrar</button>` : ""}</div>`}
     </div>`;
-  return `<div class="pr tkr st-${st}${due ? " due-" + due.cls : ""}${late?" late":""}${open?" sel":""}" role="button" tabindex="0" data-tkopen="${k}">
+  return `<div class="pr tkr st-${st}${due ? " due-" + due.cls : ""}${late?" late":""}${open?" sel":""}${x.prio==="urgente" && st!=="done" ? " prio-urgente" : ""}" role="button" tabindex="0" data-tkopen="${k}">
       <span class="tk-ring st-${st}" aria-hidden="true">${st==="done" ? "✓" : ""}</span>
-      <span class="pr-m"><b>${esc(x.title)}</b>${due ? `<em class="tk-due ${due.cls}">${due.t}</em>` : ""}${x.publishAt && x.publishAt > Date.now() ? `<small class="tk-sched">⏰ Se publica el ${esc(fmtLocal(x.publishAt))}</small>` : ""}${sub?`<small>${esc(sub)}${rep && rep.active!==false ? " · ↻ cada " + esc(["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(x.dueAt - OFF).getUTCDay()]) : ""}</small>`:""}${prog ? `<span class="tk-prog${prog.n >= prog.goal ? " ok" : ""}"><i style="width:${Math.min(100, Math.round(prog.n/prog.goal*100))}%"></i></span><small class="tk-pn">${prog.n} de ${prog.goal} ${esc(prog.label)}${prog.emGoal ? ` · ${prog.em} de ${prog.emGoal} con email` : ""}${prog.n >= prog.goal && (!prog.emGoal || prog.em >= prog.emGoal) ? " · ✓ meta cumplida" : ""}</small>` : ""}</span>
+      <span class="pr-m"><b>${tkPrioTag(x)}${esc(x.title)}</b>${due ? `<em class="tk-due ${due.cls}">${due.t}</em>` : ""}${x.publishAt && x.publishAt > Date.now() ? `<small class="tk-sched">⏰ Se publica el ${esc(fmtLocal(x.publishAt))}</small>` : ""}${sub?`<small>${esc(sub)}${rep && rep.active!==false ? " · ↻ cada " + esc(["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][new Date(x.dueAt - OFF).getUTCDay()]) : ""}</small>`:""}${prog ? `<span class="tk-prog${prog.n >= prog.goal ? " ok" : ""}"><i style="width:${Math.min(100, Math.round(prog.n/prog.goal*100))}%"></i></span><small class="tk-pn">${prog.n} de ${prog.goal} ${esc(prog.label)}${prog.emGoal ? ` · ${prog.em} de ${prog.emGoal} con email` : ""}${prog.n >= prog.goal && (!prog.emGoal || prog.em >= prog.emGoal) ? " · ✓ meta cumplida" : ""}</small>` : ""}</span>
       ${thumb ? `<img class="tk-thumb" src="${esc(thumb.url)}" alt="" loading="lazy">` : ""}
       <span class="tk-st st-${st}">${esc(TK_ST[st])}</span>
     </div>${det}`;
@@ -5025,6 +5033,7 @@ function taskOpen(){
       <label class="f full">Detalle (opcional)<textarea id="tkNote" rows="2" placeholder="Contexto, links, cómo debe quedar"></textarea></label>
       <div class="f"><span>Para <em>*</em></span><div id="tkWhoBox"><div class="tk-who-row"><select class="tk-who" id="tkWho" aria-label="Para quién">${whoOpts}</select></div></div><button type="button" class="tk-who-add" data-tkwadd="1">+ Agregar otra persona</button></div>
       <label class="f">Para cuándo<input type="date" id="tkDue" value="${today}"></label>
+      <label class="f">Prioridad${tkPrioSel('id="tkPrio"', "media")}</label>
       <label class="f">Publicar<select id="tkPub"><option value="">Ahora</option><option value="later">Programar para después</option></select></label>
       <label class="f" id="tkPubL" hidden>Se publica el<input type="datetime-local" id="tkPubAt"></label>
       <label class="f"${asg && !tkInfl() ? " hidden" : ""}>Se repite<select id="tkRep"><option value="">No se repite</option><option value="w">Cada semana (mismo día de entrega)</option></select></label>
@@ -5050,7 +5059,7 @@ function taskOpen(){
     const wx = e.target.closest("[data-tkwx]"); if (wx){ wx.closest(".tk-who-row").remove(); return; }
     if (!e.target.closest("#tkGo")) return;
     const whos = [...new Set([...w.querySelectorAll("select.tk-who")].map(sl => sl.value).filter(Boolean))];
-    const title = $("tkTitle").value.trim(), who = whos.includes("__team") ? "__team" : whos[0] || "", due = $("tkDue").value, note = $("tkNote").value.trim();
+    const title = $("tkTitle").value.trim(), who = whos.includes("__team") ? "__team" : whos[0] || "", due = $("tkDue").value, note = $("tkNote").value.trim(), prio = ($("tkPrio") && $("tkPrio").value) || "media";
     if (!title || !who){ $("tkErr").textContent = "Escribe la tarea y elige para quién."; return; }
     const teamTo = () => tkInfl() ? tkAssignees().filter(u => u!==(S.config||{}).headId && roleOf(u)!=="manager" && roleOf(u)!=="influencer") : Object.keys(S.team||{}).filter(u => u!==S.uid && u!==(S.config||{}).headId);
     const to = [...new Set(whos.flatMap(v => v==="__team" ? teamTo() : [v]))];
@@ -5069,9 +5078,9 @@ function taskOpen(){
     const byName = String(nameOf(S.ps||{}, S.uid)).split(" (")[0];
     let ruleId = "";
     if (rep){ try{ const rr = db.collection("taskRules").doc(); ruleId = rr.id;
-        await rr.set({title, note, to: whos.length === 1 && who==="__team" ? "__team" : to, weekday:new Date(due + "T12:00:00Z").getUTCDay(), by:S.uid, byName, createdAt:now, active:true, ...(metric ? {metric, goal} : {}), ...(files.length ? {files} : {})}); }
+        await rr.set({title, note, to: whos.length === 1 && who==="__team" ? "__team" : to, weekday:new Date(due + "T12:00:00Z").getUTCDay(), by:S.uid, byName, createdAt:now, active:true, ...(prio !== "media" ? {prio} : {}), ...(metric ? {metric, goal} : {}), ...(files.length ? {files} : {})}); }
       catch(_){ $("tkGo").disabled = false; $("tkGo").textContent = "Asignar tarea"; $("tkErr").textContent = "No se pudo guardar la repetición."; return; } }
-    try{ for (const u of to){ const ref = db.collection(`meets/${u}/tasks`).doc(), data = {title, note, dueAt, status:"todo", by:S.uid, byName, createdAt:now, ...(files.length ? {files} : {}), ...(ruleId ? {ruleId} : {}), ...(metric ? {metric, goal, from:publishAt || now} : {}), ...(publishAt && !rep ? {publishAt} : {})};
+    try{ for (const u of to){ const ref = db.collection(`meets/${u}/tasks`).doc(), data = {title, note, dueAt, status:"todo", by:S.uid, byName, createdAt:now, ...(prio !== "media" ? {prio} : {}), ...(files.length ? {files} : {}), ...(ruleId ? {ruleId} : {}), ...(metric ? {metric, goal, from:publishAt || now} : {}), ...(publishAt && !rep ? {publishAt} : {})};
         await ref.set(data); ((S.tasks ||= {})[u] ||= {})[ref.id] = data;
         if (!data.publishAt) tkNotify([u], `Nueva tarea de ${data.byName}`, title + (note ? ` · ${note}` : ""), `${u}/${ref.id}`, u); } schedule(); // las programadas avisan al publicarse
       w.remove(); taskSubs(); if (to.includes(meId())){ AG_DAY = null; showTab("agenda"); }
@@ -5138,7 +5147,7 @@ document.addEventListener("click", async e => {
   const sr = e.target.closest("[data-tkstoprule]"); if (sr){ e.stopPropagation(); if (sr.dataset.armed!=="1"){ sr.dataset.armed = "1"; sr.textContent = "¿Seguro? Ya no se creará la de la próxima semana"; return; }
     try{ await db.doc(`taskRules/${sr.dataset.tkstoprule}`).update({active:false, stoppedAt:Date.now()}); (TK_RULES[sr.dataset.tkstoprule] ||= {}).active = false; quickToast("Ya no se repite"); schedule(); }catch(_){ quickToast("No se pudo"); } return; }
   const te = e.target.closest("[data-tkedit]"); if (te){ e.stopPropagation(); (TKD[te.dataset.tkedit] ||= {}).edit = true; schedule(); return; }
-  const tc = e.target.closest("[data-tkecancel]"); if (tc){ e.stopPropagation(); const d = TKD[tc.dataset.tkecancel] || {}; d.edit = false; delete d.e_title; delete d.e_note; delete d.e_due; schedule(); return; }
+  const tc = e.target.closest("[data-tkecancel]"); if (tc){ e.stopPropagation(); const d = TKD[tc.dataset.tkecancel] || {}; d.edit = false; delete d.e_title; delete d.e_note; delete d.e_due; delete d.e_prio; schedule(); return; }
   const fdel = e.target.closest("[data-tkfdel]"); if (fdel){ e.stopPropagation(); e.preventDefault();
     if (fdel.classList.contains("tk-fx") && fdel.dataset.armed !== "1"){ fdel.dataset.armed = "1"; fdel.textContent = "¿Quitar?"; fdel.classList.add("armed"); setTimeout(() => { if (fdel.isConnected){ fdel.dataset.armed = ""; fdel.textContent = "×"; fdel.classList.remove("armed"); } }, 4000); return; }
     const [k, i] = fdel.dataset.tkfdel.split("|"), x0 = ((S.tasks||{})[k.split("/")[0]]||{})[k.split("/")[1]] || {};
@@ -5147,6 +5156,7 @@ document.addEventListener("click", async e => {
     const patch = {};
     if (d.e_title !== undefined){ const t = d.e_title.trim(); if (!t){ quickToast("La tarea necesita un título"); return; } if (t !== x0.title) patch.title = t; }
     if (d.e_note !== undefined && d.e_note.trim() !== (x0.note||"")) patch.note = d.e_note.trim();
+    if (d.e_prio !== undefined && d.e_prio !== (x0.prio || "media")) patch.prio = d.e_prio === "media" ? null : d.e_prio;
     if (d.e_due !== undefined){ const du = d.e_due ? Date.parse(d.e_due + "T23:59:00-05:00") : 0; if (du !== (x0.dueAt||0)){ patch.dueAt = du; patch.dueSoonAt = null; patch.lateAt = null; } }
     if (d.e_pub !== undefined && x0.publishAt){ const pt = vTs(d.e_pub); if (!(pt > Date.now())){ quickToast("Elige una fecha y hora futura para publicarla (o toca Publicar ahora)"); return; } if (pt !== x0.publishAt) patch.publishAt = pt; }
     if (d.e_to !== undefined && d.e_to !== k.split("/")[0]){ // pasarla a otra persona: se mueve completa (entrega, comentarios y archivos)
