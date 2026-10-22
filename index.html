@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 17:32:44 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 17:44:56 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792690364">
+<link rel="stylesheet" href="/auth.css?v=1792691096">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792690364"></script>
+<script src="/claude-shim.js?v=1792691096"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -6538,7 +6538,9 @@ function renderTpl(){
   const card = ([id,t]) => { const sa = st[`${id}_a`]||{sent:0,rep:0}, sb = st[`${id}_b`]||{sent:0,rep:0}, sc = st[`${id}_c`]||{sent:0,rep:0}, hasB = t.variants && t.variants.b && t.variants.b.text, hasC = t.variants && t.variants.c && t.variants.c.text;
     const used = [["a",sa],...(hasB?[["b",sb]]:[]),...(hasC?[["c",sc]]:[])];
     const win = used.length > 1 && used.every(([,x]) => x.sent >= 10) ? used.slice().sort((x,y) => y[1].rep/y[1].sent - x[1].rep/x[1].sent)[0][0] : null;
-    const vrow = (k, s) => `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span><p>${esc((t.variants[k]||{}).text||"")}</p>${(() => { const vf = t.variants[k]||{}; const full = (vf.iskTplId || vf.iskTplName) ? iskFullText(vf) : ""; return full ? `<div class="tpl-full"><span>Así le llega:</span>${esc(full)}</div>` : ""; })()}${(t.variants[k]||{}).iskTplId?`<span class="chip ok">📄 ISKRA: ${esc(t.variants[k].iskTplName||t.variants[k].iskTplId)}</span>`:(t.variants[k]||{}).fileId?`<span class="chip muted">📎 ${esc(t.variants[k].fileName||"PDF")} · link</span>`:""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`;
+    // tarjeta limpia: solo el mensaje completo como le llega (sin códigos de ISKRA ni el texto repetido)
+    const vrow = (k, s) => { const vf = t.variants[k]||{}, full = (vf.iskTplId || vf.iskTplName) ? iskFullText(vf) : "";
+      return `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span>${full ? `<div class="tpl-full">${esc(full)}</div>` : `<p>${esc(vf.text||"")}</p>`}${!vf.iskTplId && vf.fileId ? `<span class="chip muted">📎 ${esc(vf.fileName||"PDF")} · link</span>` : ""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`; };
     return `<div class="tpl-card${t.active===false?" off":""}"><div class="msg-top"><b>${esc(t.name)}</b><span class="chip info">${esc(TRIG[t.trigger]||t.trigger)}</span>${t.autoSend?`<span class="chip ok">🤖 Se manda sola</span>`:""}${t.active===false?`<span class="chip muted">Pausada</span>`:""}<div class="spacer"></div>
       ${lead ? `<button type="button" class="linkbtn" data-tpledit="${id}">Editar</button><button type="button" class="linkbtn" data-tpltoggle="${id}">${t.active===false?"Activar":"Pausar"}</button><button type="button" class="linkbtn danger" data-tpldel="${id}">Eliminar</button>` : ""}</div>
       ${vrow("a", sa)}${hasB ? vrow("b", sb) : ""}${hasC ? vrow("c", sc) : ""}</div>`; };
