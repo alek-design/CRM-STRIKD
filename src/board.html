@@ -6916,9 +6916,12 @@ function iskErrDetail(d){
 }
 // molde de ISKRA de una variante: por id, o por nombre (las plantillas dadas de alta desde el servidor solo traen el nombre)
 const iskNorm = x => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").replace(/chat$/, ""); // "Después de … · chat" = "Después de …"
+const ISK_COPY_MOLD = {[iskNorm("Después de la ventana de 24hrs")]:"4c138_es_h1_6de8f", [iskNorm("Después de la ventana de 24hrs (B)")]:"4c138_es_h1_6de8f",
+  [iskNorm("Después de la ventana de 24hrs (C)")]:"4c138_es_h1_6de8f", [iskNorm("Después de ventana 24hrs")]:"af679_r2_es_n1"};
 function iskTplRef(vf){
   if (!vf) return null; if (vf.iskTplId) return {id:vf.iskTplId, name:vf.iskTplName || vf.iskTplId};
-  if (!vf.iskTplName) return null; const t = (ISKT.list || []).find(x => iskNorm(x.name)===iskNorm(vf.iskTplName));
+  if (!vf.iskTplName) return null; const nm = ISK_COPY_MOLD[iskNorm(vf.iskTplName)] || vf.iskTplName;
+  const t = (ISKT.list || []).find(x => iskNorm(x.name)===iskNorm(nm));
   return {id:t ? t.id : "", name:vf.iskTplName};
 }
 // ventana de WhatsApp: pasadas 24 h desde el último mensaje del cliente solo se pueden mandar plantillas aprobadas
@@ -7135,7 +7138,7 @@ document.addEventListener("click", async e => {
     const nombre = ((mt ? mt.name : c && c.name) || "").split(" ")[0];
     ISK.draft[ISK.sel] = String(vf.text||"").replace(/\{nombre\}/g, nombre && !/^\d/.test(nombre) ? nombre : "").replace(/\s+([!,.?])/g, "$1");
     ISK.tplUsed = {id:tp.dataset.isktpl, v, conv:ISK.sel};
-    { const rf = iskTplRef(vf); ISK.tplIsk = rf ? {conv:ISK.sel, id:rf.id, name:rf.name, byName:!vf.iskTplId && vf.iskTplName} : null; }
+    { const rf = iskTplRef(vf); ISK.tplIsk = rf ? {conv:ISK.sel, id:rf.id, name:rf.name, byName:!vf.iskTplId && vf.iskTplName ? (ISK_COPY_MOLD[iskNorm(vf.iskTplName)] || vf.iskTplName) : ""} : null; }
     if (ISK.tplIsk){ iskTplLoad(); ISK.tplIsk.pre = {nombre: nombre && !/^\d/.test(nombre) ? nombre : "", text: ISK.draft[ISK.sel] || ""}; ISK.tplIsk.vals = null; }
     const fx = String(vf.fileName||"").toLowerCase().split(".").pop(), ftype = {jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"}[fx] || "application/pdf";
     ISK.tplMedia = vf.fileId ? {conv:ISK.sel, url:location.origin + "/_blob/" + vf.fileId, type:ftype, name:vf.fileName || "STRIKD.pdf"} : null;
