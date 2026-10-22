@@ -6708,6 +6708,8 @@ async function iskTail(id){
     const j = await fn("tail", {id, since});
     const add = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m) || (iskMedia(m) ? "" : "📎 Archivo o nota de voz"), at:iskAt(m), st:m.status||"", media:iskMedia(m)}));
     if (!add.length || ISK.sel!==id) return;
+    // llegó un archivo (la vía rápida no trae la foto/audio): recargar el chat con la cuenta del panel para verlo
+    if (ISK.media && add.some(m => m.t === "📎 Archivo o nota de voz")) setTimeout(() => iskThread(id, true, true), 300);
     const same = (a, b) => a.d===b.d && a.t===b.t && Math.abs((a.at||0) - (b.at||0)) < 3000;
     let list = cur.slice(), changed = false;
     add.forEach(m => {
@@ -6736,15 +6738,16 @@ function iskMediaHtml(x){
   if (/audio|voice|ptt/i.test(t)) return `<audio controls preload="none" src="${u}"></audio>`;
   return `<a class="bdoc" href="${u}" target="_blank" rel="noopener">📄 ${esc(md.name || "Documento")}</a>`;
 }
-async function iskThread(id, quiet){
-  try{ const j = await iskFn()("messages", {id, limit:50});
+async function iskThread(id, quiet, force){
+  try{ const j = await iskFn()("messages", {id, limit:50, ...(force ? {force:true} : {})});
     (ISK.raw3 ||= {})[id] = iskArr(j).filter(m => m && (m.media || m.media_url || m.type && m.type!=="text" || m.attachments || m.document || m.image)).slice(0, 3).concat(iskArr(j).slice(0, 2));
     let ms = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m) || (iskMedia(m) ? "" : "📎 Archivo o nota de voz"), at:iskAt(m), st:m.status||"", media:iskMedia(m)}));
     ms = ms.some(x => x.at) ? ms.sort((a,b) => a.at-b.at) : ms.reverse(); // la API da lo más nuevo primero
     const pend = (ISK.msgs[id]||[]).filter(x => x.local && (x.failed || Date.now() - x.at < 90e3) && !ms.some(y => y.d==="out" && y.t===x.t));
     const mine = (ISK.sent[id]||[]).filter(x => Date.now() - x.at < 90e3);
     ISK.msgs[id] = ms.concat(pend); ISK.sent[id] = (j.sent || []).concat(mine.filter(x => !(j.sent||[]).some(y => y.text===x.text)));
-    iskConvMedia(id); }
+    if (j.appDebug) ISK.appDebug = j.appDebug;
+    if (j.via !== "app") iskConvMedia(id); }
   catch(e){ if (!quiet) ISK.err = e.message; }
   schedule();
 }
@@ -6877,7 +6880,7 @@ function renderIskra(){
       ${ISK.stale ? `<p class="cl-stale"><span class="isk-dot"></span> Actualizando…</p>` : ""}
       <div class="ck-list">${list.map(item).join("") || `<p class="mut small cv-empty">${ISK.convs.length ? "Nada aquí. 🙌" : "Todavía nadie ha contestado."}</p>`}</div>
     </aside>${right}</div>
-    ${ISK.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISK.raw, null, 1).slice(0,6000))}</pre>` : ""}`;
+    ${ISK.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISK.appDebug ? {mensajesApp:ISK.appDebug} : {}, null, 1).slice(0,2000))}\n${esc(JSON.stringify(ISK.raw, null, 1).slice(0,6000))}</pre>` : ""}`;
   const nl = box.querySelector(".ck-list"); if (nl) nl.scrollTop = keep;
   const th = $("iskThread"); if (th) th.scrollTop = th.scrollHeight;
   const ta = box.querySelector("[data-iskin]"); if (ta){ ta.style.height = "auto"; ta.style.height = Math.min(140, ta.scrollHeight) + "px"; }

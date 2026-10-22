@@ -242,6 +242,15 @@ module.exports = async (req, res) => {
           const sent0 = (await c.query("select user_id, text, extract(epoch from at)*1000 as at from public.iskra_sent where conversation_id=$1 order by at desc limit 200", [String(input.id)])).rows;
           return {data:mc.data, sent:sent0.map(x => ({by:x.user_id, text:x.text, at:Number(x.at)})), cached:true};
         }
+        // rápido: con la cuenta del panel en ISKRA se leen los últimos 80 de una vez (con fotos/PDF/audios); si no se reconoce, la API pública
+        if (iskapp.configured() && !input.publicOnly){
+          try{ const r = await iskapp.convMessages(String(input.id));
+            if (r){ const j = {data:r.data, info:{via:"app", mensajes:r.data.length}};
+              MSG_CACHE[input.id] = {lastL, data:j, at:Date.now()};
+              const sentA = (await c.query("select user_id, text, extract(epoch from at)*1000 as at from public.iskra_sent where conversation_id=$1 order by at desc limit 200", [String(input.id)])).rows;
+              return {data:j, sent:sentA.map(s => ({by:s.user_id, text:s.text, at:Number(s.at)})), via:"app", ...(lead ? {appDebug:r.debug} : {})}; }
+          }catch(_){ /* sigue con la API pública */ }
+        }
         const all = [], seenIds = new Set(); let cursor = "", pages = 0, info = {};
         while (pages < 6){
           const j = await iskra("GET", `/v1/conversations/${enc(input.id)}/messages?limit=100` + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""), null, 10000);
