@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 03:41:04 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 03:44:37 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792640464">
+<link rel="stylesheet" href="/auth.css?v=1792640677">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792640464"></script>
+<script src="/claude-shim.js?v=1792640677"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -1264,7 +1264,8 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
   .cw-h{flex-wrap:wrap;row-gap:8px;padding:10px 12px!important}
   .cw-h .cw-who{flex:1 1 0;min-width:0}.cw-h .cw-who b{font-size:16px}
   .cw-h .cw-acts{flex:1 1 100%;order:5;display:flex;gap:6px}
-  .cw-h .cw-acts .cw-own{flex:1;max-width:none!important}
+  .cw-h .cw-acts .cw-own{flex:1 1 0;min-width:0;max-width:none!important}
+  .cw-h .cw-acts{min-width:0}.cw-h .cw-acts > *{flex-shrink:0}.cw-h .cw-acts .cw-own{flex-shrink:1}
   /* barra de escribir como WhatsApp: 📝 📎 · texto · 🎤 (vacío) o ➤ (con texto) en un solo renglón */
   .cw-bar{flex-wrap:nowrap;gap:6px}
   .cw-bar textarea{flex:1 1 auto!important;min-width:0}
@@ -1283,6 +1284,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
   .cw-bar [data-iskrec],.cw-bar .cw-send{background:#25D366!important;color:#0b1f12!important;border:0!important;width:40px!important;height:40px!important;border-radius:50%!important;font-size:18px}
   .cw-bar [data-iskrec].rec{background:var(--bad)!important;color:#fff!important;width:auto!important;padding:0 12px!important;border-radius:999px!important;font-size:14px}
   body.kb .cw-h .cw-acts{display:none}
+  .cw-wa span{display:none}.cw-wa{padding:0 10px!important}
   body.kb #view-msgs .cv2{border-radius:12px}
   body.kb .cw-c{padding-bottom:6px}
   main.wrap .view h2{font-size:24px;letter-spacing:-.01em}
@@ -1441,7 +1443,7 @@ body.mob-open header.top{z-index:31}
 .cw-none{display:grid;place-items:center;text-align:center;padding:20px}
 .cw-h{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line2)}
 .cw-who{flex:1;min-width:0;display:grid}.cw-who b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cw-who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cw-acts{display:flex;gap:6px;align-items:center}.cw-own{max-width:170px;font-size:12.5px;padding:5px 8px!important}
+.cw-acts{display:flex;gap:6px;align-items:center}.cw-wa{display:inline-flex;align-items:center;gap:5px;color:#1fa855!important;text-decoration:none;background:var(--surface)!important;border:1px solid var(--line2)!important;flex:none}.cw-acts [data-iskbook]{white-space:nowrap}.cw-own{max-width:170px;font-size:12.5px;padding:5px 8px!important}
 .cw-back{display:none;font:inherit;font-size:18px;background:none;border:0;color:var(--fg);cursor:pointer;padding:0 4px}
 .cw-t{flex:1;overflow-y:auto;min-height:0;padding:14px 16px!important;max-height:none!important}
 .cw-c{border-top:1px solid var(--line2);padding:8px 10px;display:grid;gap:6px}
@@ -6936,6 +6938,7 @@ function renderIskra(){
         <div class="cw-acts">
           ${lead ? `<select class="inline cw-own" data-iskown="1" aria-label="Dueño">${iskOwnerOpts(c.owner)}</select>` : ""}
           ${canSend ? `<button type="button" class="btn small primary" data-iskbook="1">${mt ? "Agendar otro meet" : "Agendar meet"}</button>` : ""}
+          ${waLink(c.phone, "") ? `<a class="btn small cw-wa" data-iskwa="1" href="${esc(waLink(c.phone, "").replace(/\?text=$/, ""))}" target="_blank" rel="noopener" title="Abrir este chat en tu WhatsApp" aria-label="Abrir en mi WhatsApp"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg><span>WhatsApp</span></a>` : ""}
           ${canSend ? `<details class="cw-more"><summary class="btn small" aria-label="Más opciones">⋯</summary><div class="cw-menu">
             ${!lead && mine ? `<button type="button" data-iskesc="1">Pasar al manager</button>` : ""}
             ${lead ? `<button type="button" data-iskdiag="1">${ISK.diag ? "Ocultar diagnóstico" : "Diagnóstico de envío"}</button>` : ""}
@@ -7050,6 +7053,9 @@ document.addEventListener("input", e => { const qi = e.target.closest("[data-isk
   document.querySelectorAll("#iskBox .ck").forEach(b => b.hidden = !!q && !(b.dataset.s||"").includes(q)); });
 document.addEventListener("input", e => { const ta = e.target.closest("[data-iskin]"); if (ta){ ta.style.height = "auto"; ta.style.height = Math.min(170, ta.scrollHeight) + "px"; } });
 document.addEventListener("keydown", e => { const ta = e.target.closest && e.target.closest("[data-iskin]"); if (ta && e.key==="Enter" && !e.shiftKey && !e.isComposing && !matchMedia("(pointer:coarse)").matches) /* en celular ⏎ es salto de línea, como WhatsApp; se manda con ➤ */{ e.preventDefault(); const b = document.querySelector("[data-isksend]"); b && b.click(); } });
+document.addEventListener("click", e => { const a = e.target.closest("[data-iskwa]"); if (!a || !ISK.sel) return;
+  const c = ISK.convs.find(x => x.id===ISK.sel), txt = (ISK.draft[ISK.sel] || "").trim(); if (!c) return;
+  const u = waLink(c.phone, txt); if (u) a.href = txt ? u : u.replace(/\?text=$/, ""); }, true);
 document.addEventListener("input", e => { const t = e.target.closest("[data-iskin]"); if (t && ISK.sel){ ISK.draft[ISK.sel] = t.value; const bar = t.closest(".cw-bar"); if (bar) bar.classList.toggle("has-text", !!t.value.trim() || !!(ISK.att && ISK.att.id===ISK.sel)); } });
 document.addEventListener("change", async e => {
   const o = e.target.closest("[data-iskown]");
