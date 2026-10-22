@@ -6690,7 +6690,7 @@ async function iskLoad(force){
   if (!fn || ISK.loading || (!force && Date.now() - ISK.at < 8e3)) return;
   ISK.loading = true;
   try{
-    if (!ISK.who && !ISK.whoP) ISK.whoP = fn("whoami").then(w => { if (w.configured===false) ISK.st = "off"; else { ISK.who = w.data || {}; ISK.media = !!w.media; ISK.mediaMissing = w.mediaMissing || null; } schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
+    if (!ISK.who && !ISK.whoP) ISK.whoP = fn("whoami").then(w => { if (w.configured===false) ISK.st = "off"; else { ISK.who = w.data || {}; ISK.media = !!w.media; ISK.mediaMissing = w.mediaMissing || null; if (ISK.media) loadOpus().catch(() => {}); } schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
     const j = await fn("conversations", {limit:50});
     if (j.configured===false){ ISK.st = "off"; return; }
     ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.debug || j.data; ISK.mode = j.mode || "load"; ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
@@ -6909,8 +6909,28 @@ function iskAttach(blob, name){
 }
 document.addEventListener("change", e => { const r = e.target.closest("[data-iskrecent]"); if (r){ ISK.recent = r.checked; schedule(); } });
 document.addEventListener("change", e => { if (e.target.id!=="iskFile") return; const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) iskAttach(f, f.name); });
+// notas de voz en .ogg/Opus (el formato de WhatsApp; ISKRA no acepta .m4a/.webm). opus-recorder servido desde /vendor/opus
+let OPUSREC = null;
+function loadOpus(){
+  return OPUSREC ||= new Promise((ok, no) => { if (window.Recorder && window.Recorder.isRecordingSupported) return ok(window.Recorder);
+    const sc = document.createElement("script"); sc.src = "/vendor/opus/recorder.min.js"; sc.async = true;
+    sc.onload = () => window.Recorder ? ok(window.Recorder) : no(new Error("sin Recorder")); sc.onerror = () => no(new Error("no cargó")); document.head.appendChild(sc);
+  }).catch(e => { OPUSREC = null; throw e; });
+}
 async function iskRecToggle(){
   if (ISK.rec){ ISK.rec.stop(); return; }
+  try{
+    const R = await loadOpus();
+    if (R.isRecordingSupported()){
+      const rec = new R({encoderPath:"/vendor/opus/encoderWorker.min.js", numberOfChannels:1, encoderSampleRate:48000, encoderApplication:2048, streamPages:false, maxFramesPerPage:40});
+      const done = () => { clearInterval(ISK.recT); ISK.rec = null; ISK.recS = 0; };
+      rec.ondataavailable = buf => { done(); const blob = new Blob([buf], {type:"audio/ogg"}); if (blob.size > 200) iskAttach(blob, "nota-de-voz.ogg"); else schedule(); };
+      try{ await rec.start(); }catch(err){ ISK.err = "Da permiso al micrófono para grabar."; return schedule(); }
+      ISK.rec = {stop:() => { try{ rec.stop(); }catch(_){ done(); schedule(); } }}; ISK.recS = 0;
+      ISK.recT = setInterval(() => { ISK.recS++; if (ISK.recS >= 120) ISK.rec && ISK.rec.stop(); schedule(); }, 1000); schedule();
+      return;
+    }
+  }catch(_){ /* sin opus-recorder: grabación del navegador */ }
   if (!navigator.mediaDevices || !window.MediaRecorder){ ISK.err = "Este navegador no puede grabar audio."; return schedule(); }
   let stream; try{ stream = await navigator.mediaDevices.getUserMedia({audio:true}); }catch(err){ ISK.err = "Da permiso al micrófono para grabar."; return schedule(); }
   // formatos que WhatsApp acepta: m4a (AAC, iPhone/Safari) u ogg/opus; webm no (Chrome) → se avisa al adjuntar
