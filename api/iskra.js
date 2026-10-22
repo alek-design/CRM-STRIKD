@@ -28,7 +28,7 @@ async function iskra(method, path, payload, timeoutMs){
 // Lista de conversaciones: primera página cada 10 s; hasta 4 páginas cada 60 s (por si la actividad nueva no viene arriba).
 // Además, los mensajes entrantes de las últimas 2 h (con fecha, para que ISKRA no tarde) para no perder ninguno nuevo.
 let LIST_CACHE = {at:0, deepAt:0, data:null, p:null, info:{}};
-const MSG_CACHE = {}, OWN_CACHE = {};
+const MSG_CACHE = {}, OWN_CACHE = {}, TPL_CACHE = {at:0, data:null};
 const lastAtOf = cv => Date.parse(cv.last_message_at || (cv.last_message && cv.last_message.created_at) || cv.updated_at || cv.created_at || "") || 0;
 async function iskList(){
   if (LIST_CACHE.data && Date.now() - LIST_CACHE.at < 10e3) return LIST_CACHE.data;
@@ -386,12 +386,13 @@ module.exports = async (req, res) => {
         return {data:st};
       }
       if (op === "numbers") return {data:await iskra("GET", "/v1/numbers")};
+      if (op === "templates" && !input.fresh && TPL_CACHE.data && Date.now() - TPL_CACHE.at < 10*60e3) return TPL_CACHE.data;
       if (op === "templates"){ // ISKRA llama "templates" a sus Quick replies. Si no regresa lista, probar variantes y devolver qué contestó cada una
         const hasArr = (o, d) => Array.isArray(o) ? o.length > 0 : (o && typeof o==="object" && d < 4 ? Object.values(o).some(v => hasArr(v, d+1)) : false);
         const tried = [];
         // probado: Quick replies no salen por la API (13 variantes). /v1/templates solo regresa los moldes de Meta cuando se le pasa el número
         for (const path of ["/v1/templates"]){
-          try{ const j = await iskra("GET", path); if (hasArr(j, 0)) return {data:j, from:path, tried};
+          try{ const j = await iskra("GET", path); if (hasArr(j, 0)) return (TPL_CACHE.at = Date.now(), TPL_CACHE.data = {data:j, from:path, tried});
             tried.push({path, ok:true, body:JSON.stringify(j).slice(0, 400)}); }
           catch(e){ tried.push({path, ok:false, status:e.status || 0, body:String(e.message).slice(0, 200)}); }
         }
@@ -399,7 +400,7 @@ module.exports = async (req, res) => {
           const nj = await iskra("GET", "/v1/numbers"), arr = Array.isArray(nj) ? nj : (nj.data || nj.numbers || []);
           for (const n of arr.slice(0, 3)){ const nid = n.id || n.number_id; if (!nid) continue;
             for (const q of ["number_id", "sender_number_id"]){ const path = `/v1/templates?${q}=${encodeURIComponent(nid)}`;
-              try{ const j = await iskra("GET", path); if (hasArr(j, 0)) return {data:j, from:path, tried}; tried.push({path, ok:true, body:JSON.stringify(j).slice(0, 200)}); }
+              try{ const j = await iskra("GET", path); if (hasArr(j, 0)) return (TPL_CACHE.at = Date.now(), TPL_CACHE.data = {data:j, from:path, tried}); tried.push({path, ok:true, body:JSON.stringify(j).slice(0, 200)}); }
               catch(e){ tried.push({path, ok:false, status:e.status || 0, body:String(e.message).slice(0, 200)}); } } }
         }catch(_){}
         return {data:[], tried};

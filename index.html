@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 01:38:40 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 01:45:28 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792633120">
+<link rel="stylesheet" href="/auth.css?v=1792633528">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792633120"></script>
+<script src="/claude-shim.js?v=1792633528"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -6397,7 +6397,7 @@ async function iskTplLoad(){
   if (fn===iskMock){ ISKT.list = [{id:"demo_pdf", name:"strikd_info_pdf (ejemplo)", status:"APPROVED"}]; return; }
   ISKT.loading = true;
   ISKT.err = "";
-  try{ const j = await fn("templates", {}); ISKT.raw = j && j.data !== undefined ? j.data : j; ISKT.tried = (j && j.tried) || null; ISKT.from = (j && j.from) || "";
+  try{ const j = await fn("templates", ISKT.fresh ? {fresh:true} : {}); ISKT.fresh = false; ISKT.raw = j && j.data !== undefined ? j.data : j; ISKT.tried = (j && j.tried) || null; ISKT.from = (j && j.from) || "";
     // ISKRA llama "templates" a sus Quick replies; la lista puede venir en data, templates, quick_replies, snippets… (busca el primer arreglo de objetos)
     const findArr = (o, d) => { if (Array.isArray(o)) return o.some(x => x && typeof x==="object") ? o : null; if (!o || typeof o!=="object" || d > 3) return null;
       for (const k of ["data","templates","quick_replies","quickReplies","snippets","items","results"]) { const r = findArr(o[k], d+1); if (r) return r; }
@@ -6511,7 +6511,7 @@ $("tplBox").addEventListener("click", async e => {
     }catch(ex){ b.disabled = false; b.textContent = "No se guardó, reintenta"; }
     return;
   }
-  if (q("[data-iskreload]")){ ISKT.list = null; ISKT.loading = false; iskTplLoad(); return schedule(); }
+  if (q("[data-iskreload]")){ ISKT.list = null; ISKT.loading = false; ISKT.fresh = true; iskTplLoad(); return schedule(); }
   if (q("[data-iskrawt]")){ ISKT.showRaw = !ISKT.showRaw; return schedule(); }
   if (q("[data-tplnew]")){ TPL_FORM = !TPL_FORM; TPLF.cur = {trigger:"auto"}; return schedule(); }
   if (q("[data-tplcancel]")){ TPL_FORM = null; TPLF.cur = null; return schedule(); }
@@ -6699,7 +6699,8 @@ async function iskLoad(force){
   if (!fn || ISK.loading || (!force && Date.now() - ISK.at < 8e3)) return;
   ISK.loading = true;
   try{
-    if (!ISK.who && !ISK.whoP) ISK.whoP = fn("whoami").then(w => { if (w.configured===false) ISK.st = "off"; else { ISK.who = w.data || {}; ISK.media = !!w.media; ISK.mediaMissing = w.mediaMissing || null; if (ISK.media) loadOpus().catch(() => {}); } schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
+    if (!ISK.who && !ISK.whoP) ISK.whoP = fn("whoami").then(w => { if (w.configured===false) ISK.st = "off"; else { ISK.who = w.data || {}; ISK.media = !!w.media; ISK.mediaMissing = w.mediaMissing || null; if (ISK.media) loadOpus().catch(() => {});
+      if (Object.values(S.tpls||{}).some(t => Object.values(t.variants||{}).some(v => v && v.iskTplId))) iskTplLoad(); } schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
     const j = await fn("conversations", {limit:50});
     if (j.configured===false){ ISK.st = "off"; return; }
     ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.debug || j.data; ISK.mode = j.mode || "load"; ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
@@ -6809,7 +6810,7 @@ function renderIskra(){
     ISK.thT = setInterval(() => { if (S.tab==="msgs" && !document.hidden && ISK.sel && !ISK.thBusy){ ISK.thBusy = true;
       const full = !ISK.fullAt || Date.now() - ISK.fullAt > 45e3 || ISK.fullFor !== ISK.sel;
       (full ? iskThread(ISK.sel, true).then(() => { ISK.fullAt = Date.now(); ISK.fullFor = ISK.sel; }) : iskTail(ISK.sel)).finally(() => { ISK.thBusy = false; }); } }, 3e3); }
-  if (busyIn(box)){ const th = $("iskThread"), c0 = ISK.convs.find(x => x.id===ISK.sel); if (th && c0){ const h = iskBubbles(c0); if (th.dataset.h!==h){ const atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 40; th.innerHTML = h; th.dataset.h = h; if (atBottom) th.scrollTop = th.scrollHeight; } } return; }
+  if (busyIn(box) || box.querySelector("details.cw-more[open]")){ const th = $("iskThread"), c0 = ISK.convs.find(x => x.id===ISK.sel); if (th && c0){ const h = iskBubbles(c0); if (th.dataset.h!==h){ const atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 40; th.innerHTML = h; th.dataset.h = h; if (atBottom) th.scrollTop = th.scrollHeight; } } return; }
   const lead = adminMode(), me = meId();
   if (ISK.st==="off"){ $("iskNotice").hidden = false; box.innerHTML = `<p class="notice">ISKRA no está activado: falta <b>ISKRA_API_KEY</b> en Vercel (Settings → Environment Variables) y hacer Redeploy.</p>`; return; }
   $("iskNotice").hidden = ISK.st==="ok";
