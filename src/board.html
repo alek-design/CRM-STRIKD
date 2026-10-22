@@ -6485,6 +6485,10 @@ $("msgBox").addEventListener("click", async e => {
 });
 
 /* ---------- Plantillas A/B + asistente de respuestas ---------- */
+const KW_SUG = {interesado:"si, sí claro, sí por favor, cuéntame más, cuéntame, me interesa, más información, más info, información, mándame información, claro, va, dale, ok, sale, de acuerdo, me gustaría saber más",
+  precio:"cuánto cuesta, precio, costo, cuánto cobran, cuánto cobras, cuánto es, cuánto sale, tarifa, planes, mensualidad",
+  pregunta:"cómo funciona, de qué se trata, qué es, cómo es, en qué consiste",
+  no_interesado:"no me interesa, no gracias, no por ahora, ya tengo"};
 const TRIG = {auto:"Respuesta automática", interesado:"Interesado", pregunta:"Pregunta", precio:"Pregunta precio", objecion:"Objeción / duda", no_interesado:"No le interesa", general:"General", h24:"Después de 24 h (plantilla aprobada de ISKRA)"};
 let TPL_FORM = null; const TPLF = {}; let sampleFn, sampleTried = false;
 const AST = {pick:"", reply:"", busy:false, res:null, err:"", text:null};
@@ -6583,7 +6587,7 @@ function renderTpl(){
   const form = TPL_FORM ? `<div class="wa-form"><h3>${f.id?"Editar":"Nueva"} plantilla</h3>
       <label class="f">Nombre<input data-tplf="name" value="${esc(f.name||"")}" placeholder="Ej. Respuesta a automático con PDF"></label>
       <label class="f">¿Cuándo se usa?<select data-tplf="trigger">${Object.entries(TRIG).map(([k,l]) => `<option value="${k}"${(f.trigger||"auto")===k?" selected":""}>${l}</option>`).join("")}</select></label>
-      ${["auto","h24"].includes(f.trigger||"auto") ? "" : `<label class="f">Contestar sola cuando escriban… <small class="mut">(palabras o frases separadas por coma; vacío = solo a mano)</small><input data-tplf="kw" value="${esc(f.kw||"")}" placeholder="Ej. cuánto cuesta, precio, costo, cuánto cobran"></label>`}
+      ${["auto","h24"].includes(f.trigger||"auto") ? "" : `<label class="f">Contestar sola cuando escriban… <small class="mut">(palabras o frases separadas por coma; vacío = solo a mano)</small><input data-tplf="kw" value="${esc(f.kw||"")}" placeholder="Ej. cuánto cuesta, precio, costo, cuánto cobran"></label>${KW_SUG[f.trigger] ? `<button type="button" class="linkbtn" data-kwsug="1">✨ Poner las sugeridas para “${esc(TRIG[f.trigger]||f.trigger)}”</button>` : ""}`}
       ${(f.trigger||"auto")==="auto" ? `<label class="tpl-auto"><input type="checkbox" data-tplf="autoSend"${f.autoSend?" checked":""}><span><b>Mandar sola</b> cuando detecte respuesta automática (contestan en menos de 90 s a nuestro primer mensaje). Alterna A/B/C.</span></label>` : ""}
       ${vIn("a")}${vIn("b")}${vIn("c")}
       <div class="row"><span class="err" id="tplErr"></span><div class="spacer"></div><button type="button" class="btn small" data-tplcancel="1">Cancelar</button><button type="button" class="btn small primary" data-tplsave="1">Guardar</button></div></div>` : "";
@@ -6679,6 +6683,8 @@ $("tplBox").addEventListener("click", async e => {
     ISKT.finding = false; return schedule(); }
   if (q("[data-tplnew]")){ const tr = q("[data-tplnew]").dataset.trig; TPL_FORM = tr ? true : !TPL_FORM; TPLF.cur = {trigger:tr || "auto"}; if (tr) setTimeout(() => { const f = document.querySelector("#tplBox .wa-form"); f && f.scrollIntoView({behavior:"smooth", block:"start"}); }, 80); return schedule(); }
   if (q("[data-tplcancel]")){ TPL_FORM = null; TPLF.cur = null; return schedule(); }
+  if (q("[data-kwsug]")){ const f = TPLF.cur || {}, add = KW_SUG[f.trigger] || "", cur = String(f.kw||"").split(",").map(x => x.trim()).filter(Boolean);
+    f.kw = [...new Set(cur.concat(add.split(",").map(x => x.trim())))].join(", "); TPLF.cur = f; const inp = document.querySelector('[data-tplf="kw"]'); if (inp) inp.value = f.kw; return; }
   if (q("[data-tpledit]")){ const id = q("[data-tpledit]").dataset.tpledit, t = S.tpls[id]; const va = (t.variants||{}).a||{}, vb = (t.variants||{}).b||{}, vc = (t.variants||{}).c||{};
     TPLF.cur = {id, name:t.name, trigger:t.trigger, autoSend:!!t.autoSend, kw:(t.kw||[]).join(", "), atext:va.text, afileId:va.fileId, afileName:va.fileName, aisk:(iskTplRef(va)||{}).id||"", btext:vb.text, bfileId:vb.fileId, bfileName:vb.fileName, bisk:(iskTplRef(vb)||{}).id||"", ctext:vc.text, cfileId:vc.fileId, cfileName:vc.fileName, cisk:(iskTplRef(vc)||{}).id||""}; TPL_FORM = true; return schedule(); }
   if (q("[data-tplautonew]")){ TPL_FORM = true; TPLF.cur = {trigger:"auto", autoSend:true, name:"Segundo intento (respuesta automática)", ...AUTO_DRAFT}; return schedule(); }
@@ -6690,7 +6696,7 @@ $("tplBox").addEventListener("click", async e => {
     const f = TPLF.cur || {}, err = $("tplErr");
     if (!f.name || !f.atext){ if (err) err.textContent = "Ponle nombre y el texto de la variante A."; return; }
     const trig = f.trigger||"auto", autoSend = trig==="auto" && !!f.autoSend;
-    const doc = {name:f.name.trim(), trigger:trig, active:true, autoSend, updatedAt:Date.now(), kw:["auto","h24"].includes(trig) ? [] : String(f.kw||"").split(/[,\n]/).map(x => x.trim()).filter(x => x.length >= 3).slice(0, 30),
+    const doc = {name:f.name.trim(), trigger:trig, active:true, autoSend, updatedAt:Date.now(), kw:["auto","h24"].includes(trig) ? [] : String(f.kw||"").split(/[,\n]/).map(x => x.trim()).filter(x => x.length >= 2).slice(0, 30),
       variants:Object.fromEntries(["a","b","c"].map(k => { const t = ISKT.list && ISKT.list.find(x => x.id===f[k+"isk"]);
         return [k, {text:(f[k+"text"]||"").trim(), fileId:f[k+"fileId"]||"", fileName:f[k+"fileName"]||"", iskTplId:f[k+"isk"]||"", iskTplName:t ? t.name : ""}]; }))};
     try{
