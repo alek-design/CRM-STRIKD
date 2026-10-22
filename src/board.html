@@ -6595,7 +6595,7 @@ $("tplBox").addEventListener("click", async e => {
   if (q("[data-iskreload]")){ ISKT.list = null; ISKT.loading = false; ISKT.fresh = true; iskTplLoad(); return schedule(); }
   if (q("[data-iskrawt]")){ ISKT.showRaw = !ISKT.showRaw; return schedule(); }
   if (q("[data-iskfind]")){ if (ISKT.finding) return; ISKT.finding = true; ISKT.found = ""; schedule();
-    try{ const r = await iskFn()("findcopies", {q:"ec427d7e|ventana|24h reply|24h_reply"}); ISKT.found = (r.data || []).map(t => t.filas === undefined ? `${t.tabla} → ${t.status}${t.sugerencia ? " · ¿quisiste decir " + t.sugerencia + "?" : ""}` : `${t.tabla} → ${t.filas} filas, ${t.coincidencias} coincidencias\n   campos: ${(t.campos||[]).join(", ")}${(t.ejemplos||[]).map(e => "\n   · " + e).join("")}`).join("\n"); }
+    try{ const r = await iskFn()("findcopies", {q:"ec427d7e|ventana|24h reply|24h_reply"}); ISKT.found = (r.data || []).map(t => t.filas === undefined ? `${t.tabla} → ${t.status}${t.sugerencia ? " · ¿quisiste decir " + t.sugerencia + "?" : ""}` : `${t.tabla} → ${t.filas} filas, ${t.coincidencias} coincidencias\n   campos: ${(t.campos||[]).join(", ")}${(t.ejemplos||[]).map(e => "\n   · " + e).join("")}${t.lista ? "\n   TODAS:" + t.lista.map(e => "\n   - " + e).join("") : ""}`).join("\n"); }
     catch(err){ ISKT.found = "Error: " + err.message; }
     ISKT.finding = false; return schedule(); }
   if (q("[data-tplnew]")){ TPL_FORM = !TPL_FORM; TPLF.cur = {trigger:"auto"}; return schedule(); }
