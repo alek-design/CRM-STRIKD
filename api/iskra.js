@@ -139,6 +139,11 @@ module.exports = async (req, res) => {
       if (!globalThis.__iskInit){ await c.query(SQL_INIT); globalThis.__iskInit = true; } // solo una vez por arranque
       const ownerOf = async id => (await c.query("select * from public.iskra_owner where conversation_id=$1", [String(id)])).rows[0];
       const mustOwn = async id => { const o = await ownerOf(id); if (!lead && (!o || o.owner !== viewId)) throw Object.assign(new Error("Esta conversación es de otra persona."), {status:403}); return o; };
+      if (op === "findcopies"){ // solo Head: buscar dónde guarda ISKRA las copies (para mandarlas después de 24 h)
+        if (me.role !== "head") throw Object.assign(new Error("Solo el Head."), {status:403});
+        if (!iskapp.configured()) throw Object.assign(new Error("Falta la cuenta de ISKRA en Vercel"), {status:400});
+        return {data:await iskapp.findCopies(input.q)};
+      }
       if (op === "audioget"){ // notas de voz para reproducir en iPhone (el navegador no siempre puede bajarlas directo)
         const u = String(input.url || "");
         if (!/^https:\/\/(filemanager\.gupshup\.io|[a-z0-9]+\.supabase\.co)\//i.test(u)) throw Object.assign(new Error("Link no permitido"), {status:400});
