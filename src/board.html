@@ -273,6 +273,7 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .linkbtn.danger{color:#e5484d}
 .tpl-full .fx{color:var(--muted)}.tpl-full .vv{color:var(--fg);font-weight:600}.tpl-fixed{display:grid;gap:6px;background:color-mix(in srgb,#25D366 8%,var(--surface));border:1px solid color-mix(in srgb,#25D366 30%,var(--line));border-radius:10px;padding:8px 10px}.tpl-fixed .fx{white-space:pre-wrap;color:var(--muted);font-size:14px}.tpl-fixed p{margin:0}
 .cal-ev.declined,.ap-ev.declined{outline:2px dashed #e5484d;outline-offset:-2px}
+.rem-q{display:flex;flex-wrap:wrap;gap:6px}.cw-remb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:6px 12px;background:color-mix(in srgb,#f5a524 14%,var(--surface));border-bottom:1px solid var(--line)}.cw-remb span{flex:1;min-width:0}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -4381,7 +4382,7 @@ function renderPlan(){
       return `<div class="pr vem"><span class="pr-m"><b>${esc(x.prospect||"Influencer")}</b><small>Mich lo contactó hace ${d0} días y no cerró · ${x.email ? esc(x.email) : "sin email"}</small></span>
         <span class="rem-acts">${x.email ? `<button type="button" class="btn small" data-vemcopy="${esc(x.email)}">Copiar email</button>` : `<button type="button" class="btn small" data-memail="${k}">+ email</button>`}<button type="button" class="btn small primary" data-vemdone="${k}">✓ Ya le escribí</button></span></div>`; }).join("")}</div></section>` : "";
   const remHtml = remDue.length || remNext.length ? `<section class="pg2"><div class="pg2-h"><span>Recordatorios</span>${remDue.length ? `<b>${remDue.length}</b>` : ""}</div><div class="pg2-card">
-      ${remDue.map(r => `<div class="pr rem${r.at < now - 12*HR ? " late" : ""}"><span class="rem-ic">⏰</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}</small></span><span class="rem-acts"><button type="button" class="btn small" data-remedit="${r.id}">Editar</button><button type="button" class="btn small" data-remsnooze="${r.id}">Mañana</button><button type="button" class="btn small primary" data-remdone="${r.id}">✓ Hecho</button></span></div>`).join("")}
+      ${remDue.map(r => `<div class="pr rem${r.at < now - 12*HR ? " late" : ""}"><span class="rem-ic">⏰</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}</small></span><span class="rem-acts">${r.conv ? `<button type="button" class="btn small" data-remchat="${esc(r.conv)}">💬 Abrir chat</button>` : ""}<button type="button" class="btn small" data-remedit="${r.id}">Editar</button><button type="button" class="btn small" data-remsnooze="${r.id}">Mañana</button><button type="button" class="btn small primary" data-remdone="${r.id}">✓ Hecho</button></span></div>`).join("")}
       ${remNext.length ? `<details class="tt-done rem-next"${MORE.remNext ? " open" : ""}><summary data-remnextt="1">Programados (${remNext.length})</summary>${remNext.map(r => `<div class="pr rem"><span class="rem-ic">🗓</span><span class="pr-m"><b>${esc(r.text)}</b><small>${r.name ? esc(r.name) + " · " : ""}${esc(fmtLocal(r.at))}${r.hold ? " · ⏸ en pausa" : ""}</small></span><button type="button" class="btn small" data-remedit="${r.id}">Editar</button><button type="button" class="pr-x" data-remdel="${r.id}">Borrar</button></div>`).join("")}</details>` : ""}
     </div></section>` : "";
   const recentDone = x => tkSt(x)==="done" && (MORE.tkAllDone || now - (x.doneAt||x.statusAt||0) < 7*DAY);
@@ -4788,8 +4789,8 @@ const TSUB = {};
 const REM = {}, REMSUB = {};
 function remSub(){ const u = meId(); if (!u || REMSUB[u] || !db) return; REMSUB[u] = db.collection(`meets/${u}/reminders`).onSnapshot(sn => { REM[u] = {}; sn.docs.forEach(d => REM[u][d.id] = {...d.data(), id:d.id}); schedule(); }, () => {}); }
 function remList(){ remSub(); return Object.values(REM[meId()] || {}); }
-function remOpen(ref, name, kind, edit){
-  if (edit){ ref = edit.ref || ""; name = edit.name || ""; kind = edit.kind || ""; }
+function remOpen(ref, name, kind, edit, conv){
+  if (edit){ ref = edit.ref || ""; name = edit.name || ""; kind = edit.kind || ""; conv = edit.conv || ""; }
   const ev = kind==="event";
   const eDay = edit ? new Date(edit.at - VOFF).toISOString().slice(0,10) : "", eTime = edit ? new Date(edit.at - VOFF).toISOString().slice(11,16) : "";
   const today = new Date(Date.now() - OFF + (ref ? DAY : 0)).toISOString().slice(0,10); // manual: hoy · desde un prospecto: mañana
@@ -4798,11 +4799,12 @@ function remOpen(ref, name, kind, edit){
   w.innerHTML = `<div class="bk mbk" role="dialog" aria-modal="true" aria-label="Nuevo recordatorio"><div class="bk-grab"></div>
     <div class="bk-h"><b>${ev ? "📅 Agregar a tu agenda" : "＋ Pendiente o recordatorio"}</b><div class="spacer"></div><button type="button" class="btn small" data-remx="1">Cerrar</button></div>
     <div class="grid">
-      <label class="f full">${ev ? "¿Qué es?" : "¿Qué hay que hacer?"} <em>*</em><input id="remText" placeholder="${ev ? "Ej. Llamada con Ana para ver su contenido" : "Ej. Se fue de vacaciones: escribirle para reagendar"}" value="${esc(edit ? edit.text || "" : "")}" autocomplete="off"></label>
+      <label class="f full">${ev ? "¿Qué es?" : "¿Qué hay que hacer?"} <em>*</em><input id="remText" placeholder="${ev ? "Ej. Llamada con Ana para ver su contenido" : "Ej. Se fue de vacaciones: escribirle para reagendar"}" value="${esc(edit ? edit.text || "" : conv ? `Retomar la conversación con ${name || "el prospecto"}` : "")}" autocomplete="off"></label>
+      ${conv && !edit ? `<div class="rem-q full">${[[2,"En 2 días"],[3,"3 días"],[7,"1 semana"],[14,"2 semanas"],[30,"1 mes"]].map(([d,l]) => `<button type="button" class="btn small" data-remq="${d}">${l}</button>`).join("")}</div>` : ""}
       <label class="f">Día <em>*</em><input type="date" id="remDay" value="${edit ? eDay : ev ? new Date(Date.now() - VOFF).toISOString().slice(0,10) : today}"></label>
       <label class="f">Hora<input type="time" id="remTime" value="${edit ? eTime : ev ? String(new Date(Date.now() - VOFF + HR).getUTCHours()).padStart(2,"0") + ":00" : "09:00"}"></label>
       ${ev ? `<label class="f">Duración<select id="remDur">${[[15,"15 min"],[30,"30 min"],[45,"45 min"],[60,"1 h"],[90,"1 h 30"]].map(([v,l]) => `<option value="${v}"${(Number(edit && edit.dur) || 30)===v ? " selected" : ""}>${l}</option>`).join("")}</select></label>` : ""}
-      ${ref ? `<p class="mut small full" style="margin:0 4px">Prospecto: <b>${esc(name||"")}</b></p>` : ""}
+      ${ref || conv ? `<p class="mut small full" style="margin:0 4px">${conv ? "Chat" : "Prospecto"}: <b>${esc(name||"")}</b>${conv ? " · el aviso abre este chat" : ""}</p>` : ""}
       <label class="f full rem-hold"${!edit && !ev && (ref || mine.length) ? "" : " hidden"}><span><input type="checkbox" id="remHold" checked> Poner al prospecto en pausa hasta ese día</span><small>Sus pendientes no te salen ni cuentan como atrasados mientras tanto.</small></label>
       ${ref || edit ? "" : mine.length ? `<label class="f full">Prospecto (opcional)<select id="remRef"><option value="">Ninguno</option>${mine.map(([k,n]) => `<option value="${k}">${esc(n)}</option>`).join("")}</select></label>` : ""}
     </div>
@@ -4811,6 +4813,7 @@ function remOpen(ref, name, kind, edit){
   document.body.appendChild(w);
   w.addEventListener("click", async e => {
     if (e.target===w || e.target.closest("[data-remx]")) return w.remove();
+    const rq = e.target.closest("[data-remq]"); if (rq){ $("remDay").value = new Date(Date.now() - VOFF + Number(rq.dataset.remq)*DAY).toISOString().slice(0,10); w.querySelectorAll("[data-remq]").forEach(b => b.classList.toggle("primary", b===rq)); return; }
     const dE = e.target.closest("#remDelE"); if (dE && edit){ if (dE.dataset.armed !== "1"){ dE.dataset.armed = "1"; dE.textContent = "¿Borrar?"; return; }
       try{ await db.doc(`meets/${meId()}/reminders/${edit.id}`).delete(); delete (REM[meId()]||{})[edit.id];
         if (edit.hold && edit.ref){ const [ou, oid] = edit.ref.split("__"); db.doc(`meets/${ou}/items/${oid}`).update({flow:{holdUntil:null}}).catch(() => {}); }
@@ -4829,7 +4832,7 @@ function remOpen(ref, name, kind, edit){
         w.remove(); SL.at = 0; schedule(); quickToast(`✓ Guardado · ${fmtLocal(at)}`); }
       catch(_){ $("remGo").disabled = false; $("remErr").textContent = "No se pudo guardar."; }
       return; }
-    try{ const u = meId(), refd = db.collection(`meets/${u}/reminders`).doc(), data = {text, at, ref:r, name:nm, createdAt:Date.now(), done:false, hold, ...(ev ? {kind:"event", dur:Number(($("remDur")||{}).value)||30} : {})};
+    try{ const u = meId(), refd = db.collection(`meets/${u}/reminders`).doc(), data = {text, at, ref:r, name:nm, createdAt:Date.now(), done:false, hold, ...(conv ? {conv:String(conv)} : {}), ...(ev ? {kind:"event", dur:Number(($("remDur")||{}).value)||30} : {})};
       if (hold){ const [ou, oid] = r.split("__"); await db.doc(`meets/${ou}/items/${oid}`).update({flow:{holdUntil:at, holdBy:S.uid, holdNote:text}}); const mm = ((S.all||{})[ou]||{})[oid] || (ou===meId() ? myItems()[oid] : null); if (mm) (mm.flow ||= {}).holdUntil = at; }
       await refd.set(data); ((REM[u] ||= {}))[refd.id] = {...data, id:refd.id}; w.remove(); SL.at = 0; schedule(); quickToast(ev ? `✓ Agregado a tu agenda · ${fmtLocal(at)}` : `✓ Te lo recuerdo el ${fmtLocal(at)}`); }
     catch(_){ $("remGo").disabled = false; $("remErr").textContent = "No se pudo guardar."; }
@@ -4839,8 +4842,9 @@ function remOpen(ref, name, kind, edit){
 document.addEventListener("click", async e => {
   const ac = e.target.closest("[data-adjcopy]"); if (ac){ e.stopPropagation(); try{ await navigator.clipboard.writeText(ac.dataset.adjcopy); quickToast("✓ Pregunta copiada"); }catch(_){ quickToast("No se pudo copiar"); } return; }
   const as = e.target.closest("[data-adjset]"); if (as){ e.stopPropagation(); (DRAFT[as.dataset.k] ||= {dt:{}}).adj = as.dataset.adjset; as.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("on", b===as)); return; }
+  const rc = e.target.closest("[data-remchat]"); if (rc){ e.stopPropagation(); openFromUrl("/?tab=msgs&conv=" + encodeURIComponent(rc.dataset.remchat)); return; }
   const re = e.target.closest("[data-remedit]"); if (re){ e.stopPropagation(); const r = (REM[meId()]||{})[re.dataset.remedit]; if (r) remOpen("", "", "", {...r, id:re.dataset.remedit}); return; }
-  const nw = e.target.closest("[data-remnew]"); if (nw){ e.stopPropagation(); const ch = $("addWrap"); if (ch) ch.remove(); return remOpen(nw.dataset.remref || "", nw.dataset.remname || "", nw.dataset.remkind || ""); }
+  const nw = e.target.closest("[data-remnew]"); if (nw){ e.stopPropagation(); const ch = $("addWrap"); if (ch) ch.remove(); return remOpen(nw.dataset.remref || "", nw.dataset.remname || "", nw.dataset.remkind || "", null, nw.dataset.remconv || ""); }
   const pa = e.target.closest("[data-pendadd]"); if (pa){ e.stopPropagation();
     if (!((adminMode() && !S.viewAs) || tkAssigner())) return remOpen("", "", "");
     const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "addWrap";
@@ -7067,12 +7071,14 @@ function renderIskra(){
           ${lead ? `<select class="inline cw-own" data-iskown="1" aria-label="Dueño">${iskOwnerOpts(c.owner)}</select>` : ""}
           ${canSend ? `<button type="button" class="btn small primary" data-iskbook="1">${mt ? "Agendar otro meet" : "Agendar meet"}</button>` : ""}
           ${waLink(c.phone, "") ? `<a class="btn small cw-wa" data-iskwa="1" href="${esc(waLink(c.phone, "").replace(/\?text=$/, ""))}" target="_blank" rel="noopener" title="Abrir este chat en tu WhatsApp" aria-label="Abrir en mi WhatsApp"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg><span>WhatsApp</span></a>` : ""}
+          ${canSend ? `<button type="button" class="btn small cw-rem" data-remnew="1" data-remconv="${esc(c.id)}" data-remname="${esc(nm(c))}" title="Recordarme retomar este chat" aria-label="Recordatorio">⏰</button>` : ""}
           ${canSend ? `<details class="cw-more"><summary class="btn small" aria-label="Más opciones">⋯</summary><div class="cw-menu">
             ${!lead && mine ? `<button type="button" data-iskesc="1">Pasar al manager</button>` : ""}
             ${lead ? `<button type="button" data-iskdiag="1">${ISK.diag ? "Ocultar diagnóstico" : "Diagnóstico de envío"}</button>` : ""}
             ${isDisc(c) ? `<button type="button" data-iskdisc="undo">Regresar a la bandeja</button>` : `<button type="button" data-iskdisc="1">Descartar conversación</button>`}
           </div></details>` : ""}
         </div></div>
+      ${(() => { const rr = remList().filter(r => r.conv===String(c.id) && !r.done).sort((a,b) => a.at - b.at)[0]; return rr ? `<div class="cw-remb">⏰ <span>${esc(rr.text)} · <b>${esc(fmtLocal(rr.at))}</b></span><button type="button" class="linkbtn" data-remedit="${esc(rr.id)}">Editar</button><button type="button" class="linkbtn" data-remdone="${esc(rr.id)}">✓ Hecho</button></div>` : ""; })()}
       <div class="cv-thread cw-t" id="iskThread">${iskBubbles(c)}</div>
       ${lead && ISK.diag ? `<div class="isk-diag">
         <div class="probe"><b>Archivos por WhatsApp</b><p class="mut small">ISKRA solo acepta texto o una plantilla aprobada. Para que un PDF o foto llegue como archivo, crea en ISKRA una plantilla con ese archivo de encabezado y conéctala en Mensajes → Plantillas ("Plantilla de ISKRA con archivo"). Lo que adjuntas con 📎 llega como link.</p>
