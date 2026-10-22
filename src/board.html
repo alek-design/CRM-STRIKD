@@ -6930,6 +6930,8 @@ function iskErrDetail(d){
 }
 // molde de ISKRA de una variante: por id, o por nombre (las plantillas dadas de alta desde el servidor solo traen el nombre)
 const iskNorm = x => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").replace(/chat$/, ""); // "Después de … · chat" = "Después de …"
+// molde aprobado → id del grupo (copy "24h reply") con el que la app de ISKRA lo manda (send-whatsapp-template). Capturados de la app
+const ISK_MOLD_GROUP = {"4c138esh16de8f":"ec427d7e-0dac-4b3a-a7ab-9c66f3a45dc6", "af679r2esn1":"c7bb92a0-8175-45ec-a9c5-3b108b1d0c04"};
 const ISK_COPY_MOLD = {[iskNorm("Después de la ventana de 24hrs")]:"4c138_es_h1_6de8f", [iskNorm("Después de la ventana de 24hrs (B)")]:"4c138_es_h1_6de8f",
   [iskNorm("Después de la ventana de 24hrs (C)")]:"4c138_es_h1_6de8f", [iskNorm("Después de ventana 24hrs")]:"af679_r2_es_n1"};
 function iskTplRef(vf){
@@ -7230,6 +7232,8 @@ document.addEventListener("click", async e => {
     if (ti && !ti.id && ti.byName){ const t0 = (ISKT.list || []).find(x => iskNorm(x.name)===iskNorm(ti.byName)); if (t0) ti.id = t0.id;
       else { ISK.err = ISKT.list ? `No encontré el molde ${ti.byName} en ISKRA.` : "Cargando plantillas de ISKRA… intenta en un segundo."; iskTplLoad(); return schedule(); } }
     if (ti && !ISK.busy){
+      { const lt = (ISKT.list || []).find(x => x.id===ti.id), mold = iskNorm((lt && lt.name) || ISK_COPY_MOLD[iskNorm(ti.name)] || ti.name), g = ISK_MOLD_GROUP[mold.replace(/_/g, "")] || ISK_MOLD_GROUP[mold];
+        if (g && ti.id !== g){ iskTplVars(ti); ti.id = g; } }
       const {names} = iskTplVars(ti), vars = {}; names.forEach(n => vars[n] = String((ti.vals||{})[n] || "").replace(/\s*[\r\n\t]+\s*/g, " ").replace(/ {2,}/g, " ").trim()); // WhatsApp no acepta saltos de línea en variables
       const miss = names.filter(n => !vars[n]); if (miss.length){ ISK.err = `Llena ${miss.map(n => "{{" + n + "}}").join(" y ")} antes de mandar.`; return schedule(); }
       const shown = names.length ? names.map(n => vars[n]).join("\n\n") : "";
