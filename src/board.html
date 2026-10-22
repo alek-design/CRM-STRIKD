@@ -6490,9 +6490,11 @@ async function iskTplLoad(){
 }
 function iskTplOpts(sel){
   iskTplLoad();
-  const l = ISKT.list || [];
-  return `<option value="">${ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : l.length ? "Ninguna (mandar como texto)" : ISKT.err ? "No se pudieron leer: " + esc(ISKT.err).slice(0, 80) : "ISKRA no regresó plantillas"}</option>` + l.slice().sort((a,b) => (b.file - a.file) || String(a.name).localeCompare(String(b.name))).map(t => { const h = t.head.toUpperCase(), kind = h==="IMAGE" ? "con imagen" : h==="DOCUMENT" ? "con PDF" : h==="VIDEO" ? "con video" : t.file ? "con archivo" : "solo texto";
-    return `<option value="${esc(t.id)}"${t.id===sel?" selected":""}>${t.file ? "📎 " : ""}${esc(t.name)} · ${kind}${t.lang?` · ${esc(t.lang)}`:""}${t.vars?` · ${t.vars} variable${t.vars===1?"":"s"}`:""}${t.status?` · ${esc(t.status.toLowerCase())}`:""}${t.sendable ? "" : " · aún no se puede mandar"}</option>`; }).join("");
+  // solo las que ya funcionan desde el panel (molde con su grupo de ISKRA conectado), mostrando lo que dicen
+  const all = ISKT.list || [], ok = all.filter(t => ISK_MOLD_GROUP[iskNorm(t.name)] || t.id===sel);
+  const said = t => { const b = t.body || ISK_MOLD_BODY[iskNorm(t.name)] || ""; return b ? b.replace(/\{\{\d+\}\}/g, "…").replace(/\s*\n+\s*/g, " ").trim() : t.name; };
+  const head = ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : ok.length ? "Ninguna (mandar como texto)" : ISKT.err ? "No se pudieron leer: " + esc(ISKT.err).slice(0, 80) : "No hay plantillas de ISKRA conectadas";
+  return `<option value="">${head}</option>` + ok.map(t => `<option value="${esc(t.id)}"${t.id===sel ? " selected" : ""}>${esc(said(t).slice(0, 110))}</option>`).join("");
 }
 const fillVars = (txt, name) => String(txt||"").replace(/\{nombre\}/gi, first(name));
 function astTargets(){

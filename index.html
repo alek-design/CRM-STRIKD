@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 17:05:47 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 17:09:03 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792688747">
+<link rel="stylesheet" href="/auth.css?v=1792688943">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792688747"></script>
+<script src="/claude-shim.js?v=1792688943"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -6499,9 +6499,11 @@ async function iskTplLoad(){
 }
 function iskTplOpts(sel){
   iskTplLoad();
-  const l = ISKT.list || [];
-  return `<option value="">${ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : l.length ? "Ninguna (mandar como texto)" : ISKT.err ? "No se pudieron leer: " + esc(ISKT.err).slice(0, 80) : "ISKRA no regresó plantillas"}</option>` + l.slice().sort((a,b) => (b.file - a.file) || String(a.name).localeCompare(String(b.name))).map(t => { const h = t.head.toUpperCase(), kind = h==="IMAGE" ? "con imagen" : h==="DOCUMENT" ? "con PDF" : h==="VIDEO" ? "con video" : t.file ? "con archivo" : "solo texto";
-    return `<option value="${esc(t.id)}"${t.id===sel?" selected":""}>${t.file ? "📎 " : ""}${esc(t.name)} · ${kind}${t.lang?` · ${esc(t.lang)}`:""}${t.vars?` · ${t.vars} variable${t.vars===1?"":"s"}`:""}${t.status?` · ${esc(t.status.toLowerCase())}`:""}${t.sendable ? "" : " · aún no se puede mandar"}</option>`; }).join("");
+  // solo las que ya funcionan desde el panel (molde con su grupo de ISKRA conectado), mostrando lo que dicen
+  const all = ISKT.list || [], ok = all.filter(t => ISK_MOLD_GROUP[iskNorm(t.name)] || t.id===sel);
+  const said = t => { const b = t.body || ISK_MOLD_BODY[iskNorm(t.name)] || ""; return b ? b.replace(/\{\{\d+\}\}/g, "…").replace(/\s*\n+\s*/g, " ").trim() : t.name; };
+  const head = ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : ok.length ? "Ninguna (mandar como texto)" : ISKT.err ? "No se pudieron leer: " + esc(ISKT.err).slice(0, 80) : "No hay plantillas de ISKRA conectadas";
+  return `<option value="">${head}</option>` + ok.map(t => `<option value="${esc(t.id)}"${t.id===sel ? " selected" : ""}>${esc(said(t).slice(0, 110))}</option>`).join("");
 }
 const fillVars = (txt, name) => String(txt||"").replace(/\{nombre\}/gi, first(name));
 function astTargets(){
