@@ -280,6 +280,8 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .ck-m{grid-template-columns:minmax(0,1fr)}.cl,.cl-h{min-width:0}
 @media (max-width:760px){.cv2{grid-template-columns:minmax(0,1fr)!important}#view-msgs{min-width:0;overflow-x:hidden}}
 .cpmail{display:block;margin:6px 0 2px;font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:5px 12px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ventanas (agendar, recordatorio…) siempre al frente, también sobre el chat en pantalla completa */
+.bk-wrap{z-index:90!important}.q-toast{z-index:95!important}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>

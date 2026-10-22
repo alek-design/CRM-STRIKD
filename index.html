@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 21:01:03 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 21:04:40 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792702863">
+<link rel="stylesheet" href="/auth.css?v=1792703080">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792702863"></script>
+<script src="/claude-shim.js?v=1792703080"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -289,6 +289,8 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .ck-m{grid-template-columns:minmax(0,1fr)}.cl,.cl-h{min-width:0}
 @media (max-width:760px){.cv2{grid-template-columns:minmax(0,1fr)!important}#view-msgs{min-width:0;overflow-x:hidden}}
 .cpmail{display:block;margin:6px 0 2px;font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:5px 12px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ventanas (agendar, recordatorio…) siempre al frente, también sobre el chat en pantalla completa */
+.bk-wrap{z-index:90!important}.q-toast{z-index:95!important}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
