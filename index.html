@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 21:22:59 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 21:53:06 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792704179">
+<link rel="stylesheet" href="/auth.css?v=1792705986">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792704179"></script>
+<script src="/claude-shim.js?v=1792705986"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -5788,21 +5788,25 @@ let PRES_LAST = 0;
 /* Tiempo activo en la app: cuenta un minuto por cada minuto con la app abierta y con actividad (tocar, escribir, scroll).
    Si pasan 5 min sin actividad deja de contar. Se guarda por día en members/{uid}.activeMin["AAAA-MM-DD"]. */
 const ACT = {last:Date.now(), day:"", min:0, saved:-1};
-["pointerdown","keydown","touchstart","scroll","wheel","input"].forEach(ev => window.addEventListener(ev, () => { ACT.last = Date.now(); }, {passive:true, capture:true}));
+// inactivo: pantalla abierta pero sin tocar, escribir ni hacer scroll en 5 min → deja de contar como "en línea", tiempo activo y "en este chat"
+const IDLE_MS = 5*60e3, actIdle = () => Date.now() - ACT.last > IDLE_MS;
+["pointerdown","keydown","touchstart","scroll","wheel","input","mousemove"].forEach(ev => window.addEventListener(ev, () => { const was = actIdle(); ACT.last = Date.now(); if (was){ PRES_LAST = 0; presBeat(false); if (typeof PRES !== "undefined") PRES.last = ""; } }, {passive:true, capture:true}));
 const actDay = () => new Date(Date.now() - OFF).toISOString().slice(0,10);
 const actOf = (u, day) => Number(((((S.members||{})[u]||{}).activeMin)||{})[day || actDay()]) || 0;
 const fmtMin = n => { n = Math.round(Number(n)||0); if (n < 60) return `${n} min`; const h = Math.floor(n/60), m = n % 60; return m ? `${h} h ${m} min` : `${h} h`; };
 setInterval(() => {
-  if (!S.uid || document.visibilityState!=="visible" || Date.now() - ACT.last > 5*60e3) return;
+  if (!S.uid || document.visibilityState!=="visible" || actIdle()) return;
   const d = actDay(); if (ACT.day !== d){ ACT.day = d; ACT.min = 0; }
   ACT.min = Math.max(ACT.min, actOf(S.uid, d)) + 1;
 }, 60e3);
 function presBeat(away){
   if (!S.uid || !db || S.canWrite === false) return;
+  const idle = !away && actIdle(); if (idle){ const mm0 = (S.members||{})[S.uid] || {}; if (mm0.away && Number(mm0.seenAt) <= ACT.last) return; away = true; } // sin actividad: sale como ausente desde su último movimiento
   const now = Date.now(); if (!away && now - PRES_LAST < 50e3) return; PRES_LAST = away ? 0 : now;
-  const patch = {seenAt:now, away:!!away}, mm = (S.members||{})[S.uid] || {};
+  const patch = {seenAt:idle ? ACT.last : now, away:!!away}, mm = (S.members||{})[S.uid] || {};
   { const me = window.STRIKD_ME ? window.STRIKD_ME() : null, nm = me && (me.name || me.email); if (nm && mm.name !== nm){ patch.name = nm; mm.name = nm; } } // respaldo del nombre para que todos lo vean aunque tarde en cargar
   if (!mm.tzManual && mm.tz !== devTz){ patch.tz = devTz; mm.tz = devTz; }
+  if (idle){ mm.away = true; mm.seenAt = ACT.last; }
   if (ACT.day && ACT.min !== ACT.saved){ patch.activeMin = {[ACT.day]:ACT.min}; ACT.saved = ACT.min; const m = (S.members||{})[S.uid]; if (m) (m.activeMin ||= {})[ACT.day] = ACT.min; }
   db.doc(`members/${S.uid}`).update(patch).catch(() => {});
 }
@@ -7072,7 +7076,7 @@ function presInit(){ const sb = window.STRIKD_SB; if (!sb || PRES.ch || !S.uid |
     PRES.ch.on("presence", {event:"sync"}, () => { PRES.state = PRES.ch.presenceState() || {}; presRender(); })
       .subscribe(st => { if (st === "SUBSCRIBED"){ PRES.last = ""; presTrack(); } }); }catch(_){ PRES.ch = null; } }
 function presTrack(){ if (!PRES.ch) return;
-  const conv = S.tab==="msgs" && ISK.sel && !S.viewAs && document.visibilityState==="visible" ? String(ISK.sel) : null, typing = !!(conv && PRES.typingUntil > Date.now());
+  const conv = S.tab==="msgs" && ISK.sel && !S.viewAs && document.visibilityState==="visible" && !actIdle() ? String(ISK.sel) : null, typing = !!(conv && PRES.typingUntil > Date.now());
   const k = conv + "|" + typing; if (k === PRES.last) return; PRES.last = k;
   try{ PRES.ch.track({uid:S.uid, conv, typing}); }catch(_){} }
 function presIn(conv){ const out = {}; Object.values(PRES.state||{}).forEach(l => (l||[]).forEach(p => { if (p && p.uid && p.uid !== S.uid && p.conv === String(conv)) out[p.uid] = out[p.uid] || !!p.typing; })); return Object.entries(out); }
