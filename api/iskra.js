@@ -18,7 +18,8 @@ async function iskra(method, path, payload, timeoutMs){
   try{
     const r = await fetch(BASE + path, {method, signal:ctl.signal, headers:{authorization:"Bearer " + process.env.ISKRA_API_KEY, "content-type":"application/json"}, body: payload ? JSON.stringify(payload) : undefined});
     const text = await r.text(); let j; try{ j = JSON.parse(text); }catch(_){ j = {raw:text.slice(0, 2000)}; }
-    if (!r.ok) throw Object.assign(new Error((j && (j.error || j.message)) || ("ISKRA " + r.status)), {status:r.status, detail:j});
+    if (!r.ok){ const er = j && j.error, em = (er && typeof er==="object" ? (er.message || er.code) : er) || (j && j.message) || ("ISKRA " + r.status);
+      throw Object.assign(new Error(String(em)), {status:r.status, detail:j}); }
     return j;
   }catch(e){ if (e.name === "AbortError") throw Object.assign(new Error("ISKRA tardó demasiado"), {status:504}); throw e; }
   finally{ clearTimeout(to); }

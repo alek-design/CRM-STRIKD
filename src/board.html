@@ -6386,14 +6386,21 @@ async function iskTplLoad(){
   if (ISKT.loading || ISKT.list) return; const fn = iskFn(); if (!fn) return;
   if (fn===iskMock){ ISKT.list = [{id:"demo_pdf", name:"strikd_info_pdf (ejemplo)", status:"APPROVED"}]; return; }
   ISKT.loading = true;
-  try{ const j = await fn("templates", {}); ISKT.list = iskArr(j.data || j).map(t => ({id:String(t.id || t.template_id || t.name), name:String(t.name || t.title || t.id), status:String(t.status || ""), lang:t.language || t.lang || ""})); }
-  catch(e){ ISKT.err = e.message; ISKT.list = []; }
+  ISKT.err = "";
+  try{ const j = await fn("templates", {}); ISKT.raw = j && j.data !== undefined ? j.data : j;
+    // ISKRA llama "templates" a sus Quick replies; la lista puede venir en data, templates, quick_replies, snippets… (busca el primer arreglo de objetos)
+    const findArr = (o, d) => { if (Array.isArray(o)) return o.some(x => x && typeof x==="object") ? o : null; if (!o || typeof o!=="object" || d > 3) return null;
+      for (const k of ["data","templates","quick_replies","quickReplies","snippets","items","results"]) { const r = findArr(o[k], d+1); if (r) return r; }
+      for (const v of Object.values(o)) { const r = findArr(v, d+1); if (r) return r; } return null; };
+    ISKT.list = (findArr(ISKT.raw, 0) || []).map(t => ({id:String(t.id ?? t.template_id ?? t.quick_reply_id ?? t.name ?? t.title), name:String(t.name || t.title || t.label || t.shortcut || t.id), status:String(t.status || ""), lang:t.language || t.lang || "",
+      file:!!(t.media_url || t.media || t.attachment || t.attachments && t.attachments.length || t.file_url || t.image_url || t.document_url)})).filter(t => t.id && t.id!=="undefined"); }
+  catch(e){ ISKT.err = e.message || "error"; ISKT.list = []; }
   ISKT.loading = false; schedule();
 }
 function iskTplOpts(sel){
   iskTplLoad();
   const l = ISKT.list || [];
-  return `<option value="">${ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : l.length ? "Ninguna (mandar como texto)" : "No hay plantillas en ISKRA"}</option>` + l.map(t => `<option value="${esc(t.id)}"${t.id===sel?" selected":""}>${esc(t.name)}${t.status?` · ${esc(t.status.toLowerCase())}`:""}${t.lang?` · ${esc(t.lang)}`:""}</option>`).join("");
+  return `<option value="">${ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : l.length ? "Ninguna (mandar como texto)" : ISKT.err ? "No se pudieron leer: " + esc(ISKT.err).slice(0, 80) : "ISKRA no regresó plantillas"}</option>` + l.map(t => `<option value="${esc(t.id)}"${t.id===sel?" selected":""}>${t.file ? "📎 " : ""}${esc(t.name)}${t.status?` · ${esc(t.status.toLowerCase())}`:""}${t.lang?` · ${esc(t.lang)}`:""}</option>`).join("");
 }
 const fillVars = (txt, name) => String(txt||"").replace(/\{nombre\}/gi, first(name));
 function astTargets(){
@@ -6415,7 +6422,8 @@ function renderTpl(){
   const vIn = (vk) => `<div class="tpl-v"><b>Variante ${vk.toUpperCase()}${vk!=="a"?" (opcional)":""}</b>
       <textarea rows="3" data-tplf="${vk}text" placeholder="Usa {nombre} para su nombre">${esc(f[vk+"text"]||"")}</textarea>
       <label class="filepick small"><input type="file" accept="application/pdf,image/*" data-tplfile="${vk}"><span>${esc(f[vk+"fileName"] || "Adjuntar PDF (opcional, va como link)")}</span></label>
-      <label class="f small">Plantilla de ISKRA con archivo (opcional)<select data-tplf="${vk}isk">${iskTplOpts(f[vk+"isk"])}</select></label></div>`;
+      <label class="f small">Plantilla de ISKRA con archivo (opcional)<select data-tplf="${vk}isk">${iskTplOpts(f[vk+"isk"])}</select></label>
+      ${vk==="a" ? `<p class="mut small"><button type="button" class="linkbtn" data-iskreload="1">↻ Recargar de ISKRA</button>${ISKT.list && !ISKT.loading ? ` · ${ISKT.list.length} encontradas` : ""}${S.isOwner && ISKT.raw !== undefined ? ` · <button type="button" class="linkbtn" data-iskrawt="1">${ISKT.showRaw ? "Ocultar" : "Ver"} respuesta</button>` : ""}</p>${ISKT.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISKT.raw, null, 1).slice(0, 3000))}</pre>` : ""}` : ""}</div>`;
   const form = TPL_FORM ? `<div class="wa-form"><h3>${f.id?"Editar":"Nueva"} plantilla</h3>
       <label class="f">Nombre<input data-tplf="name" value="${esc(f.name||"")}" placeholder="Ej. Respuesta a automático con PDF"></label>
       <label class="f">¿Cuándo se usa?<select data-tplf="trigger">${Object.entries(TRIG).map(([k,l]) => `<option value="${k}"${(f.trigger||"auto")===k?" selected":""}>${l}</option>`).join("")}</select></label>
@@ -6492,6 +6500,8 @@ $("tplBox").addEventListener("click", async e => {
     }catch(ex){ b.disabled = false; b.textContent = "No se guardó, reintenta"; }
     return;
   }
+  if (q("[data-iskreload]")){ ISKT.list = null; ISKT.loading = false; iskTplLoad(); return schedule(); }
+  if (q("[data-iskrawt]")){ ISKT.showRaw = !ISKT.showRaw; return schedule(); }
   if (q("[data-tplnew]")){ TPL_FORM = !TPL_FORM; TPLF.cur = {trigger:"auto"}; return schedule(); }
   if (q("[data-tplcancel]")){ TPL_FORM = null; TPLF.cur = null; return schedule(); }
   if (q("[data-tpledit]")){ const id = q("[data-tpledit]").dataset.tpledit, t = S.tpls[id]; const va = (t.variants||{}).a||{}, vb = (t.variants||{}).b||{}, vc = (t.variants||{}).c||{};
