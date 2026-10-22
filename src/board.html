@@ -3,7 +3,9 @@
 // teclado del iPhone: detectarlo con visualViewport para esconder la barra de abajo y ajustar el chat a lo visible
 (function(){ const vv = window.visualViewport; if (!vv) return; let last = 0;
   const upd = () => { document.documentElement.style.setProperty("--vvh", Math.round(vv.height) + "px");
-    const kb = window.innerHeight - vv.height > 120 && matchMedia("(max-width:640px)").matches && !!(document.activeElement && document.activeElement.matches && document.activeElement.matches("input,textarea,[contenteditable]"));
+    // al escribir en un cuadro de texto en celular el teclado está abierto (en la app de inicio iPhone encoge toda la pantalla, así que no se mide)
+    const a = document.activeElement;
+    const kb = matchMedia("(max-width:640px)").matches && !!(a && a.matches && a.matches("textarea,[contenteditable],input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=file]):not([type=range]):not([type=color]):not([type=date]):not([type=datetime-local]):not([type=time])"));
     if (!document.body) return; document.body.classList.toggle("kb", kb);
     if (kb && Date.now() - last > 250){ last = Date.now(); const cv = document.querySelector("#view-msgs:not([hidden]) .cv2.has-sel");
       if (cv && cv.contains(document.activeElement)) requestAnimationFrame(() => { cv.scrollIntoView({block:"end"}); const th = document.getElementById("iskThread"); if (th) th.scrollTop = th.scrollHeight; }); } };
