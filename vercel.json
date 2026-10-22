@@ -12,6 +12,9 @@
   "functions": {
     "api/setup.js": {
       "includeFiles": "supabase/**"
+    },
+    "api/iskra.js": {
+      "maxDuration": 30
     }
   },
   "headers": [
