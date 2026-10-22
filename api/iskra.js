@@ -72,9 +72,12 @@ alter table public.iskra_owner add column if not exists replied_at timestamptz;
 alter table public.iskra_owner add column if not exists discarded_at timestamptz;
 alter table public.iskra_owner add column if not exists discarded_by uuid;
 alter table public.iskra_owner add column if not exists noreply_at timestamptz;
+alter table public.iskra_owner add column if not exists interest_at timestamptz;
+alter table public.iskra_owner add column if not exists interest_by uuid;
 alter table public.iskra_owner add column if not exists noreply_by uuid;
 create table if not exists public.iskra_seen (conversation_id text primary key, last_at timestamptz, last_dir text, replied boolean default false, checked_at timestamptz);
 alter table public.iskra_seen add column if not exists real boolean;
+alter table public.iskra_seen add column if not exists email_ask_at timestamptz;
 alter table public.iskra_seen enable row level security;
 create table if not exists public.iskra_sent (id bigserial primary key, conversation_id text, user_id uuid, text text, at timestamptz default now());
 alter table public.iskra_owner enable row level security; alter table public.iskra_sent enable row level security;`;
@@ -195,10 +198,14 @@ module.exports = async (req, res) => {
             const o1 = first && !isIn(first) ? at(first) : 0, a1 = autoS[id] ? new Date(autoS[id].sent_at).getTime() : 0, W = 90e3;
             const isAutoIn = m => { const t = at(m); return (o1 && t >= o1 && t - o1 <= W) || (a1 && t >= a1 - 5e3 && t - a1 <= W); };
             const real = ms.some(m => isIn(m) && !isAutoIn(m)) || !!(autoS[id] && autoS[id].replied_at);
-            seen[id] = {conversation_id:id, last_at:lastAt(byId[id]) || null, last_dir:lastDir, replied, real};
-            await c.query(`insert into public.iskra_seen (conversation_id, last_at, last_dir, replied, real, checked_at) values ($1,$2,$3,$4,$5,now())
-              on conflict (conversation_id) do update set last_at=excluded.last_at, last_dir=excluded.last_dir, replied=public.iskra_seen.replied or excluded.replied, real=coalesce(public.iskra_seen.real,false) or excluded.real, checked_at=now()`,
-              [id, lastAt(byId[id]) || null, lastDir, replied, real]);
+            // ¿le pedimos su correo y todavía no lo manda? (se fija arriba en Mensajes hasta que llegue un mensaje suyo con un email)
+            const tx = m => String(m.text || m.body || m.content || m.message || "");
+            let ask = null; for (const m of asc){ if (!isIn(m) && /((me|nos) (das|compartes|pasas|mandas|regalas|puedes (dar|compartir|pasar|mandar|regalar))|cual es|compart[ei]me|pasame|mandame|regalame|necesito|ocupo).{0,40}(correo|e-?mail|\bmail\b)|(correo|e-?mail).{0,30}\?/i.test(tx(m).normalize("NFD").replace(/[\u0300-\u036f]/g, ""))) ask = at(m); else if (ask && isIn(m) && /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(tx(m))) ask = null; }
+            const askAt = ask ? new Date(ask).toISOString() : null;
+            seen[id] = {conversation_id:id, last_at:lastAt(byId[id]) || null, last_dir:lastDir, replied, real, email_ask_at:askAt};
+            await c.query(`insert into public.iskra_seen (conversation_id, last_at, last_dir, replied, real, checked_at, email_ask_at) values ($1,$2,$3,$4,$5,now(),$6)
+              on conflict (conversation_id) do update set last_at=excluded.last_at, last_dir=excluded.last_dir, replied=public.iskra_seen.replied or excluded.replied, real=coalesce(public.iskra_seen.real,false) or excluded.real, checked_at=now(), email_ask_at=excluded.email_ask_at`,
+              [id, lastAt(byId[id]) || null, lastDir, replied, real, askAt]);
           }catch(_){ /* se reintenta en la siguiente vuelta */ }
         }));
         T.mensajes = Date.now() - t0;
@@ -239,7 +246,7 @@ module.exports = async (req, res) => {
             if (p.owner){ await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1 and owner is null", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
           }
           OWN_CACHE[id] = o.owner;
-          if (lead || o.owner === viewId) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by, noReplyAt:o.noreply_at}});
+          if (lead || o.owner === viewId) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by, noReplyAt:o.noreply_at, interestAt:o.interest_at, emailAskAt:(seen[id] && seen[id].email_ask_at) || null}});
         }
         // esperando respuesta desde (tiempo de respuesta)
         try{ const wm = await resptime.waitMap(c, out.map(x => String(x.id))); out.forEach(x => { if (wm[String(x.id)]) x._strikd.waitSince = wm[String(x.id)]; }); }catch(_){}
@@ -372,6 +379,12 @@ module.exports = async (req, res) => {
         out.sort((a, b) => a.n - b.n);
         LIST_CACHE.at = 0; delete MSG_CACHE[input.conversation_id];
         return {data:out, url:pm.url};
+      }
+      if (op === "interest"){ // marcar (o quitar) que el chat muestra interés
+        await mustOwn(input.id);
+        await c.query(input.undo ? "update public.iskra_owner set interest_at=null, interest_by=null where conversation_id=$1" : "update public.iskra_owner set interest_at=now(), interest_by=$2 where conversation_id=$1",
+          input.undo ? [String(input.id)] : [String(input.id), me.id]);
+        LIST_CACHE.at = 0; return {ok:true};
       }
       if (op === "noreply"){ // "no necesita respuesta": su último mensaje ya no cuenta como pendiente ni en el tiempo de respuesta (si vuelve a escribir, cuenta otra vez)
         await mustOwn(input.id); const id = String(input.id);

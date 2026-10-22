@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 23:10:44 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 23:44:30 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792710644">
+<link rel="stylesheet" href="/auth.css?v=1792712670">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792710644"></script>
+<script src="/claude-shim.js?v=1792712670"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -298,6 +298,10 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .ai-st{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin:6px 0}.ai-faq{margin-top:10px;display:grid;gap:6px}.ai-q{display:flex;gap:8px;align-items:center;font-size:13px}.ai-q span{flex:1;min-width:0}.ai-q em{font-style:normal;font-weight:700;color:var(--muted)}
 @media (max-width:640px){.ai-modes{grid-template-columns:1fr}}
 .chip.kw{background:var(--raised);color:var(--fg2)}
+.cw-nl{display:flex;align-items:center;gap:8px;min-width:0}.cw-nl b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cw-own-t{flex:0 0 auto!important;max-width:46%!important;font-size:12.5px;font-weight:600;padding:4px 8px!important;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--fg)}
+span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ck-b.pin{background:#fde68a;color:#7c4a03;margin-right:4px}.ck-b.int{background:none;padding:0 2px;font-size:12px}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -6885,7 +6889,7 @@ function iskConv(c){
     last:typeof lm==="string" ? lm : iskTxt(lm) || c.last_message_text || c.preview || "", lastDir:typeof lm==="object" && Object.keys(lm).length ? iskDir(lm) : (c.last_direction ? iskDir({direction:c.last_direction}) : ""),
     at:(Date.parse(c.last_message_at || "") || iskAt(lm) || iskAt(c)), unread:Number(c.unread_count || c.unread || 0), owner:x.owner || null, by:x.assignedBy || "", esc:x.escalatedAt ? Date.parse(x.escalatedAt) || 1 : 0,
     lastSender:x.lastSender || null, lastSentAt:x.lastSentAt ? (typeof x.lastSentAt==="number" ? x.lastSentAt : Date.parse(x.lastSentAt)) : 0,
-    disc:x.discardedAt ? (Date.parse(x.discardedAt) || 1) : 0, nr:x.noReplyAt ? (Date.parse(x.noReplyAt) || 0) : 0, ai:x.ai || null, waitSince:Number(x.waitSince) || 0, raw:c};
+    disc:x.discardedAt ? (Date.parse(x.discardedAt) || 1) : 0, nr:x.noReplyAt ? (Date.parse(x.noReplyAt) || 0) : 0, ai:x.ai || null, int:x.interestAt ? (Date.parse(x.interestAt) || 1) : 0, ea:x.emailAskAt ? (Date.parse(x.emailAskAt) || 1) : 0, waitSince:Number(x.waitSince) || 0, raw:c};
 }
 const iskPend = x => x.lastDir==="in" && !(x.nr && x.nr >= (x.at||0));
 // lo que hizo la IA con el último mensaje del prospecto: "sent" (contestó), "test" (habría contestado), "flag" (🙋 revisar)
@@ -7050,7 +7054,7 @@ function iskSentBy(id, x){ // quién del equipo mandó este mensaje (el prospect
   return s ? s.by : null;
 }
 function iskOwnerOpts(sel){
-  const ids = [...new Set(Object.keys(S.team||{}).concat(S.config && S.config.headId ? [S.config.headId] : [], S.uid ? [S.uid] : []))];
+  const ids = [...new Set(Object.keys(S.team||{}).concat(S.config && S.config.headId ? [S.config.headId] : [], S.uid ? [S.uid] : [], sel ? [sel] : []))]; // el dueño actual siempre sale (aunque sea el Manager)
   return `<option value="">Sin dueño</option>` + ids.map(id => `<option value="${esc(id)}"${id===sel?" selected":""}>${esc(iskWho(id))}</option>`).join("");
 }
 // plantillas por categoría para contestar rápido (variante A/B como en Plantillas)
@@ -7193,16 +7197,16 @@ function renderIskra(){
   const isDisc = x => x.disc && !(x.lastDir==="in" && x.at > x.disc); // si vuelve a escribir después de descartarlo, regresa solo
   const inWin = x => !ISK.recent || !x.at || Date.now() - x.at < 10*864e5;
   const base = ISK.convs.filter(x => !isDisc(x) && inWin(x));
-  const F = lead ? [["todas","Todas"],["resp","Sin responder"],["mias","Mías"],["sindueno","Sin dueño"]] : [["mias","Mías"],["resp","Sin responder"]];
-  const cnt = {todas:base.length, mias:base.filter(x => x.owner===me).length, sindueno:base.filter(x => !x.owner).length, resp:base.filter(needs).length, desc:ISK.convs.filter(isDisc).length};
-  const list = ISK.filter==="desc" ? ISK.convs.filter(isDisc) : base.filter(x => ISK.filter==="mias" ? x.owner===me : ISK.filter==="sindueno" ? !x.owner : ISK.filter==="resp" ? needs(x) : true);
+  const F = lead ? [["todas","Todas"],["resp","Sin responder"],["int","🔥 Interés"],["mias","Mías"],["sindueno","Sin dueño"]] : [["mias","Mías"],["resp","Sin responder"],["int","🔥 Interés"]];
+  const cnt = {todas:base.length, mias:base.filter(x => x.owner===me).length, sindueno:base.filter(x => !x.owner).length, resp:base.filter(needs).length, int:base.filter(x => x.int && (lead || x.owner===me)).length, desc:ISK.convs.filter(isDisc).length};
+  const list = ISK.filter==="desc" ? ISK.convs.filter(isDisc) : base.filter(x => ISK.filter==="mias" ? x.owner===me : ISK.filter==="sindueno" ? !x.owner : ISK.filter==="resp" ? needs(x) : ISK.filter==="int" ? !!x.int && (lead || x.owner===me) : true).sort((a,b) => (b.ea ? 1 : 0) - (a.ea ? 1 : 0)); // 📌 los que les pedimos correo, hasta arriba
   const c = ISK.convs.find(x => x.id===ISK.sel);
   const nm = x => { const mt = iskMatch(x.phone); return mt ? mt.name : x.name; };
   const q = (ISK.q||"").toLowerCase();
   const item = x => { const n = nm(x), st = needs(x) ? (x.esc ? "mgr" : "rep") : "";
     return `<button type="button" class="ck${x.id===ISK.sel?" sel":""}${st?" "+st:""}" data-iskc="${esc(x.id)}" data-s="${esc(fold(n+" "+(x.phone||"")))}"${q && !fold(n+" "+(x.phone||"")).includes(fold(q))?" hidden":""}>
       ${iskAv(x, n, "ck-av")}
-      <span class="ck-m"><span class="ck-1"><b>${esc(n)}</b><span data-livel="${esc(x.id)}"></span>${(() => { const ai = iskAi(x); return !ai ? "" : ai.k==="flag" ? `<em class="ck-b ai-f" title="${esc(ai.a.reason||"")}">🙋 Revisar</em>` : ai.k==="sent" ? `<em class="ck-b ai-s">🤖 IA</em>` : `<em class="ck-b ai-t">🤖 sugerencia</em>`; })()}${st==="mgr" ? `<em class="ck-b mgr">${lead?"Te toca":"Manager"}</em>` : ""}${(() => { if (!x.waitSince || !iskPend(x) || x.disc) return ""; const w = bizMs(x.waitSince, Date.now()), m = Math.round(w/60e3);
+      <span class="ck-m"><span class="ck-1">${x.ea ? `<em class="ck-b pin" title="Le pedimos su correo y todavía no lo manda">📌 Correo</em>` : ""}<b>${x.int ? `<span title="Mostró interés">🔥 </span>` : ""}${esc(n)}</b><span data-livel="${esc(x.id)}"></span>${(() => { const ai = iskAi(x); return !ai ? "" : ai.k==="flag" ? `<em class="ck-b ai-f" title="${esc(ai.a.reason||"")}">🙋 Revisar</em>` : ai.k==="sent" ? `<em class="ck-b ai-s">🤖 IA</em>` : `<em class="ck-b ai-t">🤖 sugerencia</em>`; })()}${st==="mgr" ? `<em class="ck-b mgr">${lead?"Te toca":"Manager"}</em>` : ""}${(() => { if (!x.waitSince || !iskPend(x) || x.disc) return ""; const w = bizMs(x.waitSince, Date.now()), m = Math.round(w/60e3);
         return `<em class="ck-w ${w >= 60*60e3 ? "bad" : w >= 15*60e3 ? "mid" : ""}" title="Esperando respuesta (cuenta de 8 am a 8 pm)">esperando ${m < 60 ? Math.max(1,m) + " min" : (Math.round(m/6)/10) + " h"}</em>`; })()}<time>${x.at?ago(x.at):""}</time></span>
       <span class="ck-2"><span class="ck-tx">${x.last ? (x.lastDir==="out" ? `<i class="ck-dir out" title="Lo último lo mandamos nosotros"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M4 12 12 4M6 4h6v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i>` : `<i class="ck-dir in" title="Lo último lo mandó el prospecto"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M12 4 4 12M10 12H4V6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i>`) : ""}${x.lastDir==="out"?"Tú: ":""}${esc(String(x.last).slice(0,90)) || "<i>Sin mensajes</i>"}</span>${lead?`<span class="ck-o">${x.owner ? esc(iskWho(x.owner).split(" ")[0]) : "sin dueño"}</span>`:""}</span></span>
       ${iskUnread(x)?`<span class="ck-n">${iskUnread(x)}</span>`:""}</button>`; };
@@ -7212,15 +7216,15 @@ function renderIskra(){
     const mt = iskMatch(c.phone), mine = c.owner===me, canSend = lead || mine;
     const recent = c.lastSender && c.lastSender!==me && Date.now() - c.lastSentAt < 10*60e3;
     right = `<div class="cw">
-      <div class="cw-h"><button type="button" class="cw-back" data-iskback="1" aria-label="Volver a la lista">←</button>${iskAv(c, nm(c), "ck-av cw-av")}<div class="cw-who"><b>${esc(nm(c))}</b><span class="cw-live" data-livec="${esc(c.id)}" hidden></span><span class="mut small">${esc(c.phone||"")}${mt?"":" · no está en el tablero"}${lead && c.by?` · ${esc(ISK_BY[c.by]||c.by)}`:""}</span></div>
+      <div class="cw-h"><button type="button" class="cw-back" data-iskback="1" aria-label="Volver a la lista">←</button>${iskAv(c, nm(c), "ck-av cw-av")}<div class="cw-who"><div class="cw-nl"><b>${esc(nm(c))}</b>${lead ? `<select class="inline cw-own cw-own-t" data-iskown="1" aria-label="Dueño">${iskOwnerOpts(c.owner)}</select>` : `<span class="cw-own-t">${c.owner ? esc(iskWho(c.owner).split(" ")[0]) : "Sin dueño"}</span>`}</div><span class="cw-live" data-livec="${esc(c.id)}" hidden></span><span class="mut small">${esc(c.phone||"")}${mt?"":" · no está en el tablero"}${lead && c.by?` · ${esc(ISK_BY[c.by]||c.by)}`:""}</span></div>
         <div class="cw-acts">
-          ${lead ? `<select class="inline cw-own" data-iskown="1" aria-label="Dueño">${iskOwnerOpts(c.owner)}</select>` : ""}
           ${canSend ? `<button type="button" class="btn small primary" data-iskbook="1">${mt ? "Agendar otro meet" : "Agendar meet"}</button>` : ""}
           ${waLink(c.phone, "") ? `<a class="btn small cw-wa" data-iskwa="1" href="${esc(waLink(c.phone, "").replace(/\?text=$/, ""))}" target="_blank" rel="noopener" title="Abrir este chat en tu WhatsApp" aria-label="Abrir en mi WhatsApp"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg><span>WhatsApp</span></a>` : ""}
           ${canSend ? `<button type="button" class="btn small cw-rem" data-remnew="1" data-remconv="${esc(c.id)}" data-remname="${esc(nm(c))}" title="Recordarme retomar este chat" aria-label="Recordatorio">⏰</button>` : ""}
           ${canSend ? `<details class="cw-more"><summary class="btn small" aria-label="Más opciones">⋯</summary><div class="cw-menu">
             ${!lead && mine ? `<button type="button" data-iskesc="1">Pasar al manager</button>` : ""}
             ${lead ? `<button type="button" data-iskdiag="1">${ISK.diag ? "Ocultar diagnóstico" : "Diagnóstico de envío"}</button>` : ""}
+            ${c.int ? `<button type="button" data-iskint="undo">Quitar 🔥 interés</button>` : `<button type="button" data-iskint="1">🔥 Marcar que muestra interés</button>`}
             ${c.lastDir==="in" ? (iskPend(c) ? `<button type="button" data-isknr="1">✓ No necesita respuesta</button>` : `<button type="button" data-isknr="undo">Volver a marcar como pendiente</button>`) : ""}
             ${isDisc(c) ? `<button type="button" data-iskdisc="undo">Regresar a la bandeja</button>` : `<button type="button" data-iskdisc="1">Descartar conversación</button>`}
           </div></details>` : ""}
@@ -7404,6 +7408,12 @@ document.addEventListener("click", async e => {
   }
   if (e.target.closest("[data-aiuse]") && ISK.sel){ const cv = ISK.convs.find(x => x.id===ISK.sel), ai = iskAi(cv), ta = document.querySelector(".cw-bar textarea");
     if (ai && ta){ ta.value = ai.a.text; ta.dispatchEvent(new Event("input", {bubbles:true})); ta.focus(); } return; }
+  const it = e.target.closest("[data-iskint]");
+  if (it && ISK.sel){ const undo = it.dataset.iskint==="undo", cv = ISK.convs.find(x => x.id===ISK.sel), prev = cv ? cv.int : 0;
+    if (cv) cv.int = undo ? 0 : Date.now(); const dt = it.closest("details"); if (dt) dt.open = false; schedule();
+    try{ await iskFn()("interest", {id:ISK.sel, undo}); quickToast(undo ? "Se quitó el interés" : "🔥 Marcado con interés"); }
+    catch(err){ if (cv) cv.int = prev; ISK.err = "No se pudo: " + err.message; schedule(); }
+    return; }
   const nr = e.target.closest("[data-isknr]");
   if (nr && ISK.sel){ const undo = nr.dataset.isknr==="undo", cv = ISK.convs.find(x => x.id===ISK.sel), prev = cv ? cv.nr : 0;
     if (cv){ cv.nr = undo ? 0 : Math.max(Date.now(), cv.at || 0); if (!undo) cv.waitSince = 0; }
