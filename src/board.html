@@ -1059,7 +1059,7 @@ label.f em{color:var(--bad);font-style:normal}
 .ct-age i{width:8px;height:8px;border-radius:50%;flex:none;background:#2fb36b}
 .ct-age.soon i{background:#e5b100}.ct-age.late i{background:#d93a3a}.ct-age.off i{background:#bbb}
 .ct-more{margin:10px auto 0;display:block}
-.isk-tplbox{flex-wrap:wrap}.h24-list{display:grid;gap:6px;margin:6px 0}.h24-b{display:grid;gap:2px;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:8px 12px;cursor:pointer}.h24-b small{color:var(--muted);font-size:12px}.h24-b.on{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}.h24-b:disabled{opacity:.55;cursor:not-allowed}.h24-bar{justify-content:flex-end}.isk-vars{flex-basis:100%;display:grid;gap:6px;margin-top:6px}.isk-var{margin:0}.isk-var textarea{width:100%;box-sizing:border-box;font:inherit}
+.isk-tplbox{flex-wrap:wrap}.tpl-chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 4px 8px;border-bottom:1px solid var(--line);margin-bottom:4px;position:sticky;top:0;background:var(--surface);z-index:1}.tpl-chips button{border:1px solid var(--line2);background:var(--surface);color:inherit;font:inherit;font-size:12.5px;border-radius:999px;padding:4px 10px;cursor:pointer;white-space:nowrap}.tpl-chips button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.tpl-chips span{opacity:.7}.tpl-hint{padding:6px 8px 2px;margin:0}.h24-list{display:grid;gap:6px;margin:6px 0}.h24-b{display:grid;gap:2px;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:8px 12px;cursor:pointer}.h24-b small{color:var(--muted);font-size:12px}.h24-b.on{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}.h24-b:disabled{opacity:.55;cursor:not-allowed}.h24-bar{justify-content:flex-end}.isk-vars{flex-basis:100%;display:grid;gap:6px;margin-top:6px}.isk-var{margin:0}.isk-var textarea{width:100%;box-sizing:border-box;font:inherit}
 .ct-ed{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:0 4px;margin-left:4px;cursor:pointer;border-radius:6px}.ct-ed:hover{color:var(--fg);background:color-mix(in srgb, currentColor 10%, transparent)}
 .ct-row[role=button]:focus-visible{outline:2px solid var(--fg);outline-offset:-2px}
 @media (max-width:760px){
@@ -1406,6 +1406,8 @@ body.mob-open header.top{z-index:31}
 .cw-ver{margin:4px 9px 2px;font-size:11px}
 .cw-tpl summary.cw-ic{display:grid;place-items:center;padding:0;border-radius:50%;width:38px;height:38px}
 .cw-menu.up{top:auto;bottom:calc(100% + 6px);left:0;right:auto;width:min(340px,80vw);max-height:360px;overflow:auto}
+.cw-tpl .cw-menu.up{width:min(420px,86vw);max-height:min(460px,60vh);padding-top:0}
+@media (max-width:760px){.cw-tpl .cw-menu.up{position:fixed;left:12px;right:12px;width:auto;bottom:calc(env(safe-area-inset-bottom) + 190px);max-height:55vh}}
 .cw-cat{margin:6px 9px 2px;font-size:11px;font-weight:700;color:var(--muted)}
 .cw-menu [data-isktpl] span{display:grid;gap:1px}.cw-menu [data-isktpl] small{color:var(--muted);font-size:11.5px}
 @media (max-width:640px){.cv2{grid-template-columns:1fr;height:calc(100dvh - 190px)}.cv2.has-sel .cl{display:none}.cv2:not(.has-sel) .cw{display:none}.cw-back{display:block}.cw-own{max-width:120px}}
@@ -6822,13 +6824,18 @@ function iskH24List(c){
     const on = ISK.tplUsed && ISK.tplUsed.id===id && ISK.tplUsed.conv===c.id;
     return `<button type="button" class="h24-b${on ? " on" : ""}" data-isktpl="${esc(id)}"${ok ? "" : " disabled"}><b>${esc(t.name||"Plantilla")}</b><small>${ok ? esc(String(v.text||"").slice(0, 90)) : "Sin plantilla de ISKRA conectada: no se puede mandar"}</small></button>`; }).join("") + `</div>`;
 }
+// menú 📝 del chat (dentro de las 24 h): filtros por tipo de respuesta; sin las automáticas ni las de "Después de 24 h"
+const TPL_HIDE = new Set(["auto", "h24"]);
 function iskTplMenu(c){
   const groups = {};
-  Object.entries(S.tpls||{}).filter(([,t]) => t.active!==false).forEach(([id,t]) => { const k = t.trigger || "general"; (groups[k] ||= []).push([id,t]); });
+  Object.entries(S.tpls||{}).filter(([,t]) => t.active!==false && !TPL_HIDE.has(t.trigger)).forEach(([id,t]) => { const k = t.trigger || "general"; (groups[k] ||= []).push([id,t]); });
   const keys = Object.keys(groups).sort((a,b) => Object.keys(TRIG).indexOf(a) - Object.keys(TRIG).indexOf(b));
   if (!keys.length) return `<p class="mut small cw-ver">Aún no hay plantillas. Créalas en la pestaña Plantillas.</p>`;
-  return keys.map(k => `<p class="cw-cat">${esc(TRIG[k]||k)}</p>` + groups[k].map(([id,t]) => { const v = (t.variants||{}).a || {};
-    return `<button type="button" data-isktpl="${esc(id)}"><span><b>${esc(t.name||"Plantilla")}</b><small>${esc(String(v.text||"").slice(0,70))}</small></span></button>`; }).join("")).join("");
+  const f = keys.includes(ISK.tplF) ? ISK.tplF : "";
+  const chips = `<div class="tpl-chips">${[["", "Todas"]].concat(keys.map(k => [k, TRIG[k] || k])).map(([k, l]) => `<button type="button" class="${f===k ? "on" : ""}" data-isktplf="${esc(k)}">${esc(l)}${k ? ` <span>${groups[k].length}</span>` : ""}</button>`).join("")}</div>`;
+  const list = (f ? [f] : keys).map(k => (f ? "" : `<p class="cw-cat">${esc(TRIG[k]||k)}</p>`) + groups[k].map(([id,t]) => { const v = (t.variants||{}).a || {};
+    return `<button type="button" data-isktpl="${esc(id)}"><span><b>${esc(t.name||"Plantilla")}</b><small>${esc(String(v.text||"").slice(0,90))}</small></span></button>`; }).join("")).join("");
+  return chips + `<div class="tpl-items">${list}</div><p class="mut small tpl-hint">Al elegirla se pone en el cuadro: revísala o cámbiala y luego toca Enviar.</p>`;
 }
 function iskBubbles(c){ const ms = ISK.msgs[c.id]; return !ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}${x.failed?" failed":""}">${iskMediaHtml(x)}${x.t?`<p>${esc(x.t)}</p>`:""}<span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`; }
 function renderIskra(){
@@ -7002,6 +7009,8 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-iskback]")){ ISK.sel = null; return schedule(); }
   if (e.target.closest("[data-isktplx]")){ ISK.tplMedia = null; return schedule(); }
   if (e.target.closest("[data-isktplix]")){ ISK.tplIsk = null; return schedule(); }
+  const tf = e.target.closest("[data-isktplf]");
+  if (tf){ e.preventDefault(); ISK.tplF = tf.dataset.isktplf; const menu = tf.closest(".cw-menu"), c0 = ISK.convs.find(x => x.id===ISK.sel); if (menu && c0) menu.innerHTML = iskTplMenu(c0); return; }
   const tp = e.target.closest("[data-isktpl]");
   if (tp && ISK.sel){
     const t = S.tpls[tp.dataset.isktpl]; if (!t) return;
