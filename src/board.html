@@ -6732,7 +6732,7 @@ function iskMedia(m){
 function iskMediaHtml(x){
   const md = x.media; if (!md) return "";
   const t = md.type || "", u = esc(md.url);
-  if (/image/i.test(t)) return `<a href="${u}" target="_blank" rel="noopener"><img class="bmedia" src="${u}" alt=""></a>`;
+  if (/image/i.test(t)) return `<a href="${u}" target="_blank" rel="noopener"><img class="bmedia" src="${u}" alt=""${md.guess ? ` onerror="this.replaceWith(document.createTextNode('📄 Abrir archivo'))"` : ""}></a>`;
   if (/audio|voice|ptt/i.test(t)) return `<audio controls preload="none" src="${u}"></audio>`;
   return `<a class="bdoc" href="${u}" target="_blank" rel="noopener">📄 ${esc(md.name || "Documento")}</a>`;
 }
@@ -6743,8 +6743,28 @@ async function iskThread(id, quiet){
     ms = ms.some(x => x.at) ? ms.sort((a,b) => a.at-b.at) : ms.reverse(); // la API da lo más nuevo primero
     const pend = (ISK.msgs[id]||[]).filter(x => x.local && (x.failed || Date.now() - x.at < 90e3) && !ms.some(y => y.d==="out" && y.t===x.t));
     const mine = (ISK.sent[id]||[]).filter(x => Date.now() - x.at < 90e3);
-    ISK.msgs[id] = ms.concat(pend); ISK.sent[id] = (j.sent || []).concat(mine.filter(x => !(j.sent||[]).some(y => y.text===x.text))); }
+    ISK.msgs[id] = ms.concat(pend); ISK.sent[id] = (j.sent || []).concat(mine.filter(x => !(j.sent||[]).some(y => y.text===x.text)));
+    iskConvMedia(id); }
   catch(e){ if (!quiet) ISK.err = e.message; }
+  schedule();
+}
+// la API pública no trae fotos/PDF/audios: se leen aparte (cuenta del panel en ISKRA) y se pegan a su burbuja por hora y dirección
+const ISK_CM = {};
+async function iskConvMedia(id){
+  if (!ISK.media || !id) return; const c = ISK_CM[id] ||= {at:0, items:[], busy:false};
+  if (!c.busy && Date.now() - c.at > 20e3){ c.busy = true;
+    try{ const r = await iskFn()("convmedia", {conversation_id:id}); c.items = r.data || []; }catch(_){} c.at = Date.now(); c.busy = false; }
+  const list = ISK.msgs[id] || [], used = new Set();
+  c.items.forEach(it => {
+    const ext = (String(it.url).split("?")[0].match(/\.([a-z0-9]{2,4})$/i) || [,""])[1].toLowerCase();
+    const type = it.type && it.type !== "text" ? it.type : /jpe?g|png|webp|gif/.test(ext) ? "image" : /ogg|opus|mp3|m4a|aac|amr/.test(ext) ? "audio" : ext==="pdf" ? "document" : "";
+    let best = -1, bd = 3*60e3;
+    list.forEach((b, i) => { if (b.media && b.media.url && !b.media.local || used.has(i)) return; if (it.dir && b.d !== it.dir) return;
+      const d = it.at && b.at ? Math.abs(b.at - it.at) : Infinity; if (d < bd){ bd = d; best = i; } });
+    if (best < 0) return; used.add(best);
+    const b = list[best]; b.media = {url:it.url, type:type || "image", name:it.name || "", guess:!type};
+    if (b.t === "📎 Archivo o nota de voz" || /^\[(image|audio|document|file|video)\]$/i.test(b.t || "")) b.t = "";
+  });
   schedule();
 }
 function iskSentBy(id, x){ // quién del equipo mandó este mensaje (el prospecto siempre ve el número de STRIKD)
