@@ -5652,12 +5652,18 @@ document.addEventListener("click", async e => {
   const sv = e.target.closest("[data-rledsave]"); if (!sv) return; e.stopPropagation();
   const rid = sv.dataset.rledsave, r = TK_RULES[rid]; if (!r) return;
   const title = String(RLED.title||"").trim(); if (!title){ quickToast("La regla necesita un título"); return; }
-  const patch = {title, note:String(RLED.note||"").trim(), weekday:Number(RLED.weekday)||0, ...(tkListMetric(r.metric) ? {goal:Math.max(1, Number(RLED.goal)||Number(r.goal)||1)} : {}), editedAt:Date.now(), editedBy:S.uid};
+  const DW = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"], wd = Number(RLED.weekday)||0, dayChanged = wd !== (Number(r.weekday)||0);
+  // si la nota dice "Entrega: miércoles…", que diga el día nuevo
+  const note0 = String(RLED.note||"").trim(), note = dayChanged ? note0.replace(/(Entrega:\s*)(domingo|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado)/i, (m, a) => a + DW[wd]) : note0;
+  const patch = {title, note, weekday:wd, ...(tkListMetric(r.metric) ? {goal:Math.max(1, Number(RLED.goal)||Number(r.goal)||1)} : {}), editedAt:Date.now(), editedBy:S.uid};
+  // cambió el día: la tarea abierta se mueve al próximo día nuevo, 11:59 pm Cancún
+  let newDue = 0; if (dayChanged){ for (let i = 0; i < 8; i++){ const ds = new Date(Date.now() - 5*3600e3 + i*864e5).toISOString().slice(0,10), t = Date.parse(ds + "T23:59:00-05:00"); if (new Date(ds + "T12:00:00Z").getUTCDay()===wd && t > Date.now()){ newDue = t; break; } } }
   sv.disabled = true;
   try{ await db.doc(`taskRules/${rid}`).update(patch); Object.assign(r, patch);
     // la tarea abierta de esta semana también cambia título, detalle y meta
     for (const [u, o] of Object.entries(S.tasks||{})) for (const [tid, x] of Object.entries(o||{})) if (x && x.ruleId===rid && tkSt(x)!=="done")
-      await db.doc(`meets/${u}/tasks/${tid}`).update({title:patch.title, note:patch.note, ...(patch.goal ? {goal:patch.goal} : {})}).then(() => Object.assign(x, {title:patch.title, note:patch.note, ...(patch.goal ? {goal:patch.goal} : {})})).catch(() => {});
+      { const up = {title:patch.title, note:patch.note, ...(patch.goal ? {goal:patch.goal} : {}), ...(newDue ? {dueAt:newDue, dueSoonAt:null, lateAt:null} : {})};
+        await db.doc(`meets/${u}/tasks/${tid}`).update(up).then(() => Object.assign(x, up)).catch(() => {}); }
     Object.keys(RLED).forEach(k => delete RLED[k]); const bx = $("setBox"); if (bx) bx.innerHTML = ""; quickToast("✓ Regla actualizada"); schedule(); }
   catch(_){ sv.disabled = false; quickToast("No se guardó"); }
 });
