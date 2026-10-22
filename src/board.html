@@ -6387,7 +6387,7 @@ async function iskTplLoad(){
   if (fn===iskMock){ ISKT.list = [{id:"demo_pdf", name:"strikd_info_pdf (ejemplo)", status:"APPROVED"}]; return; }
   ISKT.loading = true;
   ISKT.err = "";
-  try{ const j = await fn("templates", {}); ISKT.raw = j && j.data !== undefined ? j.data : j; ISKT.tried = (j && j.tried) || null;
+  try{ const j = await fn("templates", {}); ISKT.raw = j && j.data !== undefined ? j.data : j; ISKT.tried = (j && j.tried) || null; ISKT.from = (j && j.from) || "";
     // ISKRA llama "templates" a sus Quick replies; la lista puede venir en data, templates, quick_replies, snippets… (busca el primer arreglo de objetos)
     const findArr = (o, d) => { if (Array.isArray(o)) return o.some(x => x && typeof x==="object") ? o : null; if (!o || typeof o!=="object" || d > 3) return null;
       for (const k of ["data","templates","quick_replies","quickReplies","snippets","items","results"]) { const r = findArr(o[k], d+1); if (r) return r; }
@@ -6424,7 +6424,7 @@ function renderTpl(){
       <textarea rows="3" data-tplf="${vk}text" placeholder="Usa {nombre} para su nombre">${esc(f[vk+"text"]||"")}</textarea>
       <label class="filepick small"><input type="file" accept="application/pdf,image/*" data-tplfile="${vk}"><span>${esc(f[vk+"fileName"] || "Adjuntar PDF (opcional, va como link)")}</span></label>
       <label class="f small">Plantilla de ISKRA con archivo (opcional)<select data-tplf="${vk}isk">${iskTplOpts(f[vk+"isk"])}</select></label>
-      ${vk==="a" ? `<p class="mut small"><button type="button" class="linkbtn" data-iskreload="1">↻ Recargar de ISKRA</button>${ISKT.list && !ISKT.loading ? ` · ${ISKT.list.length} encontradas` : ""}${S.isOwner && ISKT.raw !== undefined ? ` · <button type="button" class="linkbtn" data-iskrawt="1">${ISKT.showRaw ? "Ocultar" : "Ver"} respuesta</button>` : ""}</p>${ISKT.list && !ISKT.list.length && !ISKT.loading && (ISKT.tried || ISKT.err) ? `<pre class="isk-raw">Lo que contestó ISKRA:\n${esc(ISKT.err ? ISKT.err : ISKT.tried.map(t => `${t.path} → ${t.ok ? "ok" : "error " + (t.status||"")}: ${t.body}`).join("\n"))}</pre>` : ""}${ISKT.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISKT.raw, null, 1).slice(0, 3000))}</pre>` : ""}` : ""}</div>`;
+      ${vk==="a" ? `<p class="mut small"><button type="button" class="linkbtn" data-iskreload="1">↻ Recargar de ISKRA</button>${ISKT.list && !ISKT.loading ? ` · ${ISKT.list.length} encontradas${ISKT.from ? ` en ${esc(ISKT.from)}` : ""}` : ""}${S.isOwner && ISKT.raw !== undefined ? ` · <button type="button" class="linkbtn" data-iskrawt="1">${ISKT.showRaw ? "Ocultar" : "Ver"} respuesta</button>` : ""}</p>${ISKT.list && !ISKT.list.length && !ISKT.loading && (ISKT.tried || ISKT.err) ? `<pre class="isk-raw">Lo que contestó ISKRA:\n${esc(ISKT.err ? ISKT.err : ISKT.tried.map(t => `${t.path} → ${t.ok ? "ok" : "error " + (t.status||"")}: ${t.body}`).join("\n"))}</pre>` : ""}${ISKT.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISKT.raw, null, 1).slice(0, 3000))}</pre>` : ""}` : ""}</div>`;
   const form = TPL_FORM ? `<div class="wa-form"><h3>${f.id?"Editar":"Nueva"} plantilla</h3>
       <label class="f">Nombre<input data-tplf="name" value="${esc(f.name||"")}" placeholder="Ej. Respuesta a automático con PDF"></label>
       <label class="f">¿Cuándo se usa?<select data-tplf="trigger">${Object.entries(TRIG).map(([k,l]) => `<option value="${k}"${(f.trigger||"auto")===k?" selected":""}>${l}</option>`).join("")}</select></label>
