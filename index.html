@@ -1,24 +1,24 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 03:29:15 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 03:33:30 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792639755">
+<link rel="stylesheet" href="/auth.css?v=1792640010">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792639755"></script>
+<script src="/claude-shim.js?v=1792640010"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
 // teclado del iPhone: detectarlo con visualViewport para esconder la barra de abajo y ajustar el chat a lo visible
 (function(){ const vv = window.visualViewport; if (!vv) return; let last = 0;
-  const upd = () => { document.documentElement.style.setProperty("--vvh", Math.round(vv.height) + "px");
+  const upd = () => { document.documentElement.style.setProperty("--vvh", Math.round(vv.height) + "px"); document.documentElement.style.setProperty("--vvt", Math.round(vv.offsetTop) + "px");
     // al escribir en un cuadro de texto en celular el teclado está abierto (en la app de inicio iPhone encoge toda la pantalla, así que no se mide)
     const a = document.activeElement;
     const kb = matchMedia("(max-width:640px)").matches && !!(a && a.matches && a.matches("textarea,[contenteditable],input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=file]):not([type=range]):not([type=color]):not([type=date]):not([type=datetime-local]):not([type=time])"));
     if (!document.body) return; document.body.classList.toggle("kb", kb);
     if (kb && Date.now() - last > 250){ last = Date.now(); const cv = document.querySelector("#view-msgs:not([hidden]) .cv2.has-sel");
-      if (cv && cv.contains(document.activeElement)) requestAnimationFrame(() => { cv.scrollIntoView({block:"end"}); const th = document.getElementById("iskThread"); if (th) th.scrollTop = th.scrollHeight; }); } };
-  vv.addEventListener("resize", upd); document.addEventListener("focusin", () => setTimeout(upd, 60)); document.addEventListener("focusout", () => setTimeout(upd, 120));
+      if (cv && cv.contains(document.activeElement)) requestAnimationFrame(() => { const th = document.getElementById("iskThread"); if (th) th.scrollTop = th.scrollHeight; }); } };
+  vv.addEventListener("resize", upd); vv.addEventListener("scroll", () => document.documentElement.style.setProperty("--vvt", Math.round(vv.offsetTop) + "px")); document.addEventListener("focusin", () => setTimeout(upd, 60)); document.addEventListener("focusout", () => setTimeout(upd, 120));
 })();
 // menús desplegables (📝, ⋯): se cierran al tocar fuera
 document.addEventListener("click", e => { document.querySelectorAll("details.cw-more[open]").forEach(d => { if (!d.contains(e.target)){ d.removeAttribute("open"); if (typeof schedule === "function") setTimeout(schedule, 0); } }); }, true);
@@ -1265,9 +1265,19 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
   .cw-h .cw-who{flex:1 1 0;min-width:0}.cw-h .cw-who b{font-size:16px}
   .cw-h .cw-acts{flex:1 1 100%;order:5;display:flex;gap:6px}
   .cw-h .cw-acts .cw-own{flex:1;max-width:none!important}
-  .cw-bar{flex-wrap:wrap}
-  .cw-bar textarea{order:-1;flex:1 1 100%!important;width:100%}
-  .cw-bar .cw-send{margin-left:auto}
+  /* barra de escribir como WhatsApp: 📝 📎 · texto · 🎤 (vacío) o ➤ (con texto) en un solo renglón */
+  .cw-bar{flex-wrap:nowrap;gap:6px}
+  .cw-bar textarea{flex:1 1 auto!important;min-width:0}
+  .cw-bar [data-iskfile]{order:1}.cw-bar .cw-tpl{order:0}.cw-bar textarea{order:2}.cw-bar [data-iskrec]{order:3}.cw-bar .cw-send{order:4}
+  .cw-bar .cw-send{width:40px!important;min-width:40px;height:40px!important;padding:0!important;border-radius:50%!important;display:grid;place-items:center;flex:none}
+  .cw-bar .cw-send .snd-t{display:none}
+  .cw-bar.h24-bar .cw-send{width:auto!important;padding:0 18px!important;border-radius:999px!important}.cw-bar.h24-bar .cw-send::after{content:none}
+  .cw-bar .cw-send::after{content:"➤";font-size:17px;line-height:1}
+  .cw-bar.has-text [data-iskrec]{display:none}
+  .cw-bar:not(.has-text):has([data-iskrec]) .cw-send{display:none}
+  .cw-c{padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+  body.kb #view-msgs .cv2{border-radius:12px}
+  body.kb .cw-c{padding-bottom:6px}
   main.wrap .view h2{font-size:24px;letter-spacing:-.01em}
   main.wrap .view .sub{font-size:13.5px}
   #msgSeg{display:grid!important;grid-template-columns:repeat(3,1fr);width:100%;box-sizing:border-box}
@@ -1323,7 +1333,7 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
   /* teclado abierto (iPhone): sin barra de abajo y el chat del tamaño de lo visible, con el cuadro pegado al teclado */
   body.kb .island,body.kb .more-sheet{display:none!important}
   body.kb main.wrap{padding-bottom:8px}
-  body.kb #view-msgs:has(.cv2.has-sel) .cv2{height:calc(var(--vvh,100dvh) - 16px)!important;min-height:0!important}
+  body.kb #view-msgs .cv2.has-sel{position:fixed;z-index:60;left:6px;right:6px;top:calc(var(--vvt,0px) + 6px);height:calc(var(--vvh,100dvh) - 12px)!important;min-height:0!important;width:auto}
   .mob-btn{display:none!important}
   header.top .wrap > .close{display:flex!important;margin-left:auto;padding:6px 12px}
   .close .cd{font-size:14px!important;white-space:nowrap}
@@ -6940,13 +6950,13 @@ function renderIskra(){
         ${!ISK.media && S.isOwner && ISK.mediaMissing && ISK.mediaMissing.length ? `<p class="mut small">Fotos y PDF: falta en Vercel ${esc(ISK.mediaMissing.join(", "))} (y hacer Redeploy).</p>` : ""}
         ${iskClosed(c) ? `<div class="h24"><p class="cw-warn">Pasaron más de 24 h desde su último mensaje. WhatsApp solo deja mandar una plantilla aprobada:</p>${iskH24List(c)}
           <div class="cw-bar h24-bar"><span class="spacer"></span><button type="button" class="btn small primary cw-send" data-isksend="1"${ISK.busy || !(ISK.tplIsk && ISK.tplIsk.conv===c.id) ? " disabled" : ""}>Enviar plantilla</button></div></div>` : `
-        <div class="cw-bar"><input type="file" id="iskFile" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
+        <div class="cw-bar${(ISK.draft[c.id]||"").trim() || (ISK.att && ISK.att.id===c.id) || (ISK.tplMedia && ISK.tplMedia.conv===c.id) ? " has-text" : ""}"><input type="file" id="iskFile" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
           ${/* fotos, PDF y notas de voz: solo cuando el servidor tiene la ruta de archivos de ISKRA configurada (si no, llegaban como link) */""}
           ${ISK.media ? `<button type="button" class="cw-ic" data-iskfile="1" title="Foto o PDF" aria-label="Adjuntar foto o PDF">📎</button>
           <button type="button" class="cw-ic${ISK.rec?" rec":""}" data-iskrec="1" title="${ISK.rec?"Detener y adjuntar":"Nota de voz"}" aria-label="Nota de voz">${ISK.rec?`● ${ISK.recS||0}s`:"🎤"}</button>` : ""}
           <details class="cw-more cw-tpl"><summary class="cw-ic" title="Plantillas" aria-label="Plantillas">📝</summary><div class="cw-menu up">${iskTplMenu(c)}</div></details>
           <textarea rows="1" data-iskin="1" placeholder="Escribe un mensaje…">${esc(ISK.draft[c.id]||"")}</textarea>
-          <button type="button" class="btn small primary cw-send" data-isksend="1"${ISK.busy?" disabled":""}>${demo?"Enviar (ej.)":"Enviar"}</button></div>`}
+          <button type="button" class="btn small primary cw-send" data-isksend="1"${ISK.busy?" disabled":""} aria-label="Enviar"><span class="snd-t">${demo?"Enviar (ej.)":"Enviar"}</span></button></div>`}
       </div>` : `<div class="cw-c"><p class="mut small">Esta conversación es de ${esc(iskWho(c.owner))}.</p></div>`}
     </div>`;
   }
@@ -7033,7 +7043,7 @@ document.addEventListener("input", e => { const qi = e.target.closest("[data-isk
   document.querySelectorAll("#iskBox .ck").forEach(b => b.hidden = !!q && !(b.dataset.s||"").includes(q)); });
 document.addEventListener("input", e => { const ta = e.target.closest("[data-iskin]"); if (ta){ ta.style.height = "auto"; ta.style.height = Math.min(140, ta.scrollHeight) + "px"; } });
 document.addEventListener("keydown", e => { const ta = e.target.closest && e.target.closest("[data-iskin]"); if (ta && e.key==="Enter" && !e.shiftKey && !e.isComposing){ e.preventDefault(); const b = document.querySelector("[data-isksend]"); b && b.click(); } });
-document.addEventListener("input", e => { const t = e.target.closest("[data-iskin]"); if (t && ISK.sel) ISK.draft[ISK.sel] = t.value; });
+document.addEventListener("input", e => { const t = e.target.closest("[data-iskin]"); if (t && ISK.sel){ ISK.draft[ISK.sel] = t.value; const bar = t.closest(".cw-bar"); if (bar) bar.classList.toggle("has-text", !!t.value.trim() || !!(ISK.att && ISK.att.id===ISK.sel)); } });
 document.addEventListener("change", async e => {
   const o = e.target.closest("[data-iskown]");
   if (o && ISK.sel){ try{ await iskFn()("assign", {id:ISK.sel, owner:o.value || null}); }catch(err){ ISK.err = err.message; } return iskLoad(true); }
