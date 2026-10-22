@@ -1339,6 +1339,11 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
   /* teclado abierto (iPhone): sin barra de abajo y el chat del tamaño de lo visible, con el cuadro pegado al teclado */
   body.kb .island,body.kb .more-sheet{display:none!important}
   body.kb main.wrap{padding-bottom:8px}
+  /* chat abierto en celular: fijo y a pantalla completa (arriba hasta la barra de abajo); la página no se desliza, solo los mensajes */
+  html:has(#view-msgs:not([hidden]) .cv2.has-sel),body:has(#view-msgs:not([hidden]) .cv2.has-sel){overflow:hidden;overscroll-behavior:none}
+  #view-msgs:not([hidden]) .cv2.has-sel{position:fixed;z-index:30;left:6px;right:6px;top:calc(env(safe-area-inset-top,0px) + 6px);bottom:calc(env(safe-area-inset-bottom,0px) + 94px);height:auto!important;min-height:0!important;width:auto}
+  #view-msgs .cv2.has-sel #iskThread{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  body.kb #view-msgs .cv2.has-sel{bottom:auto}
   body.kb #view-msgs .cv2.has-sel{position:fixed;z-index:60;left:6px;right:6px;top:calc(var(--vvt,0px) + 6px);height:calc(var(--vvh,100dvh) - 12px)!important;min-height:0!important;width:auto}
   .mob-btn{display:none!important}
   header.top .wrap > .close{display:flex!important;margin-left:auto;padding:6px 12px}
