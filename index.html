@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 23:44:30 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 23:52:15 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792712670">
+<link rel="stylesheet" href="/auth.css?v=1792713135">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792712670"></script>
+<script src="/claude-shim.js?v=1792713135"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -6972,6 +6972,11 @@ function iskMedia(m){
 const OGG_OK = (() => { try{ return !!document.createElement("audio").canPlayType('audio/ogg; codecs="opus"'); }catch(_){ return false; } })();
 const OGG_WAV = {};
 const oggLike = md => /ogg|opus/i.test(md.type || "") || /\.(ogg|opus)(\?|$)/i.test(md.url || "") || /filemanager\.gupshup\.io/i.test(md.url || "");
+["play","seeking","pause"].forEach(ev => document.addEventListener(ev, e => { if (e.target && e.target.tagName === "AUDIO" && e.target.closest("#iskBox")) ISK.audioHold = Date.now() + (ev === "pause" ? 1500 : 3000); }, true));
+// si el chat se vuelve a dibujar con una nota pausada, sigue donde se quedó
+const AUDPOS = {};
+document.addEventListener("timeupdate", e => { const a = e.target; if (a && a.tagName === "AUDIO" && a.closest("#iskBox")) AUDPOS[a.currentSrc || a.src] = a.ended ? 0 : a.currentTime; }, true);
+document.addEventListener("loadedmetadata", e => { const a = e.target; if (a && a.tagName === "AUDIO" && a.closest("#iskBox")){ const t = AUDPOS[a.currentSrc || a.src]; if (t > 0 && t < (a.duration || Infinity) - 0.3) try{ a.currentTime = t; }catch(_){} } }, true);
 function oggToWav(buf){
   return new Promise((ok, no) => {
     const w = new Worker("/vendor/opus/decoderWorker.min.js"), parts = []; let n = 0;
@@ -7184,6 +7189,8 @@ function renderIskra(){
     ISK.thT = setInterval(() => { if (S.tab==="msgs" && !document.hidden && ISK.sel && !ISK.thBusy){ ISK.thBusy = true;
       const full = !ISK.fullAt || Date.now() - ISK.fullAt > 45e3 || ISK.fullFor !== ISK.sel;
       (full ? iskThread(ISK.sel, true).then(() => { ISK.fullAt = Date.now(); ISK.fullFor = ISK.sel; }) : iskTail(ISK.sel)).finally(() => { ISK.thBusy = false; }); } }, 3e3); }
+  // nota de voz sonando: no se vuelve a dibujar el chat (si no, el audio se reinicia y se corta a medias)
+  if ([...box.querySelectorAll("audio")].some(au => !au.paused && !au.ended) || Date.now() < (ISK.audioHold||0)) return;
   if (busyIn(box) || box.querySelector("details.cw-more[open]")){ const th = $("iskThread"), c0 = ISK.convs.find(x => x.id===ISK.sel); if (th && c0){ const h = iskBubbles(c0); if (th.dataset.h!==h){ const atBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 40; th.innerHTML = h; th.dataset.h = h; if (atBottom) th.scrollTop = th.scrollHeight; } } return; }
   const lead = adminMode(), me = meId();
   if (ISK.st==="off"){ $("iskNotice").hidden = false; box.innerHTML = `<p class="notice">ISKRA no está activado: falta <b>ISKRA_API_KEY</b> en Vercel (Settings → Environment Variables) y hacer Redeploy.</p>`; return; }
