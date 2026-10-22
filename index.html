@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 22:15:53 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 22:45:08 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792707353">
+<link rel="stylesheet" href="/auth.css?v=1792709108">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792707353"></script>
+<script src="/claude-shim.js?v=1792709108"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -6216,44 +6216,75 @@ const WAS = {data:null, at:0, loading:false, err:""};
 const WAS_DEMO = {summary:{sent:5150, delivered:4980, replies:727, opportunities:151, meetings:9, deals_won:2},
   campaigns:{data:[{name:"Nutriólogos MTY · mensaje A", sent:1980, delivered:1930, replies:290, meetings:4, cost:1250},{name:"Entrenadores GDL · mensaje B", sent:1720, delivered:1660, replies:241, meetings:3, cost:1080},{name:"Nutriólogos CDMX · mensaje A", sent:1450, delivered:1390, replies:196, meetings:2, cost:910}]}};
 const WAS_L = {sent:"Enviados", delivered:"Entregados", replies:"Respondieron", replied:"Respondieron", opportunities:"Oportunidades", interested:"Interesados", meetings:"Meets en ISKRA", deals_won:"Ganados", won:"Ganados", cost:"Costo", spend:"Costo", name:"Campaña", campaign:"Campaña", campaign_name:"Campaña"};
-async function wasLoad(){
-  if (WAS.loading || (WAS.data && Date.now() - WAS.at < 120e3)) return;
+async function wasLoad(force){
+  if (WAS.loading || (!force && WAS.data && Date.now() - WAS.at < 120e3)) return;
   const fn = iskFn(); if (!fn) return;
   if (fn===iskMock){ WAS.data = WAS_DEMO; WAS.at = Date.now(); return; }
   WAS.loading = true;
-  try{ const j = await fn("stats", {}); WAS.data = j.data || {}; WAS.err = ""; WAS.at = Date.now(); }
-  catch(e){ WAS.err = e.message; }
+  try{ const j = await fn("wa_report", force ? {fresh:true} : {}); WAS.data = j.data || {}; WAS.err = ""; WAS.at = Date.now(); }
+  catch(e){ try{ const j = await fn("stats", {}); WAS.data = j.data || {}; WAS.err = ""; WAS.at = Date.now(); }catch(e2){ WAS.err = e.message; } }
   finally{ WAS.loading = false; schedule(); }
 }
 const numKeys = o => Object.entries(o||{}).filter(([k,v]) => typeof v==="number" || (typeof v==="string" && /^\d+(\.\d+)?$/.test(v)));
+// número de un objeto de ISKRA por nombres posibles
+const pickN = (o, re) => { const k = Object.keys(o||{}).find(x => re.test(x) && !isNaN(Number(o[x])) && o[x] !== null && o[x] !== ""); return k ? Number(o[k]) : null; };
+const WA_SORT = {k:"cont", dir:-1};
 function renderWa(){
   const box = $("waBox"); if (!box || !adminMode() || busyIn($("view-wa"))) return;
   if (S.tab==="wa") wasLoad();
   const demo = iskFn()===iskMock, D = WAS.data || {};
   const sumObj = D.summary && (D.summary.data && !Array.isArray(D.summary.data) ? D.summary.data : D.summary) || {};
-  const kpis = numKeys(sumObj).slice(0, 8);
-  const camps = iskArr(D.campaigns || []);
-  const cols = camps.length ? [...new Set(camps.flatMap(c => Object.keys(c)))].filter(k => k!=="id" && !/_id$/.test(k)).slice(0, 8) : [];
-  const nameK = cols.find(k => /name|campaign/i.test(k));
-  const meets = waMeets(), tom = meets.filter(([,id]) => statusOf(id)==="attended").length, pub = meets.filter(([,,m]) => m.flow && m.flow.launchedAt).length;
-  const reps = Number(sumObj.replies || sumObj.replied || 0);
-  const pc = (a,b) => b ? Math.round(a/b*100)+"%" : "—";
-  const st = [["Respondieron en WhatsApp", reps, null], ["Meet agendado", meets.length, reps], ["Pitch tomado", tom, meets.length], ["Publicados", pub, tom]];
-  const mx = Math.max(1, ...st.map(x => x[1]));
-  const fnl = st.map(([l,v,b]) => `<div class="fn-row"><span class="fn-l">${l}</span><div class="fn-bar"><i style="width:${Math.max(v?2:0, Math.round(v/mx*100))}%"></i></div><span class="fn-n">${Number(v).toLocaleString("es-MX")}</span><span class="fn-p">${b==null?"":pc(v,b)}</span></div>`).join("");
-  const fmtV = (k,v) => { const n = Number(v); return isNaN(n) ? esc(String(v)) : /cost|spend/i.test(k) ? "$" + n.toLocaleString("es-MX") : n.toLocaleString("es-MX"); };
+  const accRows = iskArr(D.campaigns || []), convs = Array.isArray(D.convs) ? D.convs : null;
+  const pc = (a,b) => b ? Math.round(a/b*100)+"%" : "—", nf = v => v==null || isNaN(v) ? "—" : Number(v).toLocaleString("es-MX"), dec = v => v==null || !isFinite(v) ? "—" : (Math.round(v*10)/10).toLocaleString("es-MX");
+  // meets reales del panel (no cuentan recordatorios ni "agendar otro meet" del mismo prospecto): uno por prospecto
+  const byConv = {}, byPhone = {}; (convs||[]).forEach(cv => { byConv[cv.id] = cv; if (cv.phone) byPhone[cv.phone] = cv; });
+  const seenP = new Set(), meets = [];
+  Object.entries(S.all||{}).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,m]) => {
+    if (!m || m.noMeet || !m.meetAt || statusOf(id)==="rejected") return;
+    const cv = (m.iskConvId && byConv[m.iskConvId]) || byPhone[iskDigits(m.phone)] || null;
+    if (canalOf(m)!=="whatsapp" && !cv) return;
+    const key = iskDigits(m.phone) || m.iskConvId || (m.email||"").toLowerCase() || id; if (seenP.has(key)) return; seenP.add(key);
+    meets.push({u, id, m, cv, tom:statusOf(id)==="attended" || !!(m.flow && (m.flow.interested || m.flow.skeletonAt || m.flow.launchedAt)), pub:!!(m.flow && m.flow.launchedAt)}); }));
+  // generales
+  const sentMsgs = pickN(sumObj, /^(sent|messages_sent|total_sent|outbound)$/i);
+  const contactados = convs ? convs.length : pickN(sumObj, /^(contacts|contacted|leads|recipients|sent)$/i);
+  const conResp = convs ? convs.filter(x => x.replied).length : pickN(sumObj, /^(replies|replied|responses)$/i);
+  const agend = meets.length, tom = meets.filter(x => x.tom).length, pub = meets.filter(x => x.pub).length;
+  const nConv = convs ? convs.filter(x => x.n != null) : [], avgN = nConv.length ? nConv.reduce((a,x) => a + x.n, 0) / nConv.length : (sentMsgs && contactados ? sentMsgs / contactados : null);
+  const st = [["Contactados", contactados, null], ["Con respuesta", conResp, contactados], ["Agendados", agend, conResp], ["Pitch tomado", tom, agend], ["Publicados", pub, tom]];
+  const mx = Math.max(1, ...st.map(x => Number(x[1])||0));
+  const fnl = st.map(([l,v,b]) => `<div class="fn-row"><span class="fn-l">${l}</span><div class="fn-bar"><i style="width:${Math.max(v?2:0, Math.round((Number(v)||0)/mx*100))}%"></i></div><span class="fn-n">${nf(v)}</span><span class="fn-p">${b==null?"":pc(v,b)}</span></div>`).join("");
+  // por campaña: lo que da ISKRA + lo que cruza el panel (contactados, respuestas, agendados, publicados)
+  const camps = {};
+  const cKey = (id, name) => { const k = String(id || name || "—"); return camps[k] ||= {k, name:name || id || "Sin campaña", acc:null, conv:[], meets:[]}; };
+  accRows.forEach(r => { const id = r.id || r.campaign_id || r.campaign || r.name; const nm = r.name || r.campaign_name || r.campaign || r.title || id; const c = cKey(id, nm); c.acc = r; if (nm) c.name = nm; });
+  (convs||[]).forEach(cv => { if (cv.camp || cv.campName){ const ex = Object.values(camps).find(c => c.k===cv.camp || (cv.campName && c.name===cv.campName)); (ex || cKey(cv.camp, cv.campName)).conv.push(cv); } });
+  meets.forEach(x => { if (x.cv && (x.cv.camp || x.cv.campName)){ const ex = Object.values(camps).find(c => c.k===x.cv.camp || (x.cv.campName && c.name===x.cv.campName)); if (ex) ex.meets.push(x); } });
+  const anyMap = (convs||[]).some(cv => cv.camp || cv.campName);
+  const rows = Object.values(camps).map(c => { const a = c.acc || {};
+    const cont = c.conv.length || pickN(a, /^(contacts|contacted|leads|recipients|unique_contacts|sent)$/i);
+    const resp = c.conv.length ? c.conv.filter(x => x.replied).length : pickN(a, /^(replies|replied|responses)$/i);
+    const msgs = pickN(a, /^(sent|messages_sent|total_sent|messages)$/i), nn = c.conv.filter(x => x.n != null);
+    const avg = nn.length ? nn.reduce((s,x) => s + x.n, 0) / nn.length : (msgs && cont && msgs !== cont ? msgs / cont : null);
+    return {name:c.name, cont, resp, ag:anyMap ? c.meets.length : null, pub:anyMap ? c.meets.filter(x => x.pub).length : null, avg, cost:pickN(a, /^(cost|spend|total_cost)$/i)}; });
+  const sk = WA_SORT.k; rows.sort((x,y) => ((Number(y[sk])||0) - (Number(x[sk])||0)) * -WA_SORT.dir);
+  const th = (k, l) => `<th class="num"><button type="button" class="linkbtn" data-wasort="${k}">${l}${WA_SORT.k===k ? (WA_SORT.dir<0 ? " ↓" : " ↑") : ""}</button></th>`;
+  const tbl = rows.length ? `<table class="cmp-t wa-t"><thead><tr><th>Campaña</th>${th("cont","Contactados")}${th("resp","Con respuesta")}${th("ag","Agendados")}${th("pub","Publicados")}${th("avg","Msj/nutriólogo")}${rows.some(r => r.cost!=null) ? th("cost","Costo") : ""}</tr></thead>
+    <tbody>${rows.map(r => `<tr><td><b>${esc(String(r.name))}</b></td><td class="num">${nf(r.cont)}</td><td class="num">${nf(r.resp)} <small>${pc(r.resp, r.cont)}</small></td><td class="num">${r.ag==null ? "—" : `<b>${r.ag}</b> <small>${pc(r.ag, r.resp)}</small>`}</td><td class="num">${r.pub==null ? "—" : r.pub}</td><td class="num">${dec(r.avg)}</td>${rows.some(x => x.cost!=null) ? `<td class="num">${r.cost==null ? "—" : "$" + nf(r.cost)}</td>` : ""}</tr>`).join("")}</tbody></table>`
+    : `<p class="mut small">${WAS.data ? "ISKRA no regresó campañas." : "—"}</p>`;
   box.innerHTML = `
     ${!iskFn() ? `<p class="notice">Al conectar ISKRA aquí salen los envíos, respuestas y campañas en automático.</p>` : WAS.err && !WAS.data ? `<p class="notice">No se pudieron leer los resultados de ISKRA: ${esc(WAS.err)}</p>` : !WAS.data ? `<p class="mut small">Leyendo resultados de ISKRA…</p>` : ""}
-    ${kpis.length ? `<div class="wa-kpis">${kpis.map(([k,v]) => `<span><b>${fmtV(k,v)}</b>${esc(WAS_L[k] || k.replace(/_/g," "))}</span>`).join("")}</div>` : ""}
+    <div class="wa-kpis"><span><b>${nf(contactados)}</b>Contactados</span><span><b>${nf(conResp)}</b>Con respuesta · ${pc(conResp, contactados)}</span><span><b>${nf(agend)}</b>Agendados · ${pc(agend, conResp)}</span><span><b>${nf(pub)}</b>Publicados</span><span><b>${dec(avgN)}</b>Mensajes promedio por nutriólogo</span></div>
     <div class="wa-grid">
-      <section class="fn-card"><div class="fn-h"><h3>Del chat al publicado</h3></div>${fnl}
-        <p class="mut small">Las respuestas vienen de ISKRA${demo?" (ejemplo)":""}; desde "Meet agendado" se cuentan los meets reales marcados como WhatsApp.</p></section>
-      <section class="fn-card"><div class="fn-h"><h3>Campañas en ISKRA</h3></div>
-        ${camps.length ? `<table class="cmp-t wa-t"><thead><tr>${cols.map(k => `<th class="${k===nameK?"":"num"}">${esc(WAS_L[k] || k.replace(/_/g," "))}</th>`).join("")}</tr></thead><tbody>${camps.slice(0,30).map(c => `<tr>${cols.map(k => k===nameK ? `<td><b>${esc(String(c[k]??""))}</b></td>` : `<td class="num">${c[k]==null?"—":fmtV(k,c[k])}</td>`).join("")}</tr>`).join("")}</tbody></table>`
-          : `<p class="mut small">${WAS.data ? "ISKRA no regresó campañas para este periodo." : "—"}</p>`}
+      <section class="fn-card"><div class="fn-h"><h3>Generales</h3><button type="button" class="btn small" data-wafresh="1">${WAS.loading ? "Actualizando…" : "↻ Actualizar"}</button></div>${fnl}
+        <p class="mut small">Contactados y respuestas salen de ISKRA${demo?" (ejemplo)":""}. Agendados = prospectos con meet real registrado en el panel (uno por prospecto): no cuentan recordatorios ni un segundo meet con la misma persona. Ya no se usan los "meets" que reporta ISKRA.</p></section>
+      <section class="fn-card"><div class="fn-h"><h3>Por campaña</h3></div>${tbl}
+        ${rows.length && !anyMap && convs ? `<p class="mut small">ISKRA no dice a qué campaña pertenece cada conversación, así que los agendados y publicados por campaña salen con "—" (sí cuentan en Generales).${S.isOwner && D.keys ? ` Campos que da: <code>${esc((D.keys.conv||[]).join(", "))}</code>` : ""}</p>` : ""}
       </section>
     </div>`;
 }
+document.addEventListener("click", e => { const s0 = e.target.closest("[data-wasort]"); if (s0){ const k = s0.dataset.wasort; WA_SORT.dir = WA_SORT.k===k ? -WA_SORT.dir : -1; WA_SORT.k = k; renderWa(); return; }
+  if (e.target.closest("[data-wafresh]")){ wasLoad(true); schedule(); } });
 function renderWaOld(){
   const box = $("waBox"); if (!box || !adminMode() || busyIn($("view-wa"))) return;
   const weeks = waPeriodWeeks(), inP = w => !weeks || weeks.includes(w);

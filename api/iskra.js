@@ -29,7 +29,7 @@ async function iskra(method, path, payload, timeoutMs){
 // Lista de conversaciones: primera página cada 10 s; hasta 4 páginas cada 60 s (por si la actividad nueva no viene arriba).
 // Además, los mensajes entrantes de las últimas 2 h (con fecha, para que ISKRA no tarde) para no perder ninguno nuevo.
 let LIST_CACHE = {at:0, deepAt:0, data:null, p:null, info:{}};
-const MSG_CACHE = {}, OWN_CACHE = {}, TPL_CACHE = {at:0, data:null};
+const MSG_CACHE = {}, OWN_CACHE = {}, TPL_CACHE = {at:0, data:null}, REP_CACHE = {at:0, data:null};
 const lastAtOf = cv => Date.parse(cv.last_message_at || (cv.last_message && cv.last_message.created_at) || cv.updated_at || cv.created_at || "") || 0;
 async function iskList(){
   if (LIST_CACHE.data && Date.now() - LIST_CACHE.at < 10e3) return LIST_CACHE.data;
@@ -408,6 +408,28 @@ module.exports = async (req, res) => {
         const q = new URLSearchParams(); ["from","to","period"].forEach(k => { if (input[k]) q.set(k, String(input[k])); });
         const [sum, acc] = await Promise.all([iskra("GET", "/v1/stats/summary" + (q.toString() ? "?" + q : "")), iskra("GET", "/v1/campaigns/accounting" + (q.toString() ? "?" + q : "")).catch(e => ({error:e.message}))]);
         return {data:{summary:sum, campaigns:acc}};
+      }
+      if (op === "wa_report"){ // WhatsApp outreach: generales y por campaña (los meets y publicados los cruza el panel con sus prospectos)
+        if (!lead) throw Object.assign(new Error("Solo el Head o el Manager ven los resultados."), {status:403});
+        if (!input.fresh && REP_CACHE.data && Date.now() - REP_CACHE.at < 5*60e3) return REP_CACHE.data;
+        const [sum, acc] = await Promise.all([iskra("GET", "/v1/stats/summary").catch(e => ({error:e.message})), iskra("GET", "/v1/campaigns/accounting").catch(e => ({error:e.message}))]);
+        const all = {}; let cursor = "", pages = 0;
+        while (pages < 25){ const j = await iskra("GET", "/v1/conversations?limit=100" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""), null, 10000).catch(() => null); if (!j) break; pages++;
+          arr(j).forEach(cv => { all[String(cv.id || cv.conversation_id)] = cv; }); cursor = j.next_cursor; if (!cursor || j.has_more === false) break; }
+        const convs = Object.values(all), ids = convs.map(cv => String(cv.id || cv.conversation_id));
+        const seenR = {}, ownR = {};
+        if (ids.length){ (await c.query("select conversation_id, replied, real from public.iskra_seen where conversation_id = any($1)", [ids]).catch(() => ({rows:[]}))).rows.forEach(r => seenR[r.conversation_id] = r);
+          (await c.query("select conversation_id, replied_at from public.iskra_owner where conversation_id = any($1)", [ids]).catch(() => ({rows:[]}))).rows.forEach(r => ownR[r.conversation_id] = r); }
+        const campOf = cv => { const k = Object.keys(cv).find(x => /campaign/i.test(x) && cv[x] != null && cv[x] !== ""); if (!k) return [null, null]; const v = cv[k];
+          if (typeof v === "object") return [String(v.id || v.campaign_id || v.name || ""), String(v.name || v.title || v.id || "")];
+          const nk = Object.keys(cv).find(x => /campaign.*name|campaign_title/i.test(x)); return [String(cv.campaign_id || v), String((nk && cv[nk]) || v)]; };
+        const nOf = cv => { const k = Object.keys(cv).find(x => /(messages?_count|total_messages|message_count|messages_sent|sent_count)/i.test(x) && Number(cv[x]) >= 0); return k ? Number(cv[k]) : null; };
+        const out = convs.map(cv => { const id = String(cv.id || cv.conversation_id), [camp, campName] = campOf(cv), sn = seenR[id], ow = ownR[id];
+          const lm = cv.last_message || {}, lastIn = /^in/i.test(String(lm.direction || cv.last_message_direction || ""));
+          return {id, phone:digits(cv.contact_phone || convPhone(cv)), camp, campName, n:nOf(cv), at:Date.parse(cv.created_at || "") || null,
+            replied:!!((sn && (sn.real === true || (sn.real == null && sn.replied))) || (ow && ow.replied_at) || lastIn || Number(cv.unread_count || 0) > 0)}; });
+        const r = {data:{summary:sum, campaigns:acc, convs:out, keys:{conv:Object.keys(convs[0] || {}).slice(0, 40)}, pages}};
+        REP_CACHE.at = Date.now(); REP_CACHE.data = r; return r;
       }
       if (op === "resp_stats"){ // tiempo de respuesta por persona (el AM solo recibe el suyo y el del equipo)
         const from = Number(input.from) || Date.now() - 7 * 864e5, to = Number(input.to) || Date.now();
