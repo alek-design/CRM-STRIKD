@@ -200,7 +200,7 @@ module.exports = async (req, res) => {
             const real = ms.some(m => isIn(m) && !isAutoIn(m)) || !!(autoS[id] && autoS[id].replied_at);
             // ¿le pedimos su correo y todavía no lo manda? (se fija arriba en Mensajes hasta que llegue un mensaje suyo con un email)
             const tx = m => String(m.text || m.body || m.content || m.message || "");
-            let ask = null; for (const m of asc){ if (!isIn(m) && /((me|nos) (das|compartes|pasas|mandas|regalas|puedes (dar|compartir|pasar|mandar|regalar))|cual es|compart[ei]me|pasame|mandame|regalame|necesito|ocupo).{0,40}(correo|e-?mail|\bmail\b)|(correo|e-?mail).{0,30}\?/i.test(tx(m).normalize("NFD").replace(/[\u0300-\u036f]/g, ""))) ask = at(m); else if (ask && isIn(m) && /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(tx(m))) ask = null; }
+            let ask = null; for (const m of asc){ if (!isIn(m) && /((me|nos) (das|compartes|pasas|mandas|regalas|puedes (dar|compartir|pasar|mandar|regalar))|cual es|compart[ei]me|pasame|mandame|regalame|necesito|ocupo).{0,40}(correo|e-?mail|\bmail\b)|(correo|e-?mail).{0,30}\?|(tu|su) (correo|e-?mail)( electronico)?,? (por favor|porfa|para)/i.test(tx(m).normalize("NFD").replace(/[\u0300-\u036f]/g, ""))) ask = at(m); else if (ask && isIn(m) && /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(tx(m))) ask = null; }
             const askAt = ask ? new Date(ask).toISOString() : null;
             seen[id] = {conversation_id:id, last_at:lastAt(byId[id]) || null, last_dir:lastDir, replied, real, email_ask_at:askAt};
             await c.query(`insert into public.iskra_seen (conversation_id, last_at, last_dir, replied, real, checked_at, email_ask_at) values ($1,$2,$3,$4,$5,now(),$6)
