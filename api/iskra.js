@@ -180,7 +180,8 @@ module.exports = async (req, res) => {
         // "real": contestó una persona. No cuenta la respuesta automática de su WhatsApp Business (llega en ≤ 90 s
         // después de nuestro primer mensaje o de nuestro segundo intento automático).
         const needReal = id => seen[id] && seen[id].replied && seen[id].real == null;
-        const toCheck = ids.filter(id => (stale(id) || needReal(id)) && !(seen[id] && seen[id].real && Number(byId[id].unread_count || 0) > 0 && known[id] && known[id].replied_at))
+        // se revisa todo lo que tuvo movimiento: aunque ISKRA marque "sin leer", lo último pudo mandarlo alguien del equipo desde la app de ISKRA
+        const toCheck = ids.filter(id => stale(id) || needReal(id))
           .sort((a, b) => (stale(b) ? 1 : 0) - (stale(a) ? 1 : 0)).slice(0, 12);
         await Promise.all(toCheck.map(async id => {
           try{
@@ -217,7 +218,7 @@ module.exports = async (req, res) => {
           const cv = byId[id], sn = seen[id];
           // dirección del último mensaje: lo que vimos, o "entrante" si hay sin leer, o "saliente" si alguien del equipo contestó después
           let dir = sn && !stale(id) ? sn.last_dir : null;
-          if (Number(cv.unread_count || 0) > 0) dir = "in";
+          if (!dir && Number(cv.unread_count || 0) > 0) dir = "in"; // solo si no sabemos: el "sin leer" de ISKRA no se limpia cuando contesta alguien del equipo desde su app
           const o0 = known[id];
           if (!dir && o0 && o0.last_sent_at && new Date(o0.last_sent_at).getTime() >= Date.parse(lastAt(cv)) - 5000) dir = "out";
           const norm = {...cv, id, phone:cv.contact_phone || convPhone(cv), lead_name:cv.contact_name || (cv.lead && (cv.lead.full_name || [cv.lead.first_name, cv.lead.last_name].filter(Boolean).join(" "))) || "",
