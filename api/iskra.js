@@ -139,6 +139,13 @@ module.exports = async (req, res) => {
       if (!globalThis.__iskInit){ await c.query(SQL_INIT); globalThis.__iskInit = true; } // solo una vez por arranque
       const ownerOf = async id => (await c.query("select * from public.iskra_owner where conversation_id=$1", [String(id)])).rows[0];
       const mustOwn = async id => { const o = await ownerOf(id); if (!lead && (!o || o.owner !== viewId)) throw Object.assign(new Error("Esta conversación es de otra persona."), {status:403}); return o; };
+      if (op === "audioget"){ // notas de voz para reproducir en iPhone (el navegador no siempre puede bajarlas directo)
+        const u = String(input.url || "");
+        if (!/^https:\/\/(filemanager\.gupshup\.io|[a-z0-9]+\.supabase\.co)\//i.test(u)) throw Object.assign(new Error("Link no permitido"), {status:400});
+        const r = await fetch(u); if (!r.ok) throw Object.assign(new Error("No se pudo bajar el audio (" + r.status + ")"), {status:502});
+        const buf = Buffer.from(await r.arrayBuffer()); if (buf.length > 8 * 1024 * 1024) throw Object.assign(new Error("Audio muy pesado"), {status:413});
+        return {b64:buf.toString("base64"), type:r.headers.get("content-type") || ""};
+      }
       if (op === "convmedia"){ // archivos de una conversación vía la app de ISKRA (fotos que manda el cliente, PDFs, audios)
         if (!iskapp.configured() || !input.conversation_id) return {data:[]};
         await mustOwn(input.conversation_id);
