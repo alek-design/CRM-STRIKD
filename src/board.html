@@ -6901,7 +6901,7 @@ function iskErrDetail(d){
   walk(d, 0); return pick.length ? " · " + pick.slice(0, 3).join(" · ") : " · " + JSON.stringify(d).slice(0, 300);
 }
 // molde de ISKRA de una variante: por id, o por nombre (las plantillas dadas de alta desde el servidor solo traen el nombre)
-const iskNorm = x => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const iskNorm = x => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").replace(/chat$/, ""); // "Después de … · chat" = "Después de …"
 function iskTplRef(vf){
   if (!vf) return null; if (vf.iskTplId) return {id:vf.iskTplId, name:vf.iskTplName || vf.iskTplId};
   if (!vf.iskTplName) return null; const t = (ISKT.list || []).find(x => iskNorm(x.name)===iskNorm(vf.iskTplName));
