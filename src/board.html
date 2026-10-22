@@ -7022,13 +7022,27 @@ function iskH24List(c){
 }
 // menú 📝 del chat (dentro de las 24 h): filtros por tipo de respuesta; sin las automáticas ni las de "Después de 24 h"
 const TPL_HIDE = new Set(["auto", "h24"]);
+// tipo de respuesta según lo último que escribió el prospecto (para preseleccionar el filtro de plantillas)
+function iskGuessTrig(c){
+  const ms = ISK.msgs[c.id] || [], tail = []; for (let i = ms.length - 1; i >= 0 && ms[i].d === "in"; i--) if (ms[i].t) tail.unshift(ms[i].t);
+  const t = fold((tail.length ? tail.join(" ") : (c.lastDir === "in" ? c.last : "")) || "").toLowerCase(); if (!t) return "";
+  if (/no me interesa|no estoy interesad|no gracias|no,? gracias|no por (ahora|el momento)|ya tengo (app|plataforma|sistema)|no necesito|no busco|dejen de|no me escriban/.test(t)) return "no_interesado";
+  if (/(muy |esta |es |algo |un poco )caro|no tengo (tiempo|presupuesto|dinero)|lo pienso|lo voy a pensar|desconf|no estoy segur|no se si|tengo dudas|pero /.test(t)) return "objecion";
+  if (/precio|costo|cuesta|cuanto (es|sale|vale|cobran|cobras|seria|cuestan)|cobran|cobras|tarifa|inversion|mensualidad|pago|\$|planes|paquete/.test(t)) return "precio";
+  if (/me interesa|me gustaria|agendar|agendemos|cuando podemos|que dia|que horario|mas informacion|mas info/.test(t)) return "interesado";
+  if (/\?|^(que|como|donde|cuando|quien|cual|cuales|por que|para que)\b/.test(t)) return "pregunta";
+  if (/^(si|claro|perfecto|va|ok|de acuerdo|me parece)\b/.test(t)) return "interesado";
+  return "";
+}
 function iskTplMenu(c){
   const groups = {};
   Object.entries(S.tpls||{}).filter(([,t]) => t.active!==false && !TPL_HIDE.has(t.trigger)).forEach(([id,t]) => { const k = t.trigger || "general"; (groups[k] ||= []).push([id,t]); });
   const keys = Object.keys(groups).sort((a,b) => Object.keys(TRIG).indexOf(a) - Object.keys(TRIG).indexOf(b));
   if (!keys.length) return `<p class="mut small cw-ver">Aún no hay plantillas. Créalas en la pestaña Plantillas.</p>`;
+  const gk = c.id + "|" + (c.at || 0), guess = iskGuessTrig(c);
+  if (ISK.tplFKey !== gk){ ISK.tplFKey = gk; ISK.tplF = keys.includes(guess) ? guess : ""; } // al llegar un mensaje nuevo se vuelve a sugerir
   const f = keys.includes(ISK.tplF) ? ISK.tplF : "";
-  const chips = `<div class="tpl-chips"><button type="button" class="tpl-x" data-tplmx="1" aria-label="Cerrar">✕</button>${[["", "Todas"]].concat(keys.map(k => [k, TRIG[k] || k])).map(([k, l]) => `<button type="button" class="${f===k ? "on" : ""}" data-isktplf="${esc(k)}">${esc(l)}${k ? ` <span>${groups[k].length}</span>` : ""}</button>`).join("")}</div>`;
+  const chips = `<div class="tpl-chips"><button type="button" class="tpl-x" data-tplmx="1" aria-label="Cerrar">✕</button>${[["", "Todas"]].concat(keys.map(k => [k, TRIG[k] || k])).map(([k, l]) => `<button type="button" class="${f===k ? "on" : ""}${k && k===guess ? " sug" : ""}" data-isktplf="${esc(k)}"${k && k===guess ? ' title="Sugerido por lo que escribió"' : ""}>${k && k===guess ? "✨ " : ""}${esc(l)}${k ? ` <span>${groups[k].length}</span>` : ""}</button>`).join("")}</div>`;
   const list = (f ? [f] : keys).map(k => (f ? "" : `<p class="cw-cat">${esc(TRIG[k]||k)}</p>`) + groups[k].map(([id,t]) => { const v = (t.variants||{}).a || {};
     return `<button type="button" data-isktpl="${esc(id)}"><span><b>${esc(t.name||"Plantilla")}</b><small>${esc(String(v.text||"").slice(0,90))}</small></span></button>`; }).join("")).join("");
   return chips + `<div class="tpl-items">${list}</div><p class="mut small tpl-hint">Al elegirla se pone en el cuadro: revísala o cámbiala y luego toca Enviar.</p>`;
