@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 00:07:18 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 00:11:58 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792627638">
+<link rel="stylesheet" href="/auth.css?v=1792627918">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792627638"></script>
+<script src="/claude-shim.js?v=1792627918"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -6401,15 +6401,16 @@ async function iskTplLoad(){
     const findArr = (o, d) => { if (Array.isArray(o)) return o.some(x => x && typeof x==="object") ? o : null; if (!o || typeof o!=="object" || d > 3) return null;
       for (const k of ["data","templates","quick_replies","quickReplies","snippets","items","results"]) { const r = findArr(o[k], d+1); if (r) return r; }
       for (const v of Object.values(o)) { const r = findArr(v, d+1); if (r) return r; } return null; };
-    ISKT.list = (findArr(ISKT.raw, 0) || []).map(t => ({id:String(t.id ?? t.template_id ?? t.quick_reply_id ?? t.name ?? t.title), name:String(t.name || t.title || t.label || t.shortcut || t.id), status:String(t.status || ""), lang:t.language || t.lang || "",
-      file:!!(t.media_url || t.media || t.attachment || t.attachments && t.attachments.length || t.file_url || t.image_url || t.document_url)})).filter(t => t.id && t.id!=="undefined"); }
+    ISKT.list = (findArr(ISKT.raw, 0) || []).map(t => ({id:String(t.id ?? t.template_id ?? t.quick_reply_id ?? t.name ?? t.title), name:String(t.name || t.title || t.label || t.shortcut || t.id), status:String(t.status || ""), lang:t.language || t.lang || "", head:String(t.header_type || ""), cat:String(t.category || ""), vars:Number(t.variables_count || (t.variables||[]).length || 0), sendable:t.sendable !== false,
+      file:/IMAGE|DOCUMENT|VIDEO/i.test(String(t.header_type || "")) || !!(t.media_url || t.media || t.attachment || t.attachments && t.attachments.length || t.file_url || t.image_url || t.document_url)})).filter(t => t.id && t.id!=="undefined"); }
   catch(e){ ISKT.err = e.message || "error"; ISKT.list = []; }
   ISKT.loading = false; schedule();
 }
 function iskTplOpts(sel){
   iskTplLoad();
   const l = ISKT.list || [];
-  return `<option value="">${ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : l.length ? "Ninguna (mandar como texto)" : ISKT.err ? "No se pudieron leer: " + esc(ISKT.err).slice(0, 80) : "ISKRA no regresó plantillas"}</option>` + l.map(t => `<option value="${esc(t.id)}"${t.id===sel?" selected":""}>${t.file ? "📎 " : ""}${esc(t.name)}${t.status?` · ${esc(t.status.toLowerCase())}`:""}${t.lang?` · ${esc(t.lang)}`:""}</option>`).join("");
+  return `<option value="">${ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : l.length ? "Ninguna (mandar como texto)" : ISKT.err ? "No se pudieron leer: " + esc(ISKT.err).slice(0, 80) : "ISKRA no regresó plantillas"}</option>` + l.filter(t => t.sendable || t.id===sel).sort((a,b) => (b.file - a.file) || String(a.name).localeCompare(String(b.name))).map(t => { const h = t.head.toUpperCase(), kind = h==="IMAGE" ? "con imagen" : h==="DOCUMENT" ? "con PDF" : h==="VIDEO" ? "con video" : t.file ? "con archivo" : "solo texto";
+    return `<option value="${esc(t.id)}"${t.id===sel?" selected":""}>${t.file ? "📎 " : ""}${esc(t.name)} · ${kind}${t.lang?` · ${esc(t.lang)}`:""}${t.vars?` · ${t.vars} variable${t.vars===1?"":"s"}`:""}${t.status?` · ${esc(t.status.toLowerCase())}`:""}</option>`; }).join("");
 }
 const fillVars = (txt, name) => String(txt||"").replace(/\{nombre\}/gi, first(name));
 function astTargets(){
