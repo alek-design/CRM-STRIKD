@@ -1,5 +1,14 @@
 <title>Tablero de Meets</title>
 <script>
+// teclado del iPhone: detectarlo con visualViewport para esconder la barra de abajo y ajustar el chat a lo visible
+(function(){ const vv = window.visualViewport; if (!vv) return; let last = 0;
+  const upd = () => { document.documentElement.style.setProperty("--vvh", Math.round(vv.height) + "px");
+    const kb = window.innerHeight - vv.height > 120 && matchMedia("(max-width:640px)").matches && !!(document.activeElement && document.activeElement.matches && document.activeElement.matches("input,textarea,[contenteditable]"));
+    if (!document.body) return; document.body.classList.toggle("kb", kb);
+    if (kb && Date.now() - last > 250){ last = Date.now(); const cv = document.querySelector("#view-msgs:not([hidden]) .cv2.has-sel");
+      if (cv && cv.contains(document.activeElement)) requestAnimationFrame(() => { cv.scrollIntoView({block:"end"}); const th = document.getElementById("iskThread"); if (th) th.scrollTop = th.scrollHeight; }); } };
+  vv.addEventListener("resize", upd); document.addEventListener("focusin", () => setTimeout(upd, 60)); document.addEventListener("focusout", () => setTimeout(upd, 120));
+})();
 // sin zoom en iPhone: Safari ignora user-scalable=no, así que se bloquea el pellizco aquí
 (function(){ const stop = e => e.preventDefault();
   ["gesturestart","gesturechange","gestureend"].forEach(t => document.addEventListener(t, stop, {passive:false}));
@@ -1298,6 +1307,10 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
   .island button.on{color:var(--fg);background:var(--raised)}
   .island .bd{position:absolute;top:2px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--bad);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;font-style:normal}
   main.wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+  /* teclado abierto (iPhone): sin barra de abajo y el chat del tamaño de lo visible, con el cuadro pegado al teclado */
+  body.kb .island,body.kb .more-sheet{display:none!important}
+  body.kb main.wrap{padding-bottom:8px}
+  body.kb #view-msgs:has(.cv2.has-sel) .cv2{height:calc(var(--vvh,100dvh) - 16px)!important;min-height:0!important}
   .mob-btn{display:none!important}
   header.top .wrap > .close{display:flex!important;margin-left:auto;padding:6px 12px}
   .close .cd{font-size:14px!important;white-space:nowrap}

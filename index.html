@@ -1,14 +1,23 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 03:22:45 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 03:25:53 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792639365">
+<link rel="stylesheet" href="/auth.css?v=1792639553">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792639365"></script>
+<script src="/claude-shim.js?v=1792639553"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
+// teclado del iPhone: detectarlo con visualViewport para esconder la barra de abajo y ajustar el chat a lo visible
+(function(){ const vv = window.visualViewport; if (!vv) return; let last = 0;
+  const upd = () => { document.documentElement.style.setProperty("--vvh", Math.round(vv.height) + "px");
+    const kb = window.innerHeight - vv.height > 120 && matchMedia("(max-width:640px)").matches && !!(document.activeElement && document.activeElement.matches && document.activeElement.matches("input,textarea,[contenteditable]"));
+    if (!document.body) return; document.body.classList.toggle("kb", kb);
+    if (kb && Date.now() - last > 250){ last = Date.now(); const cv = document.querySelector("#view-msgs:not([hidden]) .cv2.has-sel");
+      if (cv && cv.contains(document.activeElement)) requestAnimationFrame(() => { cv.scrollIntoView({block:"end"}); const th = document.getElementById("iskThread"); if (th) th.scrollTop = th.scrollHeight; }); } };
+  vv.addEventListener("resize", upd); document.addEventListener("focusin", () => setTimeout(upd, 60)); document.addEventListener("focusout", () => setTimeout(upd, 120));
+})();
 // sin zoom en iPhone: Safari ignora user-scalable=no, así que se bloquea el pellizco aquí
 (function(){ const stop = e => e.preventDefault();
   ["gesturestart","gesturechange","gestureend"].forEach(t => document.addEventListener(t, stop, {passive:false}));
@@ -1307,6 +1316,10 @@ label.f{display:block}label.f > input,label.f > select,label.f > textarea{displa
   .island button.on{color:var(--fg);background:var(--raised)}
   .island .bd{position:absolute;top:2px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--bad);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;font-style:normal}
   main.wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+  /* teclado abierto (iPhone): sin barra de abajo y el chat del tamaño de lo visible, con el cuadro pegado al teclado */
+  body.kb .island,body.kb .more-sheet{display:none!important}
+  body.kb main.wrap{padding-bottom:8px}
+  body.kb #view-msgs:has(.cv2.has-sel) .cv2{height:calc(var(--vvh,100dvh) - 16px)!important;min-height:0!important}
   .mob-btn{display:none!important}
   header.top .wrap > .close{display:flex!important;margin-left:auto;padding:6px 12px}
   .close .cd{font-size:14px!important;white-space:nowrap}
