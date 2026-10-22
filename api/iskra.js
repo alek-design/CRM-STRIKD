@@ -6,6 +6,7 @@
 const { withPg, userFromReq } = require("../lib/google");
 const resptime = require("../lib/resptime");
 const { publicMedia, mediaPayload, asAttachment, withLink, shapes } = require("../lib/iskmedia");
+const iskapp = require("../lib/iskapp");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const enc = encodeURIComponent;
 const digits = x => String(x || "").replace(/\D/g, "").slice(-10);
@@ -138,7 +139,7 @@ module.exports = async (req, res) => {
       if (!globalThis.__iskInit){ await c.query(SQL_INIT); globalThis.__iskInit = true; } // solo una vez por arranque
       const ownerOf = async id => (await c.query("select * from public.iskra_owner where conversation_id=$1", [String(id)])).rows[0];
       const mustOwn = async id => { const o = await ownerOf(id); if (!lead && (!o || o.owner !== viewId)) throw Object.assign(new Error("Esta conversación es de otra persona."), {status:403}); return o; };
-      if (op === "whoami"){ const j = await iskra("GET", "/v1/whoami"); return {data:j, me:{id:me.id, role:me.role}}; }
+      if (op === "whoami"){ const j = await iskra("GET", "/v1/whoami"); return {data:j, me:{id:me.id, role:me.role}, media:iskapp.configured()}; }
       if (op === "conversations"){
         // Solo conversaciones donde el prospecto YA contestó al menos una vez.
         // ISKRA no dice en la lista quién escribió el último mensaje, así que:
@@ -269,7 +270,10 @@ module.exports = async (req, res) => {
         const origin = "https://" + (req.headers["x-forwarded-host"] || req.headers.host || "growth.strikd.ai");
         const cfg = media ? ((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data || {} : {};
         const shapeN = 0; // ISKRA confirmó (prueba de 8 formatos): /v1/messages/reply solo acepta text o template_id; ignora archivos
-        if (media && shapeN){ // formato de archivo confirmado con la prueba
+        if (media && iskapp.configured()){ // archivo real por la ruta de la app de ISKRA (send-whatsapp), autorizada por ISKRA
+          const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type, como:"archivo"};
+          j = await iskapp.sendMedia({conversation_id:input.conversation_id, text, media:pm});
+        } else if (media && shapeN){ // formato de archivo confirmado con la prueba
           const pm = await publicMedia(media); mediaInfo = {url:pm.url, type:pm.type, como:"adjunto " + shapeN};
           j = await iskra("POST", "/v1/messages/reply", {...base, ...shapes(pm, text, shapeN)});
         } else if (media && !asAttachment()){ // foto, PDF o nota de voz como link corto dentro del mensaje
