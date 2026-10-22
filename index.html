@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 17:50:33 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 18:30:34 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792691433">
+<link rel="stylesheet" href="/auth.css?v=1792693834">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792691433"></script>
+<script src="/claude-shim.js?v=1792693834"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -281,6 +281,7 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .h24-full{white-space:pre-line}
 .linkbtn.danger{color:#e5484d}
 .tpl-full .fx{color:var(--muted)}.tpl-full .vv{color:var(--fg);font-weight:600}.tpl-fixed{display:grid;gap:6px;background:color-mix(in srgb,#25D366 8%,var(--surface));border:1px solid color-mix(in srgb,#25D366 30%,var(--line));border-radius:10px;padding:8px 10px}.tpl-fixed .fx{white-space:pre-wrap;color:var(--muted);font-size:14px}.tpl-fixed p{margin:0}
+.cal-ev.declined,.ap-ev.declined{outline:2px dashed #e5484d;outline-offset:-2px}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -1854,7 +1855,7 @@ Del pitch a publicado (líder de equipo):
 8. Publicado: con todo listo, queda en vivo. Esa es la meta.
 
 Puntos por perfil: cada paso se multiplica según el perfil del prospecto. Perfil 1 (nutriólogos y entrenadores) ×1, Perfil 2 (microinfluencers hasta 35K) ×2.5, Perfil 3 (influencers +35K) ×5. Un prospecto que llega a publicado vale 15, 37.5 o 75 puntos.`;
-const meetTs = s => s ? Date.parse(s + ":00-05:00") : NaN;
+const meetTs = s => { if (!s) return NaN; if (/T\d\d:\d\d(:\d\d(\.\d+)?)?([zZ]|[+-]\d\d:?\d\d)$/.test(String(s).trim())) return Date.parse(String(s).trim()); const m = String(s).trim().replace(" ", "T").match(/^(\d{4}-\d\d-\d\dT\d\d:\d\d)/); return m ? Date.parse(m[1] + ":00-05:00") : NaN; };
 /* Zona horaria de quien ve la app. Todo se guarda en hora Cancún; a quien está en otra zona se le muestra
    y se le pide la hora en la suya. VOFF = cuánto hay que restar a UTC para su hora local (Cancún = OFF). */
 const CUN_TZ = "America/Cancun";
@@ -4061,8 +4062,8 @@ function calEvents(teamAll){
     const st = statusOf(id), f = m.flow || {}, v = S.validations[id];
     if (f.lostAt || st==="rejected") return;
     const at = effAt(m);
-    if (at && !m.noMeet && !f.inviteDeclinedAt && (st==="pending" || st==="valid" || st==="attended" || reschedPending(m, v)))
-      ev.push({at, kind:"pitch", label:`Pitch · ${m.prospect}`, who:uid, key:dk(uid,id)});
+    if (at && !m.noMeet && (st==="pending" || st==="valid" || st==="attended" || reschedPending(m, v)))
+      ev.push({at, kind:"pitch", label:`Pitch · ${m.prospect}${f.inviteDeclinedAt ? " · ⚠ rechazó la invitación" : ""}`, who:uid, key:dk(uid,id), declined:!!f.inviteDeclinedAt, gid:m.gcalEventId||"", email:(m.email||"").toLowerCase()});
     if (f.skeletonMeetAt && !f.skeletonAt)
       ev.push({at:f.skeletonMeetAt, kind:"skel", label:`Skeleton · ${m.prospect}`, who:uid, key:dk(uid,id), booked:!!f.skeletonMeetBookedAt});
     if (f.adjMeetAt && f.skeletonNeedsChanges)
@@ -4080,10 +4081,11 @@ function calEvents(teamAll){
   const seenG = new Set(), gIdsC = new Set(); Object.values(S.allEvery || S.all || {}).concat([S.mine || {}]).forEach(o => Object.values(o||{}).forEach(m => { if (m && m.gcalEventId) gIdsC.add(m.gcalEventId); }));
   if (!S.viewAs) Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
     const gk = e.at + "|" + e.label; if (seenG.has(gk)) return; seenG.add(gk);
-    if (sameMeet(e.at, e.label) || e.emails.some(x => mails[x]) || (e.gid && gIdsC.has(e.gid))) return;
+    const gts = meetTs(e.at), near = ev.filter(x => Math.abs(meetTs(x.at) - gts) <= 90*60e3);
+    if (sameMeet(e.at, e.label) || near.some(x => (e.gid && x.gid===e.gid) || (x.email && e.emails.includes(x.email)))) return;
     ev.push({at:e.at, endTs:e.endTs, kind:"gcal", label:e.label, who:null, title:e.title, extra:e.extra, calName:e.calName, link:e.link, html:e.html});
   }));
-  return ev;
+  return ev.map(e => { const t = meetTs(e.at); return isNaN(t) ? e : {...e, at:new Date(t - OFF).toISOString().slice(0,16)}; }); // hora siempre como "AAAA-MM-DDTHH:MM" de Cancún
 }
 function calHtml(offset, pickKey, selected){
   const todayStr = new Date(Date.now()-VOFF).toISOString().slice(0,10);
@@ -4103,13 +4105,15 @@ function calHtml(offset, pickKey, selected){
   const range = `${d1} ${MONTHS[m1-1]} – ${d7} ${MONTHS[m7-1]} ${y7}`;
   const nav = pickKey ? `data-k="${pickKey}"` : `data-k="__tab"`;
   let grid = `<div class="cal-h"></div>` + days.map((d,i) => { const [,mm,dd] = d.split("-").map(Number); return `<div class="cal-h${d===todayStr?" today":""}${" pick"}" data-planday="${d===todayStr?"":d}" title="Ver lo de este día">${DOW[i]} <b>${dd}</b></div>`; }).join("");
-  for (let h = CAL_H0; h <= CAL_H1; h++){
+  const wkH = evs0.filter(e => days.includes(e.at.slice(0,10))).map(e => Number(e.at.slice(11,13))).filter(n => !isNaN(n));
+  const hA = Math.min(CAL_H0, ...wkH), hB = Math.max(CAL_H1, ...wkH);
+  for (let h = hA; h <= hB; h++){
     grid += `<div class="cal-t">${pad2(h)}:00</div>`;
     days.forEach(d => {
       const key = `${d}T${pad2(h)}`, evs = byCell[key] || [], past = key < nowLocal;
       const sel = selected && selected.slice(0,13) === key;
       const clash = evs.some(e => e.clash);
-      const chips = evs.map(e => `<span class="cal-ev ${e.kind}${e.booked===false?" tentative":""}${e.clash?" clash":""}" title="${esc(e.label)}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""} · ${esc(e.at.split("T")[1])}">${esc(e.at.split("T")[1])} ${e.extra ? "🌮 " : ""}${esc(e.title || e.label.split(" · ")[1]||"")}</span>`).join("");
+      const chips = evs.map(e => `<span class="cal-ev ${e.kind}${e.booked===false?" tentative":""}${e.clash?" clash":""}${e.declined?" declined":""}" title="${esc(e.label)}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""} · ${esc(e.at.split("T")[1])}">${esc(e.at.split("T")[1])} ${e.extra ? "🌮 " : ""}${esc(e.title || e.label.split(" · ")[1]||"")}</span>`).join("");
       if (pickKey && !evs.length && !past) grid += `<button type="button" class="cal-c free${sel?" sel":""}" data-k="${pickKey}" data-slot="${d}T${pad2(h)}:00" aria-label="Elegir ${d} ${pad2(h)}:00">${sel?"Elegido":"Libre"}</button>`;
       else grid += `<div class="cal-c${evs.length?" busy":""}${clash?" clash":""}${past?" past":""}${sel?" sel":""}"${clash?' title="Hay meets encimados en este horario"':""}>${chips}</div>`;
     });
@@ -4169,7 +4173,7 @@ function agendaPhone(offset){
       tasksFor(uid, id, m, nowTs).filter(t => ownTask(t) && t.due >= d0 && t.due < d1e).slice(0,1).forEach(t => tks.push({...t, m})); }));
     tks.sort((a,b) => a.due - b.due);
     nMeets = list.length; nTasks = tks.length;
-    body = `<h3 class="sec-h">Agenda <b>${list.length}</b></h3>` + (list.length ? `<div class="ap-list">${list.map(e => `<div class="ap-ev ${e.kind}${e.clash?" clash":""}${e.end < nowTs?" past":""}"><span class="ap-t">${esc(e.at.split("T")[1])}</span><span class="ap-b"><b>${e.extra ? "🌮 " : ""}${esc(e.title || e.label.split(" · ")[1] || e.label)}</b><span>${esc(e.extra ? (e.calName || "Tacos") : (KIND[e.kind]||""))}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""}${e.clash?` · <em>encimado</em>`:""}</span></span>${e.link ? `<a class="pl-gopen" href="${esc(e.link)}" target="_blank" rel="noopener">Unirse</a>` : e.html ? `<a class="pl-gopen sec" href="${esc(e.html)}" target="_blank" rel="noopener">Abrir</a>` : ""}</div>`).join("")}</div>` : `<p class="ap-empty">Sin meets este día</p>`)
+    body = `<h3 class="sec-h">Agenda <b>${list.length}</b></h3>` + (list.length ? `<div class="ap-list">${list.map(e => `<div class="ap-ev ${e.kind}${e.clash?" clash":""}${e.declined?" declined":""}${e.end < nowTs?" past":""}"><span class="ap-t">${esc(e.at.split("T")[1])}</span><span class="ap-b"><b>${e.extra ? "🌮 " : ""}${esc(e.title || e.label.split(" · ")[1] || e.label)}</b><span>${esc(e.extra ? (e.calName || "Tacos") : (KIND[e.kind]||""))}${e.who?` · ${esc(nameOf(S.ps,e.who))}`:""}${e.clash?` · <em>encimado</em>`:""}${e.declined?` · <em>rechazó la invitación</em>`:""}</span></span>${e.link ? `<a class="pl-gopen" href="${esc(e.link)}" target="_blank" rel="noopener">Unirse</a>` : e.html ? `<a class="pl-gopen sec" href="${esc(e.html)}" target="_blank" rel="noopener">Abrir</a>` : ""}</div>`).join("")}</div>` : `<p class="ap-empty">Sin meets este día</p>`)
       + `<h3 class="sec-h">Pendientes <b>${tks.length}</b></h3>` + (tks.length ? `<div class="pg"><div class="pg-l">${tks.map(t => `<div class="pg-row"><span class="pg-who"><b>${esc(t.title)}</b>${adminMode()?`<small>${esc(String(nameOf(S.ps||{}, t.uid)).split(" ")[0])}</small>`:""}</span><span class="pg-due">${esc(fmtLocal(t.due).split(", ")[1]||"")}</span></div>`).join("")}</div></div>` : `<p class="ap-empty">Nada vence este día</p>`);
   }
   const seg = `<div class="ag-seg" role="tablist"><button type="button" data-agseg="meets" class="${AG_SEG==="meets"?"on":""}">Meets <b>${nMeets}</b></button><button type="button" data-agseg="tasks" class="${AG_SEG==="tasks"?"on":""}">Pendientes <b>${nTasks}</b>${nLate?`<i title="${nLate} atrasados">${nLate}</i>`:""}</button></div>`;
@@ -4244,7 +4248,7 @@ function renderPlan(){
     if (f.lostAt || st==="rejected") return;
     const push = (at, kind, label) => { const ts = meetTs(at); if (!isNaN(ts) && ts >= t0 && ts <= eod) evs.push({ts, end:ts+MEET_MIN, kind, label, uid, id, m}); };
     const at = effAt(m);
-    if (at && !m.noMeet && !f.inviteDeclinedAt && (st==="pending" || st==="valid" || st==="attended" || reschedPending(m, v))) push(at, "pitch", "Pitch");
+    if (at && !m.noMeet && (st==="pending" || st==="valid" || st==="attended" || reschedPending(m, v))) push(at, "pitch", f.inviteDeclinedAt ? "Pitch · ⚠ rechazó la invitación" : "Pitch");
     if (f.skeletonMeetAt && !f.skeletonAt) push(f.skeletonMeetAt, "skel", "Meet de skeleton");
     if (f.buildMeetAt && !f.launchedAt) push(f.buildMeetAt, "build", "Sesión de lanzamiento");
     if (f.next && f.next.kind==="meet" && f.next.at) push(new Date(f.next.at - OFF).toISOString().slice(0,16), "build", f.next.text ? `Meet · ${f.next.text}` : "Meet de seguimiento");
@@ -4254,7 +4258,9 @@ function renderPlan(){
     const startNames = {}; evs.forEach(e => (startNames[e.ts] ||= []).push(fold((e.m && e.m.prospect) || "")));
     const gIds = new Set(); Object.values(S.allEvery || S.all || {}).concat([S.mine || {}]).forEach(o => Object.values(o||{}).forEach(m => { if (m && m.gcalEventId) gIds.add(m.gcalEventId); }));
     Object.values(GC).forEach(g => (g.events||[]).forEach(e => {
-      const ts = meetTs(e.at); if (isNaN(ts) || ts < t0 || ts > eod || (e.gid && gIds.has(e.gid)) || (startNames[ts]||[]).some(n => n && fold(e.label).includes(n)) || e.emails.some(x => mails[x])) return;
+      const ts = meetTs(e.at); if (isNaN(ts) || ts < t0 || ts > eod) return;
+      const near = evs.filter(x => x.m && Math.abs(x.ts - ts) <= 90*60e3);
+      if (near.some(x => (e.gid && x.m.gcalEventId===e.gid) || (x.m.email && e.emails.includes(String(x.m.email).toLowerCase()))) || (startNames[ts]||[]).some(n => n && fold(e.label).includes(n))) return;
       evs.push({ts, end:e.endTs > ts ? e.endTs : ts+MEET_MIN, kind:"gcal", label:(e.extra ? "🌮 " : "") + (e.title || e.label.replace(/^Calendario · /,"")), gcal:true, sub:e.extra ? (e.calName || "Tacos") : "", glink:e.link, ghtml:e.html, gev:e});
     }));
   }
