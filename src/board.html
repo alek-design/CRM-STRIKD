@@ -6935,7 +6935,7 @@ function iskH24List(c){
   if (!l.length) return `<p class="mut small">No hay plantillas en <b>Después de 24 h</b>. ${adminMode() ? "Créalas en Mensajes → Plantillas, con su plantilla aprobada de ISKRA." : "Pídele a tu líder que las cree."}</p>`;
   return `<div class="h24-list">` + l.map(([id,t]) => { const v = (t.variants||{}).a || {}, ok = Object.values(t.variants||{}).some(x => x && (x.iskTplId || x.iskTplName));
     const on = ISK.tplUsed && ISK.tplUsed.id===id && ISK.tplUsed.conv===c.id;
-    return `<button type="button" class="h24-b${on ? " on" : ""}" data-isktpl="${esc(id)}"${ok ? "" : " disabled"}><b>${esc(t.name||"Plantilla")}</b><small>${ok ? esc(String(v.text||"").slice(0, 90)) : "Sin plantilla de ISKRA conectada: no se puede mandar"}</small></button>`; }).join("") + `</div>`;
+    return `<button type="button" class="h24-b${on ? " on" : ""}" data-isktpl="${esc(id)}"${ok ? "" : " disabled"}><b>${esc(t.name||"Plantilla")}</b><small>${ok ? esc(String(v.text||"").slice(0, 90)) : "Sin plantilla de ISKRA conectada: no se puede mandar"}</small>${S.isOwner ? `<small class="mut">ISKRA: ${esc(Object.values(t.variants||{}).filter(x => x && (x.iskTplId || x.iskTplName)).map(x => (x.iskTplName || "") + (x.iskTplId ? " · " + String(x.iskTplId).slice(0, 8) : " · sin id")).filter((x, i, a) => a.indexOf(x) === i).join(" / "))}</small>` : ""}</button>`; }).join("") + `</div>`;
 }
 // menú 📝 del chat (dentro de las 24 h): filtros por tipo de respuesta; sin las automáticas ni las de "Después de 24 h"
 const TPL_HIDE = new Set(["auto", "h24"]);
@@ -7224,7 +7224,7 @@ document.addEventListener("click", async e => {
       (ISK.msgs[id] ||= []).push(bub); ISK.draft[id] = ""; boxSet(""); ISK.err = ""; (ISK.sent[id] ||= []).push({by:meId(), text:bub.t, at:bub.at}); schedule();
       try{ const rr = await iskFn()("reply", {conversation_id:id, template_id:ti.id, label:ti.name, idempotency_key:key, ...(names.length ? {variables:vars} : {})}); bub.st = "enviado"; ISK.lastReply = rr;
         if (tu0) db.doc(`meets/${meId()}/tpllog/${key}`).set({tpl:tu0.id, v:tu0.v, at:Date.now(), conv:id}).catch(() => {}); setTimeout(() => iskTail(id), 1200); }
-      catch(err){ ISK.lastErr = {error:err.message, detail:err.detail||null}; bub.st = "no se envió"; bub.failed = true; ISK.err = "No se envió la plantilla de ISKRA: " + err.message + iskErrDetail(err.detail); }
+      catch(err){ ISK.lastErr = {error:err.message, detail:err.detail||null}; bub.st = "no se envió"; bub.failed = true; ISK.err = "No se envió la plantilla de ISKRA: " + err.message + iskErrDetail(err.detail) + ` (se mandó: ${ti.name || "?"} · id ${String(ti.id || "—").slice(0, 8)}…)`; }
       return schedule();
     }
     const tm = ISK.tplMedia && ISK.tplMedia.conv===id ? ISK.tplMedia : null, tu = ISK.tplUsed && ISK.tplUsed.conv===id ? ISK.tplUsed : null;
