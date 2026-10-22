@@ -6687,7 +6687,7 @@ async function iskLoad(force){
   if (!fn || ISK.loading || (!force && Date.now() - ISK.at < 8e3)) return;
   ISK.loading = true;
   try{
-    if (!ISK.who && !ISK.whoP) ISK.whoP = fn("whoami").then(w => { if (w.configured===false) ISK.st = "off"; else { ISK.who = w.data || {}; ISK.media = !!w.media; } schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
+    if (!ISK.who && !ISK.whoP) ISK.whoP = fn("whoami").then(w => { if (w.configured===false) ISK.st = "off"; else { ISK.who = w.data || {}; ISK.media = !!w.media; ISK.mediaMissing = w.mediaMissing || null; } schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
     const j = await fn("conversations", {limit:50});
     if (j.configured===false){ ISK.st = "off"; return; }
     ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.debug || j.data; ISK.mode = j.mode || "load"; ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
@@ -6827,6 +6827,7 @@ function renderIskra(){
         ${ISK.tplIsk && ISK.tplIsk.conv===c.id ? iskTplBox(ISK.tplIsk) : ""}
         ${ISK.tplMedia && ISK.tplMedia.conv===c.id && !(ISK.tplIsk && ISK.tplIsk.conv===c.id) ? `<div class="isk-att"><span class="isk-doc">${ISK.tplMedia.type.startsWith("image/") ? "FOTO" : "PDF"}</span><span>${esc(ISK.tplMedia.name)} · de la plantilla</span><button type="button" class="linkbtn" data-isktplx="1">Quitar</button></div>` : ""}
         ${ISK.err ? `<p class="cw-err">${esc(ISK.err)}</p>` : ""}
+        ${!ISK.media && S.isOwner && ISK.mediaMissing && ISK.mediaMissing.length ? `<p class="mut small">Fotos y PDF: falta en Vercel ${esc(ISK.mediaMissing.join(", "))} (y hacer Redeploy).</p>` : ""}
         <div class="cw-bar"><input type="file" id="iskFile" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
           ${/* fotos, PDF y notas de voz: solo cuando el servidor tiene la ruta de archivos de ISKRA configurada (si no, llegaban como link) */""}
           ${ISK.media ? `<button type="button" class="cw-ic" data-iskfile="1" title="Foto o PDF" aria-label="Adjuntar foto o PDF">📎</button>

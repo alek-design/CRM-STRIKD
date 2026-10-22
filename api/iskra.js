@@ -139,7 +139,7 @@ module.exports = async (req, res) => {
       if (!globalThis.__iskInit){ await c.query(SQL_INIT); globalThis.__iskInit = true; } // solo una vez por arranque
       const ownerOf = async id => (await c.query("select * from public.iskra_owner where conversation_id=$1", [String(id)])).rows[0];
       const mustOwn = async id => { const o = await ownerOf(id); if (!lead && (!o || o.owner !== viewId)) throw Object.assign(new Error("Esta conversación es de otra persona."), {status:403}); return o; };
-      if (op === "whoami"){ const j = await iskra("GET", "/v1/whoami"); return {data:j, me:{id:me.id, role:me.role}, media:iskapp.configured()}; }
+      if (op === "whoami"){ const j = await iskra("GET", "/v1/whoami"); return {data:j, me:{id:me.id, role:me.role}, media:iskapp.configured(), mediaMissing:iskapp.missing()}; }
       if (op === "conversations"){
         // Solo conversaciones donde el prospecto YA contestó al menos una vez.
         // ISKRA no dice en la lista quién escribió el último mensaje, así que:

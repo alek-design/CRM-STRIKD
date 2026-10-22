@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 01:00:45 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 01:11:10 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792630845">
+<link rel="stylesheet" href="/auth.css?v=1792631470">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792630845"></script>
+<script src="/claude-shim.js?v=1792631470"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -6696,7 +6696,7 @@ async function iskLoad(force){
   if (!fn || ISK.loading || (!force && Date.now() - ISK.at < 8e3)) return;
   ISK.loading = true;
   try{
-    if (!ISK.who && !ISK.whoP) ISK.whoP = fn("whoami").then(w => { if (w.configured===false) ISK.st = "off"; else { ISK.who = w.data || {}; ISK.media = !!w.media; } schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
+    if (!ISK.who && !ISK.whoP) ISK.whoP = fn("whoami").then(w => { if (w.configured===false) ISK.st = "off"; else { ISK.who = w.data || {}; ISK.media = !!w.media; ISK.mediaMissing = w.mediaMissing || null; } schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
     const j = await fn("conversations", {limit:50});
     if (j.configured===false){ ISK.st = "off"; return; }
     ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.debug || j.data; ISK.mode = j.mode || "load"; ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
@@ -6836,6 +6836,7 @@ function renderIskra(){
         ${ISK.tplIsk && ISK.tplIsk.conv===c.id ? iskTplBox(ISK.tplIsk) : ""}
         ${ISK.tplMedia && ISK.tplMedia.conv===c.id && !(ISK.tplIsk && ISK.tplIsk.conv===c.id) ? `<div class="isk-att"><span class="isk-doc">${ISK.tplMedia.type.startsWith("image/") ? "FOTO" : "PDF"}</span><span>${esc(ISK.tplMedia.name)} · de la plantilla</span><button type="button" class="linkbtn" data-isktplx="1">Quitar</button></div>` : ""}
         ${ISK.err ? `<p class="cw-err">${esc(ISK.err)}</p>` : ""}
+        ${!ISK.media && S.isOwner && ISK.mediaMissing && ISK.mediaMissing.length ? `<p class="mut small">Fotos y PDF: falta en Vercel ${esc(ISK.mediaMissing.join(", "))} (y hacer Redeploy).</p>` : ""}
         <div class="cw-bar"><input type="file" id="iskFile" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
           ${/* fotos, PDF y notas de voz: solo cuando el servidor tiene la ruta de archivos de ISKRA configurada (si no, llegaban como link) */""}
           ${ISK.media ? `<button type="button" class="cw-ic" data-iskfile="1" title="Foto o PDF" aria-label="Adjuntar foto o PDF">📎</button>
