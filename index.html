@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 03:35:30 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 03:36:59 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792640130">
+<link rel="stylesheet" href="/auth.css?v=1792640219">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792640130"></script>
+<script src="/claude-shim.js?v=1792640219"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -6962,7 +6962,7 @@ function renderIskra(){
           ${ISK.media ? `<button type="button" class="cw-ic" data-iskfile="1" title="Foto o PDF" aria-label="Adjuntar foto o PDF">📎</button>
           <button type="button" class="cw-ic${ISK.rec?" rec":""}" data-iskrec="1" title="${ISK.rec?"Detener y adjuntar":"Nota de voz"}" aria-label="Nota de voz">${ISK.rec?`● ${ISK.recS||0}s`:"🎤"}</button>` : ""}
           <details class="cw-more cw-tpl"><summary class="cw-ic" title="Plantillas" aria-label="Plantillas">📝</summary><div class="cw-menu up">${iskTplMenu(c)}</div></details>
-          <textarea rows="1" data-iskin="1" placeholder="Escribe un mensaje…">${esc(ISK.draft[c.id]||"")}</textarea>
+          <textarea rows="1" data-iskin="1" enterkeyhint="enter" autocapitalize="sentences" placeholder="Escribe un mensaje…">${esc(ISK.draft[c.id]||"")}</textarea>
           <button type="button" class="btn small primary cw-send" data-isksend="1"${ISK.busy?" disabled":""} aria-label="Enviar"><span class="snd-t">${demo?"Enviar (ej.)":"Enviar"}</span></button></div>`}
       </div>` : `<div class="cw-c"><p class="mut small">Esta conversación es de ${esc(iskWho(c.owner))}.</p></div>`}
     </div>`;
@@ -7048,8 +7048,8 @@ async function iskRecToggle(){
 }
 document.addEventListener("input", e => { const qi = e.target.closest("[data-iskq]"); if (!qi) return; ISK.q = qi.value; const q = fold(qi.value);
   document.querySelectorAll("#iskBox .ck").forEach(b => b.hidden = !!q && !(b.dataset.s||"").includes(q)); });
-document.addEventListener("input", e => { const ta = e.target.closest("[data-iskin]"); if (ta){ ta.style.height = "auto"; ta.style.height = Math.min(140, ta.scrollHeight) + "px"; } });
-document.addEventListener("keydown", e => { const ta = e.target.closest && e.target.closest("[data-iskin]"); if (ta && e.key==="Enter" && !e.shiftKey && !e.isComposing){ e.preventDefault(); const b = document.querySelector("[data-isksend]"); b && b.click(); } });
+document.addEventListener("input", e => { const ta = e.target.closest("[data-iskin]"); if (ta){ ta.style.height = "auto"; ta.style.height = Math.min(170, ta.scrollHeight) + "px"; } });
+document.addEventListener("keydown", e => { const ta = e.target.closest && e.target.closest("[data-iskin]"); if (ta && e.key==="Enter" && !e.shiftKey && !e.isComposing && !matchMedia("(pointer:coarse)").matches) /* en celular ⏎ es salto de línea, como WhatsApp; se manda con ➤ */{ e.preventDefault(); const b = document.querySelector("[data-isksend]"); b && b.click(); } });
 document.addEventListener("input", e => { const t = e.target.closest("[data-iskin]"); if (t && ISK.sel){ ISK.draft[ISK.sel] = t.value; const bar = t.closest(".cw-bar"); if (bar) bar.classList.toggle("has-text", !!t.value.trim() || !!(ISK.att && ISK.att.id===ISK.sel)); } });
 document.addEventListener("change", async e => {
   const o = e.target.closest("[data-iskown]");
