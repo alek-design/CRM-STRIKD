@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 23:52:15 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 23:54:43 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792713135">
+<link rel="stylesheet" href="/auth.css?v=1792713283">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792713135"></script>
+<script src="/claude-shim.js?v=1792713283"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -302,6 +302,7 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .cw-own-t{flex:0 0 auto!important;max-width:46%!important;font-size:12.5px;font-weight:600;padding:4px 8px!important;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--fg)}
 span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ck-b.pin{background:#fde68a;color:#7c4a03;margin-right:4px}.ck-b.int{background:none;padding:0 2px;font-size:12px}
+.slot-why{font-size:12.5px;margin:6px 0}.slot-why summary{cursor:pointer;color:var(--muted)}.slot-why div{padding:2px 0}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -2730,6 +2731,10 @@ function renderSlots(){
   box.innerHTML = `<div class="slots-h"><b>Horarios libres${ln && ln!=="Alguien del equipo" ? ` de ${esc(ln)}` : " de tu team leader"}</b><span class="mut small">cada meet dura 45 min · tachados: se encima con otro meet${SL.googleOk?" · en amarillo: ocupado en su calendario":""}</span><div class="spacer"></div><button type="button" class="btn small" data-slotnext="1">Siguiente libre</button></div>
     <div class="slot-days">${days.map(d => { const dt = new Date(d+"T12:00:00Z"); return `<button type="button" data-slotday="${d}" class="${d===SL.day?"on":""}">${wk[dt.getUTCDay()]} ${dt.getUTCDate()}</button>`; }).join("")}</div>
     <div class="slot-times">${times.map(([v,t]) => { const c = slotClash(t); return `<button type="button" data-slot="${v}" class="${v===cur?"on":""}${c&&c.hard?" busy":c?" gbusy":""}"${c&&c.hard?` disabled title="Ya hay ${SLOT_KIND[c.kind]||"un meet"}${c.mine?" tuyo":""} a esa hora"`:""}>${v.slice(11)}</button>`; }).join("") || `<span class="mut small">Ya no quedan horarios este día.</span>`}</div>
+    ${(() => { // por qué está ocupado (solo Head/Manager, o el leader en su propio calendario)
+      const all = [...(SL.busy.board||[]).map(x => ({t:x.t, end:x.t + SLOT_MIN, why:x.why})), ...(SL.busy.manual||[]), ...(SL.busy.google||[])].filter(x => x.why && new Date(x.t - OFF).toISOString().slice(0,10) === SL.day).sort((a,b) => a.t - b.t);
+      const hm = t => new Date(t - OFF).toISOString().slice(11,16);
+      return all.length ? `<details class="slot-why"><summary>¿Por qué hay horarios ocupados? (${all.length})</summary>${all.map(x => `<div><b>${hm(x.t)}–${hm(x.end || x.t + SLOT_MIN)}</b> ${esc(x.why)}</div>`).join("")}</details>` : ""; })()}
     ${cl && cl.hard ? `<p class="slot-err">${cl.kind==="manual" ? (cl.mine ? "A esa hora ya tienes algo en tu agenda." : "A esa hora tu team leader tiene algo en su agenda.") : `A esa hora tu team leader ya tiene ${SLOT_KIND[cl.kind]||"un meet"}${cl.mine?" (tuyo)":""}.`} Elige otro horario.</p>` : cl ? `<p class="slot-warn">Tu team leader tiene algo en su calendario a esa hora. Puedes agendar, pero confirma que sí puede.</p>` : ""}`;
 }
 $("slotBox").addEventListener("click", e => {
