@@ -372,6 +372,13 @@ module.exports = async (req, res) => {
             tried.push({path, ok:true, body:JSON.stringify(j).slice(0, 400)}); }
           catch(e){ tried.push({path, ok:false, status:e.status || 0, body:String(e.message).slice(0, 200)}); }
         }
+        try{ // ¿las filtra por número que envía?
+          const nj = await iskra("GET", "/v1/numbers"), arr = Array.isArray(nj) ? nj : (nj.data || nj.numbers || []);
+          for (const n of arr.slice(0, 3)){ const nid = n.id || n.number_id; if (!nid) continue;
+            for (const q of ["number_id", "sender_number_id"]){ const path = `/v1/templates?${q}=${encodeURIComponent(nid)}`;
+              try{ const j = await iskra("GET", path); if (hasArr(j, 0)) return {data:j, from:path, tried}; tried.push({path, ok:true, body:JSON.stringify(j).slice(0, 200)}); }
+              catch(e){ tried.push({path, ok:false, status:e.status || 0, body:String(e.message).slice(0, 200)}); } } }
+        }catch(_){}
         return {data:[], tried};
       }
       throw Object.assign(new Error("Operación no permitida"), {status:400});
