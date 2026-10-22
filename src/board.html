@@ -270,6 +270,7 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 #view-flow .tld-list span{display:inline-block;min-width:78px;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600}
 #view-flow .tld-0{color:var(--muted)}
 .h24-full{white-space:pre-line}
+.linkbtn.danger{color:#e5484d}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -6530,7 +6531,7 @@ function renderTpl(){
     const win = used.length > 1 && used.every(([,x]) => x.sent >= 10) ? used.slice().sort((x,y) => y[1].rep/y[1].sent - x[1].rep/x[1].sent)[0][0] : null;
     const vrow = (k, s) => `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span><p>${esc((t.variants[k]||{}).text||"")}</p>${(() => { const vf = t.variants[k]||{}; const full = (vf.iskTplId || vf.iskTplName) ? iskFullText(vf) : ""; return full ? `<div class="tpl-full"><span>Así le llega:</span>${esc(full)}</div>` : ""; })()}${(t.variants[k]||{}).iskTplId?`<span class="chip ok">📄 ISKRA: ${esc(t.variants[k].iskTplName||t.variants[k].iskTplId)}</span>`:(t.variants[k]||{}).fileId?`<span class="chip muted">📎 ${esc(t.variants[k].fileName||"PDF")} · link</span>`:""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`;
     return `<div class="tpl-card${t.active===false?" off":""}"><div class="msg-top"><b>${esc(t.name)}</b><span class="chip info">${esc(TRIG[t.trigger]||t.trigger)}</span>${t.autoSend?`<span class="chip ok">🤖 Se manda sola</span>`:""}${t.active===false?`<span class="chip muted">Pausada</span>`:""}<div class="spacer"></div>
-      ${lead ? `<button type="button" class="linkbtn" data-tpledit="${id}">Editar</button><button type="button" class="linkbtn" data-tpltoggle="${id}">${t.active===false?"Activar":"Pausar"}</button>` : ""}</div>
+      ${lead ? `<button type="button" class="linkbtn" data-tpledit="${id}">Editar</button><button type="button" class="linkbtn" data-tpltoggle="${id}">${t.active===false?"Activar":"Pausar"}</button><button type="button" class="linkbtn danger" data-tpldel="${id}">Eliminar</button>` : ""}</div>
       ${vrow("a", sa)}${hasB ? vrow("b", sb) : ""}${hasC ? vrow("c", sc) : ""}</div>`; };
   // bloques: automática · chat (dentro de 24 h, por tipo) · después de 24 h
   const CHAT_T = ["interesado","pregunta","precio","objecion","no_interesado","general"];
@@ -6617,6 +6618,9 @@ $("tplBox").addEventListener("click", async e => {
   if (q("[data-tpledit]")){ const id = q("[data-tpledit]").dataset.tpledit, t = S.tpls[id]; const va = (t.variants||{}).a||{}, vb = (t.variants||{}).b||{}, vc = (t.variants||{}).c||{};
     TPLF.cur = {id, name:t.name, trigger:t.trigger, autoSend:!!t.autoSend, atext:va.text, afileId:va.fileId, afileName:va.fileName, aisk:(iskTplRef(va)||{}).id||"", btext:vb.text, bfileId:vb.fileId, bfileName:vb.fileName, bisk:(iskTplRef(vb)||{}).id||"", ctext:vc.text, cfileId:vc.fileId, cfileName:vc.fileName, cisk:(iskTplRef(vc)||{}).id||""}; TPL_FORM = true; return schedule(); }
   if (q("[data-tplautonew]")){ TPL_FORM = true; TPLF.cur = {trigger:"auto", autoSend:true, name:"Segundo intento (respuesta automática)", ...AUTO_DRAFT}; return schedule(); }
+  if (q("[data-tpldel]")){ const id = q("[data-tpldel]").dataset.tpldel, t = S.tpls[id]; if (!t || !confirm(`¿Eliminar la plantilla "${t.name || "sin nombre"}"?\n\nYa no saldrá en el panel ni en el chat.`)) return;
+    // se marca como eliminada (no se borra el doc): así la carga inicial del servidor no la vuelve a crear
+    delete S.tpls[id]; schedule(); return db.doc(`waTemplates/${id}`).update({deleted:true, active:false, updatedAt:Date.now()}).catch(()=>{}); }
   if (q("[data-tpltoggle]")){ const id = q("[data-tpltoggle]").dataset.tpltoggle; return db.doc(`waTemplates/${id}`).update({active: S.tpls[id].active===false}).catch(()=>{}); }
   if (q("[data-tplsave]")){
     const f = TPLF.cur || {}, err = $("tplErr");
@@ -7800,7 +7804,7 @@ async function boot(){
     if (S.isOwner && (!S.config || S.config.headId !== S.uid)) db.doc("config/main").set({...(S.config||{}), headId:S.uid}).catch(()=>{});
   }, snapErr);
   joinMembers();
-  db.collection("waTemplates").onSnapshot(s => { S.tpls={}; s.docs.forEach(d=>S.tpls[d.id]=d.data()); schedule(); }, snapErr);
+  db.collection("waTemplates").onSnapshot(s => { S.tpls={}; s.docs.forEach(d=>{ const x = d.data(); if (!x || !x.deleted) S.tpls[d.id]=x; }); schedule(); }, snapErr);
   gcalInit();
 
   let saved=null; try{ saved = localStorage.getItem("meets_tab"); }catch(e){}
