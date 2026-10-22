@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 01:46:44 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 01:49:06 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792633604">
+<link rel="stylesheet" href="/auth.css?v=1792633746">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792633604"></script>
+<script src="/claude-shim.js?v=1792633746"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -6719,17 +6719,18 @@ async function iskTail(id){
     const add = iskArr(j).map(m => ({d:iskDir(m), t:iskTxt(m) || (iskMedia(m) ? "" : "📎 Archivo o nota de voz"), at:iskAt(m), st:m.status||"", media:iskMedia(m)}));
     if (!add.length || ISK.sel!==id) return;
     const PH = "📎 Archivo o nota de voz";
-    const same = (a, b) => a.d===b.d && a.t===b.t && Math.abs((a.at||0) - (b.at||0)) < 3000;
+    const same = (a, b) => a.d===b.d && a.t===b.t && Math.abs((a.at||0) - (b.at||0)) < (a.t ? 120e3 : 3000);
     // la vía rápida trae los archivos sin el archivo: es el mismo mensaje si ya hay uno con archivo (o vacío) casi a la misma hora
     const sameFile = (x, m) => m.t===PH && x.d===m.d && (x.media || x.t===PH || x.t==="") && Math.abs((x.at||0) - (m.at||0)) < 120e3;
     let list = cur.slice(), changed = false, newFile = false;
     add.forEach(m => {
       if (list.some(x => (!x.local && same(x, m)) || sameFile(x, m))) return;
       if (m.t===PH) newFile = true;
-      const li = list.findIndex(x => x.local && x.d==="out" && x.t===m.t); if (li >= 0) list.splice(li, 1); // ya llegó el que mandamos
+      const li = list.findIndex(x => x.local && x.d==="out" && x.t===m.t); if (li >= 0){ if (!m.media && list[li].media && !/^blob:/.test(list[li].media.url||"")) m.media = list[li].media; list.splice(li, 1); } // ya llegó el que mandamos
       list.push(m); changed = true;
     });
     if (!changed) return;
+    iskKeepMedia(id, list);
     // llegó un archivo nuevo: recargar el chat con la cuenta del panel para verlo (una vez)
     if (newFile && ISK.media) setTimeout(() => iskThread(id, true, true), 300);
     list.sort((a, b) => (a.at||0) - (b.at||0)); ISK.msgs[id] = list;
@@ -6761,12 +6762,21 @@ async function iskThread(id, quiet, force){
     const mine = (ISK.sent[id]||[]).filter(x => Date.now() - x.at < 90e3);
     ISK.msgs[id] = ms.concat(pend); ISK.sent[id] = (j.sent || []).concat(mine.filter(x => !(j.sent||[]).some(y => y.text===x.text)));
     if (j.appDebug) ISK.appDebug = j.appDebug;
+    iskKeepMedia(id, ISK.msgs[id]);
     if (j.via !== "app") iskConvMedia(id); }
   catch(e){ if (!quiet) ISK.err = e.message; }
   schedule();
 }
+// lo que mandamos con archivo: si el servidor lo regresa sin el archivo, se le vuelve a poner (mismo texto, misma hora aprox.)
+function iskKeepMedia(id, list){
+  const sm = ISK.sentMedia[id]; if (!sm || !sm.length) return;
+  list.forEach(b => { if (b.d!=="out" || (b.media && b.media.url)) return;
+    const t = b.t === "📎 Archivo o nota de voz" ? "" : (b.t || "");
+    const hit = sm.find(x => x.t === t && (!b.at || Math.abs((b.at||0) - x.at) < 10*60e3)); if (hit){ b.media = {...hit.media}; if (!t) b.t = ""; } });
+}
 // la API pública no trae fotos/PDF/audios: se leen aparte (cuenta del panel en ISKRA) y se pegan a su burbuja por hora y dirección
 const ISK_CM = {};
+ISK.sentMedia = ISK.sentMedia || {};
 async function iskConvMedia(id){
   if (!ISK.media || !id) return; const c = ISK_CM[id] ||= {at:0, items:[], busy:false};
   if (!c.busy && Date.now() - c.at > 20e3){ c.busy = true;
@@ -7077,7 +7087,8 @@ document.addEventListener("click", async e => {
     try{
       let media = null;
       if (!att && tm) media = {url:tm.url, type:tm.type, name:tm.name};
-      if (att){ const up = window.STRIKD_UPLOAD ? await window.STRIKD_UPLOAD(att.blob, att.name) : {url:att.preview, type:att.blob.type, name:att.name}; media = {url:up.url, type:up.type || att.blob.type, name:att.name}; bub.st = "enviando…"; schedule(); }
+      if (att){ const up = window.STRIKD_UPLOAD ? await window.STRIKD_UPLOAD(att.blob, att.name) : {url:att.preview, type:att.blob.type, name:att.name}; media = {url:up.url, type:up.type || att.blob.type, name:att.name}; bub.media = {...media}; bub.st = "enviando…"; schedule(); }
+      if (media) (ISK.sentMedia[id] ||= []).push({t:text, at:bub.at, media:{...media}});
       const rr = await iskFn()("reply", {conversation_id:id, text, idempotency_key:key, ...(media ? {media} : {})}); bub.st = "enviado";
       if (rr && rr.mediaErr){ bub.st = "solo se envió el texto"; ISK.err = "El archivo no se pudo mandar: " + rr.mediaErr; }
       ISK.lastReply = rr;
