@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 19:03:17 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 20:20:39 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792695797">
+<link rel="stylesheet" href="/auth.css?v=1792700439">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792695797"></script>
+<script src="/claude-shim.js?v=1792700439"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -283,6 +283,7 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .tpl-full .fx{color:var(--muted)}.tpl-full .vv{color:var(--fg);font-weight:600}.tpl-fixed{display:grid;gap:6px;background:color-mix(in srgb,#25D366 8%,var(--surface));border:1px solid color-mix(in srgb,#25D366 30%,var(--line));border-radius:10px;padding:8px 10px}.tpl-fixed .fx{white-space:pre-wrap;color:var(--muted);font-size:14px}.tpl-fixed p{margin:0}
 .cal-ev.declined,.ap-ev.declined{outline:2px dashed #e5484d;outline-offset:-2px}
 .rem-q{display:flex;flex-wrap:wrap;gap:6px}.cw-remb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:6px 12px;background:color-mix(in srgb,#f5a524 14%,var(--surface));border-bottom:1px solid var(--line)}.cw-remb span{flex:1;min-width:0}
+.ck-dir{font-style:normal;font-weight:700;margin-right:4px}.ck-dir.in{color:#25D366}.ck-dir.out{color:var(--muted)}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -7032,6 +7033,15 @@ function iskTplMenu(c){
     return `<button type="button" data-isktpl="${esc(id)}"><span><b>${esc(t.name||"Plantilla")}</b><small>${esc(String(v.text||"").slice(0,90))}</small></span></button>`; }).join("")).join("");
   return chips + `<div class="tpl-items">${list}</div><p class="mut small tpl-hint">Al elegirla se pone en el cuadro: revísala o cámbiala y luego toca Enviar.</p>`;
 }
+// leído: al abrir un chat se guarda la hora (por persona, en todos sus dispositivos); el número verde solo sale si llegó algo después
+const ISKSEEN = {}; let ISKSEEN_SUB = null;
+function iskSeenSub(){ const u = S.uid; if (!u || ISKSEEN_SUB === u || !db) return; ISKSEEN_SUB = u;
+  try{ Object.assign(ISKSEEN, JSON.parse(localStorage.getItem("strikd_iskseen_" + u) || "{}")); }catch(_){}
+  db.collection(`meets/${u}/iskseen`).onSnapshot(sn => { sn.docs.forEach(d => { const t = Number((d.data()||{}).at) || 0; if (t > (ISKSEEN[d.id]||0)) ISKSEEN[d.id] = t; }); schedule(); }, () => {}); }
+function iskSeenMark(c){ if (!c || !S.uid || S.viewAs || document.visibilityState === "hidden") return; const t = Math.max(Date.now(), c.at || 0); if ((ISKSEEN[c.id]||0) >= (c.at||0) && ISKSEEN[c.id]) return;
+  ISKSEEN[c.id] = t; try{ localStorage.setItem("strikd_iskseen_" + S.uid, JSON.stringify(ISKSEEN)); }catch(_){}
+  db.doc(`meets/${S.uid}/iskseen/${c.id}`).set({at:t}).catch(() => {}); }
+const iskUnread = x => { iskSeenSub(); return x.unread && x.lastDir==="in" && !((ISKSEEN[x.id]||0) >= (x.at||0)) ? x.unread : 0; };
 function iskBubbles(c){ const ms = ISK.msgs[c.id]; return !ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}${x.failed?" failed":""}">${iskMediaHtml(x)}${x.t?`<p>${esc(x.t)}</p>`:""}<span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`; }
 function renderIskra(){
   const box = $("iskBox"); if (!box) return;
@@ -7068,10 +7078,11 @@ function renderIskra(){
       ${iskAv(x, n, "ck-av")}
       <span class="ck-m"><span class="ck-1"><b>${esc(n)}</b>${st==="mgr" ? `<em class="ck-b mgr">${lead?"Te toca":"Manager"}</em>` : ""}${(() => { if (!x.waitSince || x.lastDir!=="in" || x.disc) return ""; const w = bizMs(x.waitSince, Date.now()), m = Math.round(w/60e3);
         return `<em class="ck-w ${w >= 60*60e3 ? "bad" : w >= 15*60e3 ? "mid" : ""}" title="Esperando respuesta (cuenta de 8 am a 8 pm)">esperando ${m < 60 ? Math.max(1,m) + " min" : (Math.round(m/6)/10) + " h"}</em>`; })()}<time>${x.at?ago(x.at):""}</time></span>
-      <span class="ck-2"><span class="ck-tx">${x.lastDir==="out"?"Tú: ":""}${esc(String(x.last).slice(0,90)) || "<i>Sin mensajes</i>"}</span>${lead?`<span class="ck-o">${x.owner ? esc(iskWho(x.owner).split(" ")[0]) : "sin dueño"}</span>`:""}</span></span>
-      ${x.unread?`<span class="ck-n">${x.unread}</span>`:""}</button>`; };
+      <span class="ck-2"><span class="ck-tx">${x.last ? (x.lastDir==="out" ? `<i class="ck-dir out" title="Lo último lo mandamos nosotros">↗</i>` : `<i class="ck-dir in" title="Lo último lo mandó el prospecto">↙</i>`) : ""}${x.lastDir==="out"?"Tú: ":""}${esc(String(x.last).slice(0,90)) || "<i>Sin mensajes</i>"}</span>${lead?`<span class="ck-o">${x.owner ? esc(iskWho(x.owner).split(" ")[0]) : "sin dueño"}</span>`:""}</span></span>
+      ${iskUnread(x)?`<span class="ck-n">${iskUnread(x)}</span>`:""}</button>`; };
   let right = `<div class="cw cw-none"><div><b>Elige una conversación</b><p class="mut small">Aquí solo salen los prospectos que ya contestaron.</p></div></div>`;
   if (c){
+    iskSeenMark(c);
     const mt = iskMatch(c.phone), mine = c.owner===me, canSend = lead || mine;
     const recent = c.lastSender && c.lastSender!==me && Date.now() - c.lastSentAt < 10*60e3;
     right = `<div class="cw">
