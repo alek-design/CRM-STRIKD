@@ -7052,9 +7052,11 @@ function renderIskra(){
 }
 // plantilla aprobada de ISKRA: un campo por variable ({{1}}, {{2}}…); se prellenan con el nombre y el texto de nuestra plantilla
 function iskTplVars(ti){
-  const t = (ISKT.list || []).find(x => (ti.id && x.id===ti.id) || (ti.byName && iskNorm(x.name)===iskNorm(ti.byName)));
+  const mold = ISK_COPY_MOLD[iskNorm(ti.name)] || ti.byName || "";
+  const t = (ISKT.list || []).find(x => (ti.id && x.id===ti.id) || (mold && iskNorm(x.name)===iskNorm(mold)));
   if (t && !ti.id) ti.id = t.id;
-  const names = t && t.varNames && t.varNames.length ? t.varNames : t && t.vars ? Array.from({length:t.vars}, (_, i) => String(i+1)) : [];
+  // copy "24h reply" (id que no viene en la lista de moldes): sus variables son las de su molde; si no se sabe, {{1}}
+  const names = t && t.varNames && t.varNames.length ? t.varNames : t && t.vars ? Array.from({length:t.vars}, (_, i) => String(i+1)) : ti.id && ISKT.list ? ["1"] : [];
   if (!ti.vals && t){ const p = ti.pre || {}; ti.vals = {};
     names.forEach((n, i) => { ti.vals[n] = names.length===1 ? (p.text || p.nombre || "") : i===0 ? (p.nombre || "") : i===names.length-1 ? (p.text || "") : ""; }); }
   return {t, names};
