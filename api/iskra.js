@@ -426,7 +426,7 @@ module.exports = async (req, res) => {
         const nOf = cv => { const k = Object.keys(cv).find(x => /(messages?_count|total_messages|message_count|messages_sent|sent_count)/i.test(x) && Number(cv[x]) >= 0); return k ? Number(cv[k]) : null; };
         const out = convs.map(cv => { const id = String(cv.id || cv.conversation_id), [camp, campName] = campOf(cv), sn = seenR[id], ow = ownR[id];
           const lm = cv.last_message || {}, lastIn = /^in/i.test(String(lm.direction || cv.last_message_direction || ""));
-          return {id, phone:digits(cv.contact_phone || convPhone(cv)), camp, campName, n:nOf(cv), at:Date.parse(cv.created_at || "") || null,
+          return {id, phone:digits(cv.contact_phone || convPhone(cv)), camp, campName, n:nOf(cv), at:Date.parse(cv.created_at || cv.first_message_at || cv.started_at || cv.inserted_at || "") || null,
             replied:!!((sn && (sn.real === true || (sn.real == null && sn.replied))) || (ow && ow.replied_at) || lastIn || Number(cv.unread_count || 0) > 0)}; });
         const r = {data:{summary:sum, campaigns:acc, convs:out, keys:{conv:Object.keys(convs[0] || {}).slice(0, 40)}, pages}};
         REP_CACHE.at = Date.now(); REP_CACHE.data = r; return r;
