@@ -6795,6 +6795,13 @@ function iskOwnerOpts(sel){
   return `<option value="">Sin dueño</option>` + ids.map(id => `<option value="${esc(id)}"${id===sel?" selected":""}>${esc(iskWho(id))}</option>`).join("");
 }
 // plantillas por categoría para contestar rápido (variante A/B como en Plantillas)
+// el porqué que manda ISKRA (provider_message, reason, details…), corto y legible
+function iskErrDetail(d){
+  if (!d || typeof d !== "object") return "";
+  const pick = []; const walk = (o, dep) => { if (!o || typeof o !== "object" || dep > 4) return;
+    for (const [k, v] of Object.entries(o)){ if (typeof v === "string" && /message|reason|detail|error|title|hint|description/i.test(k) && v.length < 300 && !pick.includes(v) && v !== "send_failed") pick.push(v); else if (typeof v === "object") walk(v, dep+1); } };
+  walk(d, 0); return pick.length ? " · " + pick.slice(0, 3).join(" · ") : " · " + JSON.stringify(d).slice(0, 300);
+}
 // molde de ISKRA de una variante: por id, o por nombre (las plantillas dadas de alta desde el servidor solo traen el nombre)
 const iskNorm = x => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 function iskTplRef(vf){
@@ -7087,7 +7094,7 @@ document.addEventListener("click", async e => {
       (ISK.msgs[id] ||= []).push(bub); ISK.draft[id] = ""; boxSet(""); ISK.err = ""; (ISK.sent[id] ||= []).push({by:meId(), text:bub.t, at:bub.at}); schedule();
       try{ const rr = await iskFn()("reply", {conversation_id:id, template_id:ti.id, label:ti.name, idempotency_key:key, ...(names.length ? {variables:vars} : {})}); bub.st = "enviado"; ISK.lastReply = rr;
         if (tu0) db.doc(`meets/${meId()}/tpllog/${key}`).set({tpl:tu0.id, v:tu0.v, at:Date.now(), conv:id}).catch(() => {}); setTimeout(() => iskTail(id), 1200); }
-      catch(err){ ISK.lastErr = {error:err.message, detail:err.detail||null}; bub.st = "no se envió"; bub.failed = true; ISK.err = "No se envió la plantilla de ISKRA: " + err.message; }
+      catch(err){ ISK.lastErr = {error:err.message, detail:err.detail||null}; bub.st = "no se envió"; bub.failed = true; ISK.err = "No se envió la plantilla de ISKRA: " + err.message + iskErrDetail(err.detail); }
       return schedule();
     }
     const tm = ISK.tplMedia && ISK.tplMedia.conv===id ? ISK.tplMedia : null, tu = ISK.tplUsed && ISK.tplUsed.conv===id ? ISK.tplUsed : null;

@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 02:03:18 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 02:05:01 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792634598">
+<link rel="stylesheet" href="/auth.css?v=1792634701">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792634598"></script>
+<script src="/claude-shim.js?v=1792634701"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("strikd_theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}</script>
@@ -6804,6 +6804,13 @@ function iskOwnerOpts(sel){
   return `<option value="">Sin dueño</option>` + ids.map(id => `<option value="${esc(id)}"${id===sel?" selected":""}>${esc(iskWho(id))}</option>`).join("");
 }
 // plantillas por categoría para contestar rápido (variante A/B como en Plantillas)
+// el porqué que manda ISKRA (provider_message, reason, details…), corto y legible
+function iskErrDetail(d){
+  if (!d || typeof d !== "object") return "";
+  const pick = []; const walk = (o, dep) => { if (!o || typeof o !== "object" || dep > 4) return;
+    for (const [k, v] of Object.entries(o)){ if (typeof v === "string" && /message|reason|detail|error|title|hint|description/i.test(k) && v.length < 300 && !pick.includes(v) && v !== "send_failed") pick.push(v); else if (typeof v === "object") walk(v, dep+1); } };
+  walk(d, 0); return pick.length ? " · " + pick.slice(0, 3).join(" · ") : " · " + JSON.stringify(d).slice(0, 300);
+}
 // molde de ISKRA de una variante: por id, o por nombre (las plantillas dadas de alta desde el servidor solo traen el nombre)
 const iskNorm = x => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 function iskTplRef(vf){
@@ -7096,7 +7103,7 @@ document.addEventListener("click", async e => {
       (ISK.msgs[id] ||= []).push(bub); ISK.draft[id] = ""; boxSet(""); ISK.err = ""; (ISK.sent[id] ||= []).push({by:meId(), text:bub.t, at:bub.at}); schedule();
       try{ const rr = await iskFn()("reply", {conversation_id:id, template_id:ti.id, label:ti.name, idempotency_key:key, ...(names.length ? {variables:vars} : {})}); bub.st = "enviado"; ISK.lastReply = rr;
         if (tu0) db.doc(`meets/${meId()}/tpllog/${key}`).set({tpl:tu0.id, v:tu0.v, at:Date.now(), conv:id}).catch(() => {}); setTimeout(() => iskTail(id), 1200); }
-      catch(err){ ISK.lastErr = {error:err.message, detail:err.detail||null}; bub.st = "no se envió"; bub.failed = true; ISK.err = "No se envió la plantilla de ISKRA: " + err.message; }
+      catch(err){ ISK.lastErr = {error:err.message, detail:err.detail||null}; bub.st = "no se envió"; bub.failed = true; ISK.err = "No se envió la plantilla de ISKRA: " + err.message + iskErrDetail(err.detail); }
       return schedule();
     }
     const tm = ISK.tplMedia && ISK.tplMedia.conv===id ? ISK.tplMedia : null, tu = ISK.tplUsed && ISK.tplUsed.conv===id ? ISK.tplUsed : null;
