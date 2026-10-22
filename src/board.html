@@ -271,6 +271,7 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 #view-flow .tld-0{color:var(--muted)}
 .h24-full{white-space:pre-line}
 .linkbtn.danger{color:#e5484d}
+.tpl-full .fx{color:var(--muted)}.tpl-full .vv{color:var(--fg);font-weight:600}.tpl-fixed{display:grid;gap:6px;background:color-mix(in srgb,#25D366 8%,var(--surface));border:1px solid color-mix(in srgb,#25D366 30%,var(--line));border-radius:10px;padding:8px 10px}.tpl-fixed .fx{white-space:pre-wrap;color:var(--muted);font-size:14px}.tpl-fixed p{margin:0}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -6515,11 +6516,13 @@ function renderTpl(){
   const draft = AST.text ?? (res ? res.respuesta : "");
   const wa = tg && draft ? waLink(tg.phone, draft) : "";
   const f = TPLF.cur || {};
-  const vIn = (vk) => `<div class="tpl-v"><b>Variante ${vk.toUpperCase()}${vk!=="a"?" (opcional)":""}</b>
-      <textarea rows="3" data-tplf="${vk}text" placeholder="Usa {nombre} para su nombre">${esc(f[vk+"text"]||"")}</textarea>
+  const vIn = (vk) => { const selM = iskMoldOf(f[vk+"isk"]), selId = selM ? selM.id : f[vk+"isk"], pp = iskParts(f[vk+"isk"]);
+    return `<div class="tpl-v"><b>Variante ${vk.toUpperCase()}${vk!=="a"?" (opcional)":""}</b>
+      <label class="f small">Plantilla de ISKRA${(f.trigger||"auto")==="h24" ? "" : " (opcional)"}<select data-tplf="${vk}isk">${iskTplOpts(selId)}</select></label>
+      ${pp ? `<div class="tpl-fixed"><p class="mut small">Lo gris lo pone la plantilla de ISKRA (no se puede cambiar). Tú solo escribes lo de en medio:</p>${pp.pre ? `<div class="fx">${esc(pp.pre)}</div>` : ""}<textarea rows="3" data-tplf="${vk}text" placeholder="Tu mensaje (va en medio)">${esc(f[vk+"text"]||"")}</textarea>${pp.post ? `<div class="fx">${esc(pp.post)}</div>` : ""}</div>`
+        : `<textarea rows="3" data-tplf="${vk}text" placeholder="Usa {nombre} para su nombre">${esc(f[vk+"text"]||"")}</textarea>`}
       <label class="filepick small"><input type="file" accept="application/pdf,image/*" data-tplfile="${vk}"><span>${esc(f[vk+"fileName"] || "Adjuntar PDF (opcional, va como link)")}</span></label>
-      <label class="f small">Plantilla de ISKRA con archivo (opcional)<select data-tplf="${vk}isk">${iskTplOpts(f[vk+"isk"])}</select></label>
-      ${vk==="a" ? `<p class="mut small"><button type="button" class="linkbtn" data-iskreload="1">↻ Recargar de ISKRA</button>${ISKT.list && !ISKT.loading ? ` · ${ISKT.list.length} encontradas${ISKT.from ? ` en ${esc(ISKT.from)}` : ""}` : ""}${S.isOwner ? ` · <button type="button" class="linkbtn" data-iskfind="1">${ISKT.finding ? "Buscando…" : "🔎 Buscar copies en ISKRA"}</button>` : ""}${S.isOwner && ISKT.raw !== undefined ? ` · <button type="button" class="linkbtn" data-iskrawt="1">${ISKT.showRaw ? "Ocultar" : "Ver"} respuesta</button>` : ""}</p>${ISKT.list && !ISKT.list.length && !ISKT.loading && (ISKT.tried || ISKT.err) ? `<pre class="isk-raw">Lo que contestó ISKRA:\n${esc(ISKT.err ? ISKT.err : ISKT.tried.map(t => `${t.path} → ${t.ok ? "ok" : "error " + (t.status||"")}: ${t.body}`).join("\n"))}</pre>` : ""}${ISKT.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISKT.raw, null, 1).slice(0, 3000))}</pre>` : ""}${ISKT.found ? `<pre class="isk-raw">Búsqueda de copies:\n${esc(ISKT.found)}</pre>` : ""}` : ""}</div>`;
+      ${vk==="a" ? `<p class="mut small"><button type="button" class="linkbtn" data-iskreload="1">↻ Recargar de ISKRA</button>${ISKT.list && !ISKT.loading ? ` · ${ISKT.list.length} encontradas${ISKT.from ? ` en ${esc(ISKT.from)}` : ""}` : ""}${S.isOwner ? ` · <button type="button" class="linkbtn" data-iskfind="1">${ISKT.finding ? "Buscando…" : "🔎 Buscar copies en ISKRA"}</button>` : ""}${S.isOwner && ISKT.raw !== undefined ? ` · <button type="button" class="linkbtn" data-iskrawt="1">${ISKT.showRaw ? "Ocultar" : "Ver"} respuesta</button>` : ""}</p>${ISKT.list && !ISKT.list.length && !ISKT.loading && (ISKT.tried || ISKT.err) ? `<pre class="isk-raw">Lo que contestó ISKRA:\n${esc(ISKT.err ? ISKT.err : ISKT.tried.map(t => `${t.path} → ${t.ok ? "ok" : "error " + (t.status||"")}: ${t.body}`).join("\n"))}</pre>` : ""}${ISKT.showRaw ? `<pre class="isk-raw">${esc(JSON.stringify(ISKT.raw, null, 1).slice(0, 3000))}</pre>` : ""}${ISKT.found ? `<pre class="isk-raw">Búsqueda de copies:\n${esc(ISKT.found)}</pre>` : ""}` : ""}</div>` };
   const form = TPL_FORM ? `<div class="wa-form"><h3>${f.id?"Editar":"Nueva"} plantilla</h3>
       <label class="f">Nombre<input data-tplf="name" value="${esc(f.name||"")}" placeholder="Ej. Respuesta a automático con PDF"></label>
       <label class="f">¿Cuándo se usa?<select data-tplf="trigger">${Object.entries(TRIG).map(([k,l]) => `<option value="${k}"${(f.trigger||"auto")===k?" selected":""}>${l}</option>`).join("")}</select></label>
@@ -6530,8 +6533,8 @@ function renderTpl(){
     const used = [["a",sa],...(hasB?[["b",sb]]:[]),...(hasC?[["c",sc]]:[])];
     const win = used.length > 1 && used.every(([,x]) => x.sent >= 10) ? used.slice().sort((x,y) => y[1].rep/y[1].sent - x[1].rep/x[1].sent)[0][0] : null;
     // tarjeta limpia: solo el mensaje completo como le llega (sin códigos de ISKRA ni el texto repetido)
-    const vrow = (k, s) => { const vf = t.variants[k]||{}, full = (vf.iskTplId || vf.iskTplName) ? iskFullText(vf) : "";
-      return `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span>${full ? `<div class="tpl-full">${esc(full)}</div>` : `<p>${esc(vf.text||"")}</p>`}${!vf.iskTplId && vf.fileId ? `<span class="chip muted">📎 ${esc(vf.fileName||"PDF")} · link</span>` : ""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`; };
+    const vrow = (k, s) => { const vf = t.variants[k]||{}, full = (vf.iskTplId || vf.iskTplName) ? (iskFullHtml(vf) || esc(iskFullText(vf))) : "";
+      return `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span>${full ? `<div class="tpl-full">${full}</div>` : `<p>${esc(vf.text||"")}</p>`}${!vf.iskTplId && vf.fileId ? `<span class="chip muted">📎 ${esc(vf.fileName||"PDF")} · link</span>` : ""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`; };
     return `<div class="tpl-card${t.active===false?" off":""}"><div class="msg-top"><b>${esc(t.name)}</b><span class="chip info">${esc(TRIG[t.trigger]||t.trigger)}</span>${t.autoSend?`<span class="chip ok">🤖 Se manda sola</span>`:""}${t.active===false?`<span class="chip muted">Pausada</span>`:""}<div class="spacer"></div>
       ${lead ? `<button type="button" class="linkbtn" data-tpledit="${id}">Editar</button><button type="button" class="linkbtn" data-tpltoggle="${id}">${t.active===false?"Activar":"Pausar"}</button><button type="button" class="linkbtn danger" data-tpldel="${id}">Eliminar</button>` : ""}</div>
       ${vrow("a", sa)}${hasB ? vrow("b", sb) : ""}${hasC ? vrow("c", sc) : ""}</div>`; };
@@ -6581,7 +6584,7 @@ $("tplBox").addEventListener("change", e => { const d = e.target.dataset||{}; if
 $("tplBox").addEventListener("change", async e => {
   const d = e.target.dataset||{};
   if (d.ast==="pick"){ AST.pick = e.target.value; AST.res = null; AST.text = null; e.target.blur(); schedule(); }
-  if (d.tplf) (TPLF.cur = TPLF.cur || {})[d.tplf] = e.target.value;
+  if (d.tplf){ (TPLF.cur = TPLF.cur || {})[d.tplf] = e.target.value; if (/isk$/.test(d.tplf)){ e.target.blur(); schedule(); } }
   if (d.tplfile){
     const file = e.target.files && e.target.files[0]; if (!file) return;
     const assets = await claude.use("assets"); const err = $("tplErr");
@@ -6955,6 +6958,13 @@ const ISK_MOLD_GROUP = {"4c138esh16de8f":"ec427d7e-0dac-4b3a-a7ab-9c66f3a45dc6",
 // texto de respaldo de los moldes que usamos (por si ISKRA no lo regresa)
 const ISK_MOLD_BODY = {"4c138esh16de8f":"Hola,\n\n{{1}}\n\nQuedamos en espera de su respuesta.", "af679r2esn1":"Doy seguimiento a mi último mensaje.\n\n{{1}}\n\nQuedo atento."};
 // mensaje completo como le llega: el cuerpo del molde con los valores en {{1}}, {{2}}…
+// texto fijo de la plantilla de ISKRA elegida (lo que aprobó WhatsApp), partido en lo de antes y lo de después de {{1}}
+function iskMoldOf(id){ if (!id) return null; const g = Object.entries(ISK_MOLD_GROUP).find(([, x]) => x===id); if (g) return (ISKT.list||[]).find(x => iskNorm(x.name)===g[0]) || {id, name:g[0]};
+  return (ISKT.list||[]).find(x => x.id===id) || null; }
+function iskParts(id){ const t = iskMoldOf(id); if (!t) return null; const body = t.body || ISK_MOLD_BODY[iskNorm(t.name)] || ""; if (!body) return null;
+  const m = body.split(/\{\{\d+\}\}/); return {pre:m[0].replace(/\s+$/, ""), post:m.slice(1).join("…").replace(/^\s+/, ""), many:m.length > 2, mold:t}; }
+function iskFullHtml(vf){ const p = iskParts(vf && vf.iskTplId) || (vf && vf.iskTplName ? iskParts(((ISKT.list||[]).find(x => iskNorm(x.name)===iskNorm(ISK_COPY_MOLD[iskNorm(vf.iskTplName)] || vf.iskTplName))||{}).id) : null);
+  if (!p) return ""; return `${p.pre ? `<span class="fx">${esc(p.pre)}</span>\n\n` : ""}<span class="vv">${esc(String(vf.text||"").trim() || "…")}</span>${p.post ? `\n\n<span class="fx">${esc(p.post)}</span>` : ""}`; }
 function iskFullText(vf, vals){
   if (!vf) return ""; const grpMold = Object.entries(ISK_MOLD_GROUP).find(([, g]) => g===vf.iskTplId);
   const lt = (ISKT.list || []).find(x => x.id===vf.iskTplId);
