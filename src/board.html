@@ -6242,9 +6242,9 @@ function renderWa(){
   const conResp = convs ? convs.filter(x => x.replied).length : pickN(sumObj, /^(replies|replied|responses)$/i);
   const agend = meets.length, tom = meets.filter(x => x.tom).length, pub = meets.filter(x => x.pub).length;
   const nConv = convs ? convs.filter(x => x.n != null) : [], avgN = nConv.length ? nConv.reduce((a,x) => a + x.n, 0) / nConv.length : (sentMsgs && contactados ? sentMsgs / contactados : null);
-  const st = [["Contactados", contactados, null], ["Con respuesta", conResp, contactados], ["Agendados", agend, conResp], ["Pitch tomado", tom, agend], ["Publicados", pub, tom]];
+  const st = [["Contactados", contactados, null], ["Con respuesta", conResp, contactados], ["Agendados", agend, conResp, contactados], ["Pitch tomado", tom, agend], ["Publicados", pub, tom]];
   const mx = Math.max(1, ...st.map(x => Number(x[1])||0));
-  const fnl = st.map(([l,v,b]) => `<div class="fn-row"><span class="fn-l">${l}</span><div class="fn-bar"><i style="width:${Math.max(v?2:0, Math.round((Number(v)||0)/mx*100))}%"></i></div><span class="fn-n">${nf(v)}</span><span class="fn-p">${b==null?"":pc(v,b)}</span></div>`).join("");
+  const fnl = st.map(([l,v,b,c0]) => `<div class="fn-row"><span class="fn-l">${l}${c0 ? ` <small class="mut">· ${pc(v,c0)} de contactados</small>` : ""}</span><div class="fn-bar"><i style="width:${Math.max(v?2:0, Math.round((Number(v)||0)/mx*100))}%"></i></div><span class="fn-n">${nf(v)}</span><span class="fn-p">${b==null?"":pc(v,b)}</span></div>`).join("");
   // por día de contacto: de los que se contactaron ese día, cuántos contestaron, agendaron y publicaron
   const dayOf = t => t ? new Date(t - OFF).toISOString().slice(0,10) : "";
   const days = {}, dRow = d => days[d] ||= {d, conv:[], meets:[]};
@@ -6255,14 +6255,14 @@ function renderWa(){
   const fmtD = d => { const x = new Date(d + "T12:00:00Z"); return `${DOW[(x.getUTCDay()+6)%7]} ${x.getUTCDate()} ${MONTHS[x.getUTCMonth()]}`; };
   const rowOf = r => { const cont = r.conv.length, resp = r.conv.filter(x => x.replied).length, nn = r.conv.filter(x => x.n != null);
     return {cont, resp, ag:r.meets.length, pub:r.meets.filter(x => x.pub).length, avg:nn.length ? nn.reduce((a,x) => a + x.n, 0) / nn.length : null}; };
-  const tr = (label, r) => { const v = rowOf(r); return `<tr><td><b>${label}</b></td><td class="num">${nf(v.cont)}</td><td class="num">${nf(v.resp)} <small>${pc(v.resp, v.cont)}</small></td><td class="num"><b>${v.ag}</b> <small>${pc(v.ag, v.resp)}</small></td><td class="num">${v.pub}</td><td class="num">${dec(v.avg)}</td></tr>`; };
-  const tbl = allDays.length || noDate ? `<table class="cmp-t wa-t"><thead><tr><th>Día que se contactó</th><th class="num">Contactados</th><th class="num">Con respuesta</th><th class="num">Agendados</th><th class="num">Publicados</th><th class="num">Msj/nutriólogo</th></tr></thead>
+  const tr = (label, r) => { const v = rowOf(r); return `<tr><td><b>${label}</b></td><td class="num">${nf(v.cont)}</td><td class="num">${nf(v.resp)} <small>${pc(v.resp, v.cont)}</small></td><td class="num"><b>${v.ag}</b> <small>${pc(v.ag, v.resp)}</small></td><td class="num"><b>${pc(v.ag, v.cont)}</b></td><td class="num">${v.pub}</td><td class="num">${dec(v.avg)}</td></tr>`; };
+  const tbl = allDays.length || noDate ? `<table class="cmp-t wa-t"><thead><tr><th>Día que se contactó</th><th class="num">Contactados</th><th class="num">Con respuesta</th><th class="num">Agendados</th><th class="num" title="Agendados sobre contactados">% agendados</th><th class="num">Publicados</th><th class="num">Msj/nutriólogo</th></tr></thead>
     <tbody>${shown.map(r => tr(fmtD(r.d), r)).join("")}${noDate && (noDate.conv.length || noDate.meets.length) ? tr("Sin fecha", noDate) : ""}</tbody></table>
     ${allDays.length > 14 ? `<button type="button" class="linkbtn" data-waall="1">${WA_SORT.all ? "Ver solo 14 días" : `Ver los ${allDays.length} días`}</button>` : ""}`
     : `<p class="mut small">${WAS.data ? "Todavía no hay datos por día." : "—"}</p>`;
   box.innerHTML = `
     ${!iskFn() ? `<p class="notice">Al conectar ISKRA aquí salen los envíos, respuestas y campañas en automático.</p>` : WAS.err && !WAS.data ? `<p class="notice">No se pudieron leer los resultados de ISKRA: ${esc(WAS.err)}</p>` : !WAS.data ? `<p class="mut small">Leyendo resultados de ISKRA…</p>` : ""}
-    <div class="wa-kpis"><span><b>${nf(contactados)}</b>Contactados</span><span><b>${nf(conResp)}</b>Con respuesta · ${pc(conResp, contactados)}</span><span><b>${nf(agend)}</b>Agendados · ${pc(agend, conResp)}</span><span><b>${nf(pub)}</b>Publicados</span><span><b>${dec(avgN)}</b>Mensajes promedio por nutriólogo</span></div>
+    <div class="wa-kpis"><span><b>${nf(contactados)}</b>Contactados</span><span><b>${nf(conResp)}</b>Con respuesta · ${pc(conResp, contactados)}</span><span><b>${nf(agend)}</b>Agendados · ${pc(agend, conResp)} de respuestas</span><span><b>${pc(agend, contactados)}</b>Agendados sobre contactados</span><span><b>${nf(pub)}</b>Publicados</span><span><b>${dec(avgN)}</b>Mensajes promedio por nutriólogo</span></div>
     <div class="wa-grid">
       <section class="fn-card"><div class="fn-h"><h3>Generales</h3><button type="button" class="btn small" data-wafresh="1">${WAS.loading ? "Actualizando…" : "↻ Actualizar"}</button></div>${fnl}
         <p class="mut small">Contactados y respuestas salen de ISKRA${demo?" (ejemplo)":""}. Agendados = prospectos con meet real registrado en el panel (uno por prospecto): no cuentan recordatorios ni un segundo meet con la misma persona. Ya no se usan los "meets" que reporta ISKRA.</p></section>
