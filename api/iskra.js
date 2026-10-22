@@ -7,6 +7,7 @@ const { withPg, userFromReq } = require("../lib/google");
 const resptime = require("../lib/resptime");
 const { publicMedia, mediaPayload, asAttachment, withLink, shapes } = require("../lib/iskmedia");
 const iskapp = require("../lib/iskapp");
+const aireply = require("../lib/aireply");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const enc = encodeURIComponent;
 const digits = x => String(x || "").replace(/\D/g, "").slice(-10);
@@ -242,6 +243,8 @@ module.exports = async (req, res) => {
         }
         // esperando respuesta desde (tiempo de respuesta)
         try{ const wm = await resptime.waitMap(c, out.map(x => String(x.id))); out.forEach(x => { if (wm[String(x.id)]) x._strikd.waitSince = wm[String(x.id)]; }); }catch(_){}
+        // lo último que decidió la IA (contestó, "habría contestado" en prueba, o 🙋 revisar)
+        try{ const am = await aireply.latest(c, out.map(x => String(x.id))); out.forEach(x => { if (am[String(x.id)]) x._strikd.ai = am[String(x.id)]; }); }catch(_){}
         T.total = Date.now() - t0; res.setHeader("server-timing", `iskra;dur=${T.iskra}, total;dur=${T.total}`);
         const debug = lead ? {tiempos_ms:T, lista:LIST_CACHE.info, conversaciones_en_lista:list.length, revisadas_esta_vuelta:toCheck.length, pendientes_de_revisar:ids.filter(stale).length - toCheck.length, con_respuesta:out.length, ejemplo_conversacion:list[0] || null} : undefined;
         return {data:{data:out}, mode, debug};
@@ -399,6 +402,7 @@ module.exports = async (req, res) => {
         OWN_CACHE[String(input.id)] = m ? m.id : null;
         return {ok:true};
       }
+      if (op === "aisummary"){ if (!lead) throw Object.assign(new Error("Solo el Head o el Manager."), {status:403}); return {data:await aireply.summary(c)}; }
       if (op === "stats"){
         if (!lead) throw Object.assign(new Error("Solo el Head o el Manager ven los resultados."), {status:403});
         const q = new URLSearchParams(); ["from","to","period"].forEach(k => { if (input[k]) q.set(k, String(input[k])); });

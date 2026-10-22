@@ -15,6 +15,9 @@
     },
     "api/iskra.js": {
       "maxDuration": 30
+    },
+    "api/push-check.js": {
+      "maxDuration": 60
     }
   },
   "headers": [

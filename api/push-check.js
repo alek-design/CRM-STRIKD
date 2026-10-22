@@ -10,6 +10,7 @@ const reminders = require("../lib/reminders");
 const resptime = require("../lib/resptime");
 const emailauto = require("../lib/emailauto");
 const weekfreeze = require("../lib/weekfreeze");
+const aireply = require("../lib/aireply");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const arr = j => Array.isArray(j) ? j : (j && (j.data || j.items || j.conversations || j.messages || j.results)) || [];
 async function get(path, ms){
@@ -59,7 +60,7 @@ module.exports = async (req, res) => {
       await auto.ensure(c);
       await migrate(c).catch(() => {});
       const origin = "https://" + (req.headers["x-forwarded-host"] || req.headers.host || "growth.strikd.ai");
-      const autos = [];
+      const autos = [], ais = []; let aiN = 0;
       let sent = 0, n = 0, dest = 0; const errs = [];
       const isLead = new Set(leads);
       const nrDone = cv => { const o = owners[String(cv.id)]; return !!(o && o.noreply_at && new Date(o.noreply_at).getTime() >= (Date.parse(cv.last_message_at || "") || 0)); };
@@ -84,9 +85,16 @@ module.exports = async (req, res) => {
         // ya le mandamos el segundo intento y no ha contestado una persona (p. ej. su WhatsApp volvió a responder solo): no avisamos
         try{ const au = (await c.query("select replied_at from public.iskra_auto where conversation_id=$1", [id])).rows[0];
           if (au && !au.replied_at) continue; }catch(_){}
+        // IA: contesta con una plantilla si está segura; si no, se marca "🙋 Revisar" (máx. 4 por vuelta para no tardar)
+        let ai = null;
+        if (aiN < 4 && !(o && o.discarded_at) && !(o && o.noreply_at && new Date(o.noreply_at).getTime() >= t)){
+          try{ ai = await aireply.maybe(c, cv, {get, post, owner:(o && o.owner) || headId, inAt:t, origin}); if (ai){ aiN++; ais.push(ai); } }catch(e){ ais.push({conv:id, error:String(e.message || e)}); }
+        }
+        if (ai && ai.sent) continue; // ya lo contestó la IA con una plantilla: no avisamos
         // al dueño y siempre al Head y al Manager (ellos ven todas las conversaciones)
         const to = [...new Set([...(o && o.owner ? [o.owner] : []), ...leads])]; if (!to.length) continue;
-        const name = cv.contact_name || (cv.lead && cv.lead.full_name) || cv.contact_phone || "WhatsApp";
+        const name0 = cv.contact_name || (cv.lead && cv.lead.full_name) || cv.contact_phone || "WhatsApp";
+        const name = ai && ai.flag && !ai.error ? "🙋 Revisar · " + name0 : name0;
         n++; dest += to.length;
         for (const u of to){ // cada quien con su número en el ícono: conversaciones sin leer que le tocan
           const badge = unreadFor(u);
@@ -94,7 +102,7 @@ module.exports = async (req, res) => {
           errs.push(...(sendTo.lastErrors || []));
         }
       }
-      return {ok:true, ...(semana ? {semana} : {}), ...(reporte ? {reporte} : {}), ...(semanales ? {semanales} : {}), ...(recordatorios ? {recordatorios} : {}), ...(respuesta ? {tiempo_respuesta:respuesta} : {}), ...(emails ? {emails} : {}), revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(autos.length ? {automaticos:autos} : {}), ...(errs.length ? {errores:errs.slice(0,3)} : {})};
+      return {ok:true, ...(semana ? {semana} : {}), ...(reporte ? {reporte} : {}), ...(semanales ? {semanales} : {}), ...(recordatorios ? {recordatorios} : {}), ...(respuesta ? {tiempo_respuesta:respuesta} : {}), ...(emails ? {emails} : {}), ...(ais.length ? {ia:ais} : {}), revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(autos.length ? {automaticos:autos} : {}), ...(errs.length ? {errores:errs.slice(0,3)} : {})};
     });
     res.status(out.status || 200).json(out);
   }catch(err){ res.status(500).json({error:String(err.message || err)}); }
