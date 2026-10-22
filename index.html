@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-22 16:26:32 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-22 16:32:21 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792686392">
+<link rel="stylesheet" href="/auth.css?v=1792686741">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792686392"></script>
+<script src="/claude-shim.js?v=1792686741"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -25,6 +25,20 @@
   vv.addEventListener("resize", () => { upd(); const small = vv.height < window.innerHeight - 80; if (wasSmall && !small) fixAfterKb(); wasSmall = small; });
   document.addEventListener("focusout", () => setTimeout(() => { if (!(document.activeElement && document.activeElement.matches && document.activeElement.matches("input,textarea,[contenteditable]"))) fixAfterKb(); }, 250));
   vv.addEventListener("scroll", () => document.documentElement.style.setProperty("--vvt", Math.round(vv.offsetTop) + "px")); document.addEventListener("focusin", () => setTimeout(upd, 60)); document.addEventListener("focusout", () => setTimeout(upd, 120));
+})();
+// recuadros de datos técnicos: siempre con botón "Copiar"
+(function(){
+  const SEL = "pre.isk-raw, pre.exp-pre, .isk-diag pre, pre.raw-box";
+  const add = () => document.querySelectorAll(SEL).forEach(pre => {
+    if (pre.dataset.cp) return; pre.dataset.cp = "1";
+    const b = document.createElement("button"); b.type = "button"; b.className = "raw-copy"; b.textContent = "Copiar";
+    b.addEventListener("click", async e => { e.preventDefault(); e.stopPropagation(); const t = pre.innerText;
+      try{ await navigator.clipboard.writeText(t); }catch(_){ const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); try{ document.execCommand("copy"); }catch(__){} ta.remove(); }
+      b.textContent = "✓ Copiado"; setTimeout(() => { b.textContent = "Copiar"; }, 1500); });
+    pre.insertAdjacentElement("beforebegin", b); });
+  let pend = false; const soon = () => { if (pend) return; pend = true; requestAnimationFrame(() => { pend = false; add(); }); };
+  const go = () => { if (document.body) new MutationObserver(soon).observe(document.body, {childList:true, subtree:true}); add(); };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go); else go();
 })();
 // menús desplegables (📝, ⋯): se cierran al tocar fuera
 document.addEventListener("click", e => { document.querySelectorAll("details.cw-more[open]").forEach(d => { if (!d.contains(e.target)){ d.removeAttribute("open"); if (typeof schedule === "function") setTimeout(schedule, 0); } }); }, true);
@@ -1100,7 +1114,7 @@ label.f em{color:var(--bad);font-style:normal}
 .ct-more{margin:10px auto 0;display:block}
 .tk-prio{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;margin-right:6px;vertical-align:1px}.tk-prio.p-urgente{background:#fde2e1;color:#9b1c1c}.tk-prio.p-alta{background:#fff0d6;color:#8a4b00}
 .tkr.prio-urgente{box-shadow:inset 3px 0 0 #d93a3a}
-.isk-tplbox{flex-wrap:wrap}.ogg-play{font:inherit;font-size:14px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:8px 14px;cursor:pointer;margin-bottom:4px}.tpl-chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 4px 8px;border-bottom:1px solid var(--line);margin-bottom:4px;position:sticky;top:0;background:var(--surface);z-index:1}.tpl-chips button{border:1px solid var(--line2);background:var(--surface);color:inherit;font:inherit;font-size:12.5px;border-radius:999px;padding:4px 10px;cursor:pointer;white-space:nowrap}.tpl-chips button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.tpl-chips span{opacity:.7}.tpl-chips .tpl-x{order:99;margin-left:auto;border:0;background:none;font-size:15px;padding:4px 8px}.tpl-hint{padding:6px 8px 2px;margin:0}.h24-list{display:grid;gap:6px;margin:6px 0}.h24-b{display:grid;gap:2px;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:8px 12px;cursor:pointer}.h24-b small{color:var(--muted);font-size:12px}.h24-b.on{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}.h24-b:disabled{opacity:.55;cursor:not-allowed}.h24-bar{justify-content:flex-end}.isk-vars{flex-basis:100%;display:grid;gap:6px;margin-top:6px}.isk-var{margin:0}.isk-var textarea{width:100%;box-sizing:border-box;font:inherit}
+.isk-tplbox{flex-wrap:wrap}.raw-copy{display:block;margin:6px 0 -2px auto;font:inherit;font-size:12px;font-weight:600;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:3px 12px;cursor:pointer}.ogg-play{font:inherit;font-size:14px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:8px 14px;cursor:pointer;margin-bottom:4px}.tpl-chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 4px 8px;border-bottom:1px solid var(--line);margin-bottom:4px;position:sticky;top:0;background:var(--surface);z-index:1}.tpl-chips button{border:1px solid var(--line2);background:var(--surface);color:inherit;font:inherit;font-size:12.5px;border-radius:999px;padding:4px 10px;cursor:pointer;white-space:nowrap}.tpl-chips button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.tpl-chips span{opacity:.7}.tpl-chips .tpl-x{order:99;margin-left:auto;border:0;background:none;font-size:15px;padding:4px 8px}.tpl-hint{padding:6px 8px 2px;margin:0}.h24-list{display:grid;gap:6px;margin:6px 0}.h24-b{display:grid;gap:2px;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:8px 12px;cursor:pointer}.h24-b small{color:var(--muted);font-size:12px}.h24-b.on{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}.h24-b:disabled{opacity:.55;cursor:not-allowed}.h24-bar{justify-content:flex-end}.isk-vars{flex-basis:100%;display:grid;gap:6px;margin-top:6px}.isk-var{margin:0}.isk-var textarea{width:100%;box-sizing:border-box;font:inherit}
 .ct-ed{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:0 4px;margin-left:4px;cursor:pointer;border-radius:6px}.ct-ed:hover{color:var(--fg);background:color-mix(in srgb, currentColor 10%, transparent)}
 .ct-row[role=button]:focus-visible{outline:2px solid var(--fg);outline-offset:-2px}
 @media (max-width:760px){
