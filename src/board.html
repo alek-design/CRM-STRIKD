@@ -6401,8 +6401,8 @@ async function iskTplLoad(){
 function iskTplOpts(sel){
   iskTplLoad();
   const l = ISKT.list || [];
-  return `<option value="">${ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : l.length ? "Ninguna (mandar como texto)" : ISKT.err ? "No se pudieron leer: " + esc(ISKT.err).slice(0, 80) : "ISKRA no regresó plantillas"}</option>` + l.filter(t => t.sendable || t.id===sel).sort((a,b) => (b.file - a.file) || String(a.name).localeCompare(String(b.name))).map(t => { const h = t.head.toUpperCase(), kind = h==="IMAGE" ? "con imagen" : h==="DOCUMENT" ? "con PDF" : h==="VIDEO" ? "con video" : t.file ? "con archivo" : "solo texto";
-    return `<option value="${esc(t.id)}"${t.id===sel?" selected":""}>${t.file ? "📎 " : ""}${esc(t.name)} · ${kind}${t.lang?` · ${esc(t.lang)}`:""}${t.vars?` · ${t.vars} variable${t.vars===1?"":"s"}`:""}${t.status?` · ${esc(t.status.toLowerCase())}`:""}</option>`; }).join("");
+  return `<option value="">${ISKT.loading || !ISKT.list ? "Cargando plantillas de ISKRA…" : l.length ? "Ninguna (mandar como texto)" : ISKT.err ? "No se pudieron leer: " + esc(ISKT.err).slice(0, 80) : "ISKRA no regresó plantillas"}</option>` + l.slice().sort((a,b) => (b.file - a.file) || String(a.name).localeCompare(String(b.name))).map(t => { const h = t.head.toUpperCase(), kind = h==="IMAGE" ? "con imagen" : h==="DOCUMENT" ? "con PDF" : h==="VIDEO" ? "con video" : t.file ? "con archivo" : "solo texto";
+    return `<option value="${esc(t.id)}"${t.id===sel?" selected":""}>${t.file ? "📎 " : ""}${esc(t.name)} · ${kind}${t.lang?` · ${esc(t.lang)}`:""}${t.vars?` · ${t.vars} variable${t.vars===1?"":"s"}`:""}${t.status?` · ${esc(t.status.toLowerCase())}`:""}${t.sendable ? "" : " · aún no se puede mandar"}</option>`; }).join("");
 }
 const fillVars = (txt, name) => String(txt||"").replace(/\{nombre\}/gi, first(name));
 function astTargets(){
@@ -6507,7 +6507,7 @@ $("tplBox").addEventListener("click", async e => {
   if (q("[data-tplnew]")){ TPL_FORM = !TPL_FORM; TPLF.cur = {trigger:"auto"}; return schedule(); }
   if (q("[data-tplcancel]")){ TPL_FORM = null; TPLF.cur = null; return schedule(); }
   if (q("[data-tpledit]")){ const id = q("[data-tpledit]").dataset.tpledit, t = S.tpls[id]; const va = (t.variants||{}).a||{}, vb = (t.variants||{}).b||{}, vc = (t.variants||{}).c||{};
-    TPLF.cur = {id, name:t.name, trigger:t.trigger, autoSend:!!t.autoSend, atext:va.text, afileId:va.fileId, afileName:va.fileName, aisk:va.iskTplId||"", btext:vb.text, bfileId:vb.fileId, bfileName:vb.fileName, bisk:vb.iskTplId||"", ctext:vc.text, cfileId:vc.fileId, cfileName:vc.fileName, cisk:vc.iskTplId||""}; TPL_FORM = true; return schedule(); }
+    TPLF.cur = {id, name:t.name, trigger:t.trigger, autoSend:!!t.autoSend, atext:va.text, afileId:va.fileId, afileName:va.fileName, aisk:(iskTplRef(va)||{}).id||"", btext:vb.text, bfileId:vb.fileId, bfileName:vb.fileName, bisk:(iskTplRef(vb)||{}).id||"", ctext:vc.text, cfileId:vc.fileId, cfileName:vc.fileName, cisk:(iskTplRef(vc)||{}).id||""}; TPL_FORM = true; return schedule(); }
   if (q("[data-tplautonew]")){ TPL_FORM = true; TPLF.cur = {trigger:"auto", autoSend:true, name:"Segundo intento (respuesta automática)", ...AUTO_DRAFT}; return schedule(); }
   if (q("[data-tpltoggle]")){ const id = q("[data-tpltoggle]").dataset.tpltoggle; return db.doc(`waTemplates/${id}`).update({active: S.tpls[id].active===false}).catch(()=>{}); }
   if (q("[data-tplsave]")){
@@ -6691,7 +6691,7 @@ async function iskLoad(force){
   ISK.loading = true;
   try{
     if (!ISK.who && !ISK.whoP) ISK.whoP = fn("whoami").then(w => { if (w.configured===false) ISK.st = "off"; else { ISK.who = w.data || {}; ISK.media = !!w.media; ISK.mediaMissing = w.mediaMissing || null; if (ISK.media) loadOpus().catch(() => {});
-      if (Object.values(S.tpls||{}).some(t => Object.values(t.variants||{}).some(v => v && v.iskTplId))) iskTplLoad(); } schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
+      if (Object.values(S.tpls||{}).some(t => Object.values(t.variants||{}).some(v => v && (v.iskTplId || v.iskTplName)))) iskTplLoad(); } schedule(); }).catch(() => {}).finally(() => { ISK.whoP = null; });
     const j = await fn("conversations", {limit:50});
     if (j.configured===false){ ISK.st = "off"; return; }
     ISK.convs = iskArr(j).map(iskConv).filter(c => c.id); ISK.raw = j.debug || j.data; ISK.mode = j.mode || "load"; ISK.st = "ok"; ISK.err = ""; ISK.at = Date.now();
@@ -6795,6 +6795,13 @@ function iskOwnerOpts(sel){
   return `<option value="">Sin dueño</option>` + ids.map(id => `<option value="${esc(id)}"${id===sel?" selected":""}>${esc(iskWho(id))}</option>`).join("");
 }
 // plantillas por categoría para contestar rápido (variante A/B como en Plantillas)
+// molde de ISKRA de una variante: por id, o por nombre (las plantillas dadas de alta desde el servidor solo traen el nombre)
+const iskNorm = x => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+function iskTplRef(vf){
+  if (!vf) return null; if (vf.iskTplId) return {id:vf.iskTplId, name:vf.iskTplName || vf.iskTplId};
+  if (!vf.iskTplName) return null; const t = (ISKT.list || []).find(x => iskNorm(x.name)===iskNorm(vf.iskTplName));
+  return {id:t ? t.id : "", name:vf.iskTplName};
+}
 // ventana de WhatsApp: pasadas 24 h desde el último mensaje del cliente solo se pueden mandar plantillas aprobadas
 function iskClosed(c){
   const ms = ISK.msgs[c.id]; if (!ms) return false; // aún no carga: no bloquear
@@ -6804,7 +6811,7 @@ function iskClosed(c){
 function iskH24List(c){
   const l = Object.entries(S.tpls||{}).filter(([,t]) => t.active!==false && t.trigger==="h24");
   if (!l.length) return `<p class="mut small">No hay plantillas en <b>Después de 24 h</b>. ${adminMode() ? "Créalas en Mensajes → Plantillas, con su plantilla aprobada de ISKRA." : "Pídele a tu líder que las cree."}</p>`;
-  return `<div class="h24-list">` + l.map(([id,t]) => { const v = (t.variants||{}).a || {}, ok = Object.values(t.variants||{}).some(x => x && x.iskTplId);
+  return `<div class="h24-list">` + l.map(([id,t]) => { const v = (t.variants||{}).a || {}, ok = Object.values(t.variants||{}).some(x => x && (x.iskTplId || x.iskTplName));
     const on = ISK.tplUsed && ISK.tplUsed.id===id && ISK.tplUsed.conv===c.id;
     return `<button type="button" class="h24-b${on ? " on" : ""}" data-isktpl="${esc(id)}"${ok ? "" : " disabled"}><b>${esc(t.name||"Plantilla")}</b><small>${ok ? esc(String(v.text||"").slice(0, 90)) : "Sin plantilla de ISKRA conectada: no se puede mandar"}</small></button>`; }).join("") + `</div>`;
 }
@@ -6917,7 +6924,8 @@ function renderIskra(){
 }
 // plantilla aprobada de ISKRA: un campo por variable ({{1}}, {{2}}…); se prellenan con el nombre y el texto de nuestra plantilla
 function iskTplVars(ti){
-  const t = (ISKT.list || []).find(x => x.id===ti.id);
+  const t = (ISKT.list || []).find(x => (ti.id && x.id===ti.id) || (ti.byName && iskNorm(x.name)===iskNorm(ti.byName)));
+  if (t && !ti.id) ti.id = t.id;
   const names = t && t.varNames && t.varNames.length ? t.varNames : t && t.vars ? Array.from({length:t.vars}, (_, i) => String(i+1)) : [];
   if (!ti.vals && t){ const p = ti.pre || {}; ti.vals = {};
     names.forEach((n, i) => { ti.vals[n] = names.length===1 ? (p.text || p.nombre || "") : i===0 ? (p.nombre || "") : i===names.length-1 ? (p.text || "") : ""; }); }
@@ -6995,7 +7003,7 @@ document.addEventListener("click", async e => {
     const nombre = ((mt ? mt.name : c && c.name) || "").split(" ")[0];
     ISK.draft[ISK.sel] = String(vf.text||"").replace(/\{nombre\}/g, nombre && !/^\d/.test(nombre) ? nombre : "").replace(/\s+([!,.?])/g, "$1");
     ISK.tplUsed = {id:tp.dataset.isktpl, v, conv:ISK.sel};
-    ISK.tplIsk = vf.iskTplId ? {conv:ISK.sel, id:vf.iskTplId, name:vf.iskTplName || vf.iskTplId} : null;
+    { const rf = iskTplRef(vf); ISK.tplIsk = rf ? {conv:ISK.sel, id:rf.id, name:rf.name, byName:!vf.iskTplId && vf.iskTplName} : null; }
     if (ISK.tplIsk){ iskTplLoad(); ISK.tplIsk.pre = {nombre: nombre && !/^\d/.test(nombre) ? nombre : "", text: ISK.draft[ISK.sel] || ""}; ISK.tplIsk.vals = null; }
     const fx = String(vf.fileName||"").toLowerCase().split(".").pop(), ftype = {jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"}[fx] || "application/pdf";
     ISK.tplMedia = vf.fileId ? {conv:ISK.sel, url:location.origin + "/_blob/" + vf.fileId, type:ftype, name:vf.fileName || "STRIKD.pdf"} : null;
@@ -7068,6 +7076,8 @@ document.addEventListener("click", async e => {
     const id = ISK.sel, text = (ISK.draft[id]||"").trim(), att = ISK.att && ISK.att.id===id ? ISK.att : null;
     const ti = ISK.tplIsk && ISK.tplIsk.conv===id ? ISK.tplIsk : null;
     { const c0 = ISK.convs.find(x => x.id===id); if (c0 && iskClosed(c0) && !ti){ ISK.err = "Pasaron 24 h: elige una plantilla de 'Después de 24 h'."; return schedule(); } }
+    if (ti && !ti.id && ti.byName){ const t0 = (ISKT.list || []).find(x => iskNorm(x.name)===iskNorm(ti.byName)); if (t0) ti.id = t0.id;
+      else { ISK.err = ISKT.list ? `No encontré el molde ${ti.byName} en ISKRA.` : "Cargando plantillas de ISKRA… intenta en un segundo."; iskTplLoad(); return schedule(); } }
     if (ti && !ISK.busy){
       const {names} = iskTplVars(ti), vars = {}; names.forEach(n => vars[n] = String((ti.vals||{})[n] || "").replace(/\s*[\r\n\t]+\s*/g, " ").replace(/ {2,}/g, " ").trim()); // WhatsApp no acepta saltos de línea en variables
       const miss = names.filter(n => !vars[n]); if (miss.length){ ISK.err = `Llena ${miss.map(n => "{{" + n + "}}").join(" y ")} antes de mandar.`; return schedule(); }

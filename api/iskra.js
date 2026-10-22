@@ -398,10 +398,21 @@ module.exports = async (req, res) => {
         }
         try{ // ¿las filtra por número que envía?
           const nj = await iskra("GET", "/v1/numbers"), arr = Array.isArray(nj) ? nj : (nj.data || nj.numbers || []);
-          for (const n of arr.slice(0, 3)){ const nid = n.id || n.number_id; if (!nid) continue;
-            for (const q of ["number_id", "sender_number_id"]){ const path = `/v1/templates?${q}=${encodeURIComponent(nid)}`;
-              try{ const j = await iskra("GET", path); if (hasArr(j, 0)) return (TPL_CACHE.at = Date.now(), TPL_CACHE.data = {data:j, from:path, tried}); tried.push({path, ok:true, body:JSON.stringify(j).slice(0, 200)}); }
-              catch(e){ tried.push({path, ok:false, status:e.status || 0, body:String(e.message).slice(0, 200)}); } } }
+          // todas las páginas (next_cursor) de todos los números, sin repetir
+          const all = new Map(); let okPath = "";
+          for (const n of arr.slice(0, 5)){ const nid = n.id || n.number_id; if (!nid) continue;
+            for (const q of (okPath ? [okPath] : ["number_id", "sender_number_id"])){
+              let cursor = "", pages = 0, got = 0;
+              try{
+                while (pages < 10){ const path = `/v1/templates?${q}=${encodeURIComponent(nid)}&limit=100` + (cursor ? "&cursor=" + encodeURIComponent(cursor) : "");
+                  const j = await iskra("GET", path); pages++;
+                  const list = Array.isArray(j) ? j : (j.data || j.templates || []);
+                  list.forEach(t => { const k = t.id || t.name; if (k && !all.has(k)) all.set(k, t); }); got += list.length;
+                  cursor = j && j.next_cursor; if (!cursor || j.has_more === false) break; }
+                if (got){ okPath = q; break; } tried.push({path:`/v1/templates?${q}=…`, ok:true, body:"vacío"});
+              }catch(e){ tried.push({path:`/v1/templates?${q}=…`, ok:false, status:e.status || 0, body:String(e.message).slice(0, 200)}); }
+            } }
+          if (all.size) return (TPL_CACHE.at = Date.now(), TPL_CACHE.data = {data:{data:[...all.values()]}, from:`/v1/templates?${okPath}= (${all.size}, todas las páginas)`, tried});
         }catch(_){}
         return {data:[], tried};
       }
