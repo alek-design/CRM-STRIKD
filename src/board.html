@@ -671,7 +671,7 @@ a.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line2)}
 .tpl-card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:6px;margin-top:8px;background:var(--bg)}.tpl-card.off{opacity:.5}
 .tpl-vr{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 8px;align-items:start;font-size:12.5px;padding:6px 0;border-top:1px solid var(--line)}.tpl-vr:first-of-type{border-top:0}.tpl-vr>*{min-width:0}.tpl-vr p{margin:0;color:var(--fg2);white-space:pre-wrap;overflow-wrap:anywhere}
 .tpl-vr .chip,.tpl-vr .num{grid-column:2;justify-self:start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tpl-card{min-width:0;overflow:hidden}.tpl-blk{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}.tpl-blk:first-of-type{border-top:0}.tpl-blk-h{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}.tpl-blk-h h4{margin:0 0 2px;font-size:15px}.tpl-blk-h .btn{white-space:nowrap;flex:none}.tpl-blk .tpl-card .chip.info{display:none}.tpl-blk-h h4 .tpl-n{white-space:nowrap}.tpl-blk-h p{margin:0;max-width:60ch}.tpl-n{font-size:12px;font-weight:700;color:var(--muted);background:var(--raised);border-radius:999px;padding:1px 8px;margin-left:4px}.tpl-sub{margin:14px 0 0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}.tpl-empty{margin:8px 0 0}.tpl-card .msg-top{min-width:0}.tpl-card .msg-top b{overflow-wrap:anywhere}
+.tpl-card{min-width:0;overflow:hidden}.tpl-full{grid-column:2;white-space:pre-wrap;background:color-mix(in srgb,#25D366 10%,var(--surface));border:1px solid color-mix(in srgb,#25D366 30%,var(--line));border-radius:10px;padding:8px 10px;font-size:13px;color:var(--fg)}.tpl-full span{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px}.tpl-full.chat{flex-basis:100%;margin-bottom:6px}.tpl-blk{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}.tpl-blk:first-of-type{border-top:0}.tpl-blk-h{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}.tpl-blk-h h4{margin:0 0 2px;font-size:15px}.tpl-blk-h .btn{white-space:nowrap;flex:none}.tpl-blk .tpl-card .chip.info{display:none}.tpl-blk-h h4 .tpl-n{white-space:nowrap}.tpl-blk-h p{margin:0;max-width:60ch}.tpl-n{font-size:12px;font-weight:700;color:var(--muted);background:var(--raised);border-radius:999px;padding:1px 8px;margin-left:4px}.tpl-sub{margin:14px 0 0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}.tpl-empty{margin:8px 0 0}.tpl-card .msg-top{min-width:0}.tpl-card .msg-top b{overflow-wrap:anywhere}
 .tpl-vr .num{font-size:11.5px;color:var(--muted);white-space:nowrap}.tpl-vr.win .tpl-tag{background:var(--ok);color:var(--bg)}
 .tpl-tag{font-size:10.5px;font-weight:800;background:var(--raised);border:1px solid var(--line2);border-radius:5px;padding:1px 6px}
 .tpl-v{display:grid;gap:6px;grid-column:1/-1}.tpl-v textarea{width:100%;font:inherit;font-size:13px;background:var(--bg);color:var(--fg);border:1px solid var(--line2);border-radius:10px;padding:8px 10px}
@@ -6483,7 +6483,7 @@ async function iskTplLoad(){
     const findArr = (o, d) => { if (Array.isArray(o)) return o.some(x => x && typeof x==="object") ? o : null; if (!o || typeof o!=="object" || d > 3) return null;
       for (const k of ["data","templates","quick_replies","quickReplies","snippets","items","results"]) { const r = findArr(o[k], d+1); if (r) return r; }
       for (const v of Object.values(o)) { const r = findArr(v, d+1); if (r) return r; } return null; };
-    ISKT.list = (findArr(ISKT.raw, 0) || []).map(t => ({id:String(t.id ?? t.template_id ?? t.quick_reply_id ?? t.name ?? t.title), name:String(t.name || t.title || t.label || t.shortcut || t.id), status:String(t.status || ""), lang:t.language || t.lang || "", head:String(t.header_type || ""), cat:String(t.category || ""), vars:Number(t.variables_count || (t.variables||[]).length || 0), varNames:Array.isArray(t.variables) ? t.variables.map(String) : [], sendable:t.sendable !== false,
+    ISKT.list = (findArr(ISKT.raw, 0) || []).map(t => ({id:String(t.id ?? t.template_id ?? t.quick_reply_id ?? t.name ?? t.title), name:String(t.name || t.title || t.label || t.shortcut || t.id), status:String(t.status || ""), lang:t.language || t.lang || "", head:String(t.header_type || ""), cat:String(t.category || ""), body:typeof t.body === "string" ? t.body : "", vars:Number(t.variables_count || (t.variables||[]).length || 0), varNames:Array.isArray(t.variables) ? t.variables.map(String) : [], sendable:t.sendable !== false,
       file:/IMAGE|DOCUMENT|VIDEO/i.test(String(t.header_type || "")) || !!(t.media_url || t.media || t.attachment || t.attachments && t.attachments.length || t.file_url || t.image_url || t.document_url)})).filter(t => t.id && t.id!=="undefined"); }
   catch(e){ ISKT.err = e.message || "error"; ISKT.list = []; }
   ISKT.loading = false; schedule();
@@ -6525,7 +6525,7 @@ function renderTpl(){
   const card = ([id,t]) => { const sa = st[`${id}_a`]||{sent:0,rep:0}, sb = st[`${id}_b`]||{sent:0,rep:0}, sc = st[`${id}_c`]||{sent:0,rep:0}, hasB = t.variants && t.variants.b && t.variants.b.text, hasC = t.variants && t.variants.c && t.variants.c.text;
     const used = [["a",sa],...(hasB?[["b",sb]]:[]),...(hasC?[["c",sc]]:[])];
     const win = used.length > 1 && used.every(([,x]) => x.sent >= 10) ? used.slice().sort((x,y) => y[1].rep/y[1].sent - x[1].rep/x[1].sent)[0][0] : null;
-    const vrow = (k, s) => `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span><p>${esc((t.variants[k]||{}).text||"")}</p>${(t.variants[k]||{}).iskTplId?`<span class="chip ok">📄 ISKRA: ${esc(t.variants[k].iskTplName||t.variants[k].iskTplId)}</span>`:(t.variants[k]||{}).fileId?`<span class="chip muted">📎 ${esc(t.variants[k].fileName||"PDF")} · link</span>`:""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`;
+    const vrow = (k, s) => `<div class="tpl-vr${win===k?" win":""}"><span class="tpl-tag">${k.toUpperCase()}</span><p>${esc((t.variants[k]||{}).text||"")}</p>${(() => { const vf = t.variants[k]||{}; const full = (vf.iskTplId || vf.iskTplName) ? iskFullText(vf) : ""; return full ? `<div class="tpl-full"><span>Así le llega:</span>${esc(full)}</div>` : ""; })()}${(t.variants[k]||{}).iskTplId?`<span class="chip ok">📄 ISKRA: ${esc(t.variants[k].iskTplName||t.variants[k].iskTplId)}</span>`:(t.variants[k]||{}).fileId?`<span class="chip muted">📎 ${esc(t.variants[k].fileName||"PDF")} · link</span>`:""}<span class="num"><b>${s.sent}</b> enviados · <b>${pc(s.rep,s.sent)}</b> contestó${win===k?" · 🏆":""}</span></div>`;
     return `<div class="tpl-card${t.active===false?" off":""}"><div class="msg-top"><b>${esc(t.name)}</b><span class="chip info">${esc(TRIG[t.trigger]||t.trigger)}</span>${t.autoSend?`<span class="chip ok">🤖 Se manda sola</span>`:""}${t.active===false?`<span class="chip muted">Pausada</span>`:""}<div class="spacer"></div>
       ${lead ? `<button type="button" class="linkbtn" data-tpledit="${id}">Editar</button><button type="button" class="linkbtn" data-tpltoggle="${id}">${t.active===false?"Activar":"Pausar"}</button>` : ""}</div>
       ${vrow("a", sa)}${hasB ? vrow("b", sb) : ""}${hasC ? vrow("c", sc) : ""}</div>`; };
@@ -6943,6 +6943,18 @@ function iskErrDetail(d){
 const iskNorm = x => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").replace(/chat$/, ""); // "Después de … · chat" = "Después de …"
 // molde aprobado → id del grupo (copy "24h reply") con el que la app de ISKRA lo manda (send-whatsapp-template). Capturados de la app
 const ISK_MOLD_GROUP = {"4c138esh16de8f":"ec427d7e-0dac-4b3a-a7ab-9c66f3a45dc6", "af679r2esn1":"c7bb92a0-8175-45ec-a9c5-3b108b1d0c04"};
+// texto de respaldo de los moldes que usamos (por si ISKRA no lo regresa)
+const ISK_MOLD_BODY = {"4c138esh16de8f":"Hola,\n\n{{1}}\n\nQuedamos en espera de su respuesta.", "af679r2esn1":"Doy seguimiento a mi último mensaje.\n\n{{1}}\n\nQuedo atento."};
+// mensaje completo como le llega: el cuerpo del molde con los valores en {{1}}, {{2}}…
+function iskFullText(vf, vals){
+  if (!vf) return ""; const grpMold = Object.entries(ISK_MOLD_GROUP).find(([, g]) => g===vf.iskTplId);
+  const lt = (ISKT.list || []).find(x => x.id===vf.iskTplId);
+  const mold = iskNorm(grpMold ? grpMold[0] : lt ? lt.name : (ISK_COPY_MOLD[iskNorm(vf.iskTplName)] || vf.iskTplName || ""));
+  const lt2 = lt || (ISKT.list || []).find(x => iskNorm(x.name)===mold);
+  const body = (lt2 && lt2.body) || ISK_MOLD_BODY[mold] || ""; if (!body) return "";
+  const nv = (body.match(/\{\{\d+\}\}/g) || []).length;
+  return body.replace(/\{\{(\d+)\}\}/g, (m, n) => { const v = vals ? vals[n] : (nv === 1 ? vf.text : n === "1" ? "{nombre}" : vf.text); return v != null && String(v).trim() ? String(v) : m; });
+}
 const ISK_COPY_MOLD = {[iskNorm("Después de la ventana de 24hrs")]:"4c138_es_h1_6de8f", [iskNorm("Después de la ventana de 24hrs (B)")]:"4c138_es_h1_6de8f",
   [iskNorm("Después de la ventana de 24hrs (C)")]:"4c138_es_h1_6de8f", [iskNorm("Después de ventana 24hrs")]:"af679_r2_es_n1"};
 function iskTplRef(vf){
@@ -7092,9 +7104,11 @@ function iskTplBox(ti){
   const {t, names} = iskTplVars(ti);
   const kind = t ? (t.file ? "con su archivo" : "solo texto") : "";
   const fields = names.map(n => `<label class="f small isk-var">{{${esc(n)}}}<textarea rows="${names.length===1 || n===names[names.length-1] ? 3 : 1}" data-iskvar="${esc(n)}" placeholder="Valor de {{${esc(n)}}}">${esc((ti.vals||{})[n] || "")}</textarea></label>`).join("");
-  return `<div class="isk-att isk-tplbox"><span class="isk-doc">ISKRA</span><span>Se manda la plantilla aprobada <b>${esc(ti.name)}</b>${kind ? ` · ${kind}` : ""}.${names.length ? " Revisa sus variables:" : !t && ISKT.loading ? " Cargando sus variables…" : ""}</span><button type="button" class="linkbtn" data-isktplix="1">Quitar</button>${fields ? `<div class="isk-vars">${fields}</div>` : ""}</div>`;
+  const full = iskFullText({iskTplId:ti.id, iskTplName:ti.name, text:""}, ti.vals || {});
+  return `<div class="isk-att isk-tplbox">${full ? `<div class="tpl-full chat" data-tplfull="1"><span>Así le llega:</span>${esc(full)}</div>` : ""}<span class="isk-doc">ISKRA</span><span>Se manda la plantilla aprobada <b>${esc(ti.name)}</b>${kind ? ` · ${kind}` : ""}.${names.length ? " Revisa sus variables:" : !t && ISKT.loading ? " Cargando sus variables…" : ""}</span><button type="button" class="linkbtn" data-isktplix="1">Quitar</button>${fields ? `<div class="isk-vars">${fields}</div>` : ""}</div>`;
 }
-document.addEventListener("input", e => { const v = e.target.closest && e.target.closest("[data-iskvar]"); if (v && ISK.tplIsk){ (ISK.tplIsk.vals ||= {})[v.dataset.iskvar] = v.value; } });
+document.addEventListener("input", e => { const v = e.target.closest && e.target.closest("[data-iskvar]"); if (v && ISK.tplIsk){ (ISK.tplIsk.vals ||= {})[v.dataset.iskvar] = v.value;
+  const pv = document.querySelector("[data-tplfull]"); if (pv){ const ti = ISK.tplIsk, f = iskFullText({iskTplId:ti.id, iskTplName:ti.name, text:""}, ti.vals || {}); pv.innerHTML = `<span>Así le llega:</span>${esc(f)}`; } } });
 const ISK_MAX = 3*1024*1024;
 function iskAttach(blob, name){
   if (blob.size > ISK_MAX){ ISK.err = "El archivo pesa más de 3 MB. Mándalo más ligero."; return schedule(); }

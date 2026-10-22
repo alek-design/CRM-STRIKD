@@ -427,7 +427,9 @@ module.exports = async (req, res) => {
                 if (got){ okPath = q; break; } tried.push({path:`/v1/templates?${q}=…`, ok:true, body:"vacío"});
               }catch(e){ tried.push({path:`/v1/templates?${q}=…`, ok:false, status:e.status || 0, body:String(e.message).slice(0, 200)}); }
             } }
-          if (all.size) return (TPL_CACHE.at = Date.now(), TPL_CACHE.data = {data:{data:[...all.values()]}, from:`/v1/templates?${okPath}= (${all.size}, todas las páginas)`, tried});
+          if (all.size){ let bodies = {}; if (iskapp.configured()) bodies = await iskapp.moldBodies().catch(() => ({})); // texto del molde para la vista previa
+            const list = [...all.values()].map(t => (t.body || !bodies[t.name]) ? t : {...t, body:bodies[t.name]});
+            return (TPL_CACHE.at = Date.now(), TPL_CACHE.data = {data:{data:list}, from:`/v1/templates?${okPath}= (${all.size}, todas las páginas)`, tried}); }
         }catch(_){}
         return {data:[], tried};
       }
