@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-23 19:34:18 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-23 19:44:07 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792784058">
+<link rel="stylesheet" href="/auth.css?v=1792784647">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792784058"></script>
+<script src="/claude-shim.js?v=1792784647"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -2369,6 +2369,10 @@ function tally(week){
     else if (v.status==="noshow") r.noshow++;
     else if (v.status==="rejected") r.rejected++;
   });
+  // meets sin decisión (ya no se validan): cuentan como válidos en su semana
+  Object.entries(S.allEvery || S.all || {}).forEach(([u, o]) => Object.entries(o||{}).forEach(([id, m]) => {
+    const v = S.validations[id]; if ((v && v.status !== "pending") || !m || m.noMeet) return;
+    if (meetWeek(m) === week && !(m.flow||{}).lostAt) g(u).valid++; }));
   Object.entries(S.pts || {}).forEach(([uid, evs]) => Object.values(evs||{}).forEach(e => {
     if (e.week !== week || !PTS[e.ms] || e.void) return;
     const r = g(uid); r[e.ms]++; r.pts += (typeof e.pts==="number" ? e.pts : PTS[e.ms]);
@@ -2570,7 +2574,8 @@ function renderBoard(ps, ids){
 }
 
 const AUTOV = new Set();
-function statusOf(id){ const v = S.validations[id]; return v ? v.status : AUTOV.has(id) ? "valid" : "pending"; }
+// ya no hay validación (23 oct 2026): todo meet registrado cuenta como válido; solo cambia si se rechaza, se conecta o no llega
+function statusOf(id){ const v = S.validations[id]; return v && v.status !== "pending" ? v.status : "valid"; }
 function syncAutoV(){ AUTOV.clear(); [S.mine, ...Object.values(S.all)].forEach(o => Object.entries(o||{}).forEach(([id,m]) => { if (m && m.autoValid) AUTOV.add(id); })); }
 function chip(st, m){
   if (st==="rejected") return m && m.cancelled ? `<span class="chip rejected">Rechazado · cancelado</span>` : `<span class="chip rejected">Rechazado · falta cancelar</span>`;
@@ -3111,11 +3116,12 @@ function tasksFor(uid, id, m, now){
   if (m.needInvite && !m.cancelled && meetTs(effAt(m)) > now && (st==="pending" || st==="valid"))
     add({title:`Reenvíale la invitación a ${p}`, detail:`Se quitó el rechazo y el meet del ${fmtMeetAt(effAt(m))} vuelve a estar activo, pero la invitación se había cancelado.`, due:now + 2*HR,
       acts:[{label:"Mandar invitación", act:"reinvite", kind:"primary"}]});
-  if (st==="pending"){
-    add({who:"admin", title:`${m.dupOf ? "Posible duplicado: revisa" : "Valida o rechaza"} el meet de ${p}`, due:(m.createdAt||now)+24*HR,
+  if (m.dupOf && !v){ // sin validación, pero un posible duplicado sí se revisa
+    add({who:"admin", title:`Posible duplicado: revisa el meet de ${p}`, due:(m.createdAt||now)+24*HR,
       detail:`${PERFILES[m.perfil]?PERFILES[m.perfil].name+" ("+PERFILES[m.perfil].short+(m.followers?", "+fmtFol(m.followers)+" seguidores":"")+") · ":""}${m.role?m.role+" · ":""}Contactado por ${m.channel||"—"} · Meet ${fmtMeetAt(effAt(m))}`,
-      acts:[{label:"Validar", act:"validate", kind:"ok", input:"validate"}, {label:"Rechazar", act:"reject", kind:"bad", input:"reject"}]});
-  } else if (st==="rejected"){
+      acts:[{label:"No es duplicado", act:"validate", kind:"ok", input:"validate"}, {label:"Es duplicado", act:"reject", kind:"bad", input:"reject"}]});
+  }
+  if (st==="rejected"){
     if (!m.cancelled) add({title:`Cancela el meet con ${p}`, detail: v.reason ? `Motivo del rechazo: ${v.reason}` : "Fue rechazado en la validación.",
       due:(v.decidedAt||now)+24*HR, acts:[{label:"Ya lo cancelé", act:"cancelled", kind:"bad"}]});
   } else if (st==="valid" || reschedPending(m,v)){
@@ -3146,8 +3152,10 @@ function tasksFor(uid, id, m, now){
       const n = f.next, last = lastActOf(m, v);
       if (n && n.at){
         const isMeet = n.kind==="meet";
-        add({who:"admin", title: isMeet ? `Meet con ${p}${n.text ? ` · ${n.text}` : ""}` : `${n.text || "Seguimiento"} · ${p}`,
-          detail: `${isMeet ? `Meet ${fmtLocal(n.at)}` : `Programado para ${fmtLocal(n.at)}`}. Al terminar, registra lo que se avanzó y lo que sigue.${(f.log||[]).length ? ` Última nota: ${(f.log[f.log.length-1].note || "—")}` : ""}`,
+        // responsable: si es el AM dueño del prospecto le sale a él; si es un líder, solo a ese líder
+        const ownerIsAm = n.owner && n.owner===uid && !["manager"].includes(roleOf(uid)) && uid !== ((S.config||{}).headId);
+        add({who:ownerIsAm ? "member" : "admin", onlyFor:n.owner && !ownerIsAm ? n.owner : null, title: isMeet ? `Meet con ${p}${n.text ? ` · ${n.text}` : ""}` : `${n.text || "Seguimiento"} · ${p}`,
+          detail: `${n.owner ? `Responsable: ${String(nameOf(S.ps||{}, n.owner)).split(" (")[0]} · ` : ""}${isMeet ? `Meet ${fmtLocal(n.at)}` : `Programado para ${fmtLocal(n.at)}`}. Al terminar, registra lo que se avanzó y lo que sigue.${(f.log||[]).length ? ` Última nota: ${(f.log[f.log.length-1].note || "—")}` : ""}`,
           due: isMeet ? n.at + MEET_LEN : n.at, acts:[sess, {label:"Mañana", act:"next-snooze"}]});
       } else if (now >= last + IDLE_WARN){
         const dd = Math.max(1, Math.floor((now - last) / DAY));
@@ -3188,6 +3196,9 @@ function sessionOpen(uid, id){
         <label class="f full" id="sesTxtL">¿Qué hay que hacer?<input id="sesTxt" placeholder="Ej. Pedirle su contenido · Mandarle la página para que la revise" autocomplete="off"></label>
         <div class="ses-seg full" id="sesQuick"><button type="button" data-q="0">Hoy</button><button type="button" data-q="1" class="on">Mañana</button><button type="button" data-q="2">En 2 días</button><button type="button" data-q="3">En 3 días</button></div>
         <label class="f full">Cuándo${tzOther() ? " (tu hora)" : ""}<input type="datetime-local" id="sesAt" value="${tomorrow}"></label>
+        <label class="f full">Responsable<select id="sesWho">${(() => { const ppl = [...new Set([uid, ...Object.keys(S.members||{}).filter(u => roleOf(u)==="manager"), (S.config||{}).headId, S.uid].filter(Boolean))];
+          const def = (f.next && f.next.owner) || (roleOf(uid)==="manager" || uid===(S.config||{}).headId ? uid : (leaderOf(uid) || S.uid));
+          return ppl.map(u => `<option value="${esc(u)}"${u===def ? " selected" : ""}>${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}${u===uid && roleOf(u)!=="manager" && u!==(S.config||{}).headId ? " (AM del prospecto)" : roleOf(u)==="manager" ? " (Manager)" : u===(S.config||{}).headId ? " (Head)" : ""}${u===S.uid ? " · yo" : ""}</option>`).join(""); })()}</select></label>
         <label class="chk" id="sesInvL" hidden><input type="checkbox" id="sesInv"${mcp && m.email ? " checked" : ""}${mcp && m.email ? "" : " disabled"}> Mandarle invitación con link de Meet${m.email ? "" : " (no tiene email)"}</label>
       </div>
       <button type="button" class="linkbtn bad" id="sesLost" style="margin-top:8px">Ya no le interesó · sacarlo del journey</button>
@@ -3233,11 +3244,11 @@ function sessionOpen(uid, id){
       if (nx !== "none"){
         const at = at0(); if (isNaN(at)) { go.disabled = false; go.textContent = "Guardar"; return err("Elige cuándo."); }
         if (nx==="follow" && !$("sesTxt").value.trim()) { go.disabled = false; go.textContent = "Guardar"; return err("Escribe qué hay que hacer (ej. pedirle su contenido)."); }
-        next = {kind:nx, text:$("sesTxt").value.trim(), at, setAt:now, by:S.uid};
+        next = {kind:nx, text:$("sesTxt").value.trim(), at, setAt:now, by:S.uid, owner:($("sesWho") && $("sesWho").value) || S.uid};
       }
       if (!done.length && !undone.length && !note && !next) { go.disabled = false; go.textContent = "Guardar"; return err("No hay nada que guardar."); }
       fl.next = next; fl.lastActAt = now;
-      fl.log = (f.log||[]).concat([{at:now, by:S.uid, done, undone, note, ...(next ? {next:{kind:next.kind, text:next.text, at:next.at}} : {})}]).slice(-60);
+      fl.log = (f.log||[]).concat([{at:now, by:S.uid, done, undone, note, ...(next ? {next:{kind:next.kind, text:next.text, at:next.at, owner:next.owner}} : {})}]).slice(-60);
       await ref.update({flow:fl});
       for (const ms of aw) award(uid, id, ms, now); for (const ms of un) unaward(uid, id, ms);
       let msg = done.length ? `✓ ${done.join(", ")}` : "✓ Guardado";
@@ -3981,8 +3992,7 @@ async function saveProspectEdit(uid, id, m, ed){
         await freeIdx(uid, id, m); await claimIdx(uid, id, o);
       }
       if (idChanged && !adminMode()){
-        if (AUTOV.has(id) && !S.validations[id]) patch.autoValid = false; // validado automático: vuelve a revisión
-        else if (S.validations[id] && ["valid","attended"].includes(S.validations[id].status)) patch.idEditedAt = Date.now(); // tu manager ve la marca
+        if (S.validations[id] && ["valid","attended"].includes(S.validations[id].status)) patch.idEditedAt = Date.now(); // tu manager ve la marca
       }
       // líder: perfil, canal y seguidores (el perfil recalcula los puntos de este prospecto)
       if (adminMode()){
@@ -3995,7 +4005,7 @@ async function saveProspectEdit(uid, id, m, ed){
         }
       }
       await db.doc(`meets/${uid}/items/${id}`).update(patch);
-      if (patch.autoValid === false){ AUTOV.delete(id); quickToast("Cambiaste sus datos: vuelve a revisión de tu manager"); }
+
       Object.assign(m, patch); return "";
     }catch(ex){ return "No se guardó. Intenta de nuevo."; }
 }
@@ -4263,7 +4273,7 @@ const DOWL = ["domingo","lunes","martes","miércoles","jueves","viernes","sábad
 function planOwners(){
   return adminMode() ? Object.entries(S.all) : [[meId(), myItems()]];
 }
-function ownTask(t){ return adminMode() ? (t.who==="admin" || t.alsoAdmin) : t.who==="member"; }
+function ownTask(t){ if (t.onlyFor && t.onlyFor !== meId()) return false; return adminMode() ? (t.who==="admin" || t.alsoAdmin) : t.who==="member"; }
 // Meets de tu Google Calendar que no están en el panel (para "Registrar")
 const GCREG = {};
 document.addEventListener("click", e => { const b = e.target.closest("[data-gcreg]"); if (!b) return; e.stopPropagation();
