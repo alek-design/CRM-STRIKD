@@ -61,6 +61,7 @@ module.exports = async (req, res) => {
       // recordatorio por WhatsApp 30 min antes a meets agendados desde un chat de ISKRA
       let responsables = null; try{ responsables = await perfilresp.run(c); }catch(e){ responsables = {error:String(e.message || e)}; }
       let recordatorio_meet = null; try{ recordatorio_meet = await meetremind.run(c, {get, post}); }catch(e){ recordatorio_meet = {error:String(e.message || e)}; }
+      let confirmacion_meet = null; try{ confirmacion_meet = await meetremind.confirm(c, {post}); }catch(e){ confirmacion_meet = {error:String(e.message || e)}; }
       const seen = {}; (await c.query("select * from public.push_seen where conversation_id = any($1)", [ids])).rows.forEach(r => seen[r.conversation_id] = r);
       const first = !(await c.query("select 1 from public.push_seen limit 1")).rows[0];
       const owners = {}; (await c.query("select conversation_id, owner, discarded_at, noreply_at from public.iskra_owner where conversation_id = any($1)", [ids]).catch(() => ({rows:[]}))).rows.forEach(r => owners[r.conversation_id] = r);
@@ -111,7 +112,7 @@ module.exports = async (req, res) => {
           errs.push(...(sendTo.lastErrors || []));
         }
       }
-      return {ok:true, ...(semana ? {semana} : {}), ...(reporte ? {reporte} : {}), ...(semanales ? {semanales} : {}), ...(recordatorios ? {recordatorios} : {}), ...(respuesta ? {tiempo_respuesta:respuesta} : {}), ...(emails ? {emails} : {}), ...(ais.length ? {ia:ais} : {}), ...(seguimiento ? {seguimiento} : {}), ...(recordatorio_meet ? {recordatorio_meet} : {}), ...(responsables ? {responsables} : {}), revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(autos.length ? {automaticos:autos} : {}), ...(errs.length ? {errores:errs.slice(0,3)} : {})};
+      return {ok:true, ...(semana ? {semana} : {}), ...(reporte ? {reporte} : {}), ...(semanales ? {semanales} : {}), ...(recordatorios ? {recordatorios} : {}), ...(respuesta ? {tiempo_respuesta:respuesta} : {}), ...(emails ? {emails} : {}), ...(ais.length ? {ia:ais} : {}), ...(seguimiento ? {seguimiento} : {}), ...(recordatorio_meet ? {recordatorio_meet} : {}), ...(confirmacion_meet ? {confirmacion_meet} : {}), ...(responsables ? {responsables} : {}), revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(autos.length ? {automaticos:autos} : {}), ...(errs.length ? {errores:errs.slice(0,3)} : {})};
     });
     res.status(out.status || 200).json(out);
   }catch(err){ res.status(500).json({error:String(err.message || err)}); }
