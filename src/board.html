@@ -5557,7 +5557,8 @@ function weeklySeries(uids, itemsByUid){
   return {weeks:cut(weeks), meets:cut(meets), pts:cut(pts), tom:cut(tom), T:cut(T)};
 }
 /* Head con Manager asignado: sus pendientes son solo lo suyo (tareas, aprobaciones de lo que él asignó); lo operativo es del Manager */
-function headIsLite(){ return S.isOwner && !S.viewAs && !S.viewMgr && Object.keys(S.members||{}).some(u => roleOf(u)==="manager"); }
+// el Head tiene todos los poderes (23 oct 2026): ya no hay modo "solo vista"; se puede volver a encender con config/main.headLite = true
+function headIsLite(){ return (S.config||{}).headLite === true && S.isOwner && !S.viewAs && !S.viewMgr && Object.keys(S.members||{}).some(u => roleOf(u)==="manager"); }
 function headLiteMgrs(){ return Object.keys(S.members||{}).filter(u => roleOf(u)==="manager").map(u => String(nameOf(S.ps||{}, u)).split(" (")[0]).join(" y ") || "el Manager"; }
 /* Equipo: atrasados de cada AM (sus propios pendientes), para saber a quién empujar */
 function teamLateBy(now){
