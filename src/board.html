@@ -3492,7 +3492,8 @@ function waitText(id, m){
   if (f.launchedAt) return `Publicado el ${fmtLocal(f.launchedAt).split(",")[0]}. Meta cumplida.`;
   if (st==="rejected") return m.cancelled ? "Rechazado y cancelado" : "Rechazado: falta cancelarlo";
   if (st==="attended" && f.interested && !f.skeletonAt && (f.skeletonMeetAt || f.skeletonMeetNeeded)) return `Meet de skeleton ${f.skeletonMeetBookedAt?"agendado":"por agendar"}${f.skeletonMeetAt?`: ${fmtMeetAt(f.skeletonMeetAt)}`:" (fecha por coordinar)"}. Después el admin adjunta el skeleton.`;
-  if (st==="attended" && (f.interested==null || (f.interested && !f.skeletonAt))) return adminMode() || procMode() ? "Se conectó. Registra si le gustó, lo que se logró y lo que sigue (botón de abajo)." : "Se conectó. Tu manager registra si le gustó y adjunta su skeleton.";
+  if (st==="attended" && f.interested==null) return adminMode() || procMode() ? "Se conectó. Registra si le gustó, lo que se logró y lo que sigue (botón de abajo)." : "Se conectó. Tu manager registra si le gustó y adjunta su skeleton.";
+  if (st==="attended" && f.interested && !f.skeletonAt) return adminMode() || procMode() ? `Le gustó. Falta su skeleton${f.next && f.next.at ? ` · lo que sigue: ${f.next.text || (f.next.kind==="meet" ? "meet" : "seguimiento")} el ${fmtLocal(f.next.at)}` : ": cuando lo valide palomea “Skeleton validado”, o programa lo que sigue"}.` : "Le gustó. Tu manager le prepara su skeleton.";
   return "";
 }
 const EDIT_FIELDS = [

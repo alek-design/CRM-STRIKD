@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-23 20:11:20 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-23 20:42:31 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792786280">
+<link rel="stylesheet" href="/auth.css?v=1792788151">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792786280"></script>
+<script src="/claude-shim.js?v=1792788151"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -3501,7 +3501,8 @@ function waitText(id, m){
   if (f.launchedAt) return `Publicado el ${fmtLocal(f.launchedAt).split(",")[0]}. Meta cumplida.`;
   if (st==="rejected") return m.cancelled ? "Rechazado y cancelado" : "Rechazado: falta cancelarlo";
   if (st==="attended" && f.interested && !f.skeletonAt && (f.skeletonMeetAt || f.skeletonMeetNeeded)) return `Meet de skeleton ${f.skeletonMeetBookedAt?"agendado":"por agendar"}${f.skeletonMeetAt?`: ${fmtMeetAt(f.skeletonMeetAt)}`:" (fecha por coordinar)"}. Después el admin adjunta el skeleton.`;
-  if (st==="attended" && (f.interested==null || (f.interested && !f.skeletonAt))) return adminMode() || procMode() ? "Se conectó. Registra si le gustó, lo que se logró y lo que sigue (botón de abajo)." : "Se conectó. Tu manager registra si le gustó y adjunta su skeleton.";
+  if (st==="attended" && f.interested==null) return adminMode() || procMode() ? "Se conectó. Registra si le gustó, lo que se logró y lo que sigue (botón de abajo)." : "Se conectó. Tu manager registra si le gustó y adjunta su skeleton.";
+  if (st==="attended" && f.interested && !f.skeletonAt) return adminMode() || procMode() ? `Le gustó. Falta su skeleton${f.next && f.next.at ? ` · lo que sigue: ${f.next.text || (f.next.kind==="meet" ? "meet" : "seguimiento")} el ${fmtLocal(f.next.at)}` : ": cuando lo valide palomea “Skeleton validado”, o programa lo que sigue"}.` : "Le gustó. Tu manager le prepara su skeleton.";
   return "";
 }
 const EDIT_FIELDS = [
