@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-23 20:50:49 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-23 21:15:00 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792788649">
+<link rel="stylesheet" href="/auth.css?v=1792790100">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792788649"></script>
+<script src="/claude-shim.js?v=1792790100"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -317,6 +317,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ck-b.agd{background:color-mix(in srgb,#25D366 22%,var(--surface));color:var(--fg);margin-right:4px}.ck-b.agd.past{background:var(--line2);color:var(--muted)}
 .ck-3{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}.ck-3 .ck-b{white-space:nowrap;margin:0;font-size:10.5px;line-height:1.5}
 .sw{flex:none;display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:13px;font-weight:600;background:none;border:0;color:var(--muted);cursor:pointer;padding:4px 0;white-space:nowrap}.sw i{width:40px;height:24px;border-radius:999px;background:var(--line2);position:relative;transition:background .15s}.sw i::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}.sw.on{color:var(--fg)}.sw.on i{background:#25D366}.sw.on i::after{left:19px}
+.cw-resch{gap:8px}.cw-resch input{font:inherit;font-size:16px;padding:5px 8px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);color:var(--fg)}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -7033,8 +7034,9 @@ let ISKMEET = {at:0, conv:{}, phone:{}};
 function iskMeetOf(x){
   if (Date.now() - ISKMEET.at > 5e3){ const conv = {}, phone = {};
     const src = Object.keys(S.allEvery||{}).length ? Object.values(S.allEvery) : [S.mine || {}];
-    src.forEach(o => Object.values(o||{}).forEach(m => { if (!m || m.cancelled || m.noMeet || (m.flow||{}).lostAt) return; const at = m.reschedAt || m.meetAt; if (!at) return;
-      const put = (map, k) => { if (k && (!map[k] || String(at) > String(map[k].at))) map[k] = {at, m}; };
+    const srcE = Object.keys(S.allEvery||{}).length ? Object.entries(S.allEvery) : [[S.uid, S.mine || {}]];
+    srcE.forEach(([uid, o]) => Object.entries(o||{}).forEach(([id, m]) => { if (!m || m.cancelled || m.noMeet || (m.flow||{}).lostAt) return; const at = m.reschedAt || m.meetAt; if (!at) return;
+      const put = (map, k) => { if (k && (!map[k] || String(at) > String(map[k].at))) map[k] = {at, m, uid, id}; };
       put(conv, m.iskConvId ? String(m.iskConvId) : ""); put(phone, iskDigits(m.phone)); }));
     ISKMEET = {at:Date.now(), conv, phone}; }
   return ISKMEET.conv[String(x.id)] || ISKMEET.phone[iskDigits(x.phone)] || null; }
@@ -7372,7 +7374,7 @@ function renderIskra(){
     right = `<div class="cw">
       <div class="cw-h"><button type="button" class="cw-back" data-iskback="1" aria-label="Volver a la lista">←</button>${iskAv(c, nm(c), "ck-av cw-av")}<div class="cw-who"><div class="cw-nl"><b>${esc(nm(c))}</b>${lead ? `<select class="inline cw-own cw-own-t" data-iskown="1" aria-label="Dueño">${iskOwnerOpts(c.owner)}</select>` : `<span class="cw-own-t">${c.owner ? esc(iskWho(c.owner).split(" ")[0]) : "Sin dueño"}</span>`}</div><span class="cw-live" data-livec="${esc(c.id)}" hidden></span><span class="mut small">${esc(c.phone||"")}${mt?"":" · no está en el tablero"}${lead && c.by?` · ${esc(ISK_BY[c.by]||c.by)}`:""}</span></div>
         <div class="cw-acts">
-          ${canSend ? `<button type="button" class="btn small primary" data-iskbook="1">${mt ? "Agendar otro meet" : "Agendar meet"}</button>` : ""}
+          ${(() => { const mm = canSend ? iskMeetOf(c) : null; return mm ? `<button type="button" class="btn small primary" data-iskresch="${mm.uid}__${mm.id}">🕐 Reagendar meet</button>` : canSend ? `<button type="button" class="btn small primary" data-iskbook="1">${mt ? "Agendar otro meet" : "Agendar meet"}</button>` : ""; })()}
           ${waLink(c.phone, "") ? `<a class="btn small cw-wa" data-iskwa="1" href="${esc(waLink(c.phone, "").replace(/\?text=$/, ""))}" target="_blank" rel="noopener" title="Abrir este chat en tu WhatsApp" aria-label="Abrir en mi WhatsApp"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg><span>WhatsApp</span></a>` : ""}
           ${canSend ? `<button type="button" class="btn small cw-rem" data-remnew="1" data-remconv="${esc(c.id)}" data-remname="${esc(nm(c))}" title="Recordarme retomar este chat" aria-label="Recordatorio">⏰</button>` : ""}
           ${canSend ? `
@@ -7388,6 +7390,7 @@ function renderIskra(){
           : ai.k==="sent" ? `<div class="cw-remb cw-ai s">🤖 <span>La IA contestó${tn ? ` con <b>${esc(tn)}</b>` : ""}.</span></div>`
           : `<div class="cw-remb cw-ai t">🤖 <span><b>Modo prueba</b> · habría contestado${tn ? ` con <b>${esc(tn)}</b>` : ""}: “${esc(String(ai.a.text).slice(0, 160))}${String(ai.a.text).length > 160 ? "…" : ""}”</span>${canSend ? `<button type="button" class="linkbtn" data-aiuse="1">Usar</button>` : ""}</div>`; })()}
       ${c.lastDir==="in" && !iskPend(c) ? `<div class="cw-remb cw-nr">✓ <span>Marcado como <b>no necesita respuesta</b>. Si vuelve a escribir, cuenta otra vez.</span>${canSend ? `<button type="button" class="linkbtn" data-isknr="undo">Deshacer</button>` : ""}</div>` : ""}
+      ${ISK.resch && ISK.resch.conv===c.id ? (() => { const [ru, rid] = ISK.resch.k.split("__"), mm = iskMeetOf(c); return `<div class="cw-remb cw-resch"><span>🕐 Nueva fecha${mm ? ` <small class="mut">(era ${esc(fmtMeetAt(mm.at))})</small>` : ""}</span><input type="datetime-local" data-k="${esc(ISK.resch.k)}" data-dt="resched" value="${esc(((DRAFT[ISK.resch.k]||{}).dt||{}).resched || "")}"><button type="button" class="btn small primary" data-iskreschgo="${esc(ISK.resch.k)}">Guardar</button><button type="button" class="linkbtn" data-iskreschx="1">Cancelar</button><button type="button" class="linkbtn" data-iskbook="1">o agendar otro meet</button></div>`; })() : ""}
       <div class="cv-thread cw-t" id="iskThread">${iskBubbles(c)}</div>
       ${lead && ISK.diag ? `<div class="isk-diag">
         <div class="probe"><b>Archivos por WhatsApp</b><p class="mut small">ISKRA solo acepta texto o una plantilla aprobada. Para que un PDF o foto llegue como archivo, crea en ISKRA una plantilla con ese archivo de encabezado y conéctala en Mensajes → Plantillas ("Plantilla de ISKRA con archivo"). Lo que adjuntas con 📎 llega como link.</p>
@@ -7583,6 +7586,15 @@ document.addEventListener("click", async e => {
     try{ await iskFn()("discard", {id, undo}); }catch(err){ ISK.err = "No se pudo: " + err.message; if (cv) cv.disc = undo ? Date.now() : 0; }
     return iskLoad(true);
   }
+  const rs = e.target.closest("[data-iskresch]"); if (rs && ISK.sel){ ISK.resch = {conv:ISK.sel, k:rs.dataset.iskresch}; schedule(); return; }
+  if (e.target.closest("[data-iskreschx]")){ ISK.resch = null; schedule(); return; }
+  const rg = e.target.closest("[data-iskreschgo]"); if (rg){ const [ru, rid] = rg.dataset.iskreschgo.split("__"), inp = document.querySelector(`.cw-resch input[data-dt="resched"]`);
+    if (!inp || !inp.value){ quickToast("Elige la nueva fecha y hora"); return; }
+    (DRAFT[rg.dataset.iskreschgo] ||= {dt:{}}).dt = {...((DRAFT[rg.dataset.iskreschgo]||{}).dt||{}), resched:inp.value};
+    rg.disabled = true; rg.textContent = "Guardando…";
+    Promise.resolve(doAct({dataset:{act:"resched", uid:ru, id:rid}})).then(msg => { ISK.resch = null; ISKMEET.at = 0; quickToast(typeof msg === "string" && msg ? msg : "✓ Meet reagendado"); schedule(); })
+      .catch(err => { rg.disabled = false; rg.textContent = "Guardar"; quickToast((err && (err.msg || err.message)) || "No se pudo reagendar"); });
+    return; }
   if (e.target.closest("[data-iskbook]") && ISK.sel){ const c = ISK.convs.find(x => x.id===ISK.sel); if (c) openBook(c); return; }
   if (e.target.closest("[data-iskfile]")){ $("iskFile").click(); return; }
   if (e.target.closest("[data-iskdiag]")){ ISK.diag = !ISK.diag; return schedule(); }
