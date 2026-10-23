@@ -358,6 +358,11 @@
     const r = await fetch("/api/upload", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + t}, body:JSON.stringify({name, type:blob.type, data})});
     const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || ("Error " + r.status)); return j;
   };
+  window.STRIKD_PMEETS = async (perfil, from, to) => {
+    const t = (await sb.auth.getSession()).data.session.access_token;
+    const r = await fetch(`/api/busy?perfil=${perfil}&from=${from}&to=${to}`, {headers:{authorization:"Bearer " + t}});
+    if (!r.ok) throw new Error("perfil " + r.status); return r.json();
+  };
   window.STRIKD_BUSY = async (from, to) => {
     const t = (await sb.auth.getSession()).data.session.access_token;
     const r = await fetch(`/api/busy?from=${from}&to=${to}`, {headers:{authorization:"Bearer " + t}});

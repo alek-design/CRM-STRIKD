@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-23 19:58:25 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-23 19:59:39 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792785505">
+<link rel="stylesheet" href="/auth.css?v=1792785579">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792785505"></script>
+<script src="/claude-shim.js?v=1792785579"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -4118,12 +4118,23 @@ function gcalNote(mondayStr){
   if (!g.events) return `<span class="mut small">Leyendo Google Calendar…</span>`;
   return `<span class="gc-note"><span class="cal-ev gcal">Tu calendario</span> actualizado ${esc(fmtLocal(g.at).split(", ").pop())}</span>`;
 }
+// meets de un perfil para su responsable (Rafa · partners@strikd.ai → Perfil 1): los ve en su agenda aunque sean de otros
+const PM = {list:null, at:0, busy:false};
+function pmPerfil(){ const me = String(((window.STRIKD_ME && window.STRIKD_ME()) || {}).email || "").toLowerCase(); if (!me) return null;
+  const map = (S.config||{}).perfilInvite || {1:"partners@strikd.ai"}; const k = Object.keys(map).find(k => String(map[k]||"").toLowerCase() === me); return k || null; }
+function pmEvents(){
+  if (adminMode() || S.viewAs || !window.STRIKD_PMEETS) return [];
+  const pf = pmPerfil(); if (!pf) return [];
+  if (!PM.busy && Date.now() - PM.at > 120e3){ PM.busy = true; PM.at = Date.now();
+    window.STRIKD_PMEETS(pf, Date.now() - 14*864e5, Date.now() + 30*864e5).then(j => { PM.list = (j.meets||[]).filter(x => x.uid !== S.uid); }).catch(() => {}).finally(() => { PM.busy = false; schedule(); }); }
+  return PM.list || []; }
 function michEvents(){ // meets que agendó Mich (vienen de su lista; ella no ve los journeys de los AM)
   return michRows().filter(([,,x]) => x.meetId && x.meetAt).map(([u,,x]) => ({at:x.meetAt, kind:"pitch", label:`Pitch · ${x.prospect}`, who:u, mich:true}));
 }
 function calEvents(teamAll){
   const tAll = teamAll && michMode(); // Equipo visto por la Influencer: los meets de todos los AM
   const ev = michMode() && !tAll ? michEvents() : [];
+  pmEvents().forEach(x => ev.push({at:x.at, kind:"pitch", label:`Pitch · ${x.prospect}`, who:x.uid, email:(x.email||"").toLowerCase(), pm:true}));
   (adminMode() || tAll ? Object.entries(S.all) : [[meId(), myItems()]]).forEach(([uid, items]) => Object.entries(items||{}).forEach(([id, m]) => {
     const st = statusOf(id), f = m.flow || {}, v = S.validations[id];
     if (f.lostAt || st==="rejected") return;
@@ -4330,6 +4341,7 @@ function renderPlan(){
       evs.push({ts, end:e.endTs > ts ? e.endTs : ts+MEET_MIN, kind:"gcal", label:(e.extra ? "🌮 " : "") + (e.title || e.label.replace(/^Calendario · /,"")), gcal:true, sub:e.extra ? (e.calName || "Tacos") : "", glink:e.link, ghtml:e.html, gev:e});
     }));
   }
+  pmEvents().forEach(x => { const ts = meetTs(x.at); if (!isNaN(ts) && ts >= t0 && ts <= eod) evs.push({ts, end:ts+MEET_MIN, kind:"pitch", label:`Pitch · ${x.prospect}`, gcal:true, sub:`Perfil 1 · de ${x.who || "otro AM"}`, glink:safeUrl(x.link)}); });
   if (michMode()) michEvents().forEach(e => { const ts = meetTs(e.at); if (!isNaN(ts) && ts >= t0 && ts <= eod) evs.push({ts, end:ts+MEET_MIN, kind:"pitch", label:"Pitch", gcal:true, label2:e.label, sub:`Cuenta para ${String(nameOf(S.ps||{}, e.who)).split(" (")[0]}`}); });
   remList().filter(r => r.kind==="event" && !r.done && r.at >= t0 && r.at <= eod).forEach(r => evs.push({ts:r.at, end:r.at + (Number(r.dur)||30)*60e3, kind:"gcal", label:r.text, gcal:true, sub:r.name ? r.name : "Agregado por ti", manual:r.id}));
   evs.forEach(e => { if (e.label2) e.label = e.label2; });

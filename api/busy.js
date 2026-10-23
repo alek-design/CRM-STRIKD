@@ -11,6 +11,27 @@ module.exports = async (req, res) => {
   const me = await userFromReq(req);
   if (!me) return res.status(401).json({error:"Sesión no válida"});
   const from = Number(req.query.from) || Date.now(), to = Math.min(Number(req.query.to) || from + 8*864e5, from + 31*864e5);
+  // meets de un perfil para su responsable (Perfil 1 → partners@strikd.ai, Rafa): solo hora, prospecto, link y de quién es
+  if (req.query.perfil){
+    try{
+      const out = await withPg(async c => {
+        const cfg = ((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data || {};
+        const pmap = cfg.perfilInvite || {1:"partners@strikd.ai"}, pf = String(Number(req.query.perfil) || 1);
+        const mail = String(pmap[pf] || "").toLowerCase();
+        if (!["head", "manager"].includes(me.role) && String(me.email || "").toLowerCase() !== mail) return {status:403, error:"Solo el responsable de ese perfil"};
+        const names = {}; (await c.query("select id, name, email from public.app_users")).rows.forEach(u => names[u.id] = String(u.name || u.email || "").split(" ")[0]);
+        const rows = (await c.query(`select split_part(path,'/',2) uid, split_part(path,'/',4) id, data from public.docs where path like 'meets/%/items/%'
+          and coalesce(data->>'cancelled','') <> 'true' and data->'flow'->>'lostAt' is null and coalesce(data->>'perfil','1') = $1`, [pf])).rows;
+        const rej = new Set((await c.query("select split_part(path,'/',2) id from public.docs where path like 'validations/%' and data->>'status'='rejected'")).rows.map(r => r.id));
+        const meets = [];
+        for (const r of rows){ const d = r.data || {}, at = d.reschedAt || d.meetAt, t = ts(at);
+          if (!at || d.noMeet || rej.has(r.id) || isNaN(t) || t < from || t > to) continue;
+          meets.push({uid:r.uid, id:r.id, who:names[r.uid] || "", prospect:d.prospect || "", at:String(at).slice(0, 16), link:d.link || "", email:d.email || ""}); }
+        return {perfil:pf, meets};
+      });
+      return res.status(out.status || 200).json(out);
+    }catch(err){ return res.status(500).json({error:String(err.message || err)}); }
+  }
   try{
     const out = await withPg(async c => {
       const role = (await c.query("select data from public.docs where path=$1", ["roles/" + me.id])).rows[0];
