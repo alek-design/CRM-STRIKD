@@ -2657,6 +2657,9 @@ function leaderEmail(uid){ const l = leaderOf(uid); return ((l && S.roles[l] && 
 async function createInvite(o){
   const end = new Date(meetTs(o.meetAt) + MEET_MIN - OFF).toISOString().slice(0,16);
   const mails = (o.guests ? o.guests.map(guestEmail) : [leaderEmail(bookUid())]).map(x => String(x||"").trim().toLowerCase()).filter(Boolean);
+  // cada perfil puede tener un responsable que va invitado a todos sus meets: Perfil 1 (nutriólogos y entrenadores) → partners@strikd.ai
+  const pe = String((((S.config||{}).perfilInvite) || {1:"partners@strikd.ai"})[Number(o.perfil)||1] || "").trim().toLowerCase();
+  if (pe) mails.push(pe);
   // quien agenda también va como invitado (en Google sale "organizado por" pero no en la lista de invitados)
   const self = String(((window.STRIKD_GOOGLE && window.STRIKD_GOOGLE()) || {}).email || ((window.STRIKD_ME && window.STRIKD_ME()) || {}).email || "").trim().toLowerCase();
   if (self) mails.push(self);
