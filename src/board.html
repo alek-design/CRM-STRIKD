@@ -302,6 +302,9 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tt-tag{background:#111!important;color:#fff!important}
 .pl-att{display:grid;gap:6px;margin:10px 0;padding:10px 12px;border:1px solid var(--line2);border-radius:12px}.pl-att .ig{display:flex;gap:8px;flex-wrap:wrap}
 .chip-sel{font-size:12px!important;padding:3px 8px!important;border-radius:999px!important;max-width:220px}
+.px{display:grid;gap:12px}.px-top{display:flex;align-items:flex-start;gap:10px}.px-id{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}.px-id .d-name{margin:0}.px-x{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--line2);background:var(--surface);color:var(--fg);font-size:15px;cursor:pointer}
+.px-ppl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.px-ppl>div{display:grid;gap:4px;min-width:0}.px-ppl select{width:100%;max-width:none!important}
+.px-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.px-sp{flex:1}.px .d-next .tacts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.px .pl-move{margin:0}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -3492,7 +3495,7 @@ function waitText(id, m){
   if (f.launchedAt) return `Publicado el ${fmtLocal(f.launchedAt).split(",")[0]}. Meta cumplida.`;
   if (st==="rejected") return m.cancelled ? "Rechazado y cancelado" : "Rechazado: falta cancelarlo";
   if (st==="attended" && f.interested && !f.skeletonAt && (f.skeletonMeetAt || f.skeletonMeetNeeded)) return `Meet de skeleton ${f.skeletonMeetBookedAt?"agendado":"por agendar"}${f.skeletonMeetAt?`: ${fmtMeetAt(f.skeletonMeetAt)}`:" (fecha por coordinar)"}. Después el admin adjunta el skeleton.`;
-  if (st==="attended" && f.interested==null) return adminMode() || procMode() ? "Se conectó. Registra si le gustó, lo que se logró y lo que sigue (botón de abajo)." : "Se conectó. Tu manager registra si le gustó y adjunta su skeleton.";
+  if (st==="attended" && f.interested==null) return adminMode() || procMode() ? "Se conectó. Registra si le gustó, lo que se logró y lo que sigue." : "Se conectó. Tu manager registra si le gustó y adjunta su skeleton.";
   if (st==="attended" && f.interested && !f.skeletonAt) return adminMode() || procMode() ? `Le gustó. Falta su skeleton${f.next && f.next.at ? ` · lo que sigue: ${f.next.text || (f.next.kind==="meet" ? "meet" : "seguimiento")} el ${fmtLocal(f.next.at)}` : ": cuando lo valide palomea “Skeleton validado”, o programa lo que sigue"}.` : "Le gustó. Tu manager le prepara su skeleton.";
   return "";
 }
@@ -4279,8 +4282,8 @@ document.addEventListener("click", e => {
 /* ---------- Plan del día: agenda de hoy + pendientes de hoy, accionables ahí mismo ---------- */
 const DOWL = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 function respPeople(){ return [...new Set([(S.config||{}).headId, ...Object.keys(S.members||{}).filter(u => roleOf(u)==="manager" || ((S.roles||{})[u]||{}).canProcess)].filter(Boolean))]; }
-function respSel(uid, id, m){ const ppl = respPeople(); if (m.resp && !ppl.includes(m.resp)) ppl.push(m.resp);
-  return `<select class="inline chip-sel" data-resp="${uid}__${id}" aria-label="Responsable del proceso"><option value="">Responsable: nadie</option>${ppl.map(u => `<option value="${esc(u)}"${m.resp===u ? " selected" : ""}>Responsable: ${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</option>`).join("")}</select>`; }
+function respSel(uid, id, m, plain){ const ppl = respPeople(); if (m.resp && !ppl.includes(m.resp)) ppl.push(m.resp); const pre = plain ? "" : "Responsable: ";
+  return `<select class="inline chip-sel" data-resp="${uid}__${id}" aria-label="Responsable del proceso"><option value="">${pre}${plain ? "Nadie" : "nadie"}</option>${ppl.map(u => `<option value="${esc(u)}"${m.resp===u ? " selected" : ""}>${pre}${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</option>`).join("")}</select>`; }
 document.addEventListener("change", async e => { const sel = e.target.closest("[data-resp]"); if (!sel) return; const [u, id] = sel.dataset.resp.split("__"), v = sel.value || null; sel.blur();
   try{ await db.doc(`meets/${u}/items/${id}`).update({resp:v, respAt:Date.now(), respBy:v ? S.uid : "none"}); /* "none": que no se vuelva a asignar solo */ const m = ((S.allEvery||{})[u]||{})[id]; if (m) m.resp = v; quickToast(v ? `✓ Responsable: ${String(nameOf(S.ps||{}, v)).split(" (")[0]} · le salen sus pendientes` : "Sin responsable"); schedule(); }
   catch(_){ quickToast("No se pudo guardar"); } });
@@ -4367,16 +4370,23 @@ function renderPlan(){
       : `<span class="pl-mv"><button type="button" class="btn small" data-moveopen="${dk(uid,id)}">🕐 Reagendar</button>${ev.kind==="pitch" ? `<button type="button" class="btn small bad" data-act="pcancel" data-uid="${uid}" data-id="${id}">Canceló</button>` : ""}</span>`) : "";
     const t = first(uid,id,m), d = t ? dueInfo(t.due, now, t.soon) : null;
     const prof = safeUrl(m.profile), link = safeUrl(m.link);
-    return `<div class="detail pl-x">
-      <div class="pl-xh"><div><div class="d-tags"><span class="chip stage">${esc(stageOf(id,m).t)}</span>${admin?ownerChip(uid, id):""}${admin || procMode() ? respSel(uid, id, m) : (m.resp ? `<span class="chip">Responsable: ${esc(String(nameOf(S.ps||{}, m.resp)).split(" (")[0])}</span>` : "")}${admin && !(m.flow||{}).lostAt ? `<button type="button" class="chip elim" data-elim="${uid}__${id}">Eliminar</button>` : ""}</div>
-        <h3 class="d-name">${perfilIcon(m, true)}${esc(m.prospect)}</h3>${m.role?`<div class="pc-co">${esc(m.role)}</div>`:""}</div>
-        <div class="d-acts">${link?`<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">Abrir meet</a>`:""}${prof?`<a class="btn ghost" href="${esc(prof)}" target="_blank" rel="noopener">Ver perfil</a>`:""}<button type="button" class="btn small" data-remnew="1" data-remref="${uid}__${id}" data-remname="${esc(m.prospect||"")}">⏰ Recordatorio</button><button class="btn small" data-pick="${key}">Cerrar</button></div></div>
+    const canProc = (admin || procMode()) && !S.viewAs, stv = statusOf(id), lost = !!(m.flow||{}).lostAt;
+    const pastPitch = ev && ev.kind==="pitch" && !ev.gcal && ev.ts <= now && ["valid","pending"].includes(stv);
+    const hasSess = t && (t.acts||[]).some(a => a.input==="session");
+    // botones del proceso dentro de "Lo que sigue" (sin repetir si la tarea ya trae "Registrar avance")
+    const procBtns = !canProc || lost ? "" : pastPitch ? `${hasSess ? "" : `<button type="button" class="btn small primary" data-session="${uid}|${id}">✓ Sí se conectó · registrar</button>`}<button type="button" class="btn small" data-act="att-no" data-uid="${uid}" data-id="${id}">✗ No se conectó</button>`
+      : stv==="attended" && !hasSess ? `<button type="button" class="btn small primary" data-session="${uid}|${id}">📝 Registrar avance y lo que sigue</button>` : "";
+    const nm = u => esc(String(nameOf(S.ps||{}, u)).split(" (")[0]);
+    return `<div class="detail pl-x px">
+      <div class="px-top"><div class="px-id"><h3 class="d-name">${perfilIcon(m, true)}${esc(m.prospect)}</h3>${m.role?`<div class="pc-co">${esc(m.role)}</div>`:""}<span class="chip stage">${esc(stageOf(id,m).t)}</span></div>
+        <button type="button" class="px-x" data-pick="${key}" aria-label="Cerrar">✕</button></div>
+      <div class="px-ppl"><div><span class="eyb">Dueño</span>${admin ? ownerChip(uid, id) : `<b>${nm(uid)}</b>`}</div>
+        <div><span class="eyb">Responsable</span>${canProc ? respSel(uid, id, m, true) : `<b>${m.resp ? nm(m.resp) : "—"}</b>`}</div></div>
       ${t ? `<div class="d-next ${d.cls}"><div class="d-next-h"><span class="eyb">Lo que sigue</span><span class="sema ${d.cls}"><i></i>${d.txt}</span></div>
-        <div class="d-next-t">${esc(t.title)}</div>${t.detail?`<p class="d-next-d">${esc(t.detail)}</p>`:""}<div class="tacts">${actsHtml(t)}</div></div>`
-        : `<div class="d-next wait"><div class="d-next-t">${esc(waitText(id,m) || "Nada pendiente de tu lado. Avanza solo.")}</div></div>`}
-      ${ev && ev.kind==="pitch" && !ev.gcal && ev.ts <= now && (admin || procMode()) && !S.viewAs && ["valid","pending"].includes(statusOf(id)) ? `<div class="pl-att"><span class="eyb">¿Cómo salió el meet?</span><span class="ig"><button type="button" class="btn small primary" data-session="${uid}|${id}">✓ Sí se conectó · registrar</button><button type="button" class="btn small" data-act="att-no" data-uid="${uid}" data-id="${id}">✗ No se conectó</button></span></div>` : ""}
-      ${(admin || procMode()) && !S.viewAs && statusOf(id)==="attended" && !(m.flow||{}).lostAt ? `<div class="pl-att"><span class="eyb">Avance del proceso</span><span class="ig"><button type="button" class="btn small primary" data-session="${uid}|${id}">📝 Registrar avance y lo que sigue</button></span></div>` : ""}
-      ${moveHtml}
+        <div class="d-next-t">${esc(t.title)}</div>${t.detail?`<p class="d-next-d">${esc(t.detail)}</p>`:""}<div class="tacts">${actsHtml(t)}${procBtns}</div></div>`
+        : `<div class="d-next wait"><div class="d-next-h"><span class="eyb">Lo que sigue</span></div><div class="d-next-t">${esc(waitText(id,m) || "Nada pendiente de tu lado. Avanza solo.")}</div>${procBtns ? `<div class="tacts">${procBtns}</div>` : ""}</div>`}
+      ${canMove && mdr.moveOpen ? moveHtml : ""}
+      <div class="px-acts">${link?`<a class="btn small" href="${esc(link)}" target="_blank" rel="noopener">Abrir meet</a>`:""}${prof?`<a class="btn small ghost" href="${esc(prof)}" target="_blank" rel="noopener">Ver perfil</a>`:""}<button type="button" class="btn small" data-remnew="1" data-remref="${uid}__${id}" data-remname="${esc(m.prospect||"")}">⏰ Recordatorio</button>${canMove && !mdr.moveOpen ? `<button type="button" class="btn small" data-moveopen="${dk(uid,id)}">🕐 Reagendar</button>${ev.kind==="pitch" ? `<button type="button" class="btn small bad" data-act="pcancel" data-uid="${uid}" data-id="${id}">Canceló</button>` : ""}` : ""}<span class="px-sp"></span>${admin && !lost ? `<button type="button" class="btn small bad px-del" data-elim="${uid}__${id}">Eliminar</button>` : ""}</div>
       <button type="button" class="linkbtn" data-journey="${uid}__${id}">Ver su journey completo →</button>
     </div>`;
   };
