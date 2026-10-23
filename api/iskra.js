@@ -8,6 +8,7 @@ const resptime = require("../lib/resptime");
 const { publicMedia, mediaPayload, asAttachment, withLink, shapes } = require("../lib/iskmedia");
 const iskapp = require("../lib/iskapp");
 const aireply = require("../lib/aireply");
+const stall = require("../lib/stallfollow");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const enc = encodeURIComponent;
 const digits = x => String(x || "").replace(/\D/g, "").slice(-10);
@@ -415,7 +416,7 @@ module.exports = async (req, res) => {
         OWN_CACHE[String(input.id)] = m ? m.id : null;
         return {ok:true};
       }
-      if (op === "aisummary"){ if (!lead) throw Object.assign(new Error("Solo el Head o el Manager."), {status:403}); return {data:await aireply.summary(c)}; }
+      if (op === "aisummary"){ if (!lead) throw Object.assign(new Error("Solo el Head o el Manager."), {status:403}); const d = await aireply.summary(c); d.stall = await stall.summary(c).catch(() => null); return {data:d}; }
       if (op === "stats"){
         if (!lead) throw Object.assign(new Error("Solo el Head o el Manager ven los resultados."), {status:403});
         const q = new URLSearchParams(); ["from","to","period"].forEach(k => { if (input[k]) q.set(k, String(input[k])); });
