@@ -4281,7 +4281,7 @@ function respPeople(){ return [...new Set([(S.config||{}).headId, ...Object.keys
 function respSel(uid, id, m){ const ppl = respPeople(); if (m.resp && !ppl.includes(m.resp)) ppl.push(m.resp);
   return `<select class="inline chip-sel" data-resp="${uid}__${id}" aria-label="Responsable del proceso"><option value="">Responsable: nadie</option>${ppl.map(u => `<option value="${esc(u)}"${m.resp===u ? " selected" : ""}>Responsable: ${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</option>`).join("")}</select>`; }
 document.addEventListener("change", async e => { const sel = e.target.closest("[data-resp]"); if (!sel) return; const [u, id] = sel.dataset.resp.split("__"), v = sel.value || null; sel.blur();
-  try{ await db.doc(`meets/${u}/items/${id}`).update({resp:v, respAt:Date.now(), respBy:S.uid}); const m = ((S.allEvery||{})[u]||{})[id]; if (m) m.resp = v; quickToast(v ? `✓ Responsable: ${String(nameOf(S.ps||{}, v)).split(" (")[0]} · le salen sus pendientes` : "Sin responsable"); schedule(); }
+  try{ await db.doc(`meets/${u}/items/${id}`).update({resp:v, respAt:Date.now(), respBy:v ? S.uid : "none"}); // "none": que no se vuelva a asignar solo const m = ((S.allEvery||{})[u]||{})[id]; if (m) m.resp = v; quickToast(v ? `✓ Responsable: ${String(nameOf(S.ps||{}, v)).split(" (")[0]} · le salen sus pendientes` : "Sin responsable"); schedule(); }
   catch(_){ quickToast("No se pudo guardar"); } });
 // "Puede ajustar el proceso" (Rafa, Mich): además de lo suyo, los prospectos donde son responsables
 const procMode = () => !!(S.uid && !S.viewAs && !adminMode() && ((S.roles||{})[S.uid]||{}).canProcess);

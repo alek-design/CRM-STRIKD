@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-23 20:10:08 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-23 20:11:12 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792786208">
+<link rel="stylesheet" href="/auth.css?v=1792786272">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792786208"></script>
+<script src="/claude-shim.js?v=1792786272"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -4290,7 +4290,7 @@ function respPeople(){ return [...new Set([(S.config||{}).headId, ...Object.keys
 function respSel(uid, id, m){ const ppl = respPeople(); if (m.resp && !ppl.includes(m.resp)) ppl.push(m.resp);
   return `<select class="inline chip-sel" data-resp="${uid}__${id}" aria-label="Responsable del proceso"><option value="">Responsable: nadie</option>${ppl.map(u => `<option value="${esc(u)}"${m.resp===u ? " selected" : ""}>Responsable: ${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</option>`).join("")}</select>`; }
 document.addEventListener("change", async e => { const sel = e.target.closest("[data-resp]"); if (!sel) return; const [u, id] = sel.dataset.resp.split("__"), v = sel.value || null; sel.blur();
-  try{ await db.doc(`meets/${u}/items/${id}`).update({resp:v, respAt:Date.now(), respBy:S.uid}); const m = ((S.allEvery||{})[u]||{})[id]; if (m) m.resp = v; quickToast(v ? `✓ Responsable: ${String(nameOf(S.ps||{}, v)).split(" (")[0]} · le salen sus pendientes` : "Sin responsable"); schedule(); }
+  try{ await db.doc(`meets/${u}/items/${id}`).update({resp:v, respAt:Date.now(), respBy:v ? S.uid : "none"}); // "none": que no se vuelva a asignar solo const m = ((S.allEvery||{})[u]||{})[id]; if (m) m.resp = v; quickToast(v ? `✓ Responsable: ${String(nameOf(S.ps||{}, v)).split(" (")[0]} · le salen sus pendientes` : "Sin responsable"); schedule(); }
   catch(_){ quickToast("No se pudo guardar"); } });
 // "Puede ajustar el proceso" (Rafa, Mich): además de lo suyo, los prospectos donde son responsables
 const procMode = () => !!(S.uid && !S.viewAs && !adminMode() && ((S.roles||{})[S.uid]||{}).canProcess);
