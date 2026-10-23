@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-23 00:37:02 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-23 01:15:56 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792715822">
+<link rel="stylesheet" href="/auth.css?v=1792718156">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792715822"></script>
+<script src="/claude-shim.js?v=1792718156"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -307,6 +307,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .slot-times button.busy{color:#e5484d!important;border:1px solid #e5484d!important;border-style:solid!important;text-decoration:none!important;cursor:pointer!important;background:color-mix(in srgb,#e5484d 10%,var(--surface))!important}.slot-times button.busy.on{background:#e5484d!important;color:#fff!important}
 .wa-mini{width:100%;border-collapse:collapse;font-size:13px;margin:0 0 10px;background:var(--surface);border:1px solid var(--line2);border-radius:12px;overflow:hidden}.wa-mini th,.wa-mini td{padding:6px 10px;border-bottom:1px solid var(--line)}.wa-mini tr:last-child td{border-bottom:0}.wa-mini th{font-size:11.5px;color:var(--muted);font-weight:600;text-align:left}.wa-mini .num{text-align:right;white-space:nowrap}.wa-mini small{color:var(--muted)}.wa-mini-l{margin:0 0 8px}
 .ai-stall{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.ai-stall p{margin:2px 0 0}
+.fol-f{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 8px;font-size:13px}.fol-f input{width:110px;font:inherit;font-size:16px;padding:6px 10px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--fg)}.fol-f small{color:var(--muted)}.fol-f small.bad{color:#e5484d}.fol-q{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%}.fol-q button{font:inherit;font-size:12px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:3px 9px;cursor:pointer}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -1795,6 +1796,7 @@ body.mob-open header.top{z-index:31}
     <p class="mi-hint" id="miHint" hidden></p>
     <div class="mi-bar"><div class="subnav" id="miSeg"><button type="button" data-mif="nuevo" class="on">Pendientes</button><button type="button" data-mif="contactado">Contactados</button><button type="button" data-mif="tpl">Plantillas</button></div></div>
     <input type="search" id="miQ" class="mi-q" placeholder="Buscar nombre o @usuario" hidden>
+    <div class="fol-f" data-folk="mi"><span>Seguidores</span><input type="text" inputmode="decimal" data-folmin="mi" placeholder="desde · 10k" aria-label="Seguidores desde"><span>a</span><input type="text" inputmode="decimal" data-folmax="mi" placeholder="hasta · 1.5m" aria-label="Seguidores hasta"><small data-folhint="mi"></small><span class="fol-q"><button type="button" data-folq="mi|0|50k">&lt;50K</button><button type="button" data-folq="mi|50k|150k">50–150K</button><button type="button" data-folq="mi|150k|500k">150–500K</button><button type="button" data-folq="mi|500k|">500K+</button><button type="button" data-folq="mi||">Todos</button></span></div>
     <div id="miTplBar"></div>
     <div id="miBox"></div>
     <div class="mi-toast" id="miToast" hidden></div>
@@ -1806,6 +1808,7 @@ body.mob-open header.top{z-index:31}
       <select class="inline" id="vipFilter" aria-label="Estado"><option value="">Todos</option><option value="nuevo">Sin contactar</option><option value="contactado">Mich ya lo contactó</option><option value="interesado">Interesados</option><option value="agendo">Agendó meet</option><option value="descartado">Descartados</option></select></div>
     <div class="row"><button type="button" class="btn small primary" id="vipNew">+ Meet de influencer que consiguió Mich</button><span class="err okmsg" id="vipMsg" hidden></span></div>
     <div id="vipNewBox"></div>
+    <div class="fol-f" data-folk="vip"><span>Seguidores</span><input type="text" inputmode="decimal" data-folmin="vip" placeholder="desde · 10k" aria-label="Seguidores desde"><span>a</span><input type="text" inputmode="decimal" data-folmax="vip" placeholder="hasta · 1.5m" aria-label="Seguidores hasta"><small data-folhint="vip"></small><span class="fol-q"><button type="button" data-folq="vip|0|50k">&lt;50K</button><button type="button" data-folq="vip|50k|150k">50–150K</button><button type="button" data-folq="vip|150k|500k">150–500K</button><button type="button" data-folq="vip|500k|">500K+</button><button type="button" data-folq="vip||">Todos</button></span></div>
     <div id="vipBox"></div>
   </section>
 
@@ -2687,6 +2690,19 @@ function parseFol(v){
   else n = Number(t.replace(/[.,]/g, ""));
   return isFinite(n) && n > 0 ? Math.round(n * mult) : 0;
 }
+// filtro por seguidores (Mi lista y Lista para Mich): entiende 1.5m · 1,5M · 150k · 150 mil · 150,000 · 150.000 · 150000
+const FOLF = {mi:{min:"", max:""}, vip:{min:"", max:""}};
+const folNum = v => { const t = String(v||"").trim(); if (!t) return null; if (/^0+$/.test(t)) return 0; const n = parseFol(t); return n > 0 ? n : NaN; };
+function folOk(k, x){ const f = FOLF[k], a = folNum(f.min), b = folNum(f.max), n = Number(x.followers)||0;
+  return (a == null || isNaN(a) || n >= a) && (b == null || isNaN(b) || n <= b); }
+function folHint(k){ const f = FOLF[k], a = folNum(f.min), b = folNum(f.max), el = document.querySelector(`[data-folhint="${k}"]`); if (!el) return;
+  const fm = n => n.toLocaleString("es-MX");
+  el.textContent = (isNaN(a) || isNaN(b)) ? "No entendí ese número (ej. 150k, 1.5m, 150,000)" : (a != null || b != null) ? `${a != null ? fm(a) : "0"} a ${b != null ? fm(b) : "más"}` : "";
+  el.classList.toggle("bad", isNaN(a) || isNaN(b)); }
+document.addEventListener("input", e => { const mn = e.target.closest && e.target.closest("[data-folmin],[data-folmax]"); if (!mn) return;
+  const k = mn.dataset.folmin || mn.dataset.folmax; FOLF[k][mn.dataset.folmin ? "min" : "max"] = mn.value; folHint(k); k==="mi" ? renderMich() : schedule(); });
+document.addEventListener("click", e => { const q = e.target.closest("[data-folq]"); if (!q) return; const [k, a, b] = q.dataset.folq.split("|");
+  FOLF[k] = {min:a, max:b}; const w = document.querySelector(`[data-folk="${k}"]`); if (w){ w.querySelector("[data-folmin]").value = a; w.querySelector("[data-folmax]").value = b; } folHint(k); k==="mi" ? renderMich() : schedule(); });
 // comparar texto sin importar acentos ni mayúsculas (Ramírez = ramirez)
 const fold = v => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 function readForm(){ const o={}; FIELDS.forEach(f=> o[f] = $("f_"+f).value.trim()); if (o.meetAt) o.meetAt = toC(o.meetAt); o._folRaw = o.followers; if (o.followers) o.followers = String(parseFol(o.followers) || ""); return o; }
@@ -4624,7 +4640,7 @@ function renderMich(){
   const kOk = x => !kf || (kf==="ugc" ? isUgc(x) : !isUgc(x));
   const kBar = (() => { const base = rows.filter(([,,x]) => MICH.f==="nuevo" ? !done(x) : done(x)), nu = base.filter(([,,x]) => isUgc(x)).length;
     return `<div class="mi-ef mi-kind">${[["","Todos",base.length],["inf","Influencers",base.length-nu],["ugc","UGC",nu]].map(([v,l,n]) => `<button type="button" class="${kf===v?"on":""}" data-mikind="${v}">${l} <b>${n}</b></button>`).join("")}</div>`; })();
-  const list = rows.filter(([,,x]) => MICH.f==="nuevo" ? !done(x) : done(x)).filter(([,,x]) => kOk(x))
+  const list = rows.filter(([,,x]) => MICH.f==="nuevo" ? !done(x) : done(x)).filter(([,,x]) => kOk(x)).filter(([,,x]) => folOk("mi", x))
     .filter(([,,x]) => !ef || (ef==="con" ? !!x.email : !x.email))
     .filter(([,,x]) => !q || fold(String(x.prospect||"")+" "+igUser(x.profile)).includes(fold(q)))
     .sort((a,b) => MICH.f==="nuevo" ? (b[2].followers||0) - (a[2].followers||0) : (b[2].statusAt||b[2].createdAt||0) - (a[2].statusAt||a[2].createdAt||0));
@@ -4641,7 +4657,7 @@ function renderMich(){
       ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${st==="contactado" && !x.meetId ? `<button type="button" class="mi-emed" data-mint="${k}|interesado" title="Respondió con interés">Interesado</button><button type="button" class="mi-emed" data-mint="${k}|descartado" title="No le interesa">No le interesa</button>` : (st==="interesado" || st==="descartado") && !x.meetId ? `<button type="button" class="mi-emed" data-mint="${k}|contactado" title="Regresar a contactado">↺</button>` : ""}${!x.meetId && !x.email1At ? `<button type="button" class="mi-ic mi-back" data-mundo="${k}" aria-label="Regresar a pendientes" title="Regresar a pendientes (no se contactó)">↺</button>` : ""}${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
         : `<span class="mi-ig">Abrir</span>${MICH.on ? "" : `<button type="button" class="mi-ic" data-mdone="${k}" aria-label="Marcar como contactado" title="Marcar como contactado">✓</button>`}`}
     </a>`; }).join("")}</div>`
-    : `<div class="empty">${rows.length ? (MICH.f==="nuevo" ? "🎉 No hay pendientes. Cuando el equipo proponga más influencers aparecen aquí." : "Nada por aquí.") : "Todavía no hay influencers en la lista. Aparecen cuando el equipo registra un Perfil 3 (35K+)."}</div>`);
+    : `<div class="empty">${rows.length && (FOLF.mi.min || FOLF.mi.max) ? "Nadie en ese rango de seguidores. Cambia el filtro o toca Todos." : rows.length ? (MICH.f==="nuevo" ? "🎉 No hay pendientes. Cuando el equipo proponga más influencers aparecen aquí." : "Nada por aquí.") : "Todavía no hay influencers en la lista. Aparecen cuando el equipo registra un Perfil 3 (35K+)."}</div>`);
 }
 // agregar o corregir el email de un influencer de la lista (Mich o el AM que lo propuso)
 async function vipEmailAsk(k){
@@ -6150,7 +6166,7 @@ function renderVip(){
     .sort((a,b) => (a[2].createdAt||0) - (b[2].createdAt||0))
     .forEach(row => { const k = row[2].igKey || igKey(row[2].profile); if (k && seen.has(k)) return; if (k) seen.add(k); rows.push(row); });
   const cnt = {}; rows.forEach(([,,x]) => { const s = x.status||"nuevo"; cnt[s] = (cnt[s]||0)+1; });
-  const shown = rows.filter(([,,x]) => !f || (x.status||"nuevo")===f).sort((a,b) => (b[2].followers||0) - (a[2].followers||0));
+  const shown = rows.filter(([,,x]) => !f || (x.status||"nuevo")===f).filter(([,,x]) => folOk("vip", x)).sort((a,b) => (b[2].followers||0) - (a[2].followers||0));
   $("vipSum").textContent = `${rows.length} perfiles · ${cnt.nuevo||0} sin contactar`;
   box.innerHTML = shown.length ? `<div class="vip-list">${shown.map(([u,id,x]) => vipRow(u, id, x, true)).join("")}</div>`
     : `<div class="empty">${rows.length ? "No hay perfiles con ese estado." : "Todavía nadie del equipo ha propuesto influencers. Aparecen aquí cuando registran un Perfil 3."}</div>`;
