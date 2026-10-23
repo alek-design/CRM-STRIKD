@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-23 16:54:21 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-23 19:34:18 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792774461">
+<link rel="stylesheet" href="/auth.css?v=1792784058">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792774461"></script>
+<script src="/claude-shim.js?v=1792784058"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -309,6 +309,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ai-stall{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.ai-stall p{margin:2px 0 0}
 .fol-f{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 8px;font-size:13px}.fol-f button{font:inherit;font-size:12.5px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:4px 10px;cursor:pointer}.fol-f button b{opacity:.65;margin-left:2px}.fol-f button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.fol-f input{width:110px;font:inherit;font-size:16px;padding:6px 10px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--fg)}.fol-f small{color:var(--muted)}.fol-f small.bad{color:#e5484d}.fol-q{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%}.fol-q button{font:inherit;font-size:12px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:3px 9px;cursor:pointer}
 .tt-tag{background:#111!important;color:#fff!important}
+.pl-att{display:grid;gap:6px;margin:10px 0;padding:10px 12px;border:1px solid var(--line2);border-radius:12px}.pl-att .ig{display:flex;gap:8px;flex-wrap:wrap}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -4330,7 +4331,7 @@ function renderPlan(){
   const expand = (key, uid, id, m, ev) => {
     if (sel !== key) return "";
     // cambiar el horario de un meet que todavía no pasa (pitch, skeleton o lanzamiento)
-    const canMove = ev && !ev.gcal && ev.end > now && (admin || uid === meId()) && !S.viewAs;
+    const canMove = ev && !ev.gcal && (admin || uid === meId()) && !S.viewAs; // también si ya pasó (para reagendar a quien no llegó)
     const mdr = DRAFT[dk(uid,id)] || {}, cur = ev ? toV(new Date(ev.ts - OFF).toISOString().slice(0,16)) : "";
     const moveHtml = canMove ? (mdr.moveOpen ? `<div class="pl-move"><span class="eyb">Nuevo horario${tzOther() ? ` (tu hora · ${esc(tzName())})` : ""}</span>
         <span class="ig"><input type="datetime-local" data-k="${dk(uid,id)}" data-dt="move" value="${esc((mdr.dt||{}).move || cur)}" aria-label="Nuevo horario"><button type="button" class="btn small primary" data-act="move" data-kind="${ev.kind}" data-uid="${uid}" data-id="${id}">Guardar</button></span>
@@ -4345,6 +4346,7 @@ function renderPlan(){
       ${t ? `<div class="d-next ${d.cls}"><div class="d-next-h"><span class="eyb">Lo que sigue</span><span class="sema ${d.cls}"><i></i>${d.txt}</span></div>
         <div class="d-next-t">${esc(t.title)}</div>${t.detail?`<p class="d-next-d">${esc(t.detail)}</p>`:""}<div class="tacts">${actsHtml(t)}</div></div>`
         : `<div class="d-next wait"><div class="d-next-t">${esc(waitText(id,m) || "Nada pendiente de tu lado. Avanza solo.")}</div></div>`}
+      ${ev && ev.kind==="pitch" && !ev.gcal && ev.ts <= now && admin && !S.viewAs && ["valid","pending"].includes(statusOf(id)) ? `<div class="pl-att"><span class="eyb">¿Cómo salió el meet?</span><span class="ig"><button type="button" class="btn small primary" data-act="att-yes" data-uid="${uid}" data-id="${id}">✓ Sí se conectó</button><button type="button" class="btn small" data-act="att-no" data-uid="${uid}" data-id="${id}">✗ No se conectó</button></span>${statusOf(id)==="pending" ? `<small class="mut">Al marcar "Sí se conectó" también queda validado.</small>` : ""}</div>` : ""}
       ${moveHtml}
       <button type="button" class="linkbtn" data-journey="${uid}__${id}">Ver su journey completo →</button>
     </div>`;
@@ -4372,7 +4374,7 @@ function renderPlan(){
       else if (state==="next"){
         const conf = (e.m.flow||{}).confirmedFor===effAt(e.m);
         tag = `<span class="ma-rel">${esc(rel)}${isPitch && conf ? " · ✓ confirmó" : ""}</span>${e.m.iskConvId ? ((e.m.flow||{}).remindedFor===effAt(e.m) ? `<span class="ma-rel">✓ recordado</span>` : `<button type="button" class="ma" data-remisk="1" data-confirm="1" data-uid="${e.uid}" data-id="${e.id}">Recordar</button>`) : ph ? `<a class="ma" href="${esc(waLink(ph, `¡Hola ${firstN}! Te recuerdo nuestro meet de hoy a las ${hm(e.ts)}.${link ? ` Aquí el link: ${link}` : ""}`))}" target="_blank" rel="noopener">Recordar</a>` : ""}`;
-      } else if (state==="past" && isPitch && admin && statusOf(e.id)==="valid") tag = `<span class="ma-rel">¿Se conectó?</span><button class="ma" data-act="att-yes" data-uid="${e.uid}" data-id="${e.id}">Sí</button><button class="ma" data-act="att-no" data-uid="${e.uid}" data-id="${e.id}">No</button>`;
+      } else if (state==="past" && isPitch && admin && ["valid","pending"].includes(statusOf(e.id))) tag = `<span class="ma-rel">¿Se conectó?</span><button class="ma" data-act="att-yes" data-uid="${e.uid}" data-id="${e.id}">Sí</button><button class="ma" data-act="att-no" data-uid="${e.uid}" data-id="${e.id}">No</button>`;
       else if (state==="past") tag = `<span class="ma-rel">${t ? "falta un paso" : "✓ pasó"}</span>`;
     } else tag = state==="live" ? `<span class="ma-rel">en curso</span>` : rel ? `<span class="ma-rel">${esc(rel)}</span>` : "";
     tag = tag ? `<span class="ma-row">${tag}</span>` : "";
