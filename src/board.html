@@ -309,6 +309,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ck-3{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}.ck-3 .ck-b{white-space:nowrap;margin:0;font-size:10.5px;line-height:1.5}
 .sw{flex:none;display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:13px;font-weight:600;background:none;border:0;color:var(--muted);cursor:pointer;padding:4px 0;white-space:nowrap}.sw i{width:40px;height:24px;border-radius:999px;background:var(--line2);position:relative;transition:background .15s}.sw i::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}.sw.on{color:var(--fg)}.sw.on i{background:#25D366}.sw.on i::after{left:19px}
 .cw-resch{gap:8px}.cw-resch input{font:inherit;font-size:16px;padding:5px 8px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);color:var(--fg)}
+.d-next-d,.pg-row small,.tk-sub{white-space:pre-wrap}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -1050,7 +1051,7 @@ label.f em{color:var(--bad);font-style:normal}
 .tkr.st-done{opacity:.6}
 .tk-det{display:grid;gap:10px;padding:4px 14px 14px 60px;border-top:0}
 @media (max-width:640px){.tk-det{padding-left:14px}}
-.tk-note{margin:0;font-size:13px;color:var(--muted2)}
+.tk-note{margin:0;font-size:13px;color:var(--muted2);white-space:pre-wrap;overflow-wrap:anywhere}
 .tk-fb,.tk-rep{background:var(--raised);border-radius:10px;padding:8px 10px}.tk-fb b,.tk-rep b{font-size:12px;color:var(--muted)}.tk-fb p,.tk-rep p{margin:2px 0 0;font-size:13.5px;white-space:pre-wrap}
 .tk-fb{background:color-mix(in srgb,var(--bad) 8%,var(--surface))}
 .tk-files{display:flex;flex-wrap:wrap;gap:6px}.tk-file{font-size:12.5px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--raised);border:1px solid var(--line2);color:var(--fg);text-decoration:none}
