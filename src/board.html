@@ -296,6 +296,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .slot-why{font-size:12.5px;margin:6px 0}.slot-why summary{cursor:pointer;color:var(--muted)}.slot-why div{padding:2px 0}
 .cw-acts{flex-wrap:wrap;row-gap:6px}.cw-act{white-space:nowrap}.cw-act.on{background:var(--fg)!important;color:var(--bg)!important;border-color:var(--fg)!important}.cw-act.bad{color:#e5484d}
 .slot-times button.busy{color:#e5484d!important;border:1px solid #e5484d!important;border-style:solid!important;text-decoration:none!important;cursor:pointer!important;background:color-mix(in srgb,#e5484d 10%,var(--surface))!important}.slot-times button.busy.on{background:#e5484d!important;color:#fff!important}
+.wa-mini{width:100%;border-collapse:collapse;font-size:13px;margin:0 0 10px;background:var(--surface);border:1px solid var(--line2);border-radius:12px;overflow:hidden}.wa-mini th,.wa-mini td{padding:6px 10px;border-bottom:1px solid var(--line)}.wa-mini tr:last-child td{border-bottom:0}.wa-mini th{font-size:11.5px;color:var(--muted);font-weight:600;text-align:left}.wa-mini .num{text-align:right;white-space:nowrap}.wa-mini small{color:var(--muted)}.wa-mini-l{margin:0 0 8px}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -1763,7 +1764,7 @@ body.mob-open header.top{z-index:31}
   <section class="view" id="view-msgs" hidden>
     <div class="msgs-head"><div class="mh-top"><h2 id="msgsTitle">Mensajes</h2><button type="button" class="btn small mh-tpl" id="msgTplBtn">Plantillas</button></div>
     <div class="subnav" id="msgSeg" hidden role="tablist" aria-label="Mensajes"><button type="button" data-mseg="isk" id="msegIsk" hidden>Conversaciones</button><button type="button" data-mseg="inbox" id="msegInbox">Conversaciones</button><button type="button" data-mseg="send" hidden>Por mandar<span class="n" id="msegSendN"></span></button><button type="button" data-mseg="tpl">Plantillas</button></div></div>
-    <div data-seg="isk"><div id="iskBox" hidden></div></div>
+    <div data-seg="isk"><div id="waMini" hidden></div><div id="iskBox" hidden></div></div>
     <div data-seg="inbox"><p class="notice" id="iskNotice">Al conectar ISKRA, "Abrir en WhatsApp" se vuelve <b>Enviar</b> y sale directo desde el número de STRIKD.</p><div id="inboxBox"></div></div>
     <div data-seg="send"><div id="msgBox"></div></div>
     <div data-seg="tpl"><div class="tpl-wrap"><div id="tplBox"></div></div></div>
@@ -6243,6 +6244,30 @@ const numKeys = o => Object.entries(o||{}).filter(([k,v]) => typeof v==="number"
 // número de un objeto de ISKRA por nombres posibles
 const pickN = (o, re) => { const k = Object.keys(o||{}).find(x => re.test(x) && !isNaN(Number(o[x])) && o[x] !== null && o[x] !== ""); return k ? Number(o[k]) : null; };
 const WA_SORT = {k:"cont", dir:-1};
+// contactados / con respuesta / agendados (meets reales del panel, uno por prospecto) cruzando ISKRA con el tablero
+function waCalc(){
+  const D = WAS.data || {}, convs = Array.isArray(D.convs) ? D.convs : null; if (!convs) return null;
+  const byConv = {}, byPhone = {}; convs.forEach(cv => { byConv[cv.id] = cv; if (cv.phone) byPhone[cv.phone] = cv; });
+  const seenP = new Set(), meets = [];
+  Object.entries(S.all||{}).forEach(([u,o]) => Object.entries(o||{}).forEach(([id,m]) => {
+    if (!m || m.noMeet || !m.meetAt || statusOf(id)==="rejected") return;
+    const cv = (m.iskConvId && byConv[m.iskConvId]) || byPhone[iskDigits(m.phone)] || null;
+    if (canalOf(m)!=="whatsapp" && !cv) return;
+    const key = iskDigits(m.phone) || m.iskConvId || (m.email||"").toLowerCase() || id; if (seenP.has(key)) return; seenP.add(key);
+    meets.push({m, cv}); }));
+  const today = new Date(Date.now() - OFF).toISOString().slice(0,10), dayOf = t => t ? new Date(t - OFF).toISOString().slice(0,10) : "";
+  const pack = (cs, ms) => ({cont:cs.length, resp:cs.filter(x => x.replied).length, ag:ms.length});
+  return {all:pack(convs, meets), today:pack(convs.filter(x => dayOf(x.at)===today), meets.filter(x => x.cv ? dayOf(x.cv.at)===today : dayOf(x.m.createdAt)===today))};
+}
+function renderWaMini(){
+  const box = $("waMini"); if (!box) return;
+  const show = adminMode() && !S.viewAs && !!iskFn(); box.hidden = !show; if (!show) return;
+  wasLoad(); const r = waCalc(), pc = (a,b) => b ? Math.round(a/b*1000)/10 + "%" : "—", nf = v => Number(v||0).toLocaleString("es-MX");
+  const row = (l, x) => `<tr><td><b>${l}</b></td><td class="num">${nf(x.cont)}</td><td class="num">${nf(x.resp)} <small>${pc(x.resp, x.cont)}</small></td><td class="num">${nf(x.ag)} <small>${pc(x.ag, x.cont)}</small></td></tr>`;
+  const h = r ? `<table class="wa-mini"><thead><tr><th></th><th class="num">Contactados</th><th class="num">Respuesta</th><th class="num">Meets</th></tr></thead><tbody>${row("Hoy", r.today)}${row("Siempre", r.all)}</tbody></table>`
+    : `<p class="mut small wa-mini-l">${WAS.err ? "No se pudieron leer los números de ISKRA." : "Cargando números…"}</p>`;
+  if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
+}
 function renderWa(){
   const box = $("waBox"); if (!box || !adminMode() || busyIn($("view-wa"))) return;
   if (S.tab==="wa") wasLoad();
@@ -7190,6 +7215,7 @@ document.addEventListener("input", e => { if (e.target.closest && e.target.close
 function iskBubbles(c){ const ms = ISK.msgs[c.id]; return !ms ? `<p class="mut small">Cargando…</p>` : ms.map(x => { const by = iskSentBy(c.id, x); return `<div class="bub ${x.d}${x.failed?" failed":""}">${iskMediaHtml(x)}${x.t?`<p>${esc(x.t)}</p>`:""}${x.d==="in" && x.t ? [...new Set((String(x.t).match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)||[]).map(e => e.toLowerCase()))].map(em => `<button type="button" class="cpmail" data-cpmail="${esc(em)}" title="${esc(em)}">📋 Copiar correo</button>`).join("") : ""}<span>${x.at?esc(fmtLocal(x.at)):""}${by?` · mandó ${esc(iskWho(by))}`:""}${x.st?` · ${esc(x.st)}`:""}</span></div>`; }).join("") || `<p class="mut small">Sin mensajes.</p>`; }
 function renderIskra(){
   const box = $("iskBox"); if (!box) return;
+  if (S.tab==="msgs") renderWaMini();
   const on = !!iskFn();
   box.hidden = !on; if (!on || S.tab!=="msgs") { clearInterval(ISK.timer); clearInterval(ISK.thT); ISK.timer = null; ISK.thT = null; return; }
   if (!ISK.timer){
