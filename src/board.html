@@ -1711,7 +1711,7 @@ body.mob-open header.top{z-index:31}
         <div class="row" style="margin-top:14px">
           <p class="err" id="formErr" hidden></p>
           <div class="spacer"></div>
-          <button class="btn primary" type="submit" id="submitBtn">Enviar a validación</button>
+          <button class="btn primary" type="submit" id="submitBtn">Agendar meet</button>
         </div>
       </form>
     </div>
@@ -1856,9 +1856,9 @@ Cómo se ganan puntos (valen más conforme el prospecto se acerca a publicar):
 · Programa y página web listos: 4 puntos.
 · Publicó su programa: 5 puntos.
 
-Cada paso cuenta en la semana en que ocurre. Un prospecto que llega a publicar suma 15 puntos en total. Un meet validado al que el prospecto no se conecta no suma.
+Cada paso cuenta en la semana en que ocurre. Un prospecto que llega a publicar suma 15 puntos en total. Un meet al que el prospecto no se conecta no suma.
 
-Para pasar el filtro de validación:
+Para que el meet cuente:
 1. Ya está agendado y el prospecto recibió la invitación (pega el link).
 2. Incluye el link al perfil del prospecto y por dónde lo contactaste, para revisarlo antes del meet.
 3. Nombre, empresa y email del prospecto son reales y verificables.
@@ -1869,7 +1869,7 @@ Para pasar el filtro de validación:
 Si tu meet es rechazado, debes cancelarlo con el prospecto y marcarlo como cancelado en la página.
 
 Antes del pitch (Account Manager):
-1. Registra el meet; si los datos están completos y nadie más tiene a ese prospecto, entra validado solo.
+1. Agenda el meet; queda agendado al instante (solo se revisa si alguien más ya tiene a ese prospecto).
 2. Rechazado: cancélalo en menos de 24 h.
 3. Confírmalo con el prospecto y mándale el recordatorio 2 h antes.
 4. No se conectó: en 48 h reagéndalo o márcalo como perdido.
@@ -2575,7 +2575,7 @@ function statusOf(id){ const v = S.validations[id]; return v && v.status !== "pe
 function syncAutoV(){ AUTOV.clear(); [S.mine, ...Object.values(S.all)].forEach(o => Object.entries(o||{}).forEach(([id,m]) => { if (m && m.autoValid) AUTOV.add(id); })); }
 function chip(st, m){
   if (st==="rejected") return m && m.cancelled ? `<span class="chip rejected">Rechazado · cancelado</span>` : `<span class="chip rejected">Rechazado · falta cancelar</span>`;
-  return {pending:`<span class="chip pending">Por revisar</span>`, valid:`<span class="chip info">Validado · esperando el meet</span>`,
+  return {pending:`<span class="chip pending">Por revisar</span>`, valid:`<span class="chip info">Agendado · esperando el meet</span>`,
     attended:`<span class="chip valid">Tomado · +1 punto</span>`, noshow:`<span class="chip muted">No se conectó</span>`}[st];
 }
 const meetPassed = m => { const t = meetTs(effAt(m)); return !isNaN(t) && t < Date.now(); };
@@ -2602,7 +2602,7 @@ function renderMine(){
   const items = Object.entries(myItems()).sort((a,b)=> (meetTs(b[1].meetAt)||0)-(meetTs(a[1].meetAt)||0));
   const cur = items.filter(([,m])=>meetWeek(m)===S.currentKey);
   const c = {pending:0, valid:0, attended:0, noshow:0, rejected:0}; cur.forEach(([id])=>c[statusOf(id)]++);
-  $("myStats").innerHTML = `<span class="chip valid">${c.attended} tomados</span><span class="chip info">${c.valid} validados</span><span class="chip pending">${c.pending} por revisar</span><span class="chip rejected">${c.rejected} rechazados</span>`;
+  $("myStats").innerHTML = `<span class="chip valid">${c.attended} tomados</span><span class="chip info">${c.valid + c.pending} agendados</span><span class="chip rejected">${c.rejected} rechazados</span>`;
   if (!items.length){ $("myList").innerHTML = `<div class="empty">Todavía no registras meets. Llena el formulario de arriba para sumar tu primero.</div>`; return; }
   $("myList").innerHTML = items.map(([id,m]) => {
     const st = statusOf(id), v = S.validations[id], wk = meetWeek(m);
@@ -2811,7 +2811,7 @@ function validate(o){
   if (o.link && !safeUrl(o.link)) return "El link debe empezar con https://";
   return "";
 }
-function resetForm(){ if ($("f_stage")){ $("f_stage").value = ""; $("stageHint").hidden = true; $("meetForm").classList.remove("has-stage"); } S.waPrefill = null; S.gcPrefill = null; S.bkGuests = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Enviar a validación"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
+function resetForm(){ if ($("f_stage")){ $("f_stage").value = ""; $("stageHint").hidden = true; $("meetForm").classList.remove("has-stage"); } S.waPrefill = null; S.gcPrefill = null; S.bkGuests = null; FIELDS.forEach(f=> $("f_"+f).value=""); $("f_p3meet").checked = false; S.editingId=null; document.querySelectorAll("#pfPick [data-perfil]").forEach(b => b.disabled = false); setTimeout(syncPerfilUi, 0); $("f_mkinv").checked = true; setTimeout(syncInvUi, 0); $("formTitle").textContent="Registrar meet"; $("submitBtn").textContent="Agendar meet"; $("cancelEdit").hidden=true; $("formErr").hidden=true; }
 $("cancelEdit").addEventListener("click", resetForm);
 /* ---------- resultado claro al registrar: cargando → listo / con aviso / error ---------- */
 const RS_IC = {ok:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>', warn:'<svg viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"/></svg>', err:'<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>', loading:""};
@@ -2903,7 +2903,7 @@ $("meetForm").addEventListener("submit", async e => {
       S.iskPrefill = null;
       if (wp) db.doc(`meets/${wp.uid}/waleads/${wp.id}`).update({status:"agendado", statusAt:now, meetId:ref.id}).catch(()=>{});
       resetForm(); SL.at = 0; slotLoad(true); if (BOOK.open) closeBook();
-      const when = fmtMeetAt(o.meetAt), val = auto ? "Validado automáticamente." : dupOf ? "Ese prospecto ya lo tiene alguien del equipo: tu manager lo revisa." : "Tu manager lo revisa.";
+      const when = fmtMeetAt(o.meetAt), val = dupOf ? "Ojo: ese prospecto ya lo tiene alguien del equipo; tu manager revisa si es duplicado." : "Quedó agendado.";
       if (mk){
         showResult("loading", "Enviando invitación…", `Creando el meet con ${o.prospect} en tu Google Calendar.`);
         const inv = leaderEmail(bookUid());
@@ -3083,7 +3083,7 @@ function stageOf0(id, m){
   if (f.lostAt) return {k:"lost", t: f.lostWhy ? `Perdido · ${f.lostWhy}` : "Perdido"};
   if (st==="pending") return {k:"review", t:"Por revisar"};
   if (st==="rejected") return {k:"rejected", t: m.cancelled ? "Rechazado · cancelado" : "Rechazado · falta cancelar"};
-  if (st==="valid") return {k:"valid", t: m.reschedAt ? "Validado · reagendado" : "Validado · esperando el meet"};
+  if (st==="valid") return {k:"valid", t: m.reschedAt ? "Agendado · reagendado" : "Agendado · esperando el meet"};
   if (st==="noshow") return reschedPending(m,v) ? {k:"valid", t:"Reagendado"} : {k:"noshow", t:"No se conectó"};
   // etapa por hitos (en el orden que hayan pasado)
   if (f.launchedAt) return {k:"launched", t:"Publicado"};
@@ -3269,7 +3269,7 @@ function collectTasks(owners){
   return out.filter(t => t.due <= now + 7*DAY).sort((a,b)=> a.due - b.due);
 }
 const STEPS = [
-  {n:1, name:"Agendado", sub:"Registrado, validado y esperando el meet. Aquí también están los rechazados que debes cancelar."},
+  {n:1, name:"Agendado", sub:"Registrado y esperando el meet. Aquí también están los rechazados que debes cancelar."},
   {n:2, name:"Pitch", sub:"El líder pitchea, ofrece el skeleton, lo crea en vivo y se lo manda"},
   {n:3, name:"Skeleton y contenido", sub:"El líder confirma que aprobó el skeleton y le pide su contenido (fotos, videos, logo, textos)"},
   {n:4, name:"Lanzamiento", sub:"Rápido: le enviamos su programa, su página y su cuenta de creador · Acompañado: sesión juntos. Él registra sus datos bancarios y fiscales y publica"},
@@ -6107,13 +6107,13 @@ function syncPerfilUi(){
   { const em = $("f_profileLbl").querySelector("em"); if (em) em.hidden = waNoProf; }
   $("f_profile").placeholder = vip ? "https://instagram.com/…" : "https://instagram.com/… o tiktok.com/@…";
   $("f_notesLbl").firstChild.textContent = vip ? "¿Por qué vale la pena? (audiencia, engagement, afinidad)" : "Notas (contexto, interés, siguiente paso)";
-  if (!S.editingId){ $("formTitle").textContent = vip ? "Proponer a Mich" : "Registrar meet"; $("submitBtn").textContent = vip ? "Agregar a la lista de Mich" : "Enviar a validación"; }
+  if (!S.editingId){ $("formTitle").textContent = vip ? "Proponer a Mich" : "Registrar meet"; $("submitBtn").textContent = vip ? "Agregar a la lista de Mich" : "Agendar meet"; }
   const g = PERFILES[p];
   $("pfGuide").hidden = true; if (false)
   if (g) $("pfGuide").innerHTML = `${PICON[p]}<div><b>${esc(g.name)} · ${esc(g.short)}</b>
     <span><em>Dónde buscar:</em> ${esc(g.where)}</span><span><em>Canal:</em> ${esc(g.channel)}</span><span><em>Estrategia:</em> ${esc(g.how)}</span><span><em>Objetivo:</em> ${esc(g.goal)}</span></div>`;
   if (!vip) syncInvUi(); else { $("mkInvL").hidden = true; $("invHint").hidden = true; $("linkWrap").hidden = true; }
-  if (p3m && !S.editingId){ $("formTitle").textContent = "Registrar meet de influencer"; $("submitBtn").textContent = "Enviar a validación"; }
+  if (p3m && !S.editingId){ $("formTitle").textContent = "Registrar meet de influencer"; $("submitBtn").textContent = "Agendar meet"; }
   // prospecto que ya viene avanzado: sin meet obligatorio, sin horarios ni invitación
   const stg = typeof entryStage === "function" ? entryStage() : "";
   $("meetForm").classList.toggle("has-stage", !!stg);
@@ -8091,7 +8091,7 @@ function loadXlsx(){
     document.head.appendChild(sc); });
   return xlsxLib;
 }
-const STATUS_TXT = {pending:"Por revisar", valid:"Validado, esperando el meet", attended:"Tomado (+1)", noshow:"No se conectó", rejected:"Rechazado"};
+const STATUS_TXT = {pending:"Agendado", valid:"Agendado, esperando el meet", attended:"Tomado (+1)", noshow:"No se conectó", rejected:"Rechazado"};
 function xlsMsg(t){ $("xlsMsg").textContent = t; $("xlsMsg").hidden = !t; }
 $("xlsBtn").addEventListener("click", async () => {
   const b = $("xlsBtn"); b.disabled = true; xlsMsg("Preparando el Excel…");
