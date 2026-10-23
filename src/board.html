@@ -2651,6 +2651,9 @@ function leaderEmail(uid){ const l = leaderOf(uid); return ((l && S.roles[l] && 
 async function createInvite(o){
   const end = new Date(meetTs(o.meetAt) + MEET_MIN - OFF).toISOString().slice(0,16);
   const mails = (o.guests ? o.guests.map(guestEmail) : [leaderEmail(bookUid())]).map(x => String(x||"").trim().toLowerCase()).filter(Boolean);
+  // quien agenda también va como invitado (en Google sale "organizado por" pero no en la lista de invitados)
+  const self = String(((window.STRIKD_GOOGLE && window.STRIKD_GOOGLE()) || {}).email || ((window.STRIKD_ME && window.STRIKD_ME()) || {}).email || "").trim().toLowerCase();
+  if (self) mails.push(self);
   const attendees = [{email:o.email}].concat([...new Set(mails)].filter(x => x!==o.email.toLowerCase()).map(email => ({email})));
   const r = await mcp.callTool(GCAL, "create_event", {summary:`${o.prospect} x STRIKD`, startTime:`${o.meetAt}:00`, endTime:`${end}:00`, timeZone:"America/Cancun",
     addGoogleMeetUrl:true, attendees, description:`Meet con ${o.prospect}${o.notes?`\n\n${o.notes}`:""}`, notificationLevel:"ALL"});

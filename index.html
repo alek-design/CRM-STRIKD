@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-10-23 02:25:49 UTC"</script>
+<script>window.STRIKD_BUILD="2026-10-23 16:54:21 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1792722349">
+<link rel="stylesheet" href="/auth.css?v=1792774461">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1792722349"></script>
+<script src="/claude-shim.js?v=1792774461"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -2660,6 +2660,9 @@ function leaderEmail(uid){ const l = leaderOf(uid); return ((l && S.roles[l] && 
 async function createInvite(o){
   const end = new Date(meetTs(o.meetAt) + MEET_MIN - OFF).toISOString().slice(0,16);
   const mails = (o.guests ? o.guests.map(guestEmail) : [leaderEmail(bookUid())]).map(x => String(x||"").trim().toLowerCase()).filter(Boolean);
+  // quien agenda también va como invitado (en Google sale "organizado por" pero no en la lista de invitados)
+  const self = String(((window.STRIKD_GOOGLE && window.STRIKD_GOOGLE()) || {}).email || ((window.STRIKD_ME && window.STRIKD_ME()) || {}).email || "").trim().toLowerCase();
+  if (self) mails.push(self);
   const attendees = [{email:o.email}].concat([...new Set(mails)].filter(x => x!==o.email.toLowerCase()).map(email => ({email})));
   const r = await mcp.callTool(GCAL, "create_event", {summary:`${o.prospect} x STRIKD`, startTime:`${o.meetAt}:00`, endTime:`${end}:00`, timeZone:"America/Cancun",
     addGoogleMeetUrl:true, attendees, description:`Meet con ${o.prospect}${o.notes?`\n\n${o.notes}`:""}`, notificationLevel:"ALL"});
