@@ -301,6 +301,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fol-f{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 8px;font-size:13px}.fol-f button{font:inherit;font-size:12.5px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:4px 10px;cursor:pointer}.fol-f button b{opacity:.65;margin-left:2px}.fol-f button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.fol-f input{width:110px;font:inherit;font-size:16px;padding:6px 10px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--fg)}.fol-f small{color:var(--muted)}.fol-f small.bad{color:#e5484d}.fol-q{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%}.fol-q button{font:inherit;font-size:12px;border:1px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:3px 9px;cursor:pointer}
 .tt-tag{background:#111!important;color:#fff!important}
 .pl-att{display:grid;gap:6px;margin:10px 0;padding:10px 12px;border:1px solid var(--line2);border-radius:12px}.pl-att .ig{display:flex;gap:8px;flex-wrap:wrap}
+.chip-sel{font-size:12px!important;padding:3px 8px!important;border-radius:999px!important;max-width:220px}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -3099,7 +3100,8 @@ const MEET_LEN = 45*60e3, QUICK = 15*60e3; // los meets duran 45 min (igual que 
 const SALES_FU = [7, 15, 30];
 function tasksFor(uid, id, m, now){
   const v = S.validations[id], st = statusOf(id), f = m.flow || {}, p = m.prospect || "el prospecto", T = [];
-  const add = o => T.push({uid, id, m, who:"member", ...o});
+  // con responsable: los pendientes de líder le salen solo a él, y los del AM también le salen a él
+  const add = o => { const t = {uid, id, m, who:"member", ...o}; if (m.resp){ if (t.who==="admin" && !t.onlyFor) t.onlyFor = m.resp; else if (t.who==="member") t.resp = m.resp; } T.push(t); };
   if (f.lostAt) return T;
   if (f.holdUntil && f.holdUntil > now) return T; // en pausa (p. ej. se fue de vacaciones): sin pendientes ni atrasos hasta esa fecha
   if (f.inviteDeclinedAt && (st==="pending" || st==="valid" || reschedPending(m,v))){
@@ -3172,7 +3174,7 @@ const HITOS = [
   {k:"final", l:"Validó todo", on:f => !!f.finalOkAt},
   {k:"launched", l:"Publicado", on:f => !!f.launchedAt}];
 function sessionOpen(uid, id){
-  if (!adminMode()) return;
+  if (!adminMode() && !procMode()) return;
   const m = ((S.allEvery||{})[uid]||{})[id] || ((S.all||{})[uid]||{})[id]; if (!m) return;
   const f = {...(m.flow||{})}, p = m.prospect || "el prospecto", needPitch = statusOf(id) !== "attended";
   const w = document.createElement("div"); w.className = "bk-wrap"; w.id = "sesWrap";
@@ -3190,8 +3192,8 @@ function sessionOpen(uid, id){
         <label class="f full" id="sesTxtL">¿Qué hay que hacer?<input id="sesTxt" placeholder="Ej. Pedirle su contenido · Mandarle la página para que la revise" autocomplete="off"></label>
         <div class="ses-seg full" id="sesQuick"><button type="button" data-q="0">Hoy</button><button type="button" data-q="1" class="on">Mañana</button><button type="button" data-q="2">En 2 días</button><button type="button" data-q="3">En 3 días</button></div>
         <label class="f full">Cuándo${tzOther() ? " (tu hora)" : ""}<input type="datetime-local" id="sesAt" value="${tomorrow}"></label>
-        <label class="f full">Responsable<select id="sesWho">${(() => { const ppl = [...new Set([uid, ...Object.keys(S.members||{}).filter(u => roleOf(u)==="manager"), (S.config||{}).headId, S.uid].filter(Boolean))];
-          const def = (f.next && f.next.owner) || (roleOf(uid)==="manager" || uid===(S.config||{}).headId ? uid : (leaderOf(uid) || S.uid));
+        <label class="f full">Responsable<select id="sesWho">${(() => { const ppl = [...new Set([uid, ...respPeople(), S.uid].filter(Boolean))];
+          const def = (f.next && f.next.owner) || m.resp || (roleOf(uid)==="manager" || uid===(S.config||{}).headId ? uid : (leaderOf(uid) || S.uid));
           return ppl.map(u => `<option value="${esc(u)}"${u===def ? " selected" : ""}>${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}${u===uid && roleOf(u)!=="manager" && u!==(S.config||{}).headId ? " (AM del prospecto)" : roleOf(u)==="manager" ? " (Manager)" : u===(S.config||{}).headId ? " (Head)" : ""}${u===S.uid ? " · yo" : ""}</option>`).join(""); })()}</select></label>
         <label class="chk" id="sesInvL" hidden><input type="checkbox" id="sesInv"${mcp && m.email ? " checked" : ""}${mcp && m.email ? "" : " disabled"}> Mandarle invitación con link de Meet${m.email ? "" : " (no tiene email)"}</label>
       </div>
@@ -3490,7 +3492,7 @@ function waitText(id, m){
   if (f.launchedAt) return `Publicado el ${fmtLocal(f.launchedAt).split(",")[0]}. Meta cumplida.`;
   if (st==="rejected") return m.cancelled ? "Rechazado y cancelado" : "Rechazado: falta cancelarlo";
   if (st==="attended" && f.interested && !f.skeletonAt && (f.skeletonMeetAt || f.skeletonMeetNeeded)) return `Meet de skeleton ${f.skeletonMeetBookedAt?"agendado":"por agendar"}${f.skeletonMeetAt?`: ${fmtMeetAt(f.skeletonMeetAt)}`:" (fecha por coordinar)"}. Después el admin adjunta el skeleton.`;
-  if (st==="attended" && (f.interested==null || (f.interested && !f.skeletonAt))) return "Se conectó. Tu manager registra si le gustó y adjunta su skeleton.";
+  if (st==="attended" && (f.interested==null || (f.interested && !f.skeletonAt))) return adminMode() || procMode() ? "Se conectó. Registra si le gustó, lo que se logró y lo que sigue (botón de abajo)." : "Se conectó. Tu manager registra si le gustó y adjunta su skeleton.";
   return "";
 }
 const EDIT_FIELDS = [
@@ -4275,10 +4277,19 @@ document.addEventListener("click", e => {
 
 /* ---------- Plan del día: agenda de hoy + pendientes de hoy, accionables ahí mismo ---------- */
 const DOWL = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+function respPeople(){ return [...new Set([(S.config||{}).headId, ...Object.keys(S.members||{}).filter(u => roleOf(u)==="manager" || ((S.roles||{})[u]||{}).canProcess)].filter(Boolean))]; }
+function respSel(uid, id, m){ const ppl = respPeople(); if (m.resp && !ppl.includes(m.resp)) ppl.push(m.resp);
+  return `<select class="inline chip-sel" data-resp="${uid}__${id}" aria-label="Responsable del proceso"><option value="">Responsable: nadie</option>${ppl.map(u => `<option value="${esc(u)}"${m.resp===u ? " selected" : ""}>Responsable: ${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}</option>`).join("")}</select>`; }
+document.addEventListener("change", async e => { const sel = e.target.closest("[data-resp]"); if (!sel) return; const [u, id] = sel.dataset.resp.split("__"), v = sel.value || null; sel.blur();
+  try{ await db.doc(`meets/${u}/items/${id}`).update({resp:v, respAt:Date.now(), respBy:S.uid}); const m = ((S.allEvery||{})[u]||{})[id]; if (m) m.resp = v; quickToast(v ? `✓ Responsable: ${String(nameOf(S.ps||{}, v)).split(" (")[0]} · le salen sus pendientes` : "Sin responsable"); schedule(); }
+  catch(_){ quickToast("No se pudo guardar"); } });
+// "Puede ajustar el proceso" (Rafa, Mich): además de lo suyo, los prospectos donde son responsables
+const procMode = () => !!(S.uid && !S.viewAs && !adminMode() && ((S.roles||{})[S.uid]||{}).canProcess);
+function respItems(){ const me = meId(), out = []; Object.entries(S.allEvery||{}).forEach(([u, o]) => { if (u === me) return; const f = Object.fromEntries(Object.entries(o||{}).filter(([, m]) => m && m.resp === me)); if (Object.keys(f).length) out.push([u, f]); }); return out; }
 function planOwners(){
-  return adminMode() ? Object.entries(S.all) : [[meId(), myItems()]];
+  return adminMode() ? Object.entries(S.all) : [[meId(), myItems()], ...(procMode() ? respItems() : [])];
 }
-function ownTask(t){ if (t.onlyFor && t.onlyFor !== meId()) return false; return adminMode() ? (t.who==="admin" || t.alsoAdmin) : t.who==="member"; }
+function ownTask(t){ if (t.onlyFor) return t.onlyFor === meId(); if (t.resp && t.resp === meId()) return true; return adminMode() ? (t.who==="admin" || t.alsoAdmin) : t.who==="member"; }
 // Meets de tu Google Calendar que no están en el panel (para "Registrar")
 const GCREG = {};
 document.addEventListener("click", e => { const b = e.target.closest("[data-gcreg]"); if (!b) return; e.stopPropagation();
@@ -4356,13 +4367,14 @@ function renderPlan(){
     const t = first(uid,id,m), d = t ? dueInfo(t.due, now, t.soon) : null;
     const prof = safeUrl(m.profile), link = safeUrl(m.link);
     return `<div class="detail pl-x">
-      <div class="pl-xh"><div><div class="d-tags"><span class="chip stage">${esc(stageOf(id,m).t)}</span>${admin?ownerChip(uid, id):""}${admin && !(m.flow||{}).lostAt ? `<button type="button" class="chip elim" data-elim="${uid}__${id}">Eliminar</button>` : ""}</div>
+      <div class="pl-xh"><div><div class="d-tags"><span class="chip stage">${esc(stageOf(id,m).t)}</span>${admin?ownerChip(uid, id):""}${admin || procMode() ? respSel(uid, id, m) : (m.resp ? `<span class="chip">Responsable: ${esc(String(nameOf(S.ps||{}, m.resp)).split(" (")[0])}</span>` : "")}${admin && !(m.flow||{}).lostAt ? `<button type="button" class="chip elim" data-elim="${uid}__${id}">Eliminar</button>` : ""}</div>
         <h3 class="d-name">${perfilIcon(m, true)}${esc(m.prospect)}</h3>${m.role?`<div class="pc-co">${esc(m.role)}</div>`:""}</div>
         <div class="d-acts">${link?`<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">Abrir meet</a>`:""}${prof?`<a class="btn ghost" href="${esc(prof)}" target="_blank" rel="noopener">Ver perfil</a>`:""}<button type="button" class="btn small" data-remnew="1" data-remref="${uid}__${id}" data-remname="${esc(m.prospect||"")}">⏰ Recordatorio</button><button class="btn small" data-pick="${key}">Cerrar</button></div></div>
       ${t ? `<div class="d-next ${d.cls}"><div class="d-next-h"><span class="eyb">Lo que sigue</span><span class="sema ${d.cls}"><i></i>${d.txt}</span></div>
         <div class="d-next-t">${esc(t.title)}</div>${t.detail?`<p class="d-next-d">${esc(t.detail)}</p>`:""}<div class="tacts">${actsHtml(t)}</div></div>`
         : `<div class="d-next wait"><div class="d-next-t">${esc(waitText(id,m) || "Nada pendiente de tu lado. Avanza solo.")}</div></div>`}
-      ${ev && ev.kind==="pitch" && !ev.gcal && ev.ts <= now && admin && !S.viewAs && ["valid","pending"].includes(statusOf(id)) ? `<div class="pl-att"><span class="eyb">¿Cómo salió el meet?</span><span class="ig"><button type="button" class="btn small primary" data-act="att-yes" data-uid="${uid}" data-id="${id}">✓ Sí se conectó</button><button type="button" class="btn small" data-act="att-no" data-uid="${uid}" data-id="${id}">✗ No se conectó</button></span>${statusOf(id)==="pending" ? `<small class="mut">Al marcar "Sí se conectó" también queda validado.</small>` : ""}</div>` : ""}
+      ${ev && ev.kind==="pitch" && !ev.gcal && ev.ts <= now && (admin || procMode()) && !S.viewAs && ["valid","pending"].includes(statusOf(id)) ? `<div class="pl-att"><span class="eyb">¿Cómo salió el meet?</span><span class="ig"><button type="button" class="btn small primary" data-session="${uid}|${id}">✓ Sí se conectó · registrar</button><button type="button" class="btn small" data-act="att-no" data-uid="${uid}" data-id="${id}">✗ No se conectó</button></span></div>` : ""}
+      ${(admin || procMode()) && !S.viewAs && statusOf(id)==="attended" && !(m.flow||{}).lostAt ? `<div class="pl-att"><span class="eyb">Avance del proceso</span><span class="ig"><button type="button" class="btn small primary" data-session="${uid}|${id}">📝 Registrar avance y lo que sigue</button></span></div>` : ""}
       ${moveHtml}
       <button type="button" class="linkbtn" data-journey="${uid}__${id}">Ver su journey completo →</button>
     </div>`;
@@ -5448,6 +5460,7 @@ function orgCtl(uid){
     ${r==="manager" ? `<input type="email" data-orgmail="${uid}" placeholder="Email para invitaciones de meet" value="${esc((S.roles[uid]||{}).inviteEmail||"")}" aria-label="Email del team leader para invitaciones">` : ""}
     ${r==="am" && uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgassign="${uid}"${(S.roles[uid]||{}).canAssign ? " checked" : ""}> Puede asignar tareas a otros AM</label>
       <label class="org-chk"><input type="checkbox" data-orgemail="${uid}"${(S.roles[uid]||{}).canEmail ? " checked" : ""}> Los emails a sus influencers salen de su Gmail</label>` : ""}
+    ${uid !== ((S.config||{}).headId || S.uid) && r !== "manager" ? `<label class="org-chk"><input type="checkbox" data-orgproc="${uid}"${(S.roles[uid]||{}).canProcess ? " checked" : ""}> Puede ajustar el proceso (avance y pendientes de prospectos donde es responsable)</label>` : ""}
     ${uid !== ((S.config||{}).headId || S.uid) ? `<label class="org-chk"><input type="checkbox" data-orgres="${uid}"${((S.roles[uid]||{}).canResults === true || ((S.roles[uid]||{}).canResults !== false && r !== "am")) ? " checked" : ""}> Puede ver Resultados y Reporte del día</label>` : ""}
     ${r==="am" && mgrs.length ? `<select data-orgmgr="${uid}" aria-label="Su manager"><option value="">Manager: cualquiera</option>${mgrs.map(m => `<option value="${m}"${mgrOf(uid)===m?" selected":""}>Manager: ${esc(nameOf(S.ps||{}, m))}</option>`).join("")}</select>` : ""}
   </div>`;
@@ -5489,6 +5502,11 @@ $("orgBox").addEventListener("change", async e => {
   if (oe && S.isOwner){ const uid = oe.dataset.orgemail, cur = S.roles[uid] || {}; oe.disabled = true;
     try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canEmail:oe.checked, ...(oe.checked ? {canEmailAt:Date.now()} : {}), updatedAt:Date.now()}); S.roles[uid] = {...cur, role:cur.role || "am", canEmail:oe.checked}; quickToast(oe.checked ? "✓ Autorizado: que conecte su Gmail en Ajustes" : "Sus emails saldrán del correo general"); }catch(ex){ oe.checked = !oe.checked; quickToast("No se guardó"); }
     oe.disabled = false; return; }
+  const opc = e.target.closest("[data-orgproc]");
+  if (opc && S.isOwner){ const uid = opc.dataset.orgproc, cur = S.roles[uid] || {}; opc.disabled = true;
+    try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canProcess:opc.checked, updatedAt:Date.now()}); S.roles[uid] = {...cur, role:cur.role || "am", canProcess:opc.checked}; quickToast(opc.checked ? "✓ Ya puede ajustar el proceso" : "Ya no ajusta el proceso"); }
+    catch(ex){ opc.checked = !opc.checked; quickToast("No se pudo guardar"); }
+    opc.disabled = false; return; }
   const ors = e.target.closest("[data-orgres]");
   if (ors && S.isOwner){ const uid = ors.dataset.orgres, cur = S.roles[uid] || {}; ors.disabled = true;
     try{ await db.doc(`roles/${uid}`).set({...cur, role:cur.role || "am", canResults:ors.checked, updatedAt:Date.now()}); S.roles[uid] = {...cur, role:cur.role || "am", canResults:ors.checked}; quickToast(ors.checked ? "✓ Ya puede ver Resultados y Reporte" : "Ya no ve Resultados ni Reporte"); }catch(ex){ ors.checked = !ors.checked; quickToast("No se guardó"); }
@@ -8143,7 +8161,7 @@ function syncPointSubs(){
 }
 let waCampSub = null;
 function syncAdminSubs(){
-  if (!S.isLead && (roleOf(S.uid)==="influencer" || resultsView())){ // Influencer (Equipo) y quien ve Resultados: solo leen los prospectos
+  if (!S.isLead && (roleOf(S.uid)==="influencer" || resultsView() || ((S.roles||{})[S.uid]||{}).canProcess)){ // Influencer (Equipo) y quien ve Resultados: solo leen los prospectos
     [...new Set(Object.keys(S.members).concat((S.config && S.config.headId) ? [S.config.headId] : []))].forEach(uid => { if (adminSubs[uid]) return;
       adminSubs[uid] = db.collection(`meets/${uid}/items`).onSnapshot(s => { const o = {}; s.docs.forEach(d=>o[d.id]=d.data()); S.allEvery[uid] = o; scopeAll(); schedule(); }, snapErr); });
     return; }
