@@ -10,8 +10,30 @@ module.exports = async (req, res) => {
   const { data: who } = await admin.auth.getUser(token);
   if (!who || !who.user) return res.status(401).json({error:"Sesión no válida"});
   const { data: me } = await admin.from("app_users").select("role").eq("id", who.user.id).maybeSingle();
-  if (!me || me.role !== "head") return res.status(403).json({error:"Solo el Head puede dar de alta personas"});
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+  // cambiar el correo con el que entra (misma cuenta: mismo historial, prospectos, puntos y Google). Cada quien el suyo; el Head el de cualquiera
+  if (body.changeEmail){
+    const id = String(body.changeEmail.id || who.user.id), email = String(body.changeEmail.email || "").trim().toLowerCase();
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({error:"Usuario no válido"});
+    if (id !== who.user.id && !(me && me.role === "head")) return res.status(403).json({error:"Solo puedes cambiar tu propio correo"});
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({error:"Correo no válido"});
+    const { data: t } = await admin.from("app_users").select("id, email, role").eq("id", id).maybeSingle();
+    if (!t) return res.status(404).json({error:"No existe ese usuario"});
+    if (t.role === "head" && id !== who.user.id) return res.status(403).json({error:"El correo del Head solo lo cambia el Head"});
+    if (String(t.email || "").toLowerCase() === email) return res.status(200).json({ok:true, same:true});
+    const oldEmail = String(t.email || "").toLowerCase();
+    const { data: taken } = await admin.from("app_users").select("id").eq("email", email).maybeSingle();
+    if (taken && taken.id !== id) return res.status(409).json({error:"Ese correo ya lo usa otra cuenta del equipo"});
+    const { error: eu } = await admin.auth.admin.updateUserById(id, {email, email_confirm:true});
+    if (eu) return res.status(/already|registered|exists/i.test(eu.message) ? 409 : 500).json({error:/already|registered|exists/i.test(eu.message) ? "Ese correo ya tiene otra cuenta" : eu.message});
+    await admin.from("app_users").update({email}).eq("id", id);
+    { // si sus invitaciones a meets iban a su correo anterior, ahora van al nuevo
+      const { data: rd } = await admin.from("docs").select("data").eq("path", "roles/" + id).maybeSingle();
+      if (rd && rd.data && String(rd.data.inviteEmail || "").toLowerCase() === oldEmail) await admin.from("docs").upsert({path:"roles/" + id, data:{...rd.data, inviteEmail:email, updatedAt:Date.now()}}); }
+    await admin.from("invites").delete().eq("email", oldEmail).then(() => {}, () => {});
+    return res.status(200).json({ok:true, email, before:oldEmail});
+  }
+  if (!me || me.role !== "head") return res.status(403).json({error:"Solo el Head puede dar de alta personas"});
   // dar de baja (o reactivar) a alguien: ya no entra, no sale en el ranking ni recibe tareas; su historial se queda
   if (body.setActive){
     const id = String(body.setActive.id || ""), on = !!body.setActive.on;

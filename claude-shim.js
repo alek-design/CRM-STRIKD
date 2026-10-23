@@ -416,6 +416,11 @@
     const r = await fetch("/api/invite", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify({setActive:{id, on}})});
     const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "No se pudo guardar"); return j;
   };
+  window.STRIKD_CHEMAIL = async (email, uid) => {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch("/api/invite", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify({changeEmail:{email, ...(uid ? {id:uid} : {})}})});
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "No se pudo cambiar el correo"); return j;
+  };
   window.STRIKD_RESETPW = async (uid) => {
     const { data } = await sb.auth.getSession();
     const r = await fetch("/api/invite", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify({resetFor:uid})});

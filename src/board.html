@@ -2078,6 +2078,7 @@ function renderSettings(){
     ${!S.isLead && tkInfl() ? (() => { const r = rulesHtml(); return r ? `<h3 class="set-h">Tareas recurrentes</h3><div class="set-rules">${r}</div>` : ""; })() : ""}
     ${!S.isLead && !S.viewAs && ((S.roles||{})[S.uid]||{}).canEmail ? `<h3 class="set-h">Emails automáticos</h3><section class="set-card">${mailMineRow()}</section>` : ""}
     ${A ? `<h3 class="set-h">Cuenta</h3><section class="set-card">
+      ${window.STRIKD_CHEMAIL ? setRow("✉️", "Correo para entrar", esc(((window.STRIKD_ME && window.STRIKD_ME()) || {}).email || "Tu correo de acceso") + " · tu cuenta, prospectos y puntos se quedan igual", `<button type="button" class="btn small" data-set="chemail">Cambiar</button>`) : ""}
       ${setRow("🔑", "Contraseña", "Cámbiala cuando quieras", `<button type="button" class="btn small" data-set="pwd">Cambiar</button>`)}
       ${S.isOwner && window.STRIKD_CLEANUP ? setRow("🧹", "Datos de ejemplo", CLN.res ? (CLN.res.nada ? "Ya no hay datos de ejemplo. Todo limpio." : CLN.res.borrados ? `Listo: se borraron ${CLN.res.borrados} registros de ${CLN.res.ejemplo} personas de ejemplo.` : `Hay ${CLN.res.ejemplo} personas de ejemplo con ${CLN.res.docs} registros (prospectos, tareas, puntos…). Los usuarios reales no se tocan.`) : "Borra las personas \"(ejemplo)\" y todo lo suyo", CLN.res && !CLN.res.nada && !CLN.res.borrados ? `<button type="button" class="btn small bad" data-set="cln-go">${CLN.armed ? "¿Seguro? Borrar" : "Borrar todo"}</button>` : CLN.res ? "" : `<button type="button" class="btn small" data-set="cln-check">${CLN.busy ? "Revisando…" : "Revisar"}</button>`) : ""}
       ${S.isOwner ? setRow("🩺", "Estado de notificaciones", "Revisión de cada minuto y dispositivos del equipo", `<button type="button" class="btn small" data-set="pdiag">Ver</button>`) : ""}
@@ -2100,6 +2101,11 @@ document.addEventListener("click", async e => {
   if (k==="gdis") return A.googleDisconnect();
   if (k==="pon" || k==="ptest"){ b.disabled = true; try{ await A.pushEnable(); }finally{ b.disabled = false; schedule(); } return; }
   if (k==="pwd") return A.password();
+  if (k==="chemail" && window.STRIKD_CHEMAIL){ const cur = ((window.STRIKD_ME && window.STRIKD_ME()) || {}).email || "";
+    const v = (prompt(`Nuevo correo para entrar al panel${cur ? ` (hoy: ${cur})` : ""}:`, "") || "").trim().toLowerCase(); if (!v) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return alert("Ese correo no es válido.");
+    if (!confirm(`¿Cambiar tu correo de acceso a ${v}?\n\nDesde ahora entras con ${v} y tu misma contraseña. Tu cuenta, prospectos, puntos y Google se quedan igual.`)) return;
+    try{ await window.STRIKD_CHEMAIL(v); const m = window.STRIKD_ME && window.STRIKD_ME(); if (m) m.email = v; alert(`Listo. La próxima vez entra con ${v}.`); schedule(); }catch(err){ alert(err.message || "No se pudo cambiar el correo."); } return; }
   if (k==="pdiag") return A.pushDiag();
   if (k==="out") return A.logout();
 });
@@ -7640,7 +7646,7 @@ function renderAccess(){
       <button type="button" class="btn small primary" id="accGo"${ACC.busy?" disabled":""}>${ACC.busy?"Creando…":"Dar de alta"}</button></div>
     ${ACC.msg ? `<p class="small ${ACC.ok?"okmsg":"err"}">${esc(ACC.msg)}</p>` : ""}
     ${ACC.cred ? `<div class="acc-cred"><div class="row"><b>Mándale esto por WhatsApp:</b><div class="spacer"></div><button type="button" class="btn small primary" data-acccopy="1">Copiar mensaje</button></div><textarea rows="12" readonly>${esc(ACC.cred)}</textarea></div>` : ""}
-    <div class="acc-list">${users.map(u => `<div class="acc-row"><b>${esc(u.name||u.email)}</b><span class="mut small">${esc(u.email)}</span><span class="chip ${u.role==="none"?"muted":"info"}">${esc(roleOf(u.id)==="influencer" && u.role!=="head" ? "Influencer Outreach" : (RL[u.role]||u.role))}</span>${window.STRIKD_GOOGLE_USERS ? (gset.has(u.id) ? `<span class="chip valid">✓ Google Calendar</span>` : `<span class="chip muted">Sin Google Calendar</span>`) : ""}${u.active===false ? `<span class="chip muted">Dada de baja</span>` : ""}${window.STRIKD_RESETPW && u.role!=="head" && u.id!==S.uid && u.active!==false ? `<button type="button" class="btn small" data-accpw="${esc(u.id)}" data-n="${esc(u.name||"")}" data-e="${esc(u.email)}">🔑 Nueva contraseña</button>` : ""}${u.role!=="head" && u.id!==S.uid && Object.values((S.allEvery||{})[u.id]||{}).some(m => m && !(m.flow||{}).lostAt && !(m.flow||{}).launchedAt) ? `<button type="button" class="btn small" data-accmove="${esc(u.id)}">Pasar sus prospectos</button>` : ""}${window.STRIKD_SETACTIVE && u.role!=="head" && u.id!==S.uid ? (u.active===false ? `<button type="button" class="btn small" data-accact="${esc(u.id)}|1">Reactivar</button>` : `<button type="button" class="pr-x" data-accact="${esc(u.id)}|0">Dar de baja</button>`) : ""}</div>`).join("")}
+    <div class="acc-list">${users.map(u => `<div class="acc-row"><b>${esc(u.name||u.email)}</b><span class="mut small">${esc(u.email)}</span><span class="chip ${u.role==="none"?"muted":"info"}">${esc(roleOf(u.id)==="influencer" && u.role!=="head" ? "Influencer Outreach" : (RL[u.role]||u.role))}</span>${window.STRIKD_GOOGLE_USERS ? (gset.has(u.id) ? `<span class="chip valid">✓ Google Calendar</span>` : `<span class="chip muted">Sin Google Calendar</span>`) : ""}${u.active===false ? `<span class="chip muted">Dada de baja</span>` : ""}${window.STRIKD_CHEMAIL && S.isOwner && u.role!=="head" && u.active!==false ? `<button type="button" class="btn small" data-accmail="${esc(u.id)}" data-n="${esc(u.name||"")}" data-e="${esc(u.email)}">✉️ Cambiar correo</button>` : ""}${window.STRIKD_RESETPW && u.role!=="head" && u.id!==S.uid && u.active!==false ? `<button type="button" class="btn small" data-accpw="${esc(u.id)}" data-n="${esc(u.name||"")}" data-e="${esc(u.email)}">🔑 Nueva contraseña</button>` : ""}${u.role!=="head" && u.id!==S.uid && Object.values((S.allEvery||{})[u.id]||{}).some(m => m && !(m.flow||{}).lostAt && !(m.flow||{}).launchedAt) ? `<button type="button" class="btn small" data-accmove="${esc(u.id)}">Pasar sus prospectos</button>` : ""}${window.STRIKD_SETACTIVE && u.role!=="head" && u.id!==S.uid ? (u.active===false ? `<button type="button" class="btn small" data-accact="${esc(u.id)}|1">Reactivar</button>` : `<button type="button" class="pr-x" data-accact="${esc(u.id)}|0">Dar de baja</button>`) : ""}</div>`).join("")}
       ${inv.map(i => `<div class="acc-row pend"><b>${esc(i.name||i.email)}</b><span class="mut small">${esc(i.email)}</span><span class="chip muted">Invitación enviada · ${esc(RL[i.role])}</span></div>`).join("")}</div>`;
 }
 document.addEventListener("click", async e => {
@@ -7672,6 +7678,14 @@ function accCred(name, email, temp){ return [
       `4️⃣ Al entrar te va a pedir conectar tu Google Calendar (para los links de Meet), activar notificaciones y elegir modo claro u oscuro. Después cambia tu contraseña en Ajustes → Contraseña.`
     ].join("\n"); }
 // Head: contraseña temporal nueva para alguien que no puede entrar (las contraseñas no se pueden ver, solo cambiar)
+document.addEventListener("click", async e => { const b = e.target.closest("[data-accmail]"); if (!b || !window.STRIKD_CHEMAIL) return;
+  const name = b.dataset.n || "", old = b.dataset.e || "", v = (prompt(`Nuevo correo para que ${name || old} entre al panel (hoy: ${old}):`, "") || "").trim().toLowerCase(); if (!v) return;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return alert("Ese correo no es válido.");
+  if (!confirm(`¿Cambiar el correo de ${name || old} a ${v}?\n\nEntra con ${v} y su misma contraseña. Su cuenta, prospectos y puntos se quedan igual.`)) return;
+  b.disabled = true; b.textContent = "Cambiando…";
+  try{ await window.STRIKD_CHEMAIL(v, b.dataset.accmail); ACC.ok = true; ACC.msg = `Listo: ${name || old} ahora entra con ${v} (misma contraseña).`; ACC.list = null; ACC.loading = false; }
+  catch(ex){ ACC.ok = false; ACC.msg = ex.message || "No se pudo cambiar el correo."; }
+  b.disabled = false; schedule(); });
 document.addEventListener("click", async e => { const b = e.target.closest("[data-accpw]"); if (!b || !window.STRIKD_RESETPW) return;
   const name = b.dataset.n || "", email = b.dataset.e || "";
   if (!confirm(`¿Crear una contraseña temporal nueva para ${name || email}? La de ahora deja de funcionar.`)) return;
