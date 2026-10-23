@@ -2718,10 +2718,10 @@ function renderSlots(){
   const days = []; for (let i = 0; days.length < 7 && i < 10; i++){ const d = new Date(now + i*864e5 - VOFF).toISOString().slice(0,10); if (new Date(d+"T12:00:00Z").getUTCDay() !== 0) days.push(d); }
   if (!SL.day || !days.includes(SL.day)) SL.day = cur && days.includes(cur.slice(0,10)) ? cur.slice(0,10) : days[0];
   const wk = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-  const times = []; for (let h = 8; h <= 19; h++) for (const mm of [0,15,30,45]){ if (h===19 && mm > 15) continue; const v = `${SL.day}T${String(h).padStart(2,"0")}:${String(mm).padStart(2,"0")}`; const t = vTs(v); if (t > now + 15*60e3) times.push([v, t]); }
+  const times = []; for (let h = 8; h <= 23; h++) for (const mm of [0,15,30,45]){ if (h===23 && mm > 0) continue; // hasta las 11 pm const v = `${SL.day}T${String(h).padStart(2,"0")}:${String(mm).padStart(2,"0")}`; const t = vTs(v); if (t > now + 15*60e3) times.push([v, t]); }
   const ln = SL.leader ? nameOf(S.ps||{}, SL.leader) : "";
   const cl = cur ? slotClash(curT) : null;
-  box.innerHTML = `<div class="slots-h"><b>Horarios libres${ln && ln!=="Alguien del equipo" ? ` de ${esc(ln)}` : " de tu team leader"}</b><span class="mut small">cada meet dura 45 min · tachados: se encima con otro meet${SL.googleOk?" · en amarillo: ocupado en su calendario":""}</span><div class="spacer"></div><button type="button" class="btn small" data-slotnext="1">Siguiente libre</button></div>
+  box.innerHTML = `<div class="slots-h"><b>Horarios libres${ln && ln!=="Alguien del equipo" ? ` de ${esc(ln)}` : " de tu team leader"}</b><span class="mut small">cada meet dura 45 min · en rojo: se encima con otro meet (sí se puede elegir)${SL.googleOk?" · en amarillo: ocupado en su calendario":""}</span><div class="spacer"></div><button type="button" class="btn small" data-slotnext="1">Siguiente libre</button></div>
     <div class="slot-days">${days.map(d => { const dt = new Date(d+"T12:00:00Z"); return `<button type="button" data-slotday="${d}" class="${d===SL.day?"on":""}">${wk[dt.getUTCDay()]} ${dt.getUTCDate()}</button>`; }).join("")}</div>
     <div class="slot-times">${times.map(([v,t]) => { const c = slotClash(t); return `<button type="button" data-slot="${v}" class="${v===cur?"on":""}${c&&c.hard?" busy":c?" gbusy":""}"${c&&c.hard?` title="Ocupado: ya hay ${SLOT_KIND[c.kind]||"un meet"}${c.mine?" tuyo":""} a esa hora"`:""}>${v.slice(11)}</button>`; }).join("") || `<span class="mut small">Ya no quedan horarios este día.</span>`}</div>
     ${(() => { // por qué está ocupado (solo Head/Manager, o el leader en su propio calendario)
@@ -2736,7 +2736,7 @@ $("slotBox").addEventListener("click", e => {
   if (e.target.closest("[data-slotnext]")){
     const now = Date.now() + 15*60e3; let t = Math.ceil(now / SLOT_STEP) * SLOT_STEP;
     for (let i = 0; i < 96*8; i++, t += SLOT_STEP){ const v = new Date(t - VOFF).toISOString().slice(0,16), h = Number(v.slice(11,13)), mi = Number(v.slice(14,16)), dow = new Date(t - VOFF).getUTCDay();
-      if (dow===0 || h < 8 || h > 19 || (h===19 && mi > 15)) continue; if (!slotClash(t)){ $("f_meetAt").value = v; SL.day = v.slice(0,10); $("f_meetAt").dispatchEvent(new Event("input", {bubbles:true})); break; } }
+      if (dow===0 || h < 8 || h > 19 || (h===19 && mi > 15)) continue; // "Siguiente libre" sugiere en horario normal if (!slotClash(t)){ $("f_meetAt").value = v; SL.day = v.slice(0,10); $("f_meetAt").dispatchEvent(new Event("input", {bubbles:true})); break; } }
     renderSlots();
   }
 });
