@@ -84,7 +84,17 @@ create table if not exists public.iskra_sent (id bigserial primary key, conversa
 alter table public.iskra_owner enable row level security; alter table public.iskra_sent enable row level security;`;
 
 // Elige dueño para conversaciones nuevas. Carga todo una sola vez por petición (rápido aunque lleguen muchas juntas).
-function makePicker(c, mode){
+// Bandeja única (Alek, 23 oct 2026): todas las conversaciones de WhatsApp le llegan a Rafa (partners@strikd.ai).
+// config/main.iskInbox: true/sin definir = encendido; false = reparto normal (menos carga / mejores resultados). iskInboxEmail cambia el correo.
+async function inboxOf(c, cfg){
+  if (cfg && cfg.iskInbox === false) return null;
+  const mail = (cfg && cfg.iskInboxEmail) || ((cfg && cfg.perfilInvite) || {1:"partners@strikd.ai"})[1] || "partners@strikd.ai";
+  const u = (await c.query("select id from public.app_users where lower(email)=lower($1) and coalesce(active,true)", [String(mail)])).rows[0];
+  globalThis.__iskInbox = u ? String(u.id) : null;
+  return globalThis.__iskInbox;
+}
+function makePicker(c, mode, inbox){
+  if (inbox) return async () => ({owner:inbox, by:"bandeja"});
   let ready = null;
   const load0 = async () => {
     const phones = {};
@@ -130,7 +140,7 @@ module.exports = async (req, res) => {
   if (op === "tail"){
     try{
       const id = String(input.id || ""); if (!id) return res.status(400).json({error:"Falta id"});
-      if (!lead && OWN_CACHE[id] !== viewId){
+      if (!lead && OWN_CACHE[id] !== viewId && !(globalThis.__iskInbox && viewId === globalThis.__iskInbox)){
         const ok = await withPg(async c => (await c.query("select owner from public.iskra_owner where conversation_id=$1", [id])).rows[0]);
         if (!ok || ok.owner !== viewId) return res.status(403).json({error:"Esta conversación es de otra persona."});
         OWN_CACHE[id] = ok.owner;
@@ -145,7 +155,7 @@ module.exports = async (req, res) => {
     const out = await withPg(async c => {
       if (!globalThis.__iskInit){ await c.query(SQL_INIT); globalThis.__iskInit = true; } // solo una vez por arranque
       const ownerOf = async id => (await c.query("select * from public.iskra_owner where conversation_id=$1", [String(id)])).rows[0];
-      const mustOwn = async id => { const o = await ownerOf(id); if (!lead && (!o || o.owner !== viewId)) throw Object.assign(new Error("Esta conversación es de otra persona."), {status:403}); return o; };
+      const mustOwn = async id => { const o = await ownerOf(id); if (!lead && globalThis.__iskInbox === undefined) await inboxOf(c, ((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data).catch(() => {}); if (!lead && (!o || o.owner !== viewId) && !(globalThis.__iskInbox && viewId === globalThis.__iskInbox)) throw Object.assign(new Error("Esta conversación es de otra persona."), {status:403}); return o; };
       if (op === "findcopies"){ // solo Head: buscar dónde guarda ISKRA las copies (para mandarlas después de 24 h)
         if (me.role !== "head") throw Object.assign(new Error("Solo el Head."), {status:403});
         if (!iskapp.configured()) throw Object.assign(new Error("Falta la cuenta de ISKRA en Vercel"), {status:400});
@@ -220,8 +230,16 @@ module.exports = async (req, res) => {
           return !!((known[id] && known[id].replied_at) || (sn && sn.replied) || Number(byId[id].unread_count || 0) > 0);
         };
         const cfg = (await c.query("select data from public.docs where path='config/main'")).rows[0];
-        const mode = cfg && cfg.data && cfg.data.iskAssign === "best" ? "best" : "load";
-        const out = [], pick = makePicker(c, mode);
+        const inbox = await inboxOf(c, cfg && cfg.data).catch(() => null);
+        const mode = inbox ? "one" : cfg && cfg.data && cfg.data.iskAssign === "best" ? "best" : "load";
+        // los chats que tenían otros AM pasan a Rafa (los del Head y del Manager se quedan con ellos); una vez cada 5 min por instancia
+        if (inbox && (!globalThis.__iskMove || Date.now() - globalThis.__iskMove > 300e3)){
+          globalThis.__iskMove = Date.now();
+          const mv = await c.query(`update public.iskra_owner set owner=$1, assigned_by='bandeja' where owner is not null and owner <> $1
+            and owner not in (select id::text from public.app_users where role in ('head','manager')) returning conversation_id`, [inbox]).catch(() => ({rows:[]}));
+          mv.rows.forEach(r => OWN_CACHE[r.conversation_id] = inbox);
+        }
+        const out = [], pick = makePicker(c, mode, inbox), sees = lead || (inbox && viewId === inbox);
         for (const id of ids){
           if (!replied(id)) continue;
           const cv = byId[id], sn = seen[id];
@@ -247,7 +265,7 @@ module.exports = async (req, res) => {
             if (p.owner){ await c.query("update public.iskra_owner set owner=$2, assigned_by=$3 where conversation_id=$1 and owner is null", [id, p.owner, p.by]); o.owner = p.owner; o.assigned_by = p.by; }
           }
           OWN_CACHE[id] = o.owner;
-          if (lead || o.owner === viewId) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by, noReplyAt:o.noreply_at, interestAt:o.interest_at, emailAskAt:(seen[id] && seen[id].email_ask_at) || null}});
+          if (sees || o.owner === viewId) out.push({...norm, _strikd:{owner:o.owner, assignedBy:o.assigned_by, escalatedAt:o.escalated_at, lastSender:o.last_sender, lastSentAt:o.last_sent_at, discardedAt:o.discarded_at, discardedBy:o.discarded_by, noReplyAt:o.noreply_at, interestAt:o.interest_at, emailAskAt:(seen[id] && seen[id].email_ask_at) || null}});
         }
         // esperando respuesta desde (tiempo de respuesta)
         try{ const wm = await resptime.waitMap(c, out.map(x => String(x.id))); out.forEach(x => { if (wm[String(x.id)]) x._strikd.waitSince = wm[String(x.id)]; }); }catch(_){}
@@ -255,7 +273,7 @@ module.exports = async (req, res) => {
         try{ const am = await aireply.latest(c, out.map(x => String(x.id))); out.forEach(x => { if (am[String(x.id)]) x._strikd.ai = am[String(x.id)]; }); }catch(_){}
         T.total = Date.now() - t0; res.setHeader("server-timing", `iskra;dur=${T.iskra}, total;dur=${T.total}`);
         const debug = lead ? {tiempos_ms:T, lista:LIST_CACHE.info, conversaciones_en_lista:list.length, revisadas_esta_vuelta:toCheck.length, pendientes_de_revisar:ids.filter(stale).length - toCheck.length, con_respuesta:out.length, ejemplo_conversacion:list[0] || null} : undefined;
-        return {data:{data:out}, mode, debug};
+        return {data:{data:out}, mode, inbox, debug};
       }
       if (op === "messages"){
         if (!input.id) throw Object.assign(new Error("Falta id"), {status:400});

@@ -73,7 +73,11 @@ module.exports = async (req, res) => {
       const origin = "https://" + (req.headers["x-forwarded-host"] || req.headers.host || "growth.strikd.ai");
       const autos = [], ais = []; let aiN = 0;
       let sent = 0, n = 0, dest = 0; const errs = [];
-      const isLead = new Set(leads);
+      // bandeja única: Rafa recibe aviso de todas las conversaciones (config/main.iskInbox, encendido por defecto)
+      const cfgM = ((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data || {};
+      const inboxMail = cfgM.iskInbox === false ? null : (cfgM.iskInboxEmail || (cfgM.perfilInvite || {1:"partners@strikd.ai"})[1] || "partners@strikd.ai");
+      const inboxId = inboxMail ? ((await c.query("select id from public.app_users where lower(email)=lower($1) and coalesce(active,true)", [String(inboxMail)]).catch(() => ({rows:[]}))).rows[0] || {}).id || null : null;
+      const isLead = new Set([...leads, ...(inboxId ? [inboxId] : [])]);
       const nrDone = cv => { const o = owners[String(cv.id)]; return !!(o && o.noreply_at && new Date(o.noreply_at).getTime() >= (Date.parse(cv.last_message_at || "") || 0)); };
       const unreadFor = u => list.filter(cv => Number(cv.unread_count || 0) > 0 && !nrDone(cv) && !(owners[String(cv.id)] && owners[String(cv.id)].discarded_at)
         && (isLead.has(u) || (owners[String(cv.id)] && owners[String(cv.id)].owner === u))).length;
@@ -103,7 +107,7 @@ module.exports = async (req, res) => {
         }
         if (ai && ai.sent) continue; // ya lo contestó la IA con una plantilla: no avisamos
         // al dueño y siempre al Head y al Manager (ellos ven todas las conversaciones)
-        const to = [...new Set([...(o && o.owner ? [o.owner] : []), ...leads])]; if (!to.length) continue;
+        const to = [...new Set([...(o && o.owner ? [o.owner] : []), ...(inboxId ? [inboxId] : []), ...leads])]; if (!to.length) continue;
         const name0 = cv.contact_name || (cv.lead && cv.lead.full_name) || cv.contact_phone || "WhatsApp";
         const name = ai && ai.flag && !ai.error ? "🙋 Revisar · " + name0 : name0;
         n++; dest += to.length;
