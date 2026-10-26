@@ -14,6 +14,7 @@ const aireply = require("../lib/aireply");
 const stall = require("../lib/stallfollow");
 const meetremind = require("../lib/meetremind");
 const perfilresp = require("../lib/perfilresp");
+const vipimport = require("../lib/vipimport");
 const BASE = (process.env.ISKRA_API_URL || "https://xglfamaaotmwulglwcui.supabase.co/functions/v1/public-api").replace(/\/$/, "");
 const arr = j => Array.isArray(j) ? j : (j && (j.data || j.items || j.conversations || j.messages || j.results)) || [];
 async function get(path, ms){
@@ -59,6 +60,7 @@ module.exports = async (req, res) => {
       let seguimiento = null; try{ await migrate(c).catch(() => {}); const names = {}; list.forEach(cv => { names[String(cv.id)] = cv.contact_name || (cv.lead && cv.lead.full_name) || ""; });
         seguimiento = await stall.run(c, {get, post, origin:"https://" + (req.headers["x-forwarded-host"] || req.headers.host || "growth.strikd.ai"), names}); }catch(e){ seguimiento = {error:String(e.message || e)}; }
       // recordatorio por WhatsApp 30 min antes a meets agendados desde un chat de ISKRA
+      let importacion = null; try{ importacion = await vipimport.run(c); }catch(e){ importacion = {error:String(e.message || e)}; }
       let responsables = null; try{ responsables = await perfilresp.run(c); }catch(e){ responsables = {error:String(e.message || e)}; }
       let recordatorio_meet = null; try{ recordatorio_meet = await meetremind.run(c, {get, post}); }catch(e){ recordatorio_meet = {error:String(e.message || e)}; }
       let respuesta_recordatorio = null; try{ respuesta_recordatorio = await meetremind.watch(c, {get}); }catch(e){ respuesta_recordatorio = {error:String(e.message || e)}; }
@@ -117,7 +119,7 @@ module.exports = async (req, res) => {
           errs.push(...(sendTo.lastErrors || []));
         }
       }
-      return {ok:true, ...(semana ? {semana} : {}), ...(reporte ? {reporte} : {}), ...(semanales ? {semanales} : {}), ...(recordatorios ? {recordatorios} : {}), ...(respuesta ? {tiempo_respuesta:respuesta} : {}), ...(emails ? {emails} : {}), ...(ais.length ? {ia:ais} : {}), ...(seguimiento ? {seguimiento} : {}), ...(recordatorio_meet ? {recordatorio_meet} : {}), ...(confirmacion_meet ? {confirmacion_meet} : {}), ...(respuesta_recordatorio ? {respuesta_recordatorio} : {}), ...(responsables ? {responsables} : {}), revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(autos.length ? {automaticos:autos} : {}), ...(errs.length ? {errores:errs.slice(0,3)} : {})};
+      return {ok:true, ...(importacion ? {importacion} : {}), ...(semana ? {semana} : {}), ...(reporte ? {reporte} : {}), ...(semanales ? {semanales} : {}), ...(recordatorios ? {recordatorios} : {}), ...(respuesta ? {tiempo_respuesta:respuesta} : {}), ...(emails ? {emails} : {}), ...(ais.length ? {ia:ais} : {}), ...(seguimiento ? {seguimiento} : {}), ...(recordatorio_meet ? {recordatorio_meet} : {}), ...(confirmacion_meet ? {confirmacion_meet} : {}), ...(respuesta_recordatorio ? {respuesta_recordatorio} : {}), ...(responsables ? {responsables} : {}), revisadas:list.length, nuevas:n, personas:dest, enviadas:sent, primera_vez:first, ...(autos.length ? {automaticos:autos} : {}), ...(errs.length ? {errores:errs.slice(0,3)} : {})};
     });
     res.status(out.status || 200).json(out);
   }catch(err){ res.status(500).json({error:String(err.message || err)}); }
