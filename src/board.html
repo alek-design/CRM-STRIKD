@@ -300,6 +300,12 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mi-qh{font-size:13px;color:var(--muted);margin:4px 0 8px}
 .sq{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0 12px}.sq-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}.sq-q{margin:4px 0 6px}.sq-v{display:grid;gap:8px;margin-top:8px}.sq-th{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.sq-th img{width:160px;max-width:45%;border-radius:8px;border:1px solid var(--line)}
 .mi-dm{display:inline-block;margin-top:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--wait) 16%,transparent);color:var(--fg)}.mi-dm.v{background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.mb{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}.mb-h{display:flex;align-items:center;gap:8px}.mb-h h3{margin:0;font-size:15px}.mb-card{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
+.mb-r{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}.mb-a{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--line)}
+.mb-n{display:grid;min-width:0;flex:0 1 240px}.mb-n small{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mb-sj{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:13px}.mb-c{color:var(--muted)}
+.mb-d{padding:0 10px 10px;display:grid;gap:8px}.mb-d textarea{width:100%;font:inherit}.mb-b{white-space:pre-wrap;margin:0;font:inherit;font-size:13.5px}.ok-msg{color:var(--ok);font-size:13px}.sq-ap{display:grid;gap:2px;margin:6px 0}
+@media(max-width:560px){.mb-sj{display:none}.mb-n{flex:1}}
 .or-p button{font-size:12.5px}.or-k{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:12px 0 14px}.or-k>span{border:1px solid var(--line);border-radius:12px;padding:10px 12px}.or-k b{font-size:22px;color:var(--fg)}.or-k .on b{color:var(--ok)}@media(max-width:760px){.or-k{grid-template-columns:repeat(3,minmax(0,1fr))}}.or-ch{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:760px){.or-ch{grid-template-columns:1fr}}
 .or-c{border:1px solid var(--line);border-radius:14px;padding:12px 14px}.or-c h3{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px}.or-dot{width:9px;height:9px;border-radius:50%;display:inline-block}.or-dot.ig{background:#d62976}.or-dot.em{background:#3b82f6}
 .or-on,.or-off{font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px}.or-on{background:color-mix(in srgb,var(--ok) 18%,transparent)}.or-off{background:var(--line);color:var(--muted)}
@@ -5760,6 +5766,8 @@ function seqHtml(g){
     <div class="sq-h"><b>${cfg.on ? "🟢 Secuencia encendida" : "⚪ Secuencia apagada"}</b>${own ? (cfg.on ? `<button type="button" class="btn small" data-gm="seqoff">Pausar</button>` : `<button type="button" class="btn small primary" data-gm="seqon"${miss.length ? " disabled" : ""}>Encender</button>`) : ""}</div>
     ${!cfg.on && miss.length ? `<p class="mut small">Para encenderla falta: ${esc(miss.join(", "))}.</p>` : ""}
     ${g.queue ? `<p class="small sq-q">📧 ${q.active||0} en secuencia · ⏳ ${q.waiting||0} esperando su approach 1 · 💬 ${q.dm||0} listos para DM de Mich</p>` : ""}
+    ${own ? `<div class="sq-ap"><label class="sw-l"><input type="checkbox" data-gseqap="1"${cfg.approval!==false?" checked":""}> Autorizo cada lote un día antes</label><small class="mut">A las 5 pm se prepara el lote del siguiente día hábil y te llega aviso. Solo sale lo que autorices en Outreach.</small></div>
+    <label class="f">Correo para las pruebas<input data-gseq="testTo" value="${esc(cfg.testTo||"")}" placeholder="${esc(((window.STRIKD_ME && window.STRIKD_ME()) || {}).email||"tu correo")}" maxlength="120"></label>` : ""}
     ${rows}
     <p class="mut small">Cuentas nuevas: empiezan con 5 al día y suben 5 cada semana hasta 20. El cupo incluye los seguimientos (salen primero).</p>
     <div class="sq-v"><label class="f">Link del video (YouTube oculto, Drive, Loom…)<input data-gseq="video" value="${esc(cfg.video||"")}" placeholder="https://youtu.be/…"${own?"":" disabled"}></label>
@@ -5773,6 +5781,7 @@ function seqHtml(g){
 async function seqSave(patch){ const cur = (S.config||{}).mailSeq || {}, next = {...cur, ...patch}; (S.config ||= {}).mailSeq = next; schedule();
   try{ await db.doc("config/main").update({mailSeq:next}); SQF.err = ""; }catch(_){ SQF.err = "No se guardó. Intenta otra vez."; schedule(); } }
 document.addEventListener("change", async e => {
+  const ap = e.target.closest("[data-gseqap]"); if (ap && S.isOwner) return seqSave({approval:!!ap.checked});
   const f = e.target.closest("[data-gseq]"); if (f && S.isOwner){ const v = f.value.trim(); if (f.dataset.gseq==="video" && v && !/^https?:\/\//i.test(v)){ SQF.err = "El link del video debe empezar con https://"; return schedule(); } return seqSave({[f.dataset.gseq]:v}); }
   const th = e.target.closest("[data-gseqthumb]"); if (th && th.files && th.files[0] && S.isOwner){ const file = th.files[0];
     if (file.size > 3*1024*1024){ SQF.err = "La miniatura pesa más de 3 MB."; return schedule(); }
@@ -5797,7 +5806,7 @@ function mailSetHtml(){
       ${GM.err ? `<p class="err">${esc(GM.err)}</p>` : ""}
       <div class="tk-acts">${tf.id ? `<button type="button" class="pr-x" data-gm="del">Borrar</button>` : ""}<button type="button" class="btn small" data-gm="cancel">Cancelar</button><button type="button" class="btn small primary" data-gm="save">Guardar</button></div></div>` : "";
   const list = st => tpls.filter(([,t]) => Number(t.step)===st).map(([id,t]) => { const x = stat[id] || {}; return `<div class="ml-t${t.active===false?" off":""}"><div><b>${esc(t.name||"Plantilla")}</b><small>${t.subject ? esc(t.subject) + " · " : ""}${x.sent||0} enviados · ${x.replied||0} contestaron${x.sent ? ` (${Math.round((x.replied||0)/x.sent*100)}%)` : ""}</small></div>
-      ${canEditTpl ? `<span><button type="button" class="btn small" data-gm="tog|${id}">${t.active===false ? "Activar" : "Pausar"}</button><button type="button" class="btn small" data-gm="edit|${id}">Editar</button></span>` : ""}</div>`; }).join("") || `<p class="mut small" style="margin:6px 0">Sin plantillas.</p>`;
+      ${canEditTpl ? `<span><button type="button" class="btn small" data-gm="tog|${id}">${t.active===false ? "Activar" : "Pausar"}</button><button type="button" class="btn small" data-gm="edit|${id}">Editar</button>${S.isOwner && window.STRIKD_GMAIL_POST ? `<button type="button" class="btn small" data-mbtest="tpl|${id}">Enviarme prueba</button>` : ""}</span>` : ""}</div>`; }).join("") || `<p class="mut small" style="margin:6px 0">Sin plantillas.</p>`;
   return `<h3 class="set-h">Emails automáticos</h3><section class="set-card ml">
     <p class="ml-how">Secuencia a los influencers con email que no son 👑 Top tier ni 🤝 Contacto directo: <b>approach 1</b> con el video (día 0) → <b>approach 2</b> (día 3) → <b>approach 3</b> (día 7), en el mismo hilo → si no contesta, le sale a Mich para <b>DM</b> (día 10). Se detiene si contesta, pide «baja» o agenda meet. Sale de las cuentas de envío (hasta 5), de lunes a viernes de 9 am a 6 pm, repartido en el día. A los que Mich ya contactó por DM, el approach 1 les sale 10 días después.</p>
     ${seqHtml(g)}
@@ -6239,6 +6248,66 @@ async function saveVip(o, extra){
   return {id:ref.id, data};
 }
 function vipItems(uid){ return (uid===S.uid && !S.viewAs) ? S.myVip : (S.vip[uid] || {}); }
+/* ---------- lotes de emails por autorizar (solo el Head): se preparan a las 5 pm para el siguiente día hábil ---------- */
+const MB = {sub:null, open:{}, busy:"", msg:"", err:""};
+const mbDay = d => new Date(Date.parse(d + "T17:00:00Z")).toLocaleDateString("es-MX", {weekday:"long", day:"numeric", month:"short", timeZone:"UTC"});
+const todayKey = () => new Date(Date.now()-OFF).toISOString().slice(0, 10);
+function mbHtml(){
+  const all = Object.values(S.mailBatch||{}).filter(b => b && b.date >= todayKey()).sort((a,b) => a.date < b.date ? -1 : 1);
+  const cfg = (S.config||{}).mailSeq || {};
+  const head = `<div class="mb-h"><h3>📧 Emails por autorizar</h3><span class="spacer"></span>
+    <button type="button" class="btn small" data-mbplan="next"${MB.busy ? " disabled" : ""}>${MB.busy==="plan" ? "Preparando…" : "Preparar lote de mañana"}</button></div>`;
+  const note = cfg.approval===false ? `<p class="mut small">La autorización está apagada en Ajustes: los emails salen solos.</p>` : !cfg.on ? `<p class="mut small">La secuencia está apagada: puedes preparar y revisar lotes, pero no sale nada hasta que la enciendas en Ajustes.</p>` : "";
+  const msg = MB.err ? `<p class="err">${esc(MB.err)}</p>` : MB.msg ? `<p class="ok-msg">${esc(MB.msg)}</p>` : "";
+  if (!all.length) return `<section class="mb">${head}${note}${msg}<p class="mut small">No hay lotes. Se prepara uno solo a las 5 pm (con la secuencia encendida), o tócale a "Preparar lote de mañana".</p></section>`;
+  return `<section class="mb">${head}${note}${msg}${all.map(mbCard).join("")}</section>`;
+}
+function mbCard(b){
+  const items = b.items || [], live = items.filter(i => !i.skip), sent = items.filter(i => i.sentAt).length, today = b.date===todayKey();
+  const st = b.status==="approved" ? (today ? `<span class="or-st ok">✓ Autorizado · ${sent} de ${live.length} enviados</span>` : `<span class="or-st ok">✓ Autorizado</span>`) : `<span class="or-st wait">⏳ Por autorizar</span>`;
+  const by = {}; live.forEach(i => by[i.from||i.key] = (by[i.from||i.key]||0) + 1);
+  const steps = [1,2,3].map(n => [n, live.filter(i => i.step===n).length]).filter(x => x[1]);
+  const L = (i, ix) => { const op = MB.open[b.date+"#"+ix], ed = b.status!=="approved" && !i.sentAt;
+    const s = i.sentAt ? `<span class="or-st ok">✓ enviado</span>` : i.error ? `<span class="or-st off" title="${esc(i.error)}">✗ error</span>` : i.void ? `<span class="or-st off">no salió: ${esc(i.void)}</span>` : i.skip ? `<span class="or-st off">quitado</span>` : "";
+    return `<div class="mb-i${i.skip?" off":""}"><button type="button" class="mb-r" data-mbopen="${b.date}#${ix}"><span class="mb-a">A${i.step}</span><span class="mb-n"><b>${esc(i.name||i.to)}</b><small>${esc(i.to)} · desde ${esc(String(i.from||i.key).split("@")[0])}</small></span><span class="mb-sj">${esc(i.subject)}</span>${s}<span class="mb-c">${op?"▴":"▾"}</span></button>
+      ${op ? `<div class="mb-d">${ed ? `<label class="f">Asunto<input data-mbf="subject" data-mbk="${b.date}#${ix}" value="${esc(i.subject)}"${i.step>1?" disabled title=\"Va en el mismo hilo del approach 1\"":""}></label>
+        <label class="f">Mensaje<textarea rows="8" data-mbf="body" data-mbk="${b.date}#${ix}">${esc(i.body)}</textarea></label>` : `<p class="mb-b"><b>${esc(i.subject)}</b></p><pre class="mb-b">${esc(i.body)}</pre>`}
+        <div class="row">${ed ? `<button type="button" class="btn small" data-mbskip="${b.date}#${ix}">${i.skip ? "Volver a incluir" : "Quitar de este lote"}</button>` : ""}<button type="button" class="btn small" data-mbtest="item|${b.date}|${ix}">Enviarme prueba</button></div>
+        <p class="mut small">${i.step===1 && ((S.config||{}).mailSeq||{}).video ? "El video va con su miniatura donde dice {video} (o al final). " : ""}Al final se agrega la línea para darse de baja.</p></div>` : ""}</div>`; };
+  return `<div class="mb-card"><div class="mb-ch"><b>${esc(mbDay(b.date))}</b>${st}<span class="spacer"></span>
+      ${b.status==="approved" ? (sent ? "" : `<button type="button" class="btn small" data-mbap="${b.date}|0">Quitar autorización</button>`) : `<button type="button" class="btn small" data-mbplan="${b.date}">Volver a preparar</button><button type="button" class="btn small primary" data-mbap="${b.date}|1"${live.length?"":" disabled"}>Autorizar ${live.length}</button>`}</div>
+    <p class="small mut">${live.length} email${live.length===1?"":"s"}${steps.length ? " · " + steps.map(([n,c]) => `${c} de approach ${n}`).join(" · ") : ""}${Object.keys(by).length ? " · " + Object.entries(by).map(([k,n]) => `${esc(k.split("@")[0])} ${n}`).join(" · ") : ""}${items.length > live.length ? ` · ${items.length-live.length} quitados` : ""}</p>
+    <div class="mb-l">${items.map(L).join("") || `<p class="mut small">Nadie para este día.</p>`}</div></div>`;
+}
+async function mbSave(date, items, extra){ const b = (S.mailBatch||{})[date]; if (!b) return; b.items = items; Object.assign(b, extra||{}); schedule();
+  try{ await db.doc("mailBatch/" + date).update({items, ...(extra||{})}); MB.err = ""; }catch(_){ MB.err = "No se guardó. Intenta otra vez."; schedule(); } }
+document.addEventListener("click", async e => {
+  const o = e.target.closest("[data-mbopen]"); if (o){ MB.open[o.dataset.mbopen] = !MB.open[o.dataset.mbopen]; const bx = $("orBox"); if (bx) bx.dataset.h = ""; return renderOutreach(); }
+  const sk = e.target.closest("[data-mbskip]"); if (sk && S.isOwner){ const [d, ix] = sk.dataset.mbskip.split("#"), b = (S.mailBatch||{})[d]; if (!b) return;
+    const items = b.items.map((i, n) => n===Number(ix) ? {...i, skip:!i.skip} : i); return mbSave(d, items); }
+  const ap = e.target.closest("[data-mbap]"); if (ap && S.isOwner){ const [d, on] = ap.dataset.mbap.split("|"), b = (S.mailBatch||{})[d]; if (!b) return;
+    if (on==="1" && !confirm(`¿Autorizar ${b.items.filter(i => !i.skip).length} emails para el ${mbDay(d)}? Salen repartidos de 9 am a 6 pm.`)) return;
+    return mbSave(d, b.items, on==="1" ? {status:"approved", approvedAt:Date.now(), approvedBy:S.uid} : {status:"pending", approvedAt:null}); }
+  const pl = e.target.closest("[data-mbplan]"); if (pl && S.isOwner && window.STRIKD_GMAIL_POST){
+    const d = pl.dataset.mbplan==="next" ? "" : pl.dataset.mbplan, b = d && (S.mailBatch||{})[d];
+    if (b && b.items && b.items.some(i => i.skip || i.edited) && !confirm("Volver a preparar borra lo que quitaste o editaste en este lote. ¿Sigo?")) return;
+    MB.busy = "plan"; MB.err = MB.msg = ""; schedule();
+    try{ const r = await window.STRIKD_GMAIL_POST({plan:{date:d}}); MB.msg = r.status==="approved" ? "Ese lote ya estaba autorizado; no lo toqué." : `Listo: ${r.n} emails para el ${mbDay(r.date)}.`; }
+    catch(err){ MB.err = err.message || String(err); }
+    MB.busy = ""; const bx = $("orBox"); if (bx) bx.dataset.h = ""; return schedule(); }
+  const ts = e.target.closest("[data-mbtest]"); if (ts && S.isOwner && window.STRIKD_GMAIL_POST){
+    const [kind, a, b] = ts.dataset.mbtest.split("|"), to = (((S.config||{}).mailSeq||{}).testTo || ((window.STRIKD_ME && window.STRIKD_ME()) || {}).email || "").trim();
+    if (!to) return alert("Pon tu correo para pruebas en Ajustes → Emails automáticos.");
+    ts.disabled = true; const t0 = ts.textContent; ts.textContent = "Enviando…";
+    try{ const r = await window.STRIKD_GMAIL_POST({test: kind==="tpl" ? {tplId:a, to} : {date:a, idx:Number(b), to}}); quickToast(`Prueba enviada a ${r.to} desde ${r.from}`); }
+    catch(err){ alert("No se pudo mandar la prueba: " + (err.message || err)); }
+    ts.disabled = false; ts.textContent = t0; }
+});
+document.addEventListener("change", e => {
+  const f = e.target.closest("[data-mbf]"); if (!f || !S.isOwner) return;
+  const [d, ix] = f.dataset.mbk.split("#"), b = (S.mailBatch||{})[d]; if (!b || b.status==="approved") return;
+  const items = b.items.map((i, n) => n===Number(ix) ? {...i, [f.dataset.mbf]:f.value, edited:true} : i); mbSave(d, items);
+});
 /* ---------- Outreach de influencers: tablero para Head y Manager (avances, canales, semanas y listas) ---------- */
 const OR = {p:"7", l:"accion", q:"", n:40};
 function orState(x){
@@ -6301,6 +6370,7 @@ function renderOutreach(){
   const h = `<div class="or">
     <div class="row"><div><h2>Outreach de influencers</h2><p class="sub">${rows.length} perfiles en la lista · Instagram (DM de Mich) y Email (secuencia automática)</p></div><div class="spacer"></div>
       <div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div></div>
+    ${S.isOwner && !S.viewAs ? mbHtml() : ""}
     <div class="or-k">${k(kp.nuevos, "nuevos en la lista")}${k(kp.dm, "DMs de Mich")}${k(kp.em, "emails enviados")}${k(kp.vid, "vieron el video")}${k(kp.rep + kp.int, "respondieron", kp.rep + kp.int ? "on" : "", `${kp.rep} por email · ${kp.int} interesados por DM`)}${k(kp.meet, "meets", kp.meet ? "on" : "")}</div>
     <div class="or-ch">
       <section class="or-c"><h3><span class="or-dot ig"></span>Instagram · DM</h3>
@@ -6903,6 +6973,7 @@ function syncAdminSubs(){
     return; }
   if (!S.isLead) return;
   if (!waCampSub && S.uid) db.collection(`meets/${S.uid}/tpllog`).onSnapshot(s => { S.tplLog[S.uid]={}; s.docs.forEach(d=>S.tplLog[S.uid][d.id]=d.data()); schedule(); }, snapErr);
+  if (S.isOwner && !MB.sub) MB.sub = db.collection("mailBatch").onSnapshot(s => { S.mailBatch = {}; s.docs.forEach(d => S.mailBatch[d.id] = d.data()); schedule(); }, () => {});
   if (!waCampSub) waCampSub = db.collection("waCampaigns").onSnapshot(s => { S.waCamps={}; s.docs.forEach(d=>S.waCamps[d.id]=d.data()); schedule(); }, snapErr);
   // los prospectos de todos: AM y también los que registran el Head, el Manager y la Influencer a su nombre
   [...new Set(Object.keys(S.members).concat(S.uid ? [S.uid] : [], (S.config && S.config.headId) ? [S.config.headId] : []))].forEach(uid => {

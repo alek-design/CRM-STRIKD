@@ -1,6 +1,6 @@
 // Emails automáticos: estado de las cuentas de Gmail conectadas, envíos y desconectar.
 // GET  → {general, me, people (Head/Manager), today, tpl (por plantilla: enviados / contestados)}
-// POST {disconnect:"general"|"me"}
+// POST {disconnect:"general"|"me"|"seqN"} · {plan:{date}} prepara el lote de un día · {test:{to, tplId|date+idx, key}} manda una prueba
 const { withPg, userFromReq } = require("../lib/google");
 const gmail = require("../lib/gmail");
 module.exports = async (req, res) => {
@@ -13,6 +13,15 @@ module.exports = async (req, res) => {
       await gmail.ensure(c);
       if (req.method === "POST"){
         const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+        // lotes con autorización y emails de prueba (solo el Head)
+        if (b.plan || b.test){
+          if (me.role !== "head") return {status:403, error:"Solo el Head"};
+          const ea = require("../lib/emailauto");
+          if (b.test) return await ea.sendTest(c, {to:String(b.test.to || me.email || "").trim(), key:b.test.key, tplId:b.test.tplId, date:b.test.date, idx:Number(b.test.idx)});
+          const date = /^\d{4}-\d{2}-\d{2}$/.test(b.plan.date || "") ? b.plan.date : ea.nextBizDay(Date.now());
+          const r = await ea.plan(c, date, {preview:true});
+          return {ok:true, date, n:(r.items || []).length, status:r.status};
+        }
         const key = b.disconnect === "general" || /^seq[1-5]$/.test(b.disconnect || "") ? (me.role === "head" ? b.disconnect : null) : b.disconnect === "me" ? me.id : null;
         if (!key) return {status:403, error:"Sin permiso"};
         await c.query("delete from public.gmail_tokens where key=$1", [key]); return {ok:true};
