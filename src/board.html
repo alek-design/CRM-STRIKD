@@ -300,6 +300,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mi-qh{font-size:13px;color:var(--muted);margin:4px 0 8px}
 .sq{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0 12px}.sq-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}.sq-q{margin:4px 0 6px}.sq-v{display:grid;gap:8px;margin-top:8px}.sq-th{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.sq-th img{width:160px;max-width:45%;border-radius:8px;border:1px solid var(--line)}
 .mi-dm{display:inline-block;margin-top:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--wait) 16%,transparent);color:var(--fg)}.mi-dm.v{background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.ml-body{min-height:300px;resize:vertical;font:inherit;line-height:1.5}.ml-ins{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.ml-ins small{flex-basis:100%}
 .mb{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}.mb-h{display:flex;align-items:center;gap:8px}.mb-h h3{margin:0;font-size:15px}.mb-card{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
 .mb-r{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}.mb-a{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--line)}
@@ -5772,7 +5773,8 @@ function seqHtml(g){
     <p class="mut small">Cuentas nuevas: empiezan con 5 al día y suben 5 cada semana hasta 20. El cupo incluye los seguimientos (salen primero).</p>
     <div class="sq-v"><label class="f">Link del video (YouTube oculto, Drive, Loom…)<input data-gseq="video" value="${esc(cfg.video||"")}" placeholder="https://youtu.be/…"${own?"":" disabled"}></label>
       <label class="f">Texto del botón<input data-gseq="videoLabel" value="${esc(cfg.videoLabel||"")}" placeholder="▶ Ver video" maxlength="40"${own?"":" disabled"}></label>
-      <label class="f">Firma (quién manda)<input data-gseq="senderName" value="${esc(cfg.senderName||"")}" placeholder="Equipo STRIKD" maxlength="40"${own?"":" disabled"}></label>
+      <p class="mut small">✍️ La firma y el nombre de quien manda salen de cada cuenta de Gmail (Gmail → Configuración → Firma). Se pegan solos al final de cada email.</p>
+      ${own ? `<label class="sw-l"><input type="checkbox" data-gseqopt="1"${cfg.optout?" checked":""}> Agregar al final: "Si prefieres que no te volvamos a escribir, responde «baja»"</label>` : ""}
       <div class="sq-th">${thumb ? `<img src="${esc(thumb)}" alt="Miniatura del video">` : `<span class="mut small">Sin miniatura${cfg.video ? " (de YouTube sale sola)" : ""}</span>`}
         ${own ? `<label class="btn small">${cfg.thumb ? "Cambiar miniatura" : "Subir miniatura"}<input type="file" accept="image/png,image/jpeg,image/webp" data-gseqthumb="1" hidden></label>${cfg.thumb ? `<button type="button" class="linkbtn" data-gm="thumbx">Quitar</button>` : ""}` : ""}</div>
       <p class="mut small">El video no va adjunto: va la miniatura con el botón, que abre el video. Así no cae en spam y sabemos quién lo vio.</p>
@@ -5782,6 +5784,7 @@ async function seqSave(patch){ const cur = (S.config||{}).mailSeq || {}, next = 
   try{ await db.doc("config/main").update({mailSeq:next}); SQF.err = ""; }catch(_){ SQF.err = "No se guardó. Intenta otra vez."; schedule(); } }
 document.addEventListener("change", async e => {
   const ap = e.target.closest("[data-gseqap]"); if (ap && S.isOwner) return seqSave({approval:!!ap.checked});
+  const op = e.target.closest("[data-gseqopt]"); if (op && S.isOwner) return seqSave({optout:!!op.checked});
   const f = e.target.closest("[data-gseq]"); if (f && S.isOwner){ const v = f.value.trim(); if (f.dataset.gseq==="video" && v && !/^https?:\/\//i.test(v)){ SQF.err = "El link del video debe empezar con https://"; return schedule(); } return seqSave({[f.dataset.gseq]:v}); }
   const th = e.target.closest("[data-gseqthumb]"); if (th && th.files && th.files[0] && S.isOwner){ const file = th.files[0];
     if (file.size > 3*1024*1024){ SQF.err = "La miniatura pesa más de 3 MB."; return schedule(); }
@@ -5801,8 +5804,9 @@ function mailSetHtml(){
   const form = tf ? `<div class="ml-form"><div class="ml-row"><label class="f">Nombre<input data-gmf="name" value="${esc(tf.name||"")}" maxlength="40"></label>
       <label class="f">Cuándo sale<select data-gmf="step">${[1,2,3].map(n => `<option value="${n}"${Number(tf.step||1)===n?" selected":""}>${esc(SEQ_L[n])}</option>`).join("")}</select></label></div>
       ${Number(tf.step)>1 ? `<p class="mut small">Sale como respuesta en el mismo hilo del approach 1 (sin asunto nuevo).</p>` : `<label class="f">Asunto<input data-gmf="subject" value="${esc(tf.subject||"")}" maxlength="120"></label>`}
-      <label class="f">Mensaje<textarea data-gmf="body" rows="7">${esc(tf.body||"")}</textarea></label>
-      <p class="mut small">Usa {nombre} (nombre del influencer), {am} (quien lo manda) y {video} donde quieras la miniatura del video${Number(tf.step||1)===1 ? " (si no lo pones, va al final)" : " (en este approach solo va si lo pones)"}. Al final se agrega solo: "Si prefieres que no te volvamos a escribir, responde «baja»".</p>
+      <label class="f">Mensaje (el email completo: saludo, texto y despedida)<textarea data-gmf="body" rows="16" class="ml-body">${esc(tf.body||"")}</textarea></label>
+      <div class="ml-ins"><button type="button" class="btn small" data-gmins="{video}">▶ Poner el video aquí</button><button type="button" class="btn small" data-gmins="{nombre}">Insertar {nombre}</button>
+        <small class="mut">Pon el cursor donde quieras y toca el botón. ${Number(tf.step||1)===1 ? "Si no pones {video}, el video va al final." : "En este approach el video solo va si pones {video}."} La firma de Gmail se agrega sola al final${((S.config||{}).mailSeq||{}).optout ? ", y después la línea de «baja»" : ""}.</small></div>
       ${GM.err ? `<p class="err">${esc(GM.err)}</p>` : ""}
       <div class="tk-acts">${tf.id ? `<button type="button" class="pr-x" data-gm="del">Borrar</button>` : ""}<button type="button" class="btn small" data-gm="cancel">Cancelar</button><button type="button" class="btn small primary" data-gm="save">Guardar</button></div></div>` : "";
   const list = st => tpls.filter(([,t]) => Number(t.step)===st).map(([id,t]) => { const x = stat[id] || {}; return `<div class="ml-t${t.active===false?" off":""}"><div><b>${esc(t.name||"Plantilla")}</b><small>${t.subject ? esc(t.subject) + " · " : ""}${x.sent||0} enviados · ${x.replied||0} contestaron${x.sent ? ` (${Math.round((x.replied||0)/x.sent*100)}%)` : ""}</small></div>
@@ -5820,6 +5824,13 @@ function mailSetHtml(){
     <div class="ml-st">${[1,2,3].map(n => { const x = (g.steps||[]).find(r => Number(r.step)===n) || {}; return `<div class="ml-sh"><b>${esc(SEQ_L[n])}</b><small class="mut">${x.sent ? ` ${x.sent} enviados · ${x.clicked||0} vieron el video · ${x.replied||0} contestaron` : ""}</small></div>${list(n)}`; }).join("")}
     ${canEditTpl && !tf ? `<button type="button" class="btn small" data-gm="new">+ Nueva plantilla</button>` : ""}${form}</div></section>`;
 }
+document.addEventListener("mousedown", e => { if (e.target.closest("[data-gmins]")) e.preventDefault(); }); // no quitar el foco del texto
+document.addEventListener("click", e => { const b = e.target.closest("[data-gmins]"); if (!b || !GM.tf) return;
+  const ta = document.querySelector('textarea[data-gmf="body"]'); if (!ta) return; const tok = b.dataset.gmins;
+  if (tok==="{video}" && /\{video\}/.test(ta.value)) ta.value = ta.value.replace(/\s*\{video\}\s*/g, "\n\n"); // un solo lugar para el video
+  const a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a, pad = tok==="{video}" ? "\n\n" : "";
+  ta.value = ta.value.slice(0, a) + pad + tok + pad + ta.value.slice(z); const at = a + pad.length + tok.length + pad.length;
+  ta.focus(); ta.setSelectionRange(at, at); GM.tf.body = ta.value; });
 document.addEventListener("input", e => { const f = e.target.closest("[data-gmf]"); if (f && GM.tf){ GM.tf[f.dataset.gmf] = f.value; if (f.dataset.gmf==="step") schedule(); } });
 document.addEventListener("change", e => { const f = e.target.closest("select[data-gmf]"); if (f && GM.tf){ GM.tf.step = Number(f.value); schedule(); } });
 document.addEventListener("click", async e => { const b = e.target.closest("[data-gm]"); if (!b) return; e.stopPropagation();
@@ -6271,9 +6282,9 @@ function mbCard(b){
     const s = i.sentAt ? `<span class="or-st ok">✓ enviado</span>` : i.error ? `<span class="or-st off" title="${esc(i.error)}">✗ error</span>` : i.void ? `<span class="or-st off">no salió: ${esc(i.void)}</span>` : i.skip ? `<span class="or-st off">quitado</span>` : "";
     return `<div class="mb-i${i.skip?" off":""}"><button type="button" class="mb-r" data-mbopen="${b.date}#${ix}"><span class="mb-a">A${i.step}</span><span class="mb-n"><b>${esc(i.name||i.to)}</b><small>${esc(i.to)} · desde ${esc(String(i.from||i.key).split("@")[0])}</small></span><span class="mb-sj">${esc(i.subject)}</span>${s}<span class="mb-c">${op?"▴":"▾"}</span></button>
       ${op ? `<div class="mb-d">${ed ? `<label class="f">Asunto<input data-mbf="subject" data-mbk="${b.date}#${ix}" value="${esc(i.subject)}"${i.step>1?" disabled title=\"Va en el mismo hilo del approach 1\"":""}></label>
-        <label class="f">Mensaje<textarea rows="8" data-mbf="body" data-mbk="${b.date}#${ix}">${esc(i.body)}</textarea></label>` : `<p class="mb-b"><b>${esc(i.subject)}</b></p><pre class="mb-b">${esc(i.body)}</pre>`}
+        <label class="f">Mensaje<textarea rows="14" class="ml-body" data-mbf="body" data-mbk="${b.date}#${ix}">${esc(i.body)}</textarea></label>` : `<p class="mb-b"><b>${esc(i.subject)}</b></p><pre class="mb-b">${esc(i.body)}</pre>`}
         <div class="row">${ed ? `<button type="button" class="btn small" data-mbskip="${b.date}#${ix}">${i.skip ? "Volver a incluir" : "Quitar de este lote"}</button>` : ""}<button type="button" class="btn small" data-mbtest="item|${b.date}|${ix}">Enviarme prueba</button></div>
-        <p class="mut small">${i.step===1 && ((S.config||{}).mailSeq||{}).video ? "El video va con su miniatura donde dice {video} (o al final). " : ""}Al final se agrega la línea para darse de baja.</p></div>` : ""}</div>`; };
+        <p class="mut small">${i.step===1 && ((S.config||{}).mailSeq||{}).video ? "El video va con su miniatura donde dice {video} (o al final). " : i.step>1 && /\{video\}/.test(i.body) ? "El video va donde dice {video}. " : ""}Al final va la firma de Gmail de ${esc(String(i.from||"la cuenta").split("@")[0])}${((S.config||{}).mailSeq||{}).optout ? " y la línea de «baja»" : ""}.</p></div>` : ""}</div>`; };
   return `<div class="mb-card"><div class="mb-ch"><b>${esc(mbDay(b.date))}</b>${st}<span class="spacer"></span>
       ${b.status==="approved" ? (sent ? "" : `<button type="button" class="btn small" data-mbap="${b.date}|0">Quitar autorización</button>`) : `<button type="button" class="btn small" data-mbplan="${b.date}">Volver a preparar</button><button type="button" class="btn small primary" data-mbap="${b.date}|1"${live.length?"":" disabled"}>Autorizar ${live.length}</button>`}</div>
     <p class="small mut">${live.length} email${live.length===1?"":"s"}${steps.length ? " · " + steps.map(([n,c]) => `${c} de approach ${n}`).join(" · ") : ""}${Object.keys(by).length ? " · " + Object.entries(by).map(([k,n]) => `${esc(k.split("@")[0])} ${n}`).join(" · ") : ""}${items.length > live.length ? ` · ${items.length-live.length} quitados` : ""}</p>
