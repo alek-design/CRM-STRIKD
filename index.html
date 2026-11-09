@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-09 22:23:34 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-09 22:48:37 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794263014">
+<link rel="stylesheet" href="/auth.css?v=1794264517">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794263014"></script>
+<script src="/claude-shim.js?v=1794264517"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -5771,7 +5771,6 @@ function seqHtml(g){
   const nA = accts.filter(a => a.email).length, tp = n => Object.values(S.mailTpl||{}).some(t => Number(t.step)===n && t.active!==false);
   const miss = [!nA && "conectar al menos una cuenta de envío", !cfg.video && "poner el link del video", ...[1,2,3].filter(n => !tp(n)).map(n => `una plantilla del approach ${n}`)].filter(Boolean);
   const q = g.queue || {};
-  const thumb = cfg.thumb || ((String(cfg.video||"").match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/)||[])[1] ? `https://img.youtube.com/vi/${String(cfg.video).match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/)[1]}/hqdefault.jpg` : "");
   return `<div class="sq">
     <div class="sq-h"><b>${cfg.on ? "🟢 Secuencia encendida" : "⚪ Secuencia apagada"}</b>${own ? (cfg.on ? `<button type="button" class="btn small" data-gm="seqoff">Pausar</button>` : `<button type="button" class="btn small primary" data-gm="seqon"${miss.length ? " disabled" : ""}>Encender</button>`) : ""}</div>
     ${!cfg.on && miss.length ? `<p class="mut small">Para encenderla falta: ${esc(miss.join(", "))}.</p>` : ""}
@@ -5781,12 +5780,10 @@ function seqHtml(g){
     ${rows}
     <p class="mut small">Cuentas nuevas: empiezan con 5 al día y suben 5 cada semana hasta 20. El cupo incluye los seguimientos (salen primero).</p>
     <div class="sq-v"><label class="f">Link del video (YouTube oculto, Drive, Loom…)<input data-gseq="video" value="${esc(cfg.video||"")}" placeholder="https://youtu.be/…"${own?"":" disabled"}></label>
-      <label class="f">Texto del botón<input data-gseq="videoLabel" value="${esc(cfg.videoLabel||"")}" placeholder="▶ Ver video" maxlength="40"${own?"":" disabled"}></label>
+      <label class="f">Texto antes del link<input data-gseq="videoLabel" value="${esc(cfg.videoLabel||"")}" placeholder="Ver video en YouTube" maxlength="40"${own?"":" disabled"}></label>
       <p class="mut small">✍️ La firma y el nombre de quien manda salen de cada cuenta de Gmail (Gmail → Configuración → Firma). Se pegan solos al final de cada email.</p>
       ${own ? `<label class="sw-l"><input type="checkbox" data-gseqopt="1"${cfg.optout?" checked":""}> Agregar al final: "Si prefieres que no te volvamos a escribir, responde «baja»"</label>` : ""}
-      <div class="sq-th">${thumb ? `<img src="${esc(thumb)}" alt="Miniatura del video">` : `<span class="mut small">Sin miniatura${cfg.video ? " (de YouTube sale sola)" : ""}</span>`}
-        ${own ? `<label class="btn small">${cfg.thumb ? "Cambiar miniatura" : "Subir miniatura"}<input type="file" accept="image/png,image/jpeg,image/webp" data-gseqthumb="1" hidden></label>${cfg.thumb ? `<button type="button" class="linkbtn" data-gm="thumbx">Quitar</button>` : ""}` : ""}</div>
-      <p class="mut small">El video no va adjunto: va la miniatura con el botón, que abre el video. Así no cae en spam y sabemos quién lo vio.</p>
+      <p class="mut small">El video no va adjunto: va el link directo de YouTube, visible (▶ Ver video en YouTube: youtube.com/watch?v=…), para que se vea confiable. Gmail le agrega solo su vista previa de YouTube.</p>
       ${SQF.err ? `<p class="err">${esc(SQF.err)}</p>` : ""}</div></div>`;
 }
 async function seqSave(patch){ const cur = (S.config||{}).mailSeq || {}, next = {...cur, ...patch}; (S.config ||= {}).mailSeq = next; schedule();
@@ -5830,7 +5827,7 @@ function mailSetHtml(){
     ${(() => { const ideas = Object.entries(S.members||{}).filter(([,m]) => m && m.mailIdea && m.mailIdea.body && !m.mailIdea.done); if (!ideas.length || !S.isOwner) return "";
       return `<div class="ml-sh"><b>Propuestas del equipo</b></div>${ideas.map(([u,m]) => `<div class="ml-t"><div><b>${esc(String(nameOf(S.ps||{}, u)).split(" (")[0])}${m.mailIdea.subject ? " · " + esc(m.mailIdea.subject) : ""}</b><small>${esc(m.mailIdea.body.slice(0, 140))}</small></div>
         <span><button type="button" class="btn small" data-gm="ideax|${u}">Descartar</button><button type="button" class="btn small primary" data-gm="ideause|${u}">Usarla</button></span></div>`).join("")}`; })()}
-    <div class="ml-st">${[1,2,3].map(n => { const x = (g.steps||[]).find(r => Number(r.step)===n) || {}; return `<div class="ml-sh"><b>${esc(SEQ_L[n])}</b><small class="mut">${x.sent ? ` ${x.sent} enviados · ${x.clicked||0} vieron el video · ${x.replied||0} contestaron` : ""}</small></div>${list(n)}`; }).join("")}
+    <div class="ml-st">${[1,2,3].map(n => { const x = (g.steps||[]).find(r => Number(r.step)===n) || {}; return `<div class="ml-sh"><b>${esc(SEQ_L[n])}</b><small class="mut">${x.sent ? ` ${x.sent} enviados · ${x.replied||0} contestaron` : ""}</small></div>${list(n)}`; }).join("")}
     ${canEditTpl && !tf ? `<button type="button" class="btn small" data-gm="new">+ Nueva plantilla</button>` : ""}${form}</div></section>`;
 }
 document.addEventListener("mousedown", e => { if (e.target.closest("[data-gmins]")) e.preventDefault(); }); // no quitar el foco del texto
@@ -6293,7 +6290,7 @@ function mbCard(b){
       ${op ? `<div class="mb-d">${ed ? `<label class="f">Asunto<input data-mbf="subject" data-mbk="${b.date}#${ix}" value="${esc(i.subject)}"${i.step>1?" disabled title=\"Va en el mismo hilo del approach 1\"":""}></label>
         <label class="f">Mensaje<textarea rows="14" class="ml-body" data-mbf="body" data-mbk="${b.date}#${ix}">${esc(i.body)}</textarea></label>` : `<p class="mb-b"><b>${esc(i.subject)}</b></p><pre class="mb-b">${esc(i.body)}</pre>`}
         <div class="row">${ed ? `<button type="button" class="btn small" data-mbskip="${b.date}#${ix}">${i.skip ? "Volver a incluir" : "Quitar de este lote"}</button>` : ""}<button type="button" class="btn small" data-mbtest="item|${b.date}|${ix}">Enviarme prueba</button></div>
-        <p class="mut small">${i.step===1 && ((S.config||{}).mailSeq||{}).video ? "El video va con su miniatura donde dice {video} (o al final). " : i.step>1 && /\{video\}/.test(i.body) ? "El video va donde dice {video}. " : ""}Al final va la firma de Gmail de ${esc(String(i.from||"la cuenta").split("@")[0])}${((S.config||{}).mailSeq||{}).optout ? " y la línea de «baja»" : ""}.</p></div>` : ""}</div>`; };
+        <p class="mut small">${i.step===1 && ((S.config||{}).mailSeq||{}).video ? "El link de YouTube va donde dice {video} (o al final). " : i.step>1 && /\{video\}/.test(i.body) ? "El link de YouTube va donde dice {video}. " : ""}Al final va la firma de Gmail de ${esc(String(i.from||"la cuenta").split("@")[0])}${((S.config||{}).mailSeq||{}).optout ? " y la línea de «baja»" : ""}.</p></div>` : ""}</div>`; };
   return `<div class="mb-card"><div class="mb-ch"><b>${esc(mbDay(b.date))}</b>${st}<span class="spacer"></span>
       ${b.status==="approved" ? (sent ? "" : `<button type="button" class="btn small" data-mbap="${b.date}|0">Quitar autorización</button>`) : `<button type="button" class="btn small" data-mbplan="${b.date}">Volver a preparar</button><button type="button" class="btn small primary" data-mbap="${b.date}|1"${live.length?"":" disabled"}>Autorizar ${live.length}</button>`}</div>
     <p class="small mut">${live.length} email${live.length===1?"":"s"}${steps.length ? " · " + steps.map(([n,c]) => `${c} de approach ${n}`).join(" · ") : ""}${Object.keys(by).length ? " · " + Object.entries(by).map(([k,n]) => `${esc(k.split("@")[0])} ${n}`).join(" · ") : ""}${items.length > live.length ? ` · ${items.length-live.length} quitados` : ""}</p>
@@ -6377,7 +6374,7 @@ function renderOutreach(){
   const wk = `<table class="or-wk"><thead><tr><th>Semana</th><th>DMs</th><th>Emails</th><th>Respuestas</th><th>Meets</th></tr></thead><tbody>${weeks.slice().reverse().map(w => `<tr><td>${esc(fmtLocal(w.a).split(",")[0])}${w.a===w0 ? " <small>(esta)</small>" : ""}</td>
     <td><span class="or-bar dm" style="--w:${Math.round(w.dm/mx*100)}%"></span>${w.dm}</td><td><span class="or-bar em" style="--w:${Math.round(w.em/mx*100)}%"></span>${w.em}</td><td>${w.rep||"·"}</td><td>${w.meet ? `<b>${w.meet}</b>` : "·"}</td></tr>`).join("")}</tbody></table>`;
   // 4) listas
-  const LISTS = [["accion","Necesitan acción", r => ["resp","dm"].includes(r.s.g) && !r.x.replyHandledAt],["seq","En emails", r => r.s.g==="seq"],["video","Vieron el video", r => !!(r.x.videoClickAt || r.x.videoClicks)],
+  const LISTS = [["accion","Necesitan acción", r => ["resp","dm"].includes(r.s.g) && !r.x.replyHandledAt],["seq","En emails", r => r.s.g==="seq"],
     ["resp","Respondieron", r => r.s.g==="resp"],["meet","Meets", r => r.s.g==="meet"],["dmsent","DM enviado", r => r.s.g==="dm-sent"],["pend","Por contactar", r => r.s.g==="pend" && !r.x.top && !r.x.direct],
     ["top","👑 Top tier", r => !!r.x.top],["direct","🤝 Contacto directo", r => !!r.x.direct && !r.x.top],["fin","Baja / descartados", r => r.s.g==="fin"],["all","Todos", () => true]];
   const lf = (LISTS.find(l => l[0]===OR.l) || LISTS[0]), q = fold(OR.q.trim().replace(/^@/,""));
@@ -6391,14 +6388,14 @@ function renderOutreach(){
     <div class="row"><div><h2>Outreach de influencers</h2><p class="sub">${rows.length} perfiles en la lista · Instagram (DM de Mich) y Email (secuencia automática)</p></div><div class="spacer"></div>
       <div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div></div>
     ${S.isOwner && !S.viewAs ? mbHtml() : ""}
-    <div class="or-k">${k(kp.nuevos, "nuevos en la lista")}${k(kp.dm, "DMs de Mich")}${k(kp.em, "emails enviados")}${k(kp.vid, "vieron el video")}${k(kp.rep + kp.int, "respondieron", kp.rep + kp.int ? "on" : "", `${kp.rep} por email · ${kp.int} interesados por DM`)}${k(kp.meet, "meets", kp.meet ? "on" : "")}</div>
+    <div class="or-k">${k(kp.nuevos, "nuevos en la lista")}${k(kp.dm, "DMs de Mich")}${k(kp.em, "emails enviados")}${k(kp.rep + kp.int, "respondieron", kp.rep + kp.int ? "on" : "", `${kp.rep} por email · ${kp.int} interesados por DM`)}${k(kp.meet, "meets", kp.meet ? "on" : "")}</div>
     <div class="or-ch">
       <section class="or-c"><h3><span class="or-dot ig"></span>Instagram · DM</h3>
         <div class="or-f">${k(pend.length - pendEm, "por contactar")}${k(g["dm"]||0, "listos para DM", (g["dm"]||0) ? "wait" : "")}${k(dmTot, "contactados")}${k(cnt(x => x.status==="interesado"), "interesados")}${k(meetDm, "meets")}</div>
         <p class="mut small">Conversión a meet: <b>${pct(meetDm, dmTot)}</b> de los contactados por DM.</p></section>
       <section class="or-c"><h3><span class="or-dot em"></span>Email · secuencia ${cfg.on ? `<span class="or-on">encendida</span>` : `<span class="or-off">apagada</span>`}</h3>
-        <div class="or-f">${k(pendEm, "esperando email 1")}${k(seqN(1), "en email 1")}${k(seqN(2), "en email 2")}${k(seqN(3), "en email 3")}${k(vidTot, "vieron el video")}${k(repEm, "contestaron")}${k(meetEm, "meets")}</div>
-        <p class="mut small">Respuesta: <b>${pct(repEm, emTot)}</b> · vieron el video: <b>${pct(vidTot, emTot)}</b> de ${emTot} a los que se les escribió.${accts.length ? ` Cuentas: ${accts.map(a => `${esc(a.email.split("@")[0])} ${a.today||0}/${a.quota||5}`).join(" · ")} hoy.` : gs.seq ? " Sin cuentas de envío conectadas." : ""}</p></section>
+        <div class="or-f">${k(pendEm, "esperando email 1")}${k(seqN(1), "en email 1")}${k(seqN(2), "en email 2")}${k(seqN(3), "en email 3")}${k(repEm, "contestaron")}${k(meetEm, "meets")}</div>
+        <p class="mut small">Respuesta: <b>${pct(repEm, emTot)}</b> de ${emTot} a los que se les escribió.${accts.length ? ` Cuentas: ${accts.map(a => `${esc(a.email.split("@")[0])} ${a.today||0}/${a.quota||5}`).join(" · ")} hoy.` : gs.seq ? " Sin cuentas de envío conectadas." : ""}</p></section>
     </div>
     <p class="mut small or-x">Aparte: 👑 ${top} top tier · 🤝 ${dir} contacto directo (estrategia propia, sin emails automáticos).</p>
     <section class="or-sec"><h3 class="sec-h">Avance por semana</h3>${wk}</section>
