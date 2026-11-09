@@ -368,14 +368,6 @@
     const r = await fetch(`/api/busy?from=${from}&to=${to}`, {headers:{authorization:"Bearer " + t}});
     if (!r.ok) throw new Error("busy " + r.status); return r.json();
   };
-  // ISKRA (WhatsApp): {configured:false} | {data} | lanza {message, detail}
-  window.STRIKD_ISKRA = async (op, input) => {
-    const t = (await sb.auth.getSession()).data.session.access_token;
-    const r = await fetch("/api/iskra", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + t}, body:JSON.stringify({op, input:input||{}})});
-    const j = await r.json().catch(() => ({error:"Respuesta inválida (" + r.status + ")"}));
-    if (!r.ok) throw Object.assign(new Error(j.error || ("Error " + r.status)), {status:r.status, detail:j.detail});
-    return j;
-  };
   window.STRIKD_GOOGLE_USERS = async () => { const t = (await sb.auth.getSession()).data.session.access_token; const r = await fetch("/api/google/status?all=1", {headers:{authorization:"Bearer " + t}}); return r.ok ? (await r.json()).users || [] : []; };
 
   /* ---------- avisos al celular (tareas) ---------- */

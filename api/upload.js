@@ -1,4 +1,4 @@
-// Sube una foto, PDF o nota de voz para mandarla por WhatsApp (ISKRA la descarga del link).
+// Sube una foto o PDF (p. ej. la miniatura del video de los emails) y regresa su link público.
 // Cualquier persona con sesión; máx. 3 MB (límite de Vercel). Bucket público "wa-media" con nombres imposibles de adivinar.
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");

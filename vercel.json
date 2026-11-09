@@ -17,9 +17,6 @@
     "api/setup.js": {
       "includeFiles": "supabase/**"
     },
-    "api/iskra.js": {
-      "maxDuration": 30
-    },
     "api/push-check.js": {
       "maxDuration": 60
     }
