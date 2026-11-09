@@ -300,6 +300,16 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mi-qh{font-size:13px;color:var(--muted);margin:4px 0 8px}
 .sq{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0 12px}.sq-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}.sq-q{margin:4px 0 6px}.sq-v{display:grid;gap:8px;margin-top:8px}.sq-th{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.sq-th img{width:160px;max-width:45%;border-radius:8px;border:1px solid var(--line)}
 .mi-dm{display:inline-block;margin-top:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--wait) 16%,transparent);color:var(--fg)}.mi-dm.v{background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.or-p button{font-size:12.5px}.or-k{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:12px 0 14px}.or-k>span{border:1px solid var(--line);border-radius:12px;padding:10px 12px}.or-k b{font-size:22px;color:var(--fg)}.or-k .on b{color:var(--ok)}@media(max-width:760px){.or-k{grid-template-columns:repeat(3,minmax(0,1fr))}}.or-ch{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:760px){.or-ch{grid-template-columns:1fr}}
+.or-c{border:1px solid var(--line);border-radius:14px;padding:12px 14px}.or-c h3{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px}.or-dot{width:9px;height:9px;border-radius:50%;display:inline-block}.or-dot.ig{background:#d62976}.or-dot.em{background:#3b82f6}
+.or-on,.or-off{font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px}.or-on{background:color-mix(in srgb,var(--ok) 18%,transparent)}.or-off{background:var(--line);color:var(--muted)}
+.or-f{display:flex;flex-wrap:wrap;gap:6px 14px}.or-f span,.or-k span{display:flex;flex-direction:column;font-size:12px;color:var(--muted)}.or-f b{font-size:20px;color:var(--fg)}.or-f .wait b{color:var(--wait)}.or-x{margin:8px 0 4px}
+.or-sec{margin-top:18px}.or-wk{width:100%;border-collapse:collapse;font-size:13px}.or-wk th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;padding:4px 6px}.or-wk td{padding:6px;border-top:1px solid var(--line);white-space:nowrap}
+.or-bar{display:inline-block;height:8px;width:calc(var(--w) * .6);max-width:60%;min-width:2px;border-radius:4px;margin-right:6px;vertical-align:middle}.or-bar.dm{background:#d62976}.or-bar.em{background:#3b82f6}
+.or-l{flex-wrap:wrap}.or-list{display:grid;gap:6px;margin-top:8px}.or-r{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+.or-m{display:grid;gap:2px;min-width:0}.or-m small{color:var(--muted);overflow-wrap:anywhere}.or-s{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right;flex-shrink:0}.or-s small{color:var(--muted);font-size:11.5px}
+.or-st{font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--line)}.or-st.ok{background:color-mix(in srgb,var(--ok) 18%,transparent)}.or-st.hot{background:color-mix(in srgb,#f97316 20%,transparent)}.or-st.wait{background:color-mix(in srgb,var(--wait) 20%,transparent)}.or-st.off,.or-st.mut{color:var(--muted)}
+@media(max-width:560px){.or-r{flex-direction:column;align-items:stretch}.or-s{align-items:flex-start;text-align:left}}
 .mi-crown{border:0;background:none;padding:0 3px;font-size:14px;line-height:1;cursor:pointer;filter:grayscale(1);opacity:.35}.mi-crown:hover{opacity:.7}.mi-crown.on{filter:none;opacity:1}
 .rafa-m{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:6px 0 2px;padding:7px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px}.rafa-m .rm-h{font-weight:600;flex-basis:100%}.rafa-m .rm-c{display:flex;align-items:baseline;gap:5px}.rafa-m small{color:var(--muted)}.rafa-m .rt-ok{color:var(--ok)}.rafa-m .rt-mid{color:var(--wait)}.rafa-m .rt-bad{color:var(--bad)}
 .wa-mini{width:100%;border-collapse:collapse;font-size:13px;margin:0 0 10px;background:var(--surface);border:1px solid var(--line2);border-radius:12px;overflow:hidden}.wa-mini th,.wa-mini td{padding:6px 10px;border-bottom:1px solid var(--line)}.wa-mini tr:last-child td{border-bottom:0}.wa-mini th{font-size:11.5px;color:var(--muted);font-weight:600;text-align:left}.wa-mini .num{text-align:right;white-space:nowrap}.wa-mini small{color:var(--muted)}.wa-mini-l{margin:0 0 8px}
@@ -1579,6 +1589,7 @@ body.mob-open header.top{z-index:31}
       <button role="tab" data-tab="mich" id="tabMich" hidden>Mi lista</button>
       <button role="tab" data-tab="flow" id="tabFlow" hidden>Pipeline<span class="count late" id="lateCount" hidden>0</span></button>
       <button role="tab" data-tab="contacts" id="tabContacts">Contactos</button>
+      <button role="tab" data-tab="outreach" id="tabOutreach" hidden>Outreach</button>
       <button role="tab" data-tab="funnel" id="tabFunnel" hidden>Resultados</button>
       <button role="tab" data-tab="report" id="tabReport" hidden>Reporte del día</button>
       <button role="tab" data-tab="perf" id="tabPerf" hidden>Mi desempeño</button>
@@ -1778,6 +1789,8 @@ body.mob-open header.top{z-index:31}
     <div id="myVip" class="vip-mine" hidden></div>
   </section>
 
+  <section class="view" id="view-outreach" hidden><div id="orBox"></div></section>
+
   <section class="view" id="view-mich" hidden>
     <div class="mi-head"><div><h2>Mi lista</h2><p class="sub" id="miSum"></p></div>
       <div class="mi-hbtns"><button type="button" class="btn small" data-miadd="1">+ Agregar</button><button type="button" class="mi-pill" id="miPill" aria-pressed="false" title="Modo contactar: al tocar un perfil se abre su Instagram y pasa a Contactados"><span>Contactar</span><i></i></button></div></div>
@@ -1939,7 +1952,7 @@ function showTab(t){
   document.querySelectorAll(".subnav [data-go]").forEach(b => b.classList.toggle("on", b.dataset.go===t));
   closeAcct();
   if (t==="admin" || t==="rules" || (t==="org" && !S.isOwner)) t = S.tab = "board";
-  ["board","mine","mich","flow","agenda","contacts","funnel","report","vip","perf","org","hist","rules","settings"].forEach(v => $("view-"+v).hidden = v!==t);
+  ["board","mine","mich","outreach","flow","agenda","contacts","funnel","report","vip","perf","org","hist","rules","settings"].forEach(v => $("view-"+v).hidden = v!==t);
   try{ localStorage.setItem("meets_tab", t); }catch(e){}
   schedule();
 }
@@ -2189,7 +2202,7 @@ function islandItems(){
     : [["agenda","cal","Agenda"],["board","home","Equipo",Number($("lateCount").textContent)||0],["more","more","Más"]];
   const more = am
     ? [...(resultsView() ? [["report","cal","Reporte del día"],["funnel","chart","Resultados"]] : []),["settings","gear","Ajustes"]]
-    : [["report","cal","Reporte del día"],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
+    : [["outreach","crown","Outreach"],["report","cal","Reporte del día"],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
        ["settings","gear","Ajustes"]];
   return {main, more};
 }
@@ -2295,7 +2308,7 @@ async function render(){
   { // Influencer: en Equipo también ve el ranking de puntos de los AM (solo consulta)
     const lb = $("flowLb"), show = michMode() && S.tab==="flow";
     if (lb){ lb.hidden = !show; if (show){ const h = `<section class="pg2 flow-lb"><div class="pg2-h"><span>Ranking de la semana</span><small class="mut">cierra vie 6 pm</small></div>${boardHtml(ps, ids, S.currentKey, true)}</section>`; if (lb.dataset.h !== h){ lb.innerHTML = h; lb.dataset.h = h; } } } }
-  syncAutoV(); inviteSync(); try{ emailIntro(); updNotice(); }catch(_){} renderMyVip(); renderSlots(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps); renderContacts();
+  syncAutoV(); inviteSync(); try{ emailIntro(); updNotice(); }catch(_){} renderMyVip(); renderOutreach(); renderSlots(); syncAcct(); syncTheme(); renderSettings(); maybeOnboard(); syncMichUi(); renderMich(); renderGuests(); taskSubs(); document.querySelectorAll("[data-tasknew]").forEach(b => b.hidden = !((adminMode() && !S.viewAs) || tkAssigner())); document.querySelectorAll("[data-agnew]").forEach(b => b.hidden = michMode() && !!S.viewAs); renderIsland(); { const va = $("vaAcct"), h = vaHtml(); if (va && va.dataset.h !== h && !busyIn(va)){ va.innerHTML = h; va.dataset.h = h; } } renderAccess(); renderVip(); renderTodo(); renderPlan(); renderPerf(); renderOrg(); renderFlow(ps); renderTeamChart(); renderReport(); renderAgenda(); renderFunnel(ps); renderContacts();
   if (S.isLead){
     const h = vaPeople(VA.role).map(id => `<option value="${id}">${id==="__mgr" ? "Manager (aún sin asignar) · todo el equipo" : esc(nameOf(ps,id))}</option>`).join("");
     const sel = $("viewAsSel"); if (sel.dataset.html !== h){ sel.innerHTML = h; sel.dataset.html = h; }
@@ -5546,7 +5559,7 @@ function applyRole(saved){
   S.isLead = lead; S.roleApplied = true;
   const set = (id, show) => { const el = $(id); if (el) el.hidden = !show; };
   if (!S.viewAs){
-    ["tabFunnel"].forEach(id => set(id, lead)); set("tabFlow", false); set("tabVip", false); // la Lista Mich ya no sale: Mich la trabaja en Mi lista
+    ["tabFunnel","tabOutreach"].forEach(id => set(id, lead)); set("tabFlow", false); set("tabVip", false); // la Lista Mich ya no sale: Mich la trabaja en Mi lista
     set("tabAgenda", true); set("adminActs", lead); set("viewAsBtn", S.isOwner); set("tabMine", false); set("tabPerf", false);
   }
   $("tabOrg").hidden = !S.isOwner || !!S.viewAs;
@@ -5554,7 +5567,7 @@ function applyRole(saved){
   if (lead){
     if (!downloads) claude.use("downloads").then(d => { downloads = d; $("xlsBtn").hidden = !d; });
     syncAdminSubs();
-    if (first) showTab(["flow","agenda","contacts","funnel","vip","org","board"].includes(saved) ? saved : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
+    if (first) showTab(["flow","agenda","contacts","outreach","funnel","vip","org","board"].includes(saved) ? saved : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
     else showTab("agenda");
   } else {
     startMemberSide();
@@ -6226,6 +6239,94 @@ async function saveVip(o, extra){
   return {id:ref.id, data};
 }
 function vipItems(uid){ return (uid===S.uid && !S.viewAs) ? S.myVip : (S.vip[uid] || {}); }
+/* ---------- Outreach de influencers: tablero para Head y Manager (avances, canales, semanas y listas) ---------- */
+const OR = {p:"7", l:"accion", q:"", n:40};
+function orState(x){
+  const st = x.status || "nuevo";
+  if (x.meetId) return {t:`📅 Meet${x.meetAt ? " " + fmtMeetAt(x.meetAt) : ""}`, c:"ok", g:"meet"};
+  if (st==="agendo") return {t:"📅 Agendó meet", c:"ok", g:"meet"};
+  if (st==="descartado") return {t:"Descartado", c:"off", g:"fin"};
+  if (x.emailRepliedAt && !x.emailOptout && !x.emailBounced) return {t:"💬 Contestó el email", c:"hot", g:"resp"};
+  if (st==="interesado") return {t:"🙋 Interesado (DM)", c:"hot", g:"resp"};
+  if (x.emailOptout) return {t:"Pidió baja", c:"off", g:"fin"};
+  if (x.emailBounced) return {t:"Email rebotó", c:"off", g:"fin"};
+  if (x.dmDueAt && st==="nuevo") return {t:"💬 Listo para DM (3 emails sin respuesta)", c:"wait", g:"dm"};
+  if (x.email3At) return {t:"✉ Email 3 de 3", c:"", g:"seq"};
+  if (x.email2At) return {t:"✉ Email 2 de 3", c:"", g:"seq"};
+  if (x.email1At) return {t:"✉ Email 1 de 3", c:"", g:"seq"};
+  if (st==="contactado") return {t:"✓ DM enviado", c:"", g:"dm-sent"};
+  return {t:x.email && !x.top && !x.direct && !isUgc(x) ? "Por contactar · tiene email" : "Por contactar", c:"mut", g:"pend"};
+}
+function orLast(x){ return Math.max(...["createdAt","contactedAt","statusAt","email1At","email2At","email3At","emailRepliedAt","videoLastAt","dmDueAt"].map(k => Number(x[k]) || 0)); }
+function renderOutreach(){
+  const box = $("orBox"); if (!box || S.tab!=="outreach" || busyIn(box)) return;
+  if (!adminMode()){ box.innerHTML = `<p class="empty">Solo para Head y Manager.</p>`; return; }
+  gmLoad();
+  const rows = michRows().map(([u,id,x]) => ({u, id, x, s:orState(x)})), now = Date.now(), D = 864e5;
+  const from = OR.p==="hoy" ? (() => { const d = new Date(now-OFF); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) + OFF; })() : OR.p==="all" ? 0 : now - Number(OR.p)*D;
+  const inP = t => Number(t) >= from && Number(t) <= now, cnt = f => rows.filter(r => f(r.x)).length;
+  const emailsIn = (a, b) => rows.reduce((n, {x}) => n + ["email1At","email2At","email3At"].filter(k => Number(x[k]) >= a && Number(x[k]) < b).length, 0);
+  const k = (n, l, cls, hint) => `<span class="${cls||""}"${hint ? ` title="${esc(hint)}"` : ""}><b>${n}</b>${l}</span>`;
+  const P = [["hoy","Hoy"],["7","7 días"],["30","30 días"],["all","Todo"]];
+  // 1) lo que pasó en el periodo
+  const kp = {nuevos:cnt(x => inP(x.createdAt)), dm:cnt(x => inP(x.contactedAt)), em:emailsIn(from, now+1), vid:cnt(x => inP(x.videoClickAt)),
+    rep:cnt(x => inP(x.emailRepliedAt) && !x.emailOptout && !x.emailBounced), int:cnt(x => x.status==="interesado" && inP(x.statusAt)), meet:cnt(x => (x.meetId || x.status==="agendo") && inP(x.statusAt))};
+  // 2) cómo está la lista hoy, por canal
+  const g = {}; rows.forEach(r => g[r.s.g] = (g[r.s.g]||0) + 1);
+  const pend = rows.filter(r => r.s.g==="pend"), pendEm = pend.filter(r => r.x.email && !r.x.top && !r.x.direct && !isUgc(r.x)).length;
+  const seqN = n => rows.filter(r => r.s.g==="seq" && r.x["email"+n+"At"] && !r.x["email"+(n+1)+"At"]).length;
+  const top = cnt(x => x.top), dir = cnt(x => x.direct && !x.top);
+  const cfg = (S.config||{}).mailSeq || {}, gs = (GM.st||{}), accts = (gs.seq||[]).filter(a => a.email);
+  const pct = (a, b) => b ? Math.round(a/b*100) + "%" : "—";
+  const dmTot = cnt(x => x.contactedAt), emTot = cnt(x => x.email1At), repEm = cnt(x => x.emailRepliedAt && !x.emailOptout && !x.emailBounced), vidTot = cnt(x => x.videoClickAt || x.videoClicks);
+  const meetDm = cnt(x => (x.meetId || x.status==="agendo") && x.contactedAt && !x.email1At), meetEm = cnt(x => (x.meetId || x.status==="agendo") && x.email1At);
+  // 3) semanas
+  const W = 8, w0 = weekFrom(), weeks = Array.from({length:W}, (_, i) => { const a = w0 - (W-1-i)*7*D, b = a + 7*D;
+    const by = f => rows.filter(({x}) => { const t = Number(f(x)); return t >= a && t < b; }).length;
+    return {a, dm:by(x => x.contactedAt), em:emailsIn(a, b), rep:by(x => !x.emailOptout && !x.emailBounced ? x.emailRepliedAt : 0) + by(x => x.status==="interesado" ? x.statusAt : 0), meet:by(x => x.meetId || x.status==="agendo" ? x.statusAt : 0)}; });
+  const mx = Math.max(1, ...weeks.map(w => Math.max(w.dm, w.em)));
+  const wk = `<table class="or-wk"><thead><tr><th>Semana</th><th>DMs</th><th>Emails</th><th>Respuestas</th><th>Meets</th></tr></thead><tbody>${weeks.slice().reverse().map(w => `<tr><td>${esc(fmtLocal(w.a).split(",")[0])}${w.a===w0 ? " <small>(esta)</small>" : ""}</td>
+    <td><span class="or-bar dm" style="--w:${Math.round(w.dm/mx*100)}%"></span>${w.dm}</td><td><span class="or-bar em" style="--w:${Math.round(w.em/mx*100)}%"></span>${w.em}</td><td>${w.rep||"·"}</td><td>${w.meet ? `<b>${w.meet}</b>` : "·"}</td></tr>`).join("")}</tbody></table>`;
+  // 4) listas
+  const LISTS = [["accion","Necesitan acción", r => ["resp","dm"].includes(r.s.g) && !r.x.replyHandledAt],["seq","En emails", r => r.s.g==="seq"],["video","Vieron el video", r => !!(r.x.videoClickAt || r.x.videoClicks)],
+    ["resp","Respondieron", r => r.s.g==="resp"],["meet","Meets", r => r.s.g==="meet"],["dmsent","DM enviado", r => r.s.g==="dm-sent"],["pend","Por contactar", r => r.s.g==="pend" && !r.x.top && !r.x.direct],
+    ["top","👑 Top tier", r => !!r.x.top],["direct","🤝 Contacto directo", r => !!r.x.direct && !r.x.top],["fin","Baja / descartados", r => r.s.g==="fin"],["all","Todos", () => true]];
+  const lf = (LISTS.find(l => l[0]===OR.l) || LISTS[0]), q = fold(OR.q.trim().replace(/^@/,""));
+  const hay = x => fold([x.prospect, igUser(x.profile), x.profile, x.email, x.notes].filter(Boolean).join(" "));
+  const list = rows.filter(r => q ? hay(r.x).includes(q) : lf[2](r)).sort((a,b) => orLast(b.x) - orLast(a.x));
+  const rowH = ({u, id, x, s: st}) => { const h = igUser(x.profile), url = safeUrl(x.profile||"");
+    return `<div class="or-r"><div class="or-m"><b>${x.top ? "👑 " : x.direct ? "🤝 " : ""}${esc(x.prospect || h || "Sin nombre")}</b><small>${h ? "@" + esc(h) + " · " : ""}${x.folRange ? esc(String(x.folRange).replace(/^[^(]*\(|\)$/g,"")) : fmtFol(x.followers)} seguidores${x.email ? " · ✉ " + esc(x.email) : ""}${x.videoClicks ? " · 👀 vio el video" : ""}</small>
+      ${x.emailReplySnippet && st.g==="resp" ? `<span class="mi-reply">“${esc(String(x.emailReplySnippet).slice(0, 220))}”</span>` : ""}</div>
+      <div class="or-s"><span class="or-st ${st.c}">${esc(st.t)}</span><small>${orLast(x) ? esc(fmtLocal(orLast(x))) : ""}${x.contactedBy ? " · " + esc(first(nameOf(S.ps||{}, x.contactedBy))) : ""}</small>${url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">Abrir</a>` : ""}</div></div>`; };
+  const h = `<div class="or">
+    <div class="row"><div><h2>Outreach de influencers</h2><p class="sub">${rows.length} perfiles en la lista · Instagram (DM de Mich) y Email (secuencia automática)</p></div><div class="spacer"></div>
+      <div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div></div>
+    <div class="or-k">${k(kp.nuevos, "nuevos en la lista")}${k(kp.dm, "DMs de Mich")}${k(kp.em, "emails enviados")}${k(kp.vid, "vieron el video")}${k(kp.rep + kp.int, "respondieron", kp.rep + kp.int ? "on" : "", `${kp.rep} por email · ${kp.int} interesados por DM`)}${k(kp.meet, "meets", kp.meet ? "on" : "")}</div>
+    <div class="or-ch">
+      <section class="or-c"><h3><span class="or-dot ig"></span>Instagram · DM</h3>
+        <div class="or-f">${k(pend.length - pendEm, "por contactar")}${k(g["dm"]||0, "listos para DM", (g["dm"]||0) ? "wait" : "")}${k(dmTot, "contactados")}${k(cnt(x => x.status==="interesado"), "interesados")}${k(meetDm, "meets")}</div>
+        <p class="mut small">Conversión a meet: <b>${pct(meetDm, dmTot)}</b> de los contactados por DM.</p></section>
+      <section class="or-c"><h3><span class="or-dot em"></span>Email · secuencia ${cfg.on ? `<span class="or-on">encendida</span>` : `<span class="or-off">apagada</span>`}</h3>
+        <div class="or-f">${k(pendEm, "esperando email 1")}${k(seqN(1), "en email 1")}${k(seqN(2), "en email 2")}${k(seqN(3), "en email 3")}${k(vidTot, "vieron el video")}${k(repEm, "contestaron")}${k(meetEm, "meets")}</div>
+        <p class="mut small">Respuesta: <b>${pct(repEm, emTot)}</b> · vieron el video: <b>${pct(vidTot, emTot)}</b> de ${emTot} a los que se les escribió.${accts.length ? ` Cuentas: ${accts.map(a => `${esc(a.email.split("@")[0])} ${a.today||0}/${a.quota||5}`).join(" · ")} hoy.` : gs.seq ? " Sin cuentas de envío conectadas." : ""}</p></section>
+    </div>
+    <p class="mut small or-x">Aparte: 👑 ${top} top tier · 🤝 ${dir} contacto directo (estrategia propia, sin emails automáticos).</p>
+    <section class="or-sec"><h3 class="sec-h">Avance por semana</h3>${wk}</section>
+    <section class="or-sec"><h3 class="sec-h">Listas</h3>
+      <input type="search" class="mi-q" data-orq="1" placeholder="🔍 Buscar en toda la lista: nombre, @usuario, email" value="${esc(OR.q)}">
+      ${q ? "" : `<div class="mi-ef or-l">${LISTS.map(([v,l,f]) => { const n = rows.filter(f).length; return `<button type="button" data-orl="${v}" class="${OR.l===v?"on":""}">${l} <b>${n}</b></button>`; }).join("")}</div>`}
+      <div class="or-list">${list.slice(0, OR.n).map(rowH).join("") || `<p class="empty">${q ? "Nadie con esa búsqueda." : "Nada en esta lista."}</p>`}</div>
+      ${list.length > OR.n ? `<button type="button" class="btn small" data-ormore="1">Ver más (${list.length - OR.n})</button>` : ""}</section>
+  </div>`;
+  if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
+}
+document.addEventListener("click", e => {
+  const p = e.target.closest("[data-orp]"); if (p){ OR.p = p.dataset.orp; return renderOutreach(); }
+  const l = e.target.closest("[data-orl]"); if (l){ OR.l = l.dataset.orl; OR.n = 40; return renderOutreach(); }
+  if (e.target.closest("[data-ormore]")){ OR.n += 60; return renderOutreach(); }
+});
+document.addEventListener("input", e => { const q = e.target.closest("[data-orq]"); if (!q) return; OR.q = q.value; OR.n = 40;
+  const b = $("orBox"); if (b){ b.dataset.h = ""; const a = document.activeElement; a && a.blur(); renderOutreach(); const n = b.querySelector("[data-orq]"); if (n){ n.focus(); n.setSelectionRange(n.value.length, n.value.length); } } });
 function renderMyVip(){
   const box = $("myVip"); if (!box || adminMode()) return;
   const items = Object.entries(vipItems(meId())).sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0));
@@ -6650,7 +6751,7 @@ function exitViewAs(){
 /* Vista de usuario por rol: Account Manager, Manager o Influencer Outreach.
    Se elige desde Más (celular) o el menú de tu cuenta (computadora); te quedas en la misma pestaña. */
 function vaFixTab(){
-  const allowed = michMode() ? ["mich","agenda","settings"] : adminMode() ? ["agenda","board","flow","funnel","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["agenda","board","perf","settings"];
+  const allowed = michMode() ? ["mich","agenda","settings"] : adminMode() ? ["agenda","board","outreach","flow","funnel","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["agenda","board","perf","settings"];
   showTab(allowed.includes(S.tab) ? S.tab : allowed[0]);
 }
 function vaCur(){ return S.viewMgr ? "manager" : S.viewAs ? (roleOf(S.viewAs)==="influencer" ? "influencer" : "am") : "admin"; }
