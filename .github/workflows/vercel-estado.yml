@@ -16,7 +16,7 @@ jobs:
           SHA=$(curl -s -H "$H" https://api.github.com/repos/Alexalfaro009/CRM-STRIKD/commits/main | jq -r '.sha + " " + (.commit.message|split("\n")[0])')
           echo "HEAD del repo de Vercel: $SHA"
           S=${SHA%% *}
-          echo "--- statuses"; curl -s -H "$H" "https://api.github.com/repos/Alexalfaro009/CRM-STRIKD/commits/$S/statuses" | jq -r '.[] | [.context,.state,.description,.target_url,.created_at] | @tsv' | head -10
-          echo "--- check runs"; curl -s -H "$H" "https://api.github.com/repos/Alexalfaro009/CRM-STRIKD/commits/$S/check-runs" | jq -r '.check_runs[]? | [.name,.status,.conclusion,(.output.title//""),(.output.summary//"")[0:300]] | @tsv' | head -10
-          echo "--- deployments"; curl -s -H "$H" "https://api.github.com/repos/Alexalfaro009/CRM-STRIKD/deployments?per_page=5" | jq -r '.[] | [.sha[0:7],.environment,.created_at] | @tsv'
+          echo "--- statuses"; curl -s -H "$H" "https://api.github.com/repos/Alexalfaro009/CRM-STRIKD/commits/$S/statuses" | jq -c 'if type=="array" then .[] | [.context,.state,.description,.target_url,.created_at] else . end' | head -10
+          echo "--- check runs"; curl -s -H "$H" "https://api.github.com/repos/Alexalfaro009/CRM-STRIKD/commits/$S/check-runs" | jq -c 'if .check_runs then .check_runs[] | [.name,.status,.conclusion,(.output.title//""),(.output.summary//"")[0:300]] else . end' | head -10
+          echo "--- deployments"; curl -s -H "$H" "https://api.github.com/repos/Alexalfaro009/CRM-STRIKD/deployments?per_page=5" | jq -c 'if type=="array" then .[] | [.sha[0:7],.environment,.created_at] else . end'
           echo "--- commits recientes"; curl -s -H "$H" "https://api.github.com/repos/Alexalfaro009/CRM-STRIKD/commits?per_page=5" | jq -r '.[] | [.sha[0:7],(.commit.message|split("\n")[0])[0:60],.commit.author.date] | @tsv'
