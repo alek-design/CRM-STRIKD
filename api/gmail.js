@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
       await gmail.ensure(c);
       if (req.method === "POST"){
         const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
-        const key = b.disconnect === "general" || /^seq[1-3]$/.test(b.disconnect || "") ? (me.role === "head" ? b.disconnect : null) : b.disconnect === "me" ? me.id : null;
+        const key = b.disconnect === "general" || /^seq[1-5]$/.test(b.disconnect || "") ? (me.role === "head" ? b.disconnect : null) : b.disconnect === "me" ? me.id : null;
         if (!key) return {status:403, error:"Sin permiso"};
         await c.query("delete from public.gmail_tokens where key=$1", [key]); return {ok:true};
       }

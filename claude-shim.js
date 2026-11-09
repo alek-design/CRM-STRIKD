@@ -413,9 +413,9 @@
   };
   /* ---------- Gmail para emails automáticos ---------- */
   window.STRIKD_GMAIL_STATUS = async () => { const t = (await sb.auth.getSession()).data.session.access_token; const r = await fetch("/api/gmail", {headers:{authorization:"Bearer " + t}}); return r.ok ? r.json() : {}; };
-  window.STRIKD_GMAIL_CONNECT = async (kind) => { const t = (await sb.auth.getSession()).data.session.access_token; location.href = "/api/google/connect?token=" + encodeURIComponent(t) + "&gmail=" + (kind === "general" || /^seq[1-3]$/.test(kind || "") ? kind : "me"); };
+  window.STRIKD_GMAIL_CONNECT = async (kind) => { const t = (await sb.auth.getSession()).data.session.access_token; location.href = "/api/google/connect?token=" + encodeURIComponent(t) + "&gmail=" + (kind === "general" || /^seq[1-5]$/.test(kind || "") ? kind : "me"); };
   window.STRIKD_GMAIL_DISCONNECT = async (kind) => { const t = (await sb.auth.getSession()).data.session.access_token;
-    await fetch("/api/gmail", {method:"POST", headers:{authorization:"Bearer " + t, "content-type":"application/json"}, body:JSON.stringify({disconnect:kind === "general" || /^seq[1-3]$/.test(kind || "") ? kind : "me"})}); };
+    await fetch("/api/gmail", {method:"POST", headers:{authorization:"Bearer " + t, "content-type":"application/json"}, body:JSON.stringify({disconnect:kind === "general" || /^seq[1-5]$/.test(kind || "") ? kind : "me"})}); };
   window.STRIKD_SETACTIVE = async (id, on) => {
     const { data } = await sb.auth.getSession();
     const r = await fetch("/api/invite", {method:"POST", headers:{"content-type":"application/json", authorization:"Bearer " + data.session.access_token}, body:JSON.stringify({setActive:{id, on}})});

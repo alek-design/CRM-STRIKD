@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-09 18:04:20 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-09 18:18:05 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794247460">
+<link rel="stylesheet" href="/auth.css?v=1794248285">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794247460"></script>
+<script src="/claude-shim.js?v=1794248285"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -5791,7 +5791,7 @@ const SQF = {busy:false, err:""};
 /* secuencia de emails: 3 cuentas de envío (calentamiento), video del micropitch y encendido */
 function seqHtml(g){
   if (!window.STRIKD_GMAIL_STATUS) return "";
-  const cfg = (S.config||{}).mailSeq || {}, own = S.isOwner, accts = g.seq || [{key:"seq1"},{key:"seq2"},{key:"seq3"}];
+  const cfg = (S.config||{}).mailSeq || {}, own = S.isOwner, accts = g.seq || [1,2,3,4,5].map(n => ({key:"seq"+n}));
   const rows = accts.map((a, i) => setRow("📤", `Cuenta de envío ${i+1}`, a.email
       ? `${esc(a.email)} · hoy ${a.today||0}/${a.quota||5}${(a.quota||5) < 20 ? ` · calentando (sube a 20 en ${a.quota>=15?"1 semana":a.quota>=10?"2 semanas":"3 semanas"})` : ""}${a.total ? ` · ${a.total} en total` : ""}`
       : "Sin conectar", own ? (a.email ? `<button type="button" class="btn small" data-gm="dis-seq|${a.key}">Cambiar</button>` : `<button type="button" class="btn small primary" data-gm="con-seq|${a.key}">Conectar</button>`) : "")).join("");
@@ -5842,7 +5842,7 @@ function mailSetHtml(){
   const list = st => tpls.filter(([,t]) => Number(t.step)===st).map(([id,t]) => { const x = stat[id] || {}; return `<div class="ml-t${t.active===false?" off":""}"><div><b>${esc(t.name||"Plantilla")}</b><small>${t.subject ? esc(t.subject) + " · " : ""}${x.sent||0} enviados · ${x.replied||0} contestaron${x.sent ? ` (${Math.round((x.replied||0)/x.sent*100)}%)` : ""}</small></div>
       ${canEditTpl ? `<span><button type="button" class="btn small" data-gm="tog|${id}">${t.active===false ? "Activar" : "Pausar"}</button><button type="button" class="btn small" data-gm="edit|${id}">Editar</button></span>` : ""}</div>`; }).join("") || `<p class="mut small" style="margin:6px 0">Sin plantillas.</p>`;
   return `<h3 class="set-h">Emails automáticos</h3><section class="set-card ml">
-    <p class="ml-how">Secuencia a los influencers con email que no son 👑 Top tier ni 🤝 Contacto directo: <b>approach 1</b> con el video (día 0) → <b>approach 2</b> (día 3) → <b>approach 3</b> (día 7), en el mismo hilo → si no contesta, le sale a Mich para <b>DM</b> (día 10). Se detiene si contesta, pide «baja» o agenda meet. Sale de las 3 cuentas de envío, de lunes a viernes de 9 am a 6 pm, repartido en el día. A los que Mich ya contactó por DM, el approach 1 les sale 10 días después.</p>
+    <p class="ml-how">Secuencia a los influencers con email que no son 👑 Top tier ni 🤝 Contacto directo: <b>approach 1</b> con el video (día 0) → <b>approach 2</b> (día 3) → <b>approach 3</b> (día 7), en el mismo hilo → si no contesta, le sale a Mich para <b>DM</b> (día 10). Se detiene si contesta, pide «baja» o agenda meet. Sale de las cuentas de envío (hasta 5), de lunes a viernes de 9 am a 6 pm, repartido en el día. A los que Mich ya contactó por DM, el approach 1 les sale 10 días después.</p>
     ${seqHtml(g)}
     ${window.STRIKD_GMAIL_STATUS ? setRow("📮", "Correo general", gen ? `${esc(gen.email)} · ${(g.today||{}).general || 0}/20 hoy` : "Solo se usa si no hay cuentas de envío conectadas",
       S.isOwner ? (gen ? `<button type="button" class="btn small" data-gm="dis-gen">Cambiar</button>` : `<button type="button" class="btn small primary" data-gm="con-gen">Conectar</button>`) : "")

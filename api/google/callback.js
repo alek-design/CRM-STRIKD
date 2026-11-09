@@ -1,7 +1,7 @@
 // Google regresa aquí con el permiso: guardamos el token y volvemos a la página.
 const { env, withPg, readState, redirectUri } = require("../../lib/google");
 module.exports = async (req, res) => {
-  const st = readState(req.query.state) || "", extra = st.endsWith("~x"), gm = (st.match(/~(gg|gs|q[1-3])$/) || [])[1], uid = st.replace(/~(x|gg|gs|q[1-3])$/, "");
+  const st = readState(req.query.state) || "", extra = st.endsWith("~x"), gm = (st.match(/~(gg|gs|q[1-5])$/) || [])[1], uid = st.replace(/~(x|gg|gs|q[1-5])$/, "");
   if (!uid) return res.redirect(302, "/?google=error");
   if (req.query.error || !req.query.code) return res.redirect(302, "/?google=cancelado");
   const e = env();
@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
   try{ email = JSON.parse(Buffer.from(String(j.id_token).split(".")[1], "base64url").toString()).email || ""; }catch(_){}
   if (gm){ // Gmail para los emails automáticos
     if (!email) return res.redirect(302, "/?google=error");
-    await withPg(c => require("../../lib/gmail").save(c, gm === "gg" ? "general" : /^q[1-3]$/.test(gm) ? "seq" + gm.slice(1) : uid, j, email.toLowerCase()));
+    await withPg(c => require("../../lib/gmail").save(c, gm === "gg" ? "general" : /^q[1-5]$/.test(gm) ? "seq" + gm.slice(1) : uid, j, email.toLowerCase()));
     return res.redirect(302, "/?google=gmail");
   }
   if (extra){
