@@ -5672,7 +5672,7 @@ const UPD = {id:"2026-10-20-emails", for:u => roleOf(u)==="influencer" || u===((
     <ol><li><b>Email 1</b> a los 10 días del contacto, si tienen email.</li><li><b>Email 2</b> 7 días después, en el mismo hilo, si no contestaron.</li>
     <li>Si contestan, se detiene y le avisa al AM. Si piden baja, ya no se les escribe.</li></ol>
     <p><b>Para ti, Mich:</b> en <b>Mi lista → Contactados</b> cada perfil con email dice <b>"Se le escribirá por email el (fecha)"</b>. Si al entrar a su perfil ves que por estrategia no nos conviene escribirle, toca <b>"No enviar"</b> y no le sale ningún correo. Lo puedes reactivar cuando quieras.</p>
-    <p class="mut small">También puedes filtrar Contactados por con o sin email y agregar el email desde "+ email". Salen máx. 20 correos al día por cuenta, de lunes a viernes de 9 am a 6 pm.</p>`};
+    <p class="mut small">También puedes filtrar Contactados por con o sin email y agregar el email desde "+ email". Salen máx. 20 correos al día por cuenta, de lunes a jueves de 9 am a 6 pm.</p>`};
 function updNotice(){
   if (S.viewAs || !S.uid || $("updNote") || !UPD.for(S.uid)) return;
   const me = (S.members||{})[S.uid]; if (!me || me.updSeen === UPD.id) return;
@@ -5699,7 +5699,7 @@ function emailIntro(){
       <li>Si contestan, te llega un aviso al celular y la plática sigue en tu Gmail, contigo.</li>
       <li>Si piden que no les escribamos, ya no se les manda nada.</li>
     </ol>
-    <p class="mut small">Salen máximo 20 al día, de lunes a viernes de 9 am a 6 pm, y quedan en tus Enviados.</p>
+    <p class="mut small">Salen máximo 20 al día, de lunes a jueves de 9 am a 6 pm, y quedan en tus Enviados.</p>
     <p>Las plantillas ya están predefinidas. Si crees que las podemos mejorar o te gustaría proponer una, <b>nos encantaría escucharla</b>: lo puedes hacer cuando quieras en Ajustes → Emails automáticos.</p>
     <p><b>Lo que te toca:</b> conectar tu Gmail y, al proponer influencers, conseguir su email (al menos 40 de cada 60).</p>
     <div class="tk-acts"><button type="button" class="btn small" data-emi="later">Después</button><button type="button" class="btn small" data-emi="idea">Proponer plantilla</button>${window.STRIKD_GMAIL_CONNECT ? `<button type="button" class="btn small primary" data-emi="con">Conectar mi Gmail</button>` : ""}</div></div>`;
@@ -5808,7 +5808,7 @@ function mailSetHtml(){
   const list = st => tpls.filter(([,t]) => Number(t.step)===st).map(([id,t]) => { const x = stat[id] || {}; return `<div class="ml-t${t.active===false?" off":""}"><div><b>${esc(t.name||"Plantilla")}</b><small>${t.subject ? esc(t.subject) + " · " : ""}${x.sent||0} enviados · ${x.replied||0} contestaron${x.sent ? ` (${Math.round((x.replied||0)/x.sent*100)}%)` : ""}</small></div>
       ${canEditTpl ? `<span><button type="button" class="btn small" data-gm="tog|${id}">${t.active===false ? "Activar" : "Pausar"}</button><button type="button" class="btn small" data-gm="edit|${id}">Editar</button>${S.isOwner && window.STRIKD_GMAIL_POST ? `<button type="button" class="btn small" data-mbtest="tpl|${id}">Enviarme prueba</button>` : ""}</span>` : ""}</div>`; }).join("") || `<p class="mut small" style="margin:6px 0">Sin plantillas.</p>`;
   return `<h3 class="set-h">Emails automáticos</h3><section class="set-card ml">
-    <p class="ml-how">Secuencia a los influencers con email que no son 👑 Top tier ni 🤝 Contacto directo: <b>approach 1</b> con el video (día 0) → <b>approach 2</b> (día 3) → <b>approach 3</b> (día 7), en el mismo hilo → si no contesta, le sale a Mich para <b>DM</b> (día 10). Se detiene si contesta, pide «baja» o agenda meet. Sale de las cuentas de envío (hasta 5), de lunes a viernes de 9 am a 6 pm, repartido en el día. A los que Mich ya contactó por DM, el approach 1 les sale 10 días después.</p>
+    <p class="ml-how">Secuencia a los influencers con email que no son 👑 Top tier ni 🤝 Contacto directo: <b>approach 1</b> con el video (día 0) → <b>approach 2</b> (día 3) → <b>approach 3</b> (día 7), en el mismo hilo → si no contesta, le sale a Mich para <b>DM</b> (día 10). Se detiene si contesta, pide «baja» o agenda meet. Sale de las cuentas de envío (hasta 5), de lunes a jueves de 9 am a 6 pm, repartido en el día. A los que Mich ya contactó por DM, el approach 1 les sale 10 días después.</p>
     ${seqHtml(g)}
     ${window.STRIKD_GMAIL_STATUS ? setRow("📮", "Correo general", gen ? `${esc(gen.email)} · ${(g.today||{}).general || 0}/20 hoy` : "Solo se usa si no hay cuentas de envío conectadas",
       S.isOwner ? (gen ? `<button type="button" class="btn small" data-gm="dis-gen">Cambiar</button>` : `<button type="button" class="btn small primary" data-gm="con-gen">Conectar</button>`) : "")
@@ -6256,10 +6256,10 @@ function mbHtml(){
   const all = Object.values(S.mailBatch||{}).filter(b => b && b.date >= todayKey()).sort((a,b) => a.date < b.date ? -1 : 1);
   const cfg = (S.config||{}).mailSeq || {};
   const head = `<div class="mb-h"><h3>📧 Emails por autorizar</h3><span class="spacer"></span>
-    <button type="button" class="btn small" data-mbplan="next"${MB.busy ? " disabled" : ""}>${MB.busy==="plan" ? "Preparando…" : "Preparar lote de mañana"}</button></div>`;
+    <button type="button" class="btn small" data-mbplan="next"${MB.busy ? " disabled" : ""}>${MB.busy==="plan" ? "Preparando…" : "Preparar siguiente lote"}</button></div>`;
   const note = cfg.approval===false ? `<p class="mut small">La autorización está apagada en Ajustes: los emails salen solos.</p>` : !cfg.on ? `<p class="mut small">La secuencia está apagada: puedes preparar y revisar lotes, pero no sale nada hasta que la enciendas en Ajustes.</p>` : "";
   const msg = MB.err ? `<p class="err">${esc(MB.err)}</p>` : MB.msg ? `<p class="ok-msg">${esc(MB.msg)}</p>` : "";
-  if (!all.length) return `<section class="mb">${head}${note}${msg}<p class="mut small">No hay lotes. Se prepara uno solo a las 5 pm (con la secuencia encendida), o tócale a "Preparar lote de mañana".</p></section>`;
+  if (!all.length) return `<section class="mb">${head}${note}${msg}<p class="mut small">No hay lotes. Se prepara uno solo a las 5 pm (con la secuencia encendida), o tócale a "Preparar siguiente lote". Se manda de lunes a jueves.</p></section>`;
   return `<section class="mb">${head}${note}${msg}${all.map(mbCard).join("")}</section>`;
 }
 function mbCard(b){
