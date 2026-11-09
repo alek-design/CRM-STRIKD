@@ -7,8 +7,10 @@ module.exports = async (req, res) => {
   if (!me) return res.status(401).send("Sesión no válida. Vuelve a entrar a la página.");
   const x = req.query.extra !== undefined;
   // Gmail para emails automáticos: "general" (solo el Head) o el propio del AM autorizado
-  const g = req.query.gmail === "general" ? (me.role === "head" ? "~gg" : "") : req.query.gmail === "me" ? "~gs" : "";
-  if (req.query.gmail === "general" && me.role !== "head") return res.status(403).send("Solo el Head conecta el correo general.");
+  // y las 3 cuentas de envío de la secuencia de emails ("seq1".."seq3", solo el Head)
+  const sq = (String(req.query.gmail || "").match(/^seq([1-3])$/) || [])[1];
+  const g = req.query.gmail === "general" ? (me.role === "head" ? "~gg" : "") : sq ? (me.role === "head" ? "~q" + sq : "") : req.query.gmail === "me" ? "~gs" : "";
+  if ((req.query.gmail === "general" || sq) && me.role !== "head") return res.status(403).send("Solo el Head conecta los correos de envío.");
   const q = new URLSearchParams({client_id:e.gid, redirect_uri:redirectUri(req), response_type:"code", access_type:"offline", prompt:"select_account consent", include_granted_scopes:"true",
     scope:g ? require("../../lib/gmail").SCOPES : "openid email https://www.googleapis.com/auth/calendar.events", state:makeState(me.id + (g || (x ? "~x" : "")))});
   // cuenta extra: el nombre corto viaja en una cookie de 15 min
