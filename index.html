@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-10 17:49:42 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-10 17:56:26 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794332982">
+<link rel="stylesheet" href="/auth.css?v=1794333386">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794332982"></script>
+<script src="/claude-shim.js?v=1794333386"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -311,6 +311,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mi-dm{display:inline-block;margin-top:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--wait) 16%,transparent);color:var(--fg)}.mi-dm.v{background:color-mix(in srgb,var(--ok) 14%,transparent)}
 .ml-body{min-height:300px;resize:vertical;font:inherit;line-height:1.5}.ml-ins{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.ml-ins small{flex-basis:100%}
 .sq-miss{color:var(--wait)}
+.mb-x{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 10px 8px 46px}.mb-ig{white-space:nowrap}.mb-nt{font-size:13px;color:var(--fg2);white-space:pre-wrap}@media(max-width:560px){.mb-x{padding-left:10px}}
 .mb{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}.mb-h{display:flex;align-items:center;gap:8px}.mb-h h3{margin:0;font-size:15px}.mb-card{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
 .mb-r{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}.mb-a{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--line)}
@@ -6296,6 +6297,8 @@ function mbCard(b){
   const L = (i, ix) => { const op = MB.open[b.date+"#"+ix], ed = b.status!=="approved" && !i.sentAt;
     const s = i.sentAt ? `<span class="or-st ok">✓ enviado</span>` : i.error ? `<span class="or-st off" title="${esc(i.error)}">✗ error</span>` : i.void ? `<span class="or-st off">no salió: ${esc(i.void)}</span>` : i.skip ? `<span class="or-st off">quitado</span>` : "";
     return `<div class="mb-i${i.skip?" off":""}"><button type="button" class="mb-r" data-mbopen="${b.date}#${ix}"><span class="mb-a">A${i.step}</span><span class="mb-n"><b>${esc(i.name||i.to)}</b><small>${esc(i.to)} · desde ${esc(String(i.from||i.key).split("@")[0])}</small></span><span class="mb-sj">${esc(i.subject)}</span>${s}<span class="mb-c">${op?"▴":"▾"}</span></button>
+      ${(() => { const [, u, , id] = String(i.path||"").split("/"), x = ((S.vip||{})[u]||{})[id] || {}, url = safeUrl(x.profile || i.profile || ""), h = igUser(x.profile || i.profile || ""), nt = String(x.notes ?? i.notes ?? "").trim();
+        return url || nt ? `<div class="mb-x">${url ? `<a class="btn small mb-ig" href="${esc(url)}" target="_blank" rel="noopener">📷 ${h ? "@" + esc(h) : "Ver Instagram"}</a>` : ""}${nt ? `<span class="mb-nt">💬 ${esc(nt)}</span>` : ""}</div>` : ""; })()}
       ${op ? `<div class="mb-d">${ed ? `<label class="f">Asunto<input data-mbf="subject" data-mbk="${b.date}#${ix}" value="${esc(i.subject)}"${i.step>1?" disabled title=\"Va en el mismo hilo del approach 1\"":""}></label>
         <label class="f">Mensaje<textarea rows="14" class="ml-body" data-mbf="body" data-mbk="${b.date}#${ix}">${esc(i.body)}</textarea></label>` : `<p class="mb-b"><b>${esc(i.subject)}</b></p><pre class="mb-b">${esc(i.body)}</pre>`}
         <div class="row">${ed ? `<button type="button" class="btn small" data-mbskip="${b.date}#${ix}">${i.skip ? "Volver a incluir" : "Quitar de este lote"}</button>` : ""}<button type="button" class="btn small" data-mbtest="item|${b.date}|${ix}">Enviarme prueba</button></div>
