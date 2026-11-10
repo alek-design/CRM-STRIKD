@@ -46,7 +46,7 @@ module.exports = async (req, res) => {
       const q = (await c.query(`select count(*) filter (where data ? 'email1At' and not (data ? 'emailRepliedAt') and not (data ? 'dmDueAt') and not (data ? 'emailOptout'))::int active,
         count(*) filter (where data ? 'dmDueAt' and coalesce(data->>'status','nuevo')='nuevo')::int dm,
         count(*) filter (where coalesce(data->>'email','')<>'' and not (data ? 'email1At') and coalesce(data->>'status','nuevo') in ('nuevo','contactado') and coalesce(data->>'meetId','')=''
-          and coalesce((data->>'top')::boolean,false)=false and coalesce((data->>'direct')::boolean,false)=false and coalesce((data->>'emailSkip')::boolean,false)=false and coalesce(data->>'kind','')<>'ugc' and not (data ? 'emailOptout'))::int waiting
+          and coalesce((data->>'top')::boolean,false)=false and coalesce((data->>'direct')::boolean,false)=false and coalesce((data->>'personal')::boolean,false)=false and coalesce((data->>'noContact')::boolean,false)=false and coalesce((data->>'competitor')::boolean,false)=false and coalesce((data->>'emailSkip')::boolean,false)=false and coalesce(data->>'kind','')<>'ugc' and not (data ? 'emailOptout'))::int waiting
         from public.docs where path like 'meets/%/vip/%'`)).rows[0] || {};
       return {...base, people:rows.filter(r => r.key !== "general" && !SEQ_KEYS.includes(r.key)).map(r => ({uid:r.key, email:r.email})), tpl, seq, steps, queue:q};
     });
