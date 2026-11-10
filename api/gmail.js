@@ -19,7 +19,8 @@ module.exports = async (req, res) => {
           const ea = require("../lib/emailauto");
           if (b.test) return await ea.sendTest(c, {to:String(b.test.to || me.email || "").trim(), key:b.test.key, tplId:b.test.tplId, date:b.test.date, idx:Number(b.test.idx)});
           const date = /^\d{4}-\d{2}-\d{2}$/.test(b.plan.date || "") ? b.plan.date : ea.nextBizDay(Date.now());
-          const r = await ea.plan(c, date, {preview:true});
+          const fol = b.plan.fol && typeof b.plan.fol === "object" ? {min:Number(b.plan.fol.min) || 0, max:b.plan.fol.max == null || b.plan.fol.max === "" ? null : Number(b.plan.fol.max)} : null;
+          const r = await ea.plan(c, date, {preview:true, ...(fol ? {fol} : {})});
           return {ok:true, date, n:(r.items || []).length, status:r.status};
         }
         const key = b.disconnect === "general" || /^seq[1-5]$/.test(b.disconnect || "") ? (me.role === "head" ? b.disconnect : null) : b.disconnect === "me" ? me.id : null;

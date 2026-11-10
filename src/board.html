@@ -304,6 +304,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sq-miss{color:var(--wait)}
 .mb-x{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 10px 8px 46px}.mb-ig{white-space:nowrap}.mb-nt{font-size:13px;color:var(--fg2);white-space:pre-wrap}@media(max-width:560px){.mb-x{padding-left:10px}}
 .mb-tg{display:flex;flex-wrap:wrap;gap:4px}.mb-t{font:inherit;font-size:11.5px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);background:none;color:var(--muted);cursor:pointer}.mb-t.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.vt-c{display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:4px}.vt{font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px;background:var(--line)}
+.mb-rg{display:grid;gap:6px;margin:10px 0 4px;padding:10px;border:1px dashed var(--line);border-radius:12px}.mb-rl{font-size:13px;font-weight:600}.mb-rc{display:flex;align-items:center;gap:6px}.mb-rc input{width:150px;font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
 .mb{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}.mb-h{display:flex;align-items:center;gap:8px}.mb-h h3{margin:0;font-size:15px}.mb-card{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
 .mb-r{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}.mb-a{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--line)}
@@ -6271,6 +6272,23 @@ function vipItems(uid){ return (uid===S.uid && !S.viewAs) ? S.myVip : (S.vip[uid
 /* ---------- lotes de emails por autorizar (solo el Head): se preparan a las 5 pm para el siguiente día hábil ---------- */
 const MB = {sub:null, open:{}, busy:"", msg:"", err:""};
 const mbDay = d => new Date(Date.parse(d + "T17:00:00Z")).toLocaleDateString("es-MX", {weekday:"long", day:"numeric", month:"short", timeZone:"UTC"});
+/* rango de seguidores para los nuevos del lote (approach 1); se guarda en config/main.mailSeq.fol y lo usa también el lote de las 5 pm */
+const folTxt = n => n >= 1e6 ? (n/1e6).toFixed(n%1e6 ? 1 : 0) + "M" : n >= 1e3 ? Math.round(n/1e3) + "K" : String(n);
+function mbRangeHtml(cfg){
+  const f = cfg.fol || {}, mn = Number(f.min)||0, mx = f.max==null || f.max==="" ? null : Number(f.max);
+  const elig = michRows().map(r => r[2]).filter(x => x.email && (x.status||"nuevo")==="nuevo" && !x.email1At && !x.meetId && !x.top && !x.direct && !x.emailSkip && !x.emailOptout && !x.personal && !x.noContact && !x.competitor && !isUgc(x));
+  const inR = x => { const n = Number(x.followers)||0; return n >= mn && (mx==null || n <= mx); };
+  const pills = FOL_R.map(([k, l, a, b]) => { const on = mn===a && (b===Infinity ? mx==null : mx===b); return `<button type="button" data-mbfol="${a}|${b===Infinity?"":b}" class="${on?"on":""}">${l} <b>${elig.filter(x => { const n = Number(x.followers)||0; return n >= a && n <= b; }).length}</b></button>`; }).join("");
+  return `<div class="mb-rg"><span class="mb-rl">Seguidores de los nuevos:</span><div class="mi-ef">${pills}</div>
+    <span class="mb-rc"><input data-mbfmin="1" value="${mn ? folTxt(mn) : ""}" placeholder="desde (ej. 50k)" inputmode="text"> – <input data-mbfmax="1" value="${mx!=null ? folTxt(mx) : ""}" placeholder="hasta (sin límite)" inputmode="text"></span>
+    <small class="mut">${elig.filter(inR).length} con email esperando su primer email en ese rango. Los seguimientos (approach 2 y 3) salen sin importar el rango.</small></div>`;
+}
+async function mbSetFol(min, max){ await seqSave({fol:{min:min||0, max:max==null || isNaN(max) ? null : max}}); const bx = $("orBox"); if (bx) bx.dataset.h = ""; schedule(); }
+document.addEventListener("click", e => { const b = e.target.closest("[data-mbfol]"); if (!b || !S.isOwner) return; const [a, z] = b.dataset.mbfol.split("|"); mbSetFol(Number(a), z==="" ? null : Number(z)); });
+document.addEventListener("change", e => { const i = e.target.closest("[data-mbfmin],[data-mbfmax]"); if (!i || !S.isOwner) return;
+  const f = ((S.config||{}).mailSeq||{}).fol || {}, v = i.value.trim(), n = v ? parseFol(v) : null;
+  if (v && !n){ MB.err = `No entendí "${v}". Escribe por ejemplo 50k, 150.000 o 1.5m.`; return schedule(); } MB.err = "";
+  if (i.dataset.mbfmin) mbSetFol(n||0, f.max==null ? null : Number(f.max)); else mbSetFol(Number(f.min)||0, n); });
 const todayKey = () => new Date(Date.now()-OFF).toISOString().slice(0, 10);
 function mbHtml(){
   const all = Object.values(S.mailBatch||{}).filter(b => b && b.date >= todayKey()).sort((a,b) => a.date < b.date ? -1 : 1);
@@ -6279,8 +6297,9 @@ function mbHtml(){
     <button type="button" class="btn small" data-mbplan="next"${MB.busy ? " disabled" : ""}>${MB.busy==="plan" ? "Preparando…" : "Preparar siguiente lote"}</button></div>`;
   const note = cfg.approval===false ? `<p class="mut small">La autorización está apagada en Ajustes: los emails salen solos.</p>` : !cfg.on ? `<p class="mut small">La secuencia está apagada: puedes preparar y revisar lotes, pero no sale nada hasta que la enciendas en Ajustes.</p>` : "";
   const msg = MB.err ? `<p class="err">${esc(MB.err)}</p>` : MB.msg ? `<p class="ok-msg">${esc(MB.msg)}</p>` : "";
-  if (!all.length) return `<section class="mb">${head}${note}${msg}<p class="mut small">No hay lotes. Se prepara uno solo a las 5 pm (con la secuencia encendida), o tócale a "Preparar siguiente lote". Se manda de lunes a jueves.</p></section>`;
-  return `<section class="mb">${head}${note}${msg}${all.map(mbCard).join("")}</section>`;
+  const rng = mbRangeHtml(cfg);
+  if (!all.length) return `<section class="mb">${head}${rng}${note}${msg}<p class="mut small">No hay lotes. Se prepara uno solo a las 5 pm (con la secuencia encendida), o tócale a "Preparar siguiente lote". Se manda de lunes a jueves.</p></section>`;
+  return `<section class="mb">${head}${rng}${note}${msg}${all.map(mbCard).join("")}</section>`;
 }
 function mbCard(b){
   const items = b.items || [], live = items.filter(i => !i.skip), sent = items.filter(i => i.sentAt).length, today = b.date===todayKey();
@@ -6299,7 +6318,7 @@ function mbCard(b){
         <p class="mut small">${i.step===1 && ((S.config||{}).mailSeq||{}).video ? "El link de YouTube va donde dice {video} (o al final). " : i.step>1 && /\{video\}/.test(i.body) ? "El link de YouTube va donde dice {video}. " : ""}Al final va la firma de Gmail de ${esc(String(i.from||"la cuenta").split("@")[0])}${((S.config||{}).mailSeq||{}).optout ? " y la línea de «baja»" : ""}.</p></div>` : ""}</div>`; };
   return `<div class="mb-card"><div class="mb-ch"><b>${esc(mbDay(b.date))}</b>${st}<span class="spacer"></span>
       ${b.status==="approved" ? (sent ? "" : `<button type="button" class="btn small" data-mbap="${b.date}|0">Quitar autorización</button>`) : `<button type="button" class="btn small" data-mbplan="${b.date}">Volver a preparar</button><button type="button" class="btn small primary" data-mbap="${b.date}|1"${live.length?"":" disabled"}>Autorizar ${live.length}</button>`}</div>
-    <p class="small mut">${live.length} email${live.length===1?"":"s"}${steps.length ? " · " + steps.map(([n,c]) => `${c} de approach ${n}`).join(" · ") : ""}${Object.keys(by).length ? " · " + Object.entries(by).map(([k,n]) => `${esc(k.split("@")[0])} ${n}`).join(" · ") : ""}${items.length > live.length ? ` · ${items.length-live.length} quitados` : ""}</p>
+    <p class="small mut">${live.length} email${live.length===1?"":"s"}${steps.length ? " · " + steps.map(([n,c]) => `${c} de approach ${n}`).join(" · ") : ""}${Object.keys(by).length ? " · " + Object.entries(by).map(([k,n]) => `${esc(k.split("@")[0])} ${n}`).join(" · ") : ""}${items.length > live.length ? ` · ${items.length-live.length} quitados` : ""}${b.fol && (b.fol.min || b.fol.max) ? ` · nuevos de ${folTxt(b.fol.min||0)} a ${b.fol.max ? folTxt(b.fol.max) : "más"} seguidores` : ""}</p>
     <div class="mb-l">${items.map(L).join("") || `<p class="mut small">Nadie para este día.</p>`}</div></div>`;
 }
 /* tags del perfil (los pone el Head al revisar los emails): todos sacan al perfil de los emails automáticos */
@@ -6332,7 +6351,7 @@ document.addEventListener("click", async e => {
     const d = pl.dataset.mbplan==="next" ? "" : pl.dataset.mbplan, b = d && (S.mailBatch||{})[d];
     if (b && b.items && b.items.some(i => i.skip || i.edited) && !confirm("Volver a preparar borra lo que quitaste o editaste en este lote. ¿Sigo?")) return;
     MB.busy = "plan"; MB.err = MB.msg = ""; schedule();
-    try{ const r = await window.STRIKD_GMAIL_POST({plan:{date:d}}); MB.msg = r.status==="approved" ? "Ese lote ya estaba autorizado; no lo toqué." : `Listo: ${r.n} emails para el ${mbDay(r.date)}.`; }
+    try{ const r = await window.STRIKD_GMAIL_POST({plan:{date:d, fol:((S.config||{}).mailSeq||{}).fol || null}}); MB.msg = r.status==="approved" ? "Ese lote ya estaba autorizado; no lo toqué." : `Listo: ${r.n} emails para el ${mbDay(r.date)}.`; }
     catch(err){ MB.err = err.message || String(err); }
     MB.busy = ""; const bx = $("orBox"); if (bx) bx.dataset.h = ""; return schedule(); }
   const ts = e.target.closest("[data-mbtest]"); if (ts && S.isOwner && window.STRIKD_GMAIL_POST){
