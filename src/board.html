@@ -5764,7 +5764,7 @@ function seqHtml(g){
   if (!window.STRIKD_GMAIL_STATUS) return "";
   const cfg = (S.config||{}).mailSeq || {}, own = S.isOwner, accts = g.seq || [1,2,3,4,5].map(n => ({key:"seq"+n}));
   const rows = accts.map((a, i) => setRow("📤", `Cuenta de envío ${i+1}`, a.email
-      ? `${esc(a.email)} · hoy ${a.today||0}/${a.quota||5}${(a.quota||5) < 20 ? ` · calentando (sube a 20 en ${a.quota>=15?"1 semana":a.quota>=10?"2 semanas":"3 semanas"})` : ""}${a.total ? ` · ${a.total} en total` : ""}`
+      ? `${esc(a.email)} · hoy ${a.today||0}/${a.quota||10}${(a.quota||10) < 20 ? ` · calentando (sube a 20 en ${a.quota>=15?"1 semana":"2 semanas"})` : ""}${a.total ? ` · ${a.total} en total` : ""}`
       : "Sin conectar", own ? (a.email ? `<button type="button" class="btn small" data-gm="dis-seq|${a.key}">Cambiar</button>` : `<button type="button" class="btn small primary" data-gm="con-seq|${a.key}">Conectar</button>`) : "")).join("");
   const nA = accts.filter(a => a.email).length, tp = n => Object.values(S.mailTpl||{}).some(t => Number(t.step)===n && t.active!==false);
   /* para encender solo hace falta una cuenta conectada y una plantilla activa del approach 1; lo demás es aviso */
@@ -5779,7 +5779,7 @@ function seqHtml(g){
     ${own ? `<div class="sq-ap"><label class="sw-l"><input type="checkbox" data-gseqap="1"${cfg.approval!==false?" checked":""}> Autorizo cada lote un día antes</label><small class="mut">A las 5 pm se prepara el lote del siguiente día hábil y te llega aviso. Solo sale lo que autorices en Outreach.</small></div>
     <label class="f">Correo para las pruebas<input data-gseq="testTo" value="${esc(cfg.testTo||"")}" placeholder="${esc(((window.STRIKD_ME && window.STRIKD_ME()) || {}).email||"tu correo")}" maxlength="120"></label>` : ""}
     ${rows}
-    <p class="mut small">Cuentas nuevas: empiezan con 5 al día y suben 5 cada semana hasta 20. El cupo incluye los seguimientos (salen primero).</p>
+    <p class="mut small">Cuentas nuevas: 10 al día la 1ª semana, 15 la 2ª y 20 desde la 3ª. El cupo incluye los seguimientos (salen primero).</p>
     <div class="sq-v"><label class="f">Link del video (YouTube oculto, Drive, Loom…)<input data-gseq="video" value="${esc(cfg.video||"")}" placeholder="https://youtu.be/…"${own?"":" disabled"}></label>
       <label class="f">Texto antes del link<input data-gseq="videoLabel" value="${esc(cfg.videoLabel||"")}" placeholder="Ver video en YouTube" maxlength="40"${own?"":" disabled"}></label>
       <p class="mut small">✍️ La firma y el nombre de quien manda salen de cada cuenta de Gmail (Gmail → Configuración → Firma). Se pegan solos al final de cada email.</p>
@@ -6322,7 +6322,8 @@ function mbCard(b){
         <div class="row">${ed ? `<button type="button" class="btn small" data-mbskip="${b.date}#${ix}">${i.skip ? "Volver a incluir" : "Quitar de este lote"}</button>` : ""}<button type="button" class="btn small" data-mbtest="item|${b.date}|${ix}">Enviarme prueba</button></div>
         <p class="mut small">${i.step===1 && ((S.config||{}).mailSeq||{}).video ? "El link de YouTube va donde dice {video} (o al final). " : i.step>1 && /\{video\}/.test(i.body) ? "El link de YouTube va donde dice {video}. " : ""}Al final va la firma de Gmail de ${esc(String(i.from||"la cuenta").split("@")[0])}${((S.config||{}).mailSeq||{}).optout ? " y la línea de «baja»" : ""}.</p></div>` : ""}</div>`; };
   return `<div class="mb-card"><div class="mb-ch"><b>${today ? "Hoy · " : ""}${esc(mbDay(b.date))}</b>${st}<span class="spacer"></span>
-      ${b.status==="approved" ? (sent ? "" : `<button type="button" class="btn small" data-mbap="${b.date}|0">Quitar autorización</button>`) : `<button type="button" class="btn small" data-mbplan="${b.date}">Volver a preparar</button><button type="button" class="btn small primary" data-mbap="${b.date}|1"${live.length?"":" disabled"}>Autorizar ${live.length}</button>`}</div>
+      ${b.status==="approved" ? (sent ? "" : `<button type="button" class="btn small" data-mbap="${b.date}|0">Quitar autorización</button>`) : `<button type="button" class="btn small" data-mbplan="${b.date}">Volver a preparar</button><button type="button" class="btn small primary" data-mbap="${b.date}|1"${live.length?"":" disabled"}>Autorizar ${live.length}</button>`}
+      ${b.sendNow ? `<span class="or-st wait">⚡ Enviando ya…</span>` : live.some(i => !i.sentAt && !i.void && !i.error) ? `<button type="button" class="btn small" data-mbnow="${b.date}" title="Autoriza y empieza a mandar en este momento (1 por cuenta cada minuto, sin pasar el cupo del día)">⚡ Enviar ya</button>` : ""}</div>
     <p class="small mut">${live.length} email${live.length===1?"":"s"}${steps.length ? " · " + steps.map(([n,c]) => `${c} de approach ${n}`).join(" · ") : ""}${Object.keys(by).length ? " · " + Object.entries(by).map(([k,n]) => `${esc(k.split("@")[0])} ${n}`).join(" · ") : ""}${items.length > live.length ? ` · ${items.length-live.length} quitados` : ""}${b.fol && (b.fol.min || b.fol.max) ? ` · nuevos de ${folTxt(b.fol.min||0)} a ${b.fol.max ? folTxt(b.fol.max) : "más"} seguidores` : ""}</p>
     <div class="mb-l">${items.map(L).join("") || `<p class="mut small">Nadie para este día.</p>`}</div></div>`;
 }
@@ -6362,6 +6363,11 @@ document.addEventListener("click", async e => {
   const ap = e.target.closest("[data-mbap]"); if (ap && S.isOwner){ const [d, on] = ap.dataset.mbap.split("|"), b = (S.mailBatch||{})[d]; if (!b) return;
     if (on==="1" && !confirm(d===todayKey() ? `¿Autorizar ${b.items.filter(i => !i.skip).length} emails para HOY? Empiezan a salir en unos minutos, repartidos hasta las 6 pm.` : `¿Autorizar ${b.items.filter(i => !i.skip).length} emails para el ${mbDay(d)}? Salen repartidos de 9 am a 6 pm.`)) return;
     return mbSave(d, b.items, on==="1" ? {status:"approved", approvedAt:Date.now(), approvedBy:S.uid} : {status:"pending", approvedAt:null}); }
+  const nw = e.target.closest("[data-mbnow]"); if (nw && S.isOwner){ const d = nw.dataset.mbnow, b = (S.mailBatch||{})[d]; if (!b) return;
+    const n = b.items.filter(i => !i.skip && !i.sentAt && !i.void && !i.error).length, seqOn = !!((S.config||{}).mailSeq||{}).on;
+    if (!seqOn) return alert("La secuencia está pausada. Enciéndela en Ajustes → Emails automáticos y vuelve a tocar Enviar ya.");
+    if (!confirm(`¿Mandar YA los ${n} emails de este lote? Empiezan en 1 minuto, 1 por cuenta cada minuto, sin pasar el cupo del día de cada cuenta (lo que no quepa sale el siguiente día).`)) return;
+    return mbSave(d, b.items, {status:"approved", approvedAt:b.approvedAt || Date.now(), approvedBy:b.approvedBy || S.uid, sendNow:true, sendNowAt:Date.now()}); }
   const pl = e.target.closest("[data-mbplan]"); if (pl && S.isOwner && window.STRIKD_GMAIL_POST){
     const d = pl.dataset.mbplan==="next" ? "" : pl.dataset.mbplan, b = d && (S.mailBatch||{})[d==="today" ? todayKey() : d];
     if (b && b.items && b.items.some(i => i.skip || i.edited) && !confirm("Volver a preparar borra lo que quitaste o editaste en este lote. ¿Sigo?")) return;
@@ -6505,7 +6511,7 @@ function renderOutreach(){
         <p class="mut small">Conversión a meet: <b>${pct(meetDm, dmTot)}</b> de los contactados por DM.</p></section>
       <section class="or-c"><h3><span class="or-dot em"></span>Email · secuencia ${cfg.on ? `<span class="or-on">encendida</span>` : `<span class="or-off">apagada</span>`}</h3>
         <div class="or-f">${k(pendEm, "esperando email 1")}${k(seqN(1), "en email 1")}${k(seqN(2), "en email 2")}${k(seqN(3), "en email 3")}${k(repEm, "contestaron")}${k(meetEm, "meets")}</div>
-        <p class="mut small">Respuesta: <b>${pct(repEm, emTot)}</b> de ${emTot} a los que se les escribió.${accts.length ? ` Cuentas: ${accts.map(a => `${esc(a.email.split("@")[0])} ${a.today||0}/${a.quota||5}`).join(" · ")} hoy.` : gs.seq ? " Sin cuentas de envío conectadas." : ""}</p></section>
+        <p class="mut small">Respuesta: <b>${pct(repEm, emTot)}</b> de ${emTot} a los que se les escribió.${accts.length ? ` Cuentas: ${accts.map(a => `${esc(a.email.split("@")[0])} ${a.today||0}/${a.quota||10}`).join(" · ")} hoy.` : gs.seq ? " Sin cuentas de envío conectadas." : ""}</p></section>
     </div>
     <p class="mut small or-x">Aparte: 👑 ${top} top tier · 🤝 ${dir} contacto directo (estrategia propia, sin emails automáticos).</p>
     <section class="or-sec"><h3 class="sec-h">Avance por semana</h3>${wk}</section>
