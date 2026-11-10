@@ -308,6 +308,8 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bx-ta{min-height:110px;resize:vertical;font:inherit;line-height:1.5;width:100%}
 .bx-n{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--fg);color:var(--bg);margin-left:6px;vertical-align:middle}.bx-i{border:1px solid var(--line);border-radius:10px}.bx-i.un .mb-n b,.bx-i.un .bx-s b{font-weight:800}.bx-i.un{border-color:var(--fg2)}.bx-s{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.bx-s b{font-weight:500}.bx-d{color:var(--muted);font-size:11.5px;white-space:nowrap}.bx-m{border-left:3px solid var(--line);padding:4px 10px}.bx-m.me{border-left-color:#3b82f6}.bx-m pre{white-space:pre-wrap;font:inherit;font-size:13.5px;margin:4px 0 0}@media(max-width:560px){.bx-s{display:none}}
 .or-w{display:grid;gap:0;border:1px solid var(--line);border-radius:12px}.or-w>.or-r{border:0}.or-b{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.or-h{display:grid;gap:2px;padding:0 12px 9px;font-size:12.5px}.or-h>div{display:flex;gap:8px}.or-h small{color:var(--muted);white-space:nowrap;min-width:92px}.or-ed{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:0 12px 9px}.or-ed input{flex:1;min-width:200px;font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}.or-cmp{display:grid;gap:8px;padding:4px 12px 12px;border-top:1px dashed var(--line)}
+.mi-w{display:grid}.mi-x{display:grid;gap:4px;padding:6px 10px 8px;margin-top:-4px;border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px}.mi-x .or-b{justify-content:flex-start}.mi-x .or-h,.mi-x .or-ed,.mi-x .or-cmp{padding-left:0;padding-right:0}
+.or-ck{display:flex!important;align-items:center;gap:8px;font-size:13px;border:0!important;background:none!important;padding:0!important;width:auto!important}.or-ck input{width:auto!important;margin:0}
 .mb{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}.mb-h{display:flex;align-items:center;gap:8px}.mb-h h3{margin:0;font-size:15px}.mb-card{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
 .mb-r{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}.mb-a{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--line)}
@@ -4710,14 +4712,14 @@ function renderMich(){
   const qHead = q ? `<p class="mi-qh">${list.length ? `${list.length} resultado${list.length===1?"":"s"} en toda la lista` : `No hay nadie con "${esc(MICH.q.trim())}" en la lista.`} <button type="button" class="linkbtn" data-miqx="1">Quitar búsqueda</button></p>` : "";
   box.innerHTML = (q ? qHead : kBar + efBar) + (list.length ? `<div class="mi-list">${list.map(([u,id,x]) => { const h = igUser(x.profile), url = igUrl(x.profile), st = x.status||"nuevo", k = `${u}/${id}`;
     const locked = qt.until && !done(x);
-    return `<a class="mi-row${done(x)?" done":""}${locked?" locked":""}" href="${esc(locked ? "#" : (url||"#"))}" target="_blank" rel="noopener" data-mgo="${k}">
+    return `<div class="mi-w"><a class="mi-row${done(x)?" done":""}${locked?" locked":""}" href="${esc(locked ? "#" : (url||"#"))}" target="_blank" rel="noopener" data-mgo="${k}">
       <span class="ck-av mi-av">${ini(x.prospect)}${h?`<img src="https://unavatar.io/instagram/${encodeURIComponent(h)}?fallback=false" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}</span>
       <span class="mi-m"><span class="mi-nm"><b>${esc(x.prospect||h||"Sin nombre")}</b>${vtagChips(x)}<button type="button" class="mi-crown${x.top?" on":""}" data-mtop="${k}" title="${x.top?"Es top tier · toca para quitarlo":"Marcar como top tier (estrategia aparte)"}" aria-label="Top tier" aria-pressed="${x.top?"true":"false"}">👑</button><button type="button" class="mi-crown${x.direct?" on":""}" data-mdirect="${k}" title="${x.direct?"Contacto directo · toca para quitarlo":"Marcar como contacto directo (deal)"}" aria-label="Contacto directo" aria-pressed="${x.direct?"true":"false"}">🤝</button><button type="button" class="mi-emed" data-medit="${k}" title="Editar o borrar">✎</button></span><small>${kindTag(x)}${h?`@${esc(h)} · `:""}${x.folRange ? esc(String(x.folRange).replace(/^[^(]*\(|\)$/g,"")) : fmtFol(x.followers)} seguidores · ${x.byMich && u===meId() ? "agregado por ti" : "de " + esc(first(nameOf(S.ps||{}, u)))}</small>${netsHtml(x)}${dmBadge(x)}${x.notes?`<span class="mi-n">${esc(x.notes)}</span>`:""}${done(x) ? (x.email ? `<span class="mi-em">✉ ${esc(x.email)}${x.emailOptout ? " · pidió baja" : x.emailRepliedAt ? " · contestó el email" : x.email2At ? " · 2 emails enviados" : x.email1At ? " · email 1 enviado" : ""} <button type="button" class="mi-emed" data-memail="${k}" title="Corregir o quitar el email">✎</button>${!x.emailOptout && !x.emailRepliedAt ? `<button type="button" class="mi-emed" data-meoptout="${k}" title="Ya no escribirle nunca por email">Pidió baja</button>` : ""}</span>${!x.meetId && !x.email3At && !x.emailOptout && !x.emailRepliedAt && !isUgc(x) ? (x.top || x.direct || x.personal || x.noContact || x.competitor ? `<span class="mi-esk off">${x.top ? "👑 Top tier" : x.direct ? "🤝 Contacto directo" : VTAG_L[["competitor","noContact","personal"].find(k => x[k])]}: sin emails automáticos</span>` : x.emailSkip
           ? `<button type="button" class="mi-esk off" data-meskip="${u}/${id}" title="Toca para volver a programarlo">✉ No se le enviará email · Reactivar</button>`
           : `<button type="button" class="mi-esk" data-meskip="${u}/${id}" title="Si por estrategia no conviene escribirle, toca para no enviarle">${seqTxt(x)}</button>`) : ""}` : `<button type="button" class="mi-emadd" data-memail="${k}">+ email</button>`) : ""}${x.meetId && x.meetAt ? `<span class="mi-meet">📅 Meet ${esc(fmtMeetAt(x.meetAt))} <button type="button" class="mi-emed" data-mresched="${k}">🕐 Cambiar</button><button type="button" class="mi-emed" data-mcancel="${k}">Cancelar</button></span>` : ""}${x.emailRepliedAt && x.emailReplySnippet ? `<span class="mi-reply">💬 Contestó: “${esc(String(x.emailReplySnippet).slice(0, 800))}”</span>` : ""}</span>
       ${done(x) ? `<span class="mi-st">${esc(st==="contactado" ? "✓ Contactado" : VIP_ST[st]||st)}</span>${st==="contactado" && !x.meetId ? `<button type="button" class="mi-emed" data-mint="${k}|interesado" title="Respondió con interés">Interesado</button><button type="button" class="mi-emed" data-mint="${k}|descartado" title="No le interesa">No le interesa</button>` : (st==="interesado" || st==="descartado") && !x.meetId ? `<button type="button" class="mi-emed" data-mint="${k}|contactado" title="Regresar a contactado">↺</button>` : ""}${!x.meetId && !x.email1At ? `<button type="button" class="mi-ic mi-back" data-mundo="${k}" aria-label="Regresar a pendientes" title="Regresar a pendientes (no se contactó)">↺</button>` : ""}${x.meetId ? "" : `<button type="button" class="mi-ic mi-plus" data-mbook="${k}" aria-label="Agendar meet" title="Agendar meet (cuenta para ${esc(first(nameOf(S.ps||{}, u)))})">+</button>`}`
         : `<span class="mi-ig">Abrir</span>${MICH.on ? "" : `<button type="button" class="mi-ic" data-mdone="${k}" aria-label="Marcar como contactado" title="Marcar como contactado">✓</button>`}`}
-    </a>`; }).join("")}</div>`
+    </a>${S.isLead ? miExtraHtml(u, id, x) : ""}</div>`; }).join("")}</div>`
     : q ? "" : `<div class="empty">${rows.length && FOLF.mi ? "Nadie en ese rango de seguidores. Cambia el filtro o toca Todos." : rows.length ? (MICH.f==="nuevo" ? "🎉 No hay pendientes. Cuando el equipo proponga más influencers aparecen aquí." : "Nada por aquí.") : "Todavía no hay influencers en la lista. Aparecen cuando el equipo registra un Perfil 3 (35K+)."}</div>`);
 }
 // agregar o corregir el email de un influencer de la lista (Mich o el AM que lo propuso)
@@ -6398,7 +6400,9 @@ async function bxLoad(force){
   catch(err){ BX.err = err.message || String(err); }
   BX.loading = false; bxRe();
 }
-function bxRe(){ const b = $("orBox"); if (b){ b.dataset.h = ""; const a = document.activeElement; if (a && b.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) a.blur(); } renderOutreach(); } /* acción explícita: se vuelve a pintar aunque haya un campo enfocado */
+function bxRe(){ const a = document.activeElement, b = $("orBox"), m = $("view-mich");
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && ((b && b.contains(a)) || (m && m.contains(a) && !a.matches("#miQ")))) a.blur();
+  if (b) b.dataset.h = ""; renderOutreach(); if (S.tab==="mich") renderMich(); } /* acción explícita: se vuelve a pintar aunque haya un campo enfocado */
 const bxWho = f => esc(String(f||"").replace(/<[^>]+>/, "").replace(/"/g, "").trim() || f);
 function bxHtml(){
   if (!window.STRIKD_GMAIL_POST) return "";
@@ -6456,6 +6460,12 @@ function orHist(x){
   add(x.emailSetAt, `Correo agregado: ${esc(x.email||"")}`);
   return ev.sort((a, b) => b.at - a.at);
 }
+/* en la lista de Mich (también en "Vista de usuario"), para Head y Manager (rol real): correo a mano, agregar/cambiar correo e historial (igual que en Outreach) */
+function miExtraHtml(u, id, x){
+  const k = `${u}/${id}`;
+  return `<div class="mi-x"><div class="or-b">${x.email ? `<button type="button" class="btn small${OR.cmp===k?" primary":""}" data-orcmp="${k}"${x.emailOptout?" disabled title=\"Pidió baja\"":""}>✉ Correo</button>` : ""}<button type="button" class="btn small" data-oremail="${k}">${x.email ? "✎ Correo" : "+ Correo"}</button></div>
+    ${OR.em===k ? orEmailHtml(u, id, x) : ""}${OR.cmp===k ? orCmpHtml(u, id, x) : ""}${orHistHtml(u, id, x)}</div>`;
+}
 function orHistHtml(u, id, x){
   const k = `${u}/${id}`, ev = orHist(x); if (!ev.length) return "";
   const all = OR.hist[k], show = all ? ev : ev.slice(0, 3);
@@ -6474,7 +6484,7 @@ function orCmpHtml(u, id, x){
     <label class="f">Asunto<input data-orcf="subject" data-k="${k}" value="${esc(d.subject)}"></label>
     <label class="f">Mensaje<textarea rows="10" class="bx-ta" data-orcf="body" data-k="${k}">${esc(d.body)}</textarea></label>
     <small class="mut">Pon {video} donde quieras el link del video. Se agrega la firma de Gmail de la cuenta.</small>
-    ${!x.email1At ? `<label class="sw-l"><input type="checkbox" data-orcf="seq" data-k="${k}"${d.seq?" checked":""}> Contar como su email 1 (después le salen solos el 2 y el 3, con autorización)</label>` : ""}
+    ${!x.email1At ? `<label class="or-ck"><input type="checkbox" data-orcf="seq" data-k="${k}"${d.seq?" checked":""}> Contar como su email 1 (después le salen solos el 2 y el 3, con autorización)</label>` : ""}
     <div class="row"><button type="button" class="btn small primary" data-orcsend="${k}"${OR.busy===k?" disabled":""}>${OR.busy===k ? "Enviando…" : "Enviar correo"}</button><button type="button" class="btn small" data-orcmp="${k}">Cancelar</button></div></div>`;
 }
 document.addEventListener("click", async e => {
