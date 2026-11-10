@@ -5807,7 +5807,7 @@ function mailSetHtml(){
       ${GM.err ? `<p class="err">${esc(GM.err)}</p>` : ""}
       <div class="tk-acts">${tf.id ? `<button type="button" class="pr-x" data-gm="del">Borrar</button>` : ""}<button type="button" class="btn small" data-gm="cancel">Cancelar</button><button type="button" class="btn small primary" data-gm="save">Guardar</button></div></div>` : "";
   const list = st => tpls.filter(([,t]) => Number(t.step)===st).map(([id,t]) => { const x = stat[id] || {}; return `<div class="ml-t${t.active===false?" off":""}"><div><b>${esc(t.name||"Plantilla")}</b><small>${t.subject ? esc(t.subject) + " · " : ""}${x.sent||0} enviados · ${x.replied||0} contestaron${x.sent ? ` (${Math.round((x.replied||0)/x.sent*100)}%)` : ""}</small></div>
-      ${canEditTpl ? `<span><button type="button" class="btn small" data-gm="tog|${id}">${t.active===false ? "Activar" : "Pausar"}</button><button type="button" class="btn small" data-gm="edit|${id}">Editar</button>${S.isOwner && window.STRIKD_GMAIL_POST ? `<button type="button" class="btn small" data-mbtest="tpl|${id}">Enviarme prueba</button>` : ""}</span>` : ""}</div>`; }).join("") || `<p class="mut small" style="margin:6px 0">Sin plantillas.</p>`;
+      ${canEditTpl ? `<span><button type="button" class="btn small" data-gm="tog|${id}">${t.active===false ? "Activar" : "Pausar"}</button><button type="button" class="btn small" data-gm="edit|${id}">Editar</button><button type="button" class="btn small" data-gm="delx|${id}" title="Borrar plantilla">🗑 Borrar</button>${S.isOwner && window.STRIKD_GMAIL_POST ? `<button type="button" class="btn small" data-mbtest="tpl|${id}">Enviarme prueba</button>` : ""}</span>` : ""}</div>`; }).join("") || `<p class="mut small" style="margin:6px 0">Sin plantillas.</p>`;
   return `<h3 class="set-h">Emails automáticos</h3><section class="set-card ml">
     <p class="ml-how">Secuencia a los influencers con email que no son 👑 Top tier ni 🤝 Contacto directo: <b>approach 1</b> con el video (día 0) → <b>approach 2</b> (día 3) → <b>approach 3</b> (día 7), en el mismo hilo → si no contesta, le sale a Mich para <b>DM</b> (día 10). Se detiene si contesta, pide «baja» o agenda meet. Sale de las cuentas de envío (hasta 5), de lunes a jueves de 9 am a 6 pm, repartido en el día. A los que Mich ya contactó por DM, el approach 1 les sale 10 días después.</p>
     ${seqHtml(g)}
@@ -5845,7 +5845,12 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
   if (k==="edit"){ const t = (S.mailTpl||{})[id]; if (t){ GM.tf = {id, step:Number(t.step)||1, name:t.name||"", subject:t.subject||"", body:t.body||""}; GM.err = ""; schedule(); } return; }
   if (k==="cancel"){ GM.tf = null; return schedule(); }
   if (k==="tog"){ const t = (S.mailTpl||{})[id]; if (t){ t.active = t.active===false; schedule(); db.doc(`emailTpl/${id}`).update({active:t.active}).catch(() => {}); } return; }
-  if (k==="del"){ if (!GM.tf || !GM.tf.id || !confirm("¿Borrar esta plantilla?")) return; await db.doc(`emailTpl/${GM.tf.id}`).delete().catch(() => {}); if (S.mailTpl) delete S.mailTpl[GM.tf.id]; GM.tf = null; return schedule(); }
+  if (k==="del" || k==="delx"){ const tid = k==="delx" ? id : GM.tf && GM.tf.id; if (!tid) return;
+    const nm = ((S.mailTpl||{})[tid]||{}).name || "esta plantilla";
+    if (!confirm(`¿Borrar "${nm}"? Ya no saldrá en los emails nuevos (lo que ya se envió no cambia).`)) return;
+    try{ await db.doc(`emailTpl/${tid}`).delete(); if (S.mailTpl) delete S.mailTpl[tid]; if (GM.tf && GM.tf.id===tid) GM.tf = null; GM.err = ""; }
+    catch(_){ GM.err = "No se pudo borrar. Intenta otra vez."; }
+    return schedule(); }
   if (k==="save"){ const t = GM.tf; if (!t) return;
     if (!String(t.name||"").trim() || !String(t.body||"").trim() || (Number(t.step)===1 && !String(t.subject||"").trim())){ GM.err = "Pon nombre, asunto y mensaje."; return schedule(); }
     const data = {name:t.name.trim(), step:Number(t.step)||1, subject:Number(t.step)>1 ? "" : t.subject.trim(), body:t.body.trim(), updatedAt:Date.now()};
