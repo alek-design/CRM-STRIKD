@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-10 18:19:38 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-10 18:31:50 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794334778">
+<link rel="stylesheet" href="/auth.css?v=1794335510">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794334778"></script>
+<script src="/claude-shim.js?v=1794335510"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -5861,17 +5861,17 @@ document.addEventListener("click", async e => { const b = e.target.closest("[dat
     m.mailIdea = {...m.mailIdea, done:true}; db.doc(`members/${id}`).update({mailIdea:m.mailIdea}).catch(() => {}); return schedule(); }
   if (k==="edit"){ const t = (S.mailTpl||{})[id]; if (t){ GM.tf = {id, step:Number(t.step)||1, name:t.name||"", subject:t.subject||"", body:t.body||""}; GM.err = ""; schedule(); } return; }
   if (k==="cancel"){ GM.tf = null; return schedule(); }
-  if (k==="tog"){ const t = (S.mailTpl||{})[id]; if (t){ t.active = t.active===false; schedule(); db.doc(`emailTpl/${id}`).update({active:t.active}).catch(() => {}); } return; }
+  if (k==="tog"){ const t = (S.mailTpl||{})[id]; if (t){ t.active = t.active===false; schedule(); db.doc(`emailTpl/${id}`).update({active:t.active}).then(() => mbRefresh()).catch(() => {}); } return; }
   if (k==="del" || k==="delx"){ const tid = k==="delx" ? id : GM.tf && GM.tf.id; if (!tid) return;
     const nm = ((S.mailTpl||{})[tid]||{}).name || "esta plantilla";
     if (!confirm(`¿Borrar "${nm}"? Ya no saldrá en los emails nuevos (lo que ya se envió no cambia).`)) return;
-    try{ await db.doc(`emailTpl/${tid}`).delete(); if (S.mailTpl) delete S.mailTpl[tid]; if (GM.tf && GM.tf.id===tid) GM.tf = null; GM.err = ""; }
+    try{ await db.doc(`emailTpl/${tid}`).delete(); if (S.mailTpl) delete S.mailTpl[tid]; if (GM.tf && GM.tf.id===tid) GM.tf = null; GM.err = ""; mbRefresh(); }
     catch(_){ GM.err = "No se pudo borrar. Intenta otra vez."; }
     return schedule(); }
   if (k==="save"){ const t = GM.tf; if (!t) return;
     if (!String(t.name||"").trim() || !String(t.body||"").trim() || (Number(t.step)===1 && !String(t.subject||"").trim())){ GM.err = "Pon nombre, asunto y mensaje."; return schedule(); }
     const data = {name:t.name.trim(), step:Number(t.step)||1, subject:Number(t.step)>1 ? "" : t.subject.trim(), body:t.body.trim(), updatedAt:Date.now()};
-    try{ if (t.id){ await db.doc(`emailTpl/${t.id}`).update(data); Object.assign((S.mailTpl||{})[t.id] || {}, data); } else { const ref = db.collection("emailTpl").doc(), d = {...data, active:true, createdAt:Date.now()}; await ref.set(d); (S.mailTpl ||= {})[ref.id] = d; } GM.tf = null; GM.err = ""; quickToast("✓ Plantilla guardada"); }
+    try{ if (t.id){ await db.doc(`emailTpl/${t.id}`).update(data); Object.assign((S.mailTpl||{})[t.id] || {}, data); } else { const ref = db.collection("emailTpl").doc(), d = {...data, active:true, createdAt:Date.now()}; await ref.set(d); (S.mailTpl ||= {})[ref.id] = d; } GM.tf = null; GM.err = ""; quickToast("✓ Plantilla guardada"); mbRefresh(); }
     catch(_){ GM.err = "No se guardó. Intenta otra vez."; }
     schedule(); }
 });
@@ -6305,6 +6305,7 @@ function mbHtml(){
   const head = `<div class="mb-h"><h3>📧 Emails por autorizar</h3><span class="spacer"></span>
     ${(() => { const l = new Date(Date.now()-OFF), d = l.getUTCDay(), h = l.getUTCHours(), tb = (S.mailBatch||{})[todayKey()];
       return d >= 1 && d <= 4 && h < 17 && !(tb && tb.status==="approved") ? `<button type="button" class="btn small primary" data-mbplan="today"${MB.busy ? " disabled" : ""}>Preparar para hoy</button>` : ""; })()}
+    <button type="button" class="btn small" data-mbrefresh="1" title="Vuelve a escribir los emails sin enviar con las plantillas actuales (no toca los que editaste a mano)">↻ Actualizar textos</button>
     <button type="button" class="btn small" data-mbplan="next"${MB.busy ? " disabled" : ""}>${MB.busy==="plan" ? "Preparando…" : "Preparar siguiente lote"}</button></div>`;
   const note = cfg.approval===false ? `<p class="mut small">La autorización está apagada en Ajustes: los emails salen solos.</p>` : !cfg.on ? `<p class="mut small">La secuencia está apagada: puedes preparar y revisar lotes, pero no sale nada hasta que la enciendas en Ajustes.</p>` : "";
   const msg = MB.err ? `<p class="err">${esc(MB.err)}</p>` : MB.msg ? `<p class="ok-msg">${esc(MB.msg)}</p>` : "";
@@ -6319,7 +6320,7 @@ function mbCard(b){
   const steps = [1,2,3].map(n => [n, live.filter(i => i.step===n).length]).filter(x => x[1]);
   const L = (i, ix) => { const op = MB.open[b.date+"#"+ix], ed = b.status!=="approved" && !i.sentAt;
     const s = i.sentAt ? `<span class="or-st ok">✓ enviado</span>` : i.error ? `<span class="or-st off" title="${esc(i.error)}">✗ error</span>` : i.void ? `<span class="or-st off">no salió: ${esc(i.void)}</span>` : i.skip ? `<span class="or-st off">${i.skipTag ? "fuera: " + esc(VTAG_L[i.skipTag]||"") : "quitado"}</span>` : "";
-    return `<div class="mb-i${i.skip?" off":""}"><button type="button" class="mb-r" data-mbopen="${b.date}#${ix}"><span class="mb-a">A${i.step}</span><span class="mb-n"><b>${esc(i.name||i.to)}</b><small>${esc(i.to)} · desde ${esc(String(i.from||i.key).split("@")[0])}</small></span><span class="mb-sj">${esc(i.subject)}</span>${s}<span class="mb-c">${op?"▴":"▾"}</span></button>
+    return `<div class="mb-i${i.skip?" off":""}"><button type="button" class="mb-r" data-mbopen="${b.date}#${ix}"><span class="mb-a">A${i.step}</span><span class="mb-n"><b>${esc(i.name||i.to)}</b><small>${esc(i.to)} · desde ${esc(String(i.from||i.key).split("@")[0])}</small></span><span class="mb-sj">${i.edited ? "✎ " : ""}${esc(i.subject)}</span>${s}<span class="mb-c">${op?"▴":"▾"}</span></button>
       ${(() => { const [, u, , id] = String(i.path||"").split("/"), x = ((S.vip||{})[u]||{})[id] || {}, url = safeUrl(x.profile || i.profile || ""), h = igUser(x.profile || i.profile || ""), nt = String(x.notes ?? i.notes ?? "").trim();
         const tg = b.status!=="approved" || !i.sentAt ? `<span class="mb-tg">${VTAGS.map(([k,l]) => `<button type="button" class="mb-t${x[k]?" on":""}" data-mbtag="${b.date}#${ix}#${k}" aria-pressed="${x[k]?"true":"false"}">${l}</button>`).join("")}</span>` : "";
         return url || nt || tg ? `<div class="mb-x">${tg}${url ? `<a class="btn small mb-ig" href="${esc(url)}" target="_blank" rel="noopener">📷 ${h ? "@" + esc(h) : "Ver Instagram"}</a>` : ""}${nt ? `<span class="mb-nt">💬 ${esc(nt)}</span>` : ""}</div>` : ""; })()}
@@ -6349,6 +6350,16 @@ document.addEventListener("click", async e => {
   quickToast(v ? `${VTAG_L[k]}: ya no le salen emails automáticos` : `Quitado: ${VTAG_L[k]}`);
   const bx = $("orBox"); if (bx) bx.dataset.h = ""; schedule();
 });
+/* al cambiar una plantilla, los emails sin enviar de los lotes (también los autorizados) se reescriben con ella; los editados a mano no */
+async function mbRefresh(manual){
+  if (!S.isOwner || !window.STRIKD_GMAIL_POST) return;
+  const has = Object.values(S.mailBatch||{}).some(b => b && b.date >= todayKey()); if (!has && !manual) return;
+  try{ const r = await window.STRIKD_GMAIL_POST({refresh:true});
+    if (r.emails || manual) quickToast(r.emails ? `✓ ${r.emails} email${r.emails===1?"":"s"} de los lotes actualizados con la plantilla nueva` : "Los lotes ya estaban al día");
+    if (r.sinPlantilla) quickToast(`⚠️ ${r.sinPlantilla} email${r.sinPlantilla===1?"":"s"} quedaron fuera: no hay plantilla activa de su approach`); }
+  catch(err){ if (manual) alert("No se pudieron actualizar los lotes: " + (err.message || err)); }
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-mbrefresh]")) mbRefresh(true); });
 async function mbSave(date, items, extra){ const b = (S.mailBatch||{})[date]; if (!b) return; b.items = items; Object.assign(b, extra||{}); schedule();
   try{ await db.doc("mailBatch/" + date).update({items, ...(extra||{})}); MB.err = ""; }catch(_){ MB.err = "No se guardó. Intenta otra vez."; schedule(); } }
 document.addEventListener("click", async e => {
