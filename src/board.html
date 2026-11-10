@@ -6294,6 +6294,8 @@ function mbHtml(){
   const all = Object.values(S.mailBatch||{}).filter(b => b && b.date >= todayKey()).sort((a,b) => a.date < b.date ? -1 : 1);
   const cfg = (S.config||{}).mailSeq || {};
   const head = `<div class="mb-h"><h3>📧 Emails por autorizar</h3><span class="spacer"></span>
+    ${(() => { const l = new Date(Date.now()-OFF), d = l.getUTCDay(), h = l.getUTCHours(), tb = (S.mailBatch||{})[todayKey()];
+      return d >= 1 && d <= 4 && h < 17 && !(tb && tb.status==="approved") ? `<button type="button" class="btn small primary" data-mbplan="today"${MB.busy ? " disabled" : ""}>Preparar para hoy</button>` : ""; })()}
     <button type="button" class="btn small" data-mbplan="next"${MB.busy ? " disabled" : ""}>${MB.busy==="plan" ? "Preparando…" : "Preparar siguiente lote"}</button></div>`;
   const note = cfg.approval===false ? `<p class="mut small">La autorización está apagada en Ajustes: los emails salen solos.</p>` : !cfg.on ? `<p class="mut small">La secuencia está apagada: puedes preparar y revisar lotes, pero no sale nada hasta que la enciendas en Ajustes.</p>` : "";
   const msg = MB.err ? `<p class="err">${esc(MB.err)}</p>` : MB.msg ? `<p class="ok-msg">${esc(MB.msg)}</p>` : "";
@@ -6316,7 +6318,7 @@ function mbCard(b){
         <label class="f">Mensaje<textarea rows="14" class="ml-body" data-mbf="body" data-mbk="${b.date}#${ix}">${esc(i.body)}</textarea></label>` : `<p class="mb-b"><b>${esc(i.subject)}</b></p><pre class="mb-b">${esc(i.body)}</pre>`}
         <div class="row">${ed ? `<button type="button" class="btn small" data-mbskip="${b.date}#${ix}">${i.skip ? "Volver a incluir" : "Quitar de este lote"}</button>` : ""}<button type="button" class="btn small" data-mbtest="item|${b.date}|${ix}">Enviarme prueba</button></div>
         <p class="mut small">${i.step===1 && ((S.config||{}).mailSeq||{}).video ? "El link de YouTube va donde dice {video} (o al final). " : i.step>1 && /\{video\}/.test(i.body) ? "El link de YouTube va donde dice {video}. " : ""}Al final va la firma de Gmail de ${esc(String(i.from||"la cuenta").split("@")[0])}${((S.config||{}).mailSeq||{}).optout ? " y la línea de «baja»" : ""}.</p></div>` : ""}</div>`; };
-  return `<div class="mb-card"><div class="mb-ch"><b>${esc(mbDay(b.date))}</b>${st}<span class="spacer"></span>
+  return `<div class="mb-card"><div class="mb-ch"><b>${today ? "Hoy · " : ""}${esc(mbDay(b.date))}</b>${st}<span class="spacer"></span>
       ${b.status==="approved" ? (sent ? "" : `<button type="button" class="btn small" data-mbap="${b.date}|0">Quitar autorización</button>`) : `<button type="button" class="btn small" data-mbplan="${b.date}">Volver a preparar</button><button type="button" class="btn small primary" data-mbap="${b.date}|1"${live.length?"":" disabled"}>Autorizar ${live.length}</button>`}</div>
     <p class="small mut">${live.length} email${live.length===1?"":"s"}${steps.length ? " · " + steps.map(([n,c]) => `${c} de approach ${n}`).join(" · ") : ""}${Object.keys(by).length ? " · " + Object.entries(by).map(([k,n]) => `${esc(k.split("@")[0])} ${n}`).join(" · ") : ""}${items.length > live.length ? ` · ${items.length-live.length} quitados` : ""}${b.fol && (b.fol.min || b.fol.max) ? ` · nuevos de ${folTxt(b.fol.min||0)} a ${b.fol.max ? folTxt(b.fol.max) : "más"} seguidores` : ""}</p>
     <div class="mb-l">${items.map(L).join("") || `<p class="mut small">Nadie para este día.</p>`}</div></div>`;
@@ -6345,10 +6347,10 @@ document.addEventListener("click", async e => {
   const sk = e.target.closest("[data-mbskip]"); if (sk && S.isOwner){ const [d, ix] = sk.dataset.mbskip.split("#"), b = (S.mailBatch||{})[d]; if (!b) return;
     const items = b.items.map((i, n) => n===Number(ix) ? {...i, skip:!i.skip} : i); return mbSave(d, items); }
   const ap = e.target.closest("[data-mbap]"); if (ap && S.isOwner){ const [d, on] = ap.dataset.mbap.split("|"), b = (S.mailBatch||{})[d]; if (!b) return;
-    if (on==="1" && !confirm(`¿Autorizar ${b.items.filter(i => !i.skip).length} emails para el ${mbDay(d)}? Salen repartidos de 9 am a 6 pm.`)) return;
+    if (on==="1" && !confirm(d===todayKey() ? `¿Autorizar ${b.items.filter(i => !i.skip).length} emails para HOY? Empiezan a salir en unos minutos, repartidos hasta las 6 pm.` : `¿Autorizar ${b.items.filter(i => !i.skip).length} emails para el ${mbDay(d)}? Salen repartidos de 9 am a 6 pm.`)) return;
     return mbSave(d, b.items, on==="1" ? {status:"approved", approvedAt:Date.now(), approvedBy:S.uid} : {status:"pending", approvedAt:null}); }
   const pl = e.target.closest("[data-mbplan]"); if (pl && S.isOwner && window.STRIKD_GMAIL_POST){
-    const d = pl.dataset.mbplan==="next" ? "" : pl.dataset.mbplan, b = d && (S.mailBatch||{})[d];
+    const d = pl.dataset.mbplan==="next" ? "" : pl.dataset.mbplan, b = d && (S.mailBatch||{})[d==="today" ? todayKey() : d];
     if (b && b.items && b.items.some(i => i.skip || i.edited) && !confirm("Volver a preparar borra lo que quitaste o editaste en este lote. ¿Sigo?")) return;
     MB.busy = "plan"; MB.err = MB.msg = ""; schedule();
     try{ const r = await window.STRIKD_GMAIL_POST({plan:{date:d, fol:((S.config||{}).mailSeq||{}).fol || null}}); MB.msg = r.status==="approved" ? "Ese lote ya estaba autorizado; no lo toqué." : `Listo: ${r.n} emails para el ${mbDay(r.date)}.`; }
