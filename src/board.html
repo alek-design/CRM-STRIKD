@@ -307,6 +307,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mb-rg{display:grid;gap:6px;margin:10px 0 4px;padding:10px;border:1px dashed var(--line);border-radius:12px}.mb-rl{font-size:13px;font-weight:600}.mb-rc{display:flex;align-items:center;gap:6px}.mb-rc input{width:150px;font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
 .bx-ta{min-height:110px;resize:vertical;font:inherit;line-height:1.5;width:100%}
 .bx-n{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--fg);color:var(--bg);margin-left:6px;vertical-align:middle}.bx-i{border:1px solid var(--line);border-radius:10px}.bx-i.un .mb-n b,.bx-i.un .bx-s b{font-weight:800}.bx-i.un{border-color:var(--fg2)}.bx-s{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.bx-s b{font-weight:500}.bx-d{color:var(--muted);font-size:11.5px;white-space:nowrap}.bx-m{border-left:3px solid var(--line);padding:4px 10px}.bx-m.me{border-left-color:#3b82f6}.bx-m pre{white-space:pre-wrap;font:inherit;font-size:13.5px;margin:4px 0 0}@media(max-width:560px){.bx-s{display:none}}
+.or-w{display:grid;gap:0;border:1px solid var(--line);border-radius:12px}.or-w>.or-r{border:0}.or-b{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.or-h{display:grid;gap:2px;padding:0 12px 9px;font-size:12.5px}.or-h>div{display:flex;gap:8px}.or-h small{color:var(--muted);white-space:nowrap;min-width:92px}.or-ed{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:0 12px 9px}.or-ed input{flex:1;min-width:200px;font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}.or-cmp{display:grid;gap:8px;padding:4px 12px 12px;border-top:1px dashed var(--line)}
 .mb{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}.mb-h{display:flex;align-items:center;gap:8px}.mb-h h3{margin:0;font-size:15px}.mb-card{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
 .mb-r{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}.mb-a{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--line)}
@@ -6397,7 +6398,7 @@ async function bxLoad(force){
   catch(err){ BX.err = err.message || String(err); }
   BX.loading = false; bxRe();
 }
-function bxRe(){ const b = $("orBox"); if (b) b.dataset.h = ""; renderOutreach(); }
+function bxRe(){ const b = $("orBox"); if (b){ b.dataset.h = ""; const a = document.activeElement; if (a && b.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) a.blur(); } renderOutreach(); } /* acción explícita: se vuelve a pintar aunque haya un campo enfocado */
 const bxWho = f => esc(String(f||"").replace(/<[^>]+>/, "").replace(/"/g, "").trim() || f);
 function bxHtml(){
   if (!window.STRIKD_GMAIL_POST) return "";
@@ -6437,8 +6438,73 @@ document.addEventListener("click", async e => {
     BX.sending = ""; bxRe(); }
 });
 document.addEventListener("input", e => { const d = e.target.closest("[data-bxdraft]"); if (d) BX.draft[d.dataset.bxdraft] = d.value; });
+/* ---------- en la lista de Outreach: correo a mano (rota cuentas), agregar/cambiar correo e historial de cada perfil ---------- */
+const orPath = k => { const [u, id] = k.split("/"); return `meets/${u}/vip/${id}`; };
+function orHist(x){
+  const ev = [], add = (at, t) => { if (Number(at)) ev.push({at:Number(at), t}); };
+  const who = uid => uid && uid!=="auto" ? first(nameOf(S.ps||{}, uid)) : "";
+  add(x.createdAt, `Se agregó a la lista${x.byMich ? " (Mich)" : ""}`);
+  add(x.contactedAt, `DM por Instagram${x.contactedBy ? " · " + esc(who(x.contactedBy)) : ""}`);
+  const manual = new Set((x.mailLog||[]).map(m => m.threadId));
+  [1,2,3].forEach(n => { if (n===1 && x.email1Tpl==="manual" && manual.has(x.email1Thread)) return; add(x[`email${n}At`], `✉ Email ${n} de 3${n===1 && x.email1Sender ? "" : ""}`); });
+  (x.mailLog||[]).forEach(m => add(m.at, `✉ Correo a mano${m.from ? " desde " + esc(String(m.from).split("@")[0]) : ""}${m.by ? " · " + esc(who(m.by)) : ""}: “${esc(String(m.subject||"").slice(0, 70))}”`));
+  if (x.emailRepliedAt) add(x.emailRepliedAt, x.emailOptout ? "Pidió baja" : x.emailBounced ? "El correo rebotó" : `💬 Contestó: “${esc(String(x.emailReplySnippet||"").slice(0, 120))}”`);
+  add(x.dmDueAt, "Pasó a DM (3 emails sin respuesta)");
+  add(x.videoClickAt, "👀 Abrió el video");
+  if (x.statusAt && ["interesado","agendo","descartado"].includes(x.status)) add(x.statusAt, {interesado:"🙋 Interesado", agendo:"📅 Agendó meet", descartado:"Descartado"}[x.status]);
+  VTAGS.forEach(([k, l]) => { if (x[k] && x[k+"At"]) add(x[k+"At"], `${l}${x[k+"By"] ? " · " + esc(who(x[k+"By"])) : ""}`); });
+  add(x.emailSetAt, `Correo agregado: ${esc(x.email||"")}`);
+  return ev.sort((a, b) => b.at - a.at);
+}
+function orHistHtml(u, id, x){
+  const k = `${u}/${id}`, ev = orHist(x); if (!ev.length) return "";
+  const all = OR.hist[k], show = all ? ev : ev.slice(0, 3);
+  return `<div class="or-h">${show.map(e => `<div><small>${esc(fmtLocal(e.at))}</small><span>${e.t}</span></div>`).join("")}${ev.length > 3 ? `<button type="button" class="linkbtn" data-orhist="${k}">${all ? "Ver menos" : `Ver todo (${ev.length})`}</button>` : ""}</div>`;
+}
+function orEmailHtml(u, id, x){
+  return `<div class="or-ed"><input type="email" data-oremv="${u}/${id}" value="${esc(x.email||"")}" placeholder="correo@ejemplo.com" autocomplete="off"><button type="button" class="btn small primary" data-oremsave="${u}/${id}">Guardar</button><button type="button" class="btn small" data-oremx="1">Cancelar</button>${x.email ? `<button type="button" class="linkbtn" data-oremdel="${u}/${id}">Quitar correo</button>` : ""}</div>`;
+}
+function orCmpHtml(u, id, x){
+  const k = `${u}/${id}`, d = OR.draft[k] ||= (() => { const t = Object.values(S.mailTpl||{}).find(t => Number(t.step)===1 && t.active!==false) || {};
+    const nm = String(x.prospect||"").split(" ")[0], f = v => String(v||"").replace(/[{\[]\s*nombre\s*[}\]]/gi, nm);
+    return {key:"", subject:f(t.subject), body:f(t.body), seq:!x.email1At}; })();
+  const accts = ((GM.st||{}).seq||[]).filter(a => a.email);
+  return `<div class="or-cmp"><div class="row"><label class="f">Desde<select data-orcf="key" data-k="${k}"><option value="">🔄 Rotar (la de menos envíos hoy)</option>${accts.map(a => `<option value="${a.key}"${d.key===a.key?" selected":""}>${esc(a.email)} · hoy ${a.today||0}/${a.quota||10}</option>`).join("")}</select></label>
+      <span class="mut small">Para: ${esc(x.email)}</span></div>
+    <label class="f">Asunto<input data-orcf="subject" data-k="${k}" value="${esc(d.subject)}"></label>
+    <label class="f">Mensaje<textarea rows="10" class="bx-ta" data-orcf="body" data-k="${k}">${esc(d.body)}</textarea></label>
+    <small class="mut">Pon {video} donde quieras el link del video. Se agrega la firma de Gmail de la cuenta.</small>
+    ${!x.email1At ? `<label class="sw-l"><input type="checkbox" data-orcf="seq" data-k="${k}"${d.seq?" checked":""}> Contar como su email 1 (después le salen solos el 2 y el 3, con autorización)</label>` : ""}
+    <div class="row"><button type="button" class="btn small primary" data-orcsend="${k}"${OR.busy===k?" disabled":""}>${OR.busy===k ? "Enviando…" : "Enviar correo"}</button><button type="button" class="btn small" data-orcmp="${k}">Cancelar</button></div></div>`;
+}
+document.addEventListener("click", async e => {
+  const h = e.target.closest("[data-orhist]"); if (h){ OR.hist[h.dataset.orhist] = !OR.hist[h.dataset.orhist]; return bxRe(); }
+  const c = e.target.closest("[data-orcmp]"); if (c){ OR.cmp = OR.cmp===c.dataset.orcmp ? "" : c.dataset.orcmp; OR.em = ""; return bxRe(); }
+  const em = e.target.closest("[data-oremail]"); if (em){ OR.em = OR.em===em.dataset.oremail ? "" : em.dataset.oremail; OR.cmp = ""; bxRe(); const i = document.querySelector(`[data-oremv="${OR.em}"]`); if (i) i.focus(); return; }
+  if (e.target.closest("[data-oremx]")){ OR.em = ""; return bxRe(); }
+  const sv = e.target.closest("[data-oremsave],[data-oremdel]"); if (sv){ const k = sv.dataset.oremsave || sv.dataset.oremdel, del = !!sv.dataset.oremdel;
+    const [u, id] = k.split("/"), x = ((S.vip||{})[u]||{})[id]; if (!x) return;
+    const v = del ? "" : String((document.querySelector(`[data-oremv="${k}"]`)||{}).value||"").trim().toLowerCase();
+    if (!del && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return alert("Ese correo no se ve bien. Revísalo.");
+    if (del && !confirm("¿Quitarle el correo a este perfil?")) return;
+    const patch = {email:v, emailSetAt:Date.now(), emailSetBy:S.uid, ...(v !== (x.email||"") ? {emailBounced:false, emailError:null} : {})};
+    try{ await db.doc(orPath(k)).update(patch); Object.assign(x, patch); OR.em = ""; quickToast(del ? "Correo quitado" : "✓ Correo guardado"); }catch(_){ alert("No se guardó. Intenta otra vez."); }
+    return bxRe(); }
+  const sd = e.target.closest("[data-orcsend]"); if (sd){ const k = sd.dataset.orcsend, d = OR.draft[k], [u, id] = k.split("/"), x = ((S.vip||{})[u]||{})[id];
+    if (!d || !x) return; if (!String(d.subject).trim() || !String(d.body).trim()) return alert("Pon asunto y mensaje.");
+    if (/[{\[]\s*nombre\s*[}\]]/i.test(d.subject + d.body)) return alert("Todavía dice [Nombre]: cámbialo por su nombre.");
+    if (!confirm(`¿Mandar este correo a ${x.email}?`)) return;
+    OR.busy = k; bxRe();
+    try{ const r = await window.STRIKD_GMAIL_POST({compose:{path:orPath(k), key:d.key || "", subject:d.subject, body:d.body, seq:!!d.seq}});
+      quickToast(`✓ Enviado a ${r.to} desde ${r.from}${r.asSeq ? " · cuenta como email 1" : ""}`); delete OR.draft[k]; OR.cmp = ""; GM.at = 0; }
+    catch(err){ alert("No se pudo mandar: " + (err.message || err)); }
+    OR.busy = ""; return bxRe(); }
+});
+document.addEventListener("input", e => { const f = e.target.closest("[data-orcf]"); if (!f) return; const d = OR.draft[f.dataset.k]; if (!d) return; d[f.dataset.orcf] = f.type==="checkbox" ? f.checked : f.value; });
+document.addEventListener("change", e => { const f = e.target.closest("[data-orcf]"); if (!f) return; const d = OR.draft[f.dataset.k]; if (!d) return; d[f.dataset.orcf] = f.type==="checkbox" ? f.checked : f.value; });
+document.addEventListener("keydown", e => { const i = e.target.closest("[data-oremv]"); if (i && e.key==="Enter"){ e.preventDefault(); const b = document.querySelector(`[data-oremsave="${i.dataset.oremv}"]`); b && b.click(); } });
 /* ---------- Outreach de influencers: tablero para Head y Manager (avances, canales, semanas y listas) ---------- */
-const OR = {p:"7", l:"accion", q:"", n:40};
+const OR = {p:"7", l:"accion", q:"", n:40, cmp:"", em:"", hist:{}, draft:{}, busy:""};
 function orState(x){
   const st = x.status || "nuevo";
   if (x.meetId) return {t:`📅 Meet${x.meetAt ? " " + fmtMeetAt(x.meetAt) : ""}`, c:"ok", g:"meet"};
@@ -6496,10 +6562,10 @@ function renderOutreach(){
   const hay = x => fold([x.prospect, igUser(x.profile), x.profile, x.email, x.notes].filter(Boolean).join(" "));
   const list = rows.filter(r => q ? hay(r.x).includes(q) : lf[2](r)).sort((a,b) => orLast(b.x) - orLast(a.x));
   const rowH = ({u, id, x, s: st}) => { const h = igUser(x.profile), url = safeUrl(x.profile||"");
-    return `<div class="or-r"><div class="or-m"><b>${x.top ? "👑 " : x.direct ? "🤝 " : ""}${esc(x.prospect || h || "Sin nombre")}${vtagChips(x)}</b><small>${h ? "@" + esc(h) + " · " : ""}${x.folRange ? esc(String(x.folRange).replace(/^[^(]*\(|\)$/g,"")) : fmtFol(x.followers)} seguidores${x.email ? " · ✉ " + esc(x.email) : ""}${x.videoClicks ? " · 👀 vio el video" : ""}</small>
+    return `<div class="or-w"><div class="or-r"><div class="or-m"><b>${x.top ? "👑 " : x.direct ? "🤝 " : ""}${esc(x.prospect || h || "Sin nombre")}${vtagChips(x)}</b><small>${h ? "@" + esc(h) + " · " : ""}${x.folRange ? esc(String(x.folRange).replace(/^[^(]*\(|\)$/g,"")) : fmtFol(x.followers)} seguidores${x.email ? " · ✉ " + esc(x.email) : ""}${x.videoClicks ? " · 👀 vio el video" : ""}</small>
       ${x.emailReplySnippet && st.g==="resp" ? `<span class="mi-reply">“${esc(String(x.emailReplySnippet).slice(0, 220))}”</span>` : ""}</div>
-      <div class="or-s"><span class="or-st ${st.c}">${esc(st.t)}</span><small>${orLast(x) ? esc(fmtLocal(orLast(x))) : ""}${x.contactedBy ? " · " + esc(first(nameOf(S.ps||{}, x.contactedBy))) : ""}</small>${url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">Abrir</a>` : ""}</div></div>`; };
-  const h = `<div class="or">
+      <div class="or-s"><span class="or-st ${st.c}">${esc(st.t)}</span><small>${orLast(x) ? esc(fmtLocal(orLast(x))) : ""}${x.contactedBy ? " · " + esc(first(nameOf(S.ps||{}, x.contactedBy))) : ""}</small><div class="or-b">${url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">📷 Instagram</a>` : ""}${x.email ? `<button type="button" class="btn small${OR.cmp===`${u}/${id}`?" primary":""}" data-orcmp="${u}/${id}"${x.emailOptout?" disabled title=\"Pidió baja\"":""}>✉ Correo</button>` : ""}<button type="button" class="btn small" data-oremail="${u}/${id}">${x.email ? "✎" : "+ Correo"}</button></div></div></div>
+      ${OR.em===`${u}/${id}` ? orEmailHtml(u, id, x) : ""}${OR.cmp===`${u}/${id}` ? orCmpHtml(u, id, x) : ""}${orHistHtml(u, id, x)}`; };  const h = `<div class="or">
     <div class="row"><div><h2>Outreach de influencers</h2><p class="sub">${rows.length} perfiles en la lista · Instagram (DM de Mich) y Email (secuencia automática)</p></div><div class="spacer"></div>
       <div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div></div>
     ${S.isOwner && !S.viewAs ? mbHtml() : ""}

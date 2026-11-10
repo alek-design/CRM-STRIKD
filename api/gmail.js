@@ -39,6 +39,37 @@ module.exports = async (req, res) => {
           await c.query("insert into public.email_log (sender, sender_email, uid, step, tpl, to_email, message_id, thread_id, status) values ($1,$2,$3,0,'manual',$4,$5,$6,'manual')", [k.key, t.email, me.id, to, s2.messageId, s2.threadId]).catch(() => {});
           return {ok:true, to};
         }
+        // correo a mano a un influencer desde Outreach (Head y Manager). Cuenta: la que se elija o rota (la de menos envíos hoy con cupo)
+        if (b.compose){
+          if (!lead) return {status:403, error:"Solo Head y Manager"};
+          const ea = require("../lib/emailauto"), q = b.compose, path = String(q.path || "");
+          if (!/^meets\/[^/]+\/vip\/[^/]+$/.test(path)) return {status:400, error:"Perfil no válido"};
+          const x = ((await c.query("select data from public.docs where path=$1", [path])).rows[0] || {}).data;
+          if (!x) return {status:404, error:"Ese perfil ya no está en la lista"};
+          if (!x.email) return {status:400, error:"Ese perfil no tiene correo"};
+          if (x.emailOptout) return {status:400, error:"Pidió no recibir correos («baja»)"};
+          const subject = String(q.subject || "").trim(), text = String(q.body || "").trim();
+          if (!subject || !text) return {status:400, error:"Pon asunto y mensaje"};
+          const toks = (await c.query("select key, email from public.gmail_tokens")).rows.filter(r => ea.SEQ_KEYS.includes(r.key));
+          if (!toks.length) return {status:400, error:"Conecta al menos una cuenta de envío"};
+          const day0 = new Date(Date.parse(new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10) + "T05:00:00Z")).toISOString();
+          const st = {}; (await c.query("select sender, count(*)::int n from public.email_log where at >= $1 and status <> 'error' group by sender", [day0])).rows.forEach(r => st[r.sender] = r.n);
+          const fa = {}; (await c.query("select sender_email, min(at) a from public.email_log where status <> 'error' group by sender_email")).rows.forEach(r => fa[r.sender_email] = new Date(r.a).getTime());
+          const free = k => (st[k.key] || 0) < ea.quotaFor(fa[k.email], Date.now());
+          const k = q.key ? toks.find(t => t.key === q.key) : toks.filter(free).sort((a, z) => (st[a.key] || 0) - (st[z.key] || 0))[0];
+          if (!k) return {status:400, error:q.key ? "Esa cuenta no está conectada" : "Todas las cuentas llegaron a su cupo de hoy"};
+          const t = await gmail.tokenFor(c, k.key); if (!t) return {status:400, error:"La cuenta no responde; vuelve a conectarla"};
+          const idn = await gmail.sendAs(t.token, t.email), m = ea.compose(text, 0, (((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data || {}).mailSeq || {}, path, true, idn.signature);
+          const s2 = await gmail.send(t.token, {from:t.email, fromName:idn.displayName, to:x.email, subject, body:m.text, html:m.html});
+          const now = Date.now(), [, u, , vid] = path.split("/");
+          // si todavía no tenía secuencia y se pidió seguir con ella, este correo cuenta como su approach 1 (los seguimientos salen solos)
+          const asSeq = q.seq !== false && !x.email1At;
+          await c.query("insert into public.email_log (sender, sender_email, uid, vip_id, step, tpl, to_email, message_id, thread_id, status) values ($1,$2,$3,$4,$5,'manual',$6,$7,$8,'sent')", [k.key, t.email, u, vid, asSeq ? 1 : 0, x.email, s2.messageId, s2.threadId]);
+          const log = (Array.isArray(x.mailLog) ? x.mailLog : []).concat([{at:now, by:me.id, from:t.email, subject, threadId:s2.threadId}]).slice(-30);
+          const patch = {mailLog:log, ...(asSeq ? {email1At:now, email1Tpl:"manual", email1Thread:s2.threadId, email1MsgId:s2.messageId, email1Sender:k.key, email1Subject:subject, emailedAt:now, emailedBy:me.id, emailSeq:(x.status || "nuevo") === "nuevo"} : {})};
+          await c.query("update public.docs set data = data || $2::jsonb, version = version + 1, updated_at = now() where path = $1", [path, JSON.stringify(patch)]);
+          return {ok:true, from:t.email, to:x.email, asSeq};
+        }
         // lotes con autorización y emails de prueba (solo el Head)
         if (b.plan || b.test || b.refresh){
           if (me.role !== "head") return {status:403, error:"Solo el Head"};
