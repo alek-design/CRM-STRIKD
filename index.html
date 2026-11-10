@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-09 22:48:37 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-10 17:02:18 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794264517">
+<link rel="stylesheet" href="/auth.css?v=1794330138">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794264517"></script>
+<script src="/claude-shim.js?v=1794330138"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -5783,7 +5783,7 @@ function seqHtml(g){
       <label class="f">Texto antes del link<input data-gseq="videoLabel" value="${esc(cfg.videoLabel||"")}" placeholder="Ver video en YouTube" maxlength="40"${own?"":" disabled"}></label>
       <p class="mut small">✍️ La firma y el nombre de quien manda salen de cada cuenta de Gmail (Gmail → Configuración → Firma). Se pegan solos al final de cada email.</p>
       ${own ? `<label class="sw-l"><input type="checkbox" data-gseqopt="1"${cfg.optout?" checked":""}> Agregar al final: "Si prefieres que no te volvamos a escribir, responde «baja»"</label>` : ""}
-      <p class="mut small">El video no va adjunto: va el link directo de YouTube, visible (▶ Ver video en YouTube: youtube.com/watch?v=…), para que se vea confiable. Gmail le agrega solo su vista previa de YouTube.</p>
+      <p class="mut small">El video no va adjunto: va el link directo de YouTube, visible (Ver video en YouTube: youtube.com/watch?v=…), para que se vea confiable. Gmail le agrega solo su vista previa de YouTube.</p>
       ${SQF.err ? `<p class="err">${esc(SQF.err)}</p>` : ""}</div></div>`;
 }
 async function seqSave(patch){ const cur = (S.config||{}).mailSeq || {}, next = {...cur, ...patch}; (S.config ||= {}).mailSeq = next; schedule();
