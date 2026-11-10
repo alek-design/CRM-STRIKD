@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-10 17:43:07 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-10 17:49:42 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794332587">
+<link rel="stylesheet" href="/auth.css?v=1794332982">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794332587"></script>
+<script src="/claude-shim.js?v=1794332982"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -310,6 +310,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sq{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0 12px}.sq-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}.sq-q{margin:4px 0 6px}.sq-v{display:grid;gap:8px;margin-top:8px}.sq-th{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.sq-th img{width:160px;max-width:45%;border-radius:8px;border:1px solid var(--line)}
 .mi-dm{display:inline-block;margin-top:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--wait) 16%,transparent);color:var(--fg)}.mi-dm.v{background:color-mix(in srgb,var(--ok) 14%,transparent)}
 .ml-body{min-height:300px;resize:vertical;font:inherit;line-height:1.5}.ml-ins{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.ml-ins small{flex-basis:100%}
+.sq-miss{color:var(--wait)}
 .mb{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}.mb-h{display:flex;align-items:center;gap:8px}.mb-h h3{margin:0;font-size:15px}.mb-card{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
 .mb-r{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}.mb-a{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--line)}
@@ -5769,11 +5770,14 @@ function seqHtml(g){
       ? `${esc(a.email)} · hoy ${a.today||0}/${a.quota||5}${(a.quota||5) < 20 ? ` · calentando (sube a 20 en ${a.quota>=15?"1 semana":a.quota>=10?"2 semanas":"3 semanas"})` : ""}${a.total ? ` · ${a.total} en total` : ""}`
       : "Sin conectar", own ? (a.email ? `<button type="button" class="btn small" data-gm="dis-seq|${a.key}">Cambiar</button>` : `<button type="button" class="btn small primary" data-gm="con-seq|${a.key}">Conectar</button>`) : "")).join("");
   const nA = accts.filter(a => a.email).length, tp = n => Object.values(S.mailTpl||{}).some(t => Number(t.step)===n && t.active!==false);
-  const miss = [!nA && "conectar al menos una cuenta de envío", !cfg.video && "poner el link del video", ...[1,2,3].filter(n => !tp(n)).map(n => `una plantilla del approach ${n}`)].filter(Boolean);
+  /* para encender solo hace falta una cuenta conectada y una plantilla activa del approach 1; lo demás es aviso */
+  const loaded = !!g.seq, miss = loaded ? [!nA && "conectar al menos una cuenta de envío", !tp(1) && "una plantilla activa del approach 1"].filter(Boolean) : ["que carguen las cuentas (unos segundos)"];
+  const warn = [!cfg.video && Object.values(S.mailTpl||{}).some(t => Number(t.step)===1 && t.active!==false && /[{\[]\s*video\s*[}\]]/i.test(t.body||"")) && "tu plantilla tiene {video} pero no hay link del video",
+    ...[2,3].filter(n => !tp(n)).map(n => `sin plantilla del approach ${n}, la secuencia se queda en el ${n-1}`)].filter(Boolean);
   const q = g.queue || {};
   return `<div class="sq">
     <div class="sq-h"><b>${cfg.on ? "🟢 Secuencia encendida" : "⚪ Secuencia apagada"}</b>${own ? (cfg.on ? `<button type="button" class="btn small" data-gm="seqoff">Pausar</button>` : `<button type="button" class="btn small primary" data-gm="seqon"${miss.length ? " disabled" : ""}>Encender</button>`) : ""}</div>
-    ${!cfg.on && miss.length ? `<p class="mut small">Para encenderla falta: ${esc(miss.join(", "))}.</p>` : ""}
+    ${!cfg.on && miss.length ? `<p class="small sq-miss">Para encenderla falta: <b>${esc(miss.join(" y "))}</b>.</p>` : ""}${warn.length ? `<p class="mut small">⚠️ ${esc(warn.join(" · "))}.</p>` : ""}
     ${g.queue ? `<p class="small sq-q">📧 ${q.active||0} en secuencia · ⏳ ${q.waiting||0} esperando su approach 1 · 💬 ${q.dm||0} listos para DM de Mich</p>` : ""}
     ${own ? `<div class="sq-ap"><label class="sw-l"><input type="checkbox" data-gseqap="1"${cfg.approval!==false?" checked":""}> Autorizo cada lote un día antes</label><small class="mut">A las 5 pm se prepara el lote del siguiente día hábil y te llega aviso. Solo sale lo que autorices en Outreach.</small></div>
     <label class="f">Correo para las pruebas<input data-gseq="testTo" value="${esc(cfg.testTo||"")}" placeholder="${esc(((window.STRIKD_ME && window.STRIKD_ME()) || {}).email||"tu correo")}" maxlength="120"></label>` : ""}
