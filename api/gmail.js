@@ -1,5 +1,6 @@
 // Emails automáticos: estado de las cuentas de Gmail conectadas, envíos y desconectar.
 // GET  → {general, me, people (Head/Manager), today, tpl (por plantilla: enviados / contestados)}
+// POST {inbox:{key?}} · {thread:{key,id}} · {reply:{key,threadId,body}} buzón (Head y Manager)
 // POST {disconnect:"general"|"me"|"seqN"} · {plan:{date}} prepara el lote de un día · {test:{to, tplId|date+idx, key}} manda una prueba
 const { withPg, userFromReq } = require("../lib/google");
 const gmail = require("../lib/gmail");
@@ -13,6 +14,31 @@ module.exports = async (req, res) => {
       await gmail.ensure(c);
       if (req.method === "POST"){
         const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+        // buzón de las cuentas de envío (Head y Manager): lista, hilo y responder
+        if (b.inbox || b.thread || b.reply){
+          if (!lead) return {status:403, error:"Solo Head y Manager"};
+          const { SEQ_KEYS } = require("../lib/emailauto");
+          const keys = (await c.query("select key, email from public.gmail_tokens")).rows.filter(r => SEQ_KEYS.includes(r.key) || r.key === "general");
+          if (b.inbox){
+            const vips = {}; (await c.query("select path, data->>'email' em, data->>'prospect' nm, data->>'profile' pr from public.docs where path like 'meets/%/vip/%' and coalesce(data->>'email','')<>''")).rows.forEach(r => vips[String(r.em).toLowerCase()] = {path:r.path, name:r.nm, profile:r.pr});
+            const res = await Promise.all(keys.filter(k => !b.inbox.key || k.key === b.inbox.key).map(async k => { try{ const t = await gmail.tokenFor(c, k.key); if (!t) return {key:k.key, email:k.email, error:"sin conexión"};
+              return {key:k.key, email:k.email, items:(await gmail.inbox(t.token, 25)).map(m => { const em = (String(m.from).match(/<([^>]+)>/) || [, m.from])[1].trim().toLowerCase(); return {...m, key:k.key, account:k.email, fromEmail:em, vip:vips[em] || null}; })}; }
+              catch(e){ return {key:k.key, email:k.email, error:String(e.message || e)}; } }));
+            return {ok:true, accounts:res.map(r => ({key:r.key, email:r.email, error:r.error || null, n:(r.items || []).length})), items:res.flatMap(r => r.items || []).sort((a, z) => z.at - a.at)};
+          }
+          const k = keys.find(x => x.key === (b.thread || b.reply).key); if (!k) return {status:400, error:"Cuenta no encontrada"};
+          const t = await gmail.tokenFor(c, k.key); if (!t) return {status:400, error:"La cuenta no responde; vuelve a conectarla"};
+          if (b.thread) return {ok:true, messages:await gmail.thread(t.token, String(b.thread.id))};
+          // responder en el mismo hilo, con la firma de Gmail de esa cuenta
+          const msgs = await gmail.thread(t.token, String(b.reply.threadId)), last = [...msgs].reverse().find(m => !m.mine) || msgs[msgs.length - 1];
+          if (!last) return {status:400, error:"Hilo vacío"};
+          const text = String(b.reply.body || "").trim(); if (!text) return {status:400, error:"Escribe la respuesta"};
+          const ea = require("../lib/emailauto"), idn = await gmail.sendAs(t.token, t.email), m = ea.compose(text, 2, {}, "", true, idn.signature);
+          const to = (String(last.from).match(/<([^>]+)>/) || [, last.from])[1].trim(), subj = /^re:/i.test(last.subject) ? last.subject : "Re: " + last.subject;
+          const s2 = await gmail.send(t.token, {from:t.email, fromName:idn.displayName, to, subject:subj, body:m.text, html:m.html, inReplyTo:last.msgId}, String(b.reply.threadId));
+          await c.query("insert into public.email_log (sender, sender_email, uid, step, tpl, to_email, message_id, thread_id, status) values ($1,$2,$3,0,'manual',$4,$5,$6,'manual')", [k.key, t.email, me.id, to, s2.messageId, s2.threadId]).catch(() => {});
+          return {ok:true, to};
+        }
         // lotes con autorización y emails de prueba (solo el Head)
         if (b.plan || b.test || b.refresh){
           if (me.role !== "head") return {status:403, error:"Solo el Head"};

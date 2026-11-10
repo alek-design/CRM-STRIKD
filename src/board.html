@@ -305,6 +305,8 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mb-x{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 10px 8px 46px}.mb-ig{white-space:nowrap}.mb-nt{font-size:13px;color:var(--fg2);white-space:pre-wrap}@media(max-width:560px){.mb-x{padding-left:10px}}
 .mb-tg{display:flex;flex-wrap:wrap;gap:4px}.mb-t{font:inherit;font-size:11.5px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);background:none;color:var(--muted);cursor:pointer}.mb-t.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.vt-c{display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:4px}.vt{font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px;background:var(--line)}
 .mb-rg{display:grid;gap:6px;margin:10px 0 4px;padding:10px;border:1px dashed var(--line);border-radius:12px}.mb-rl{font-size:13px;font-weight:600}.mb-rc{display:flex;align-items:center;gap:6px}.mb-rc input{width:150px;font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.bx-ta{min-height:110px;resize:vertical;font:inherit;line-height:1.5;width:100%}
+.bx-n{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--fg);color:var(--bg);margin-left:6px;vertical-align:middle}.bx-i{border:1px solid var(--line);border-radius:10px}.bx-i.un .mb-n b,.bx-i.un .bx-s b{font-weight:800}.bx-i.un{border-color:var(--fg2)}.bx-s{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.bx-s b{font-weight:500}.bx-d{color:var(--muted);font-size:11.5px;white-space:nowrap}.bx-m{border-left:3px solid var(--line);padding:4px 10px}.bx-m.me{border-left-color:#3b82f6}.bx-m pre{white-space:pre-wrap;font:inherit;font-size:13.5px;margin:4px 0 0}@media(max-width:560px){.bx-s{display:none}}
 .mb{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}.mb-h{display:flex;align-items:center;gap:8px}.mb-h h3{margin:0;font-size:15px}.mb-card{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
 .mb-r{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}.mb-a{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--line)}
@@ -6380,6 +6382,55 @@ document.addEventListener("change", e => {
   const [d, ix] = f.dataset.mbk.split("#"), b = (S.mailBatch||{})[d]; if (!b || b.status==="approved") return;
   const items = b.items.map((i, n) => n===Number(ix) ? {...i, [f.dataset.mbf]:f.value, edited:true} : i); mbSave(d, items);
 });
+/* ---------- Buzón: lo que llega a las cuentas de envío (Head y Manager). Leer y contestar en el mismo hilo ---------- */
+const BX = {items:null, accounts:[], at:0, loading:false, err:"", key:"", open:"", th:{}, draft:{}, sending:"", show:true};
+async function bxLoad(force){
+  if (!window.STRIKD_GMAIL_POST || BX.loading || (!force && Date.now() - BX.at < 90e3)) return;
+  BX.loading = true; BX.err = ""; bxRe();
+  try{ const r = await window.STRIKD_GMAIL_POST({inbox:{}}); BX.items = r.items || []; BX.accounts = r.accounts || []; BX.at = Date.now(); }
+  catch(err){ BX.err = err.message || String(err); }
+  BX.loading = false; bxRe();
+}
+function bxRe(){ const b = $("orBox"); if (b) b.dataset.h = ""; renderOutreach(); }
+const bxWho = f => esc(String(f||"").replace(/<[^>]+>/, "").replace(/"/g, "").trim() || f);
+function bxHtml(){
+  if (!window.STRIKD_GMAIL_POST) return "";
+  bxLoad(false);
+  const its = (BX.items||[]).filter(m => !BX.key || m.key===BX.key), unread = (BX.items||[]).filter(m => m.unread).length;
+  const accs = BX.accounts.filter(a => a.email);
+  const head = `<div class="mb-h"><h3>📥 Buzón${unread ? ` <span class="bx-n">${unread} sin leer</span>` : ""}</h3><span class="spacer"></span>
+    <button type="button" class="btn small" data-bxre="1"${BX.loading?" disabled":""}>${BX.loading ? "Cargando…" : "↻ Actualizar"}</button><button type="button" class="btn small" data-bxshow="1">${BX.show ? "Ocultar" : "Ver"}</button></div>`;
+  if (!BX.show) return `<section class="mb bx">${head}</section>`;
+  const pills = accs.length > 1 ? `<div class="mi-ef">${[["","Todos",(BX.items||[]).length], ...accs.map(a => [a.key, a.email.split("@")[0], a.n])].map(([k,l,n]) => `<button type="button" data-bxk="${k}" class="${BX.key===k?"on":""}">${esc(l)} <b>${n}</b></button>`).join("")}</div>` : "";
+  const errs = BX.accounts.filter(a => a.error).map(a => `${esc(a.email.split("@")[0])}: ${esc(a.error)}`);
+  const row = m => { const op = BX.open===m.threadId, th = BX.th[m.threadId];
+    return `<div class="bx-i${m.unread?" un":""}${op?" op":""}"><button type="button" class="mb-r" data-bxo="${m.key}|${m.threadId}">
+      <span class="mb-n"><b>${m.vip ? esc(m.vip.name || bxWho(m.from)) : bxWho(m.from)}</b><small>${esc(m.fromEmail)} · a ${esc(String(m.account).split("@")[0])}</small></span>
+      <span class="bx-s"><b>${esc(m.subject || "(sin asunto)")}</b> <span class="mut">— ${esc(m.snippet)}</span></span><small class="bx-d">${esc(fmtLocal(m.at))}</small></button>
+      ${op ? `<div class="mb-d">${m.vip && m.vip.profile ? `<div class="row"><a class="btn small" href="${esc(safeUrl(m.vip.profile))}" target="_blank" rel="noopener">📷 Ver perfil</a><small class="mut">Está en la lista de influencers</small></div>` : ""}
+        ${!th ? `<p class="mut small">Cargando conversación…</p>` : th.err ? `<p class="err">${esc(th.err)}</p>` : th.msgs.map(x => `<div class="bx-m${x.mine?" me":""}"><small><b>${x.mine ? "Nosotros" : bxWho(x.from)}</b> · ${esc(fmtLocal(x.at))}</small><pre>${esc(x.text || "(sin texto)")}</pre></div>`).join("")}
+        <label class="f">Responder desde ${esc(m.account)}<textarea rows="5" class="bx-ta" data-bxdraft="${m.threadId}" placeholder="Escribe tu respuesta… (se agrega tu firma de Gmail)">${esc(BX.draft[m.threadId]||"")}</textarea></label>
+        <div class="row"><button type="button" class="btn small primary" data-bxsend="${m.key}|${m.threadId}"${BX.sending===m.threadId?" disabled":""}>${BX.sending===m.threadId ? "Enviando…" : "Enviar respuesta"}</button></div></div>` : ""}</div>`; };
+  return `<section class="mb bx">${head}${pills}${errs.length ? `<p class="err small">${errs.join(" · ")}</p>` : ""}${BX.err ? `<p class="err">${esc(BX.err)}</p>` : ""}
+    ${BX.items==null ? `<p class="mut small">${BX.loading ? "Cargando buzón…" : ""}</p>` : its.length ? `<div class="mb-l">${its.slice(0, 40).map(row).join("")}</div>` : `<p class="mut small">No hay correos en la bandeja de entrada${BX.key ? " de esta cuenta" : ""}.</p>`}
+    <p class="mut small">Muestra la bandeja principal de las cuentas de envío (sin Promociones ni Redes). Para marcar como leído, ábrelo en Gmail.</p></section>`;
+}
+document.addEventListener("click", async e => {
+  if (e.target.closest("[data-bxre]")) return bxLoad(true);
+  if (e.target.closest("[data-bxshow]")){ BX.show = !BX.show; return bxRe(); }
+  const k = e.target.closest("[data-bxk]"); if (k){ BX.key = k.dataset.bxk; return bxRe(); }
+  const o = e.target.closest("[data-bxo]"); if (o){ const [key, id] = o.dataset.bxo.split("|"); BX.open = BX.open===id ? "" : id; bxRe();
+    if (BX.open && !BX.th[id]){ try{ const r = await window.STRIKD_GMAIL_POST({thread:{key, id}}); BX.th[id] = {msgs:r.messages||[]}; }catch(err){ BX.th[id] = {err:err.message || String(err)}; } bxRe(); } return; }
+  const sd = e.target.closest("[data-bxsend]"); if (sd){ const [key, id] = sd.dataset.bxsend.split("|"), txt = (BX.draft[id]||"").trim();
+    if (!txt) return alert("Escribe la respuesta.");
+    if (!confirm("¿Enviar esta respuesta?")) return;
+    BX.sending = id; bxRe();
+    try{ const r = await window.STRIKD_GMAIL_POST({reply:{key, threadId:id, body:txt}}); BX.draft[id] = ""; delete BX.th[id]; quickToast(`✓ Respuesta enviada a ${r.to}`);
+      const t = await window.STRIKD_GMAIL_POST({thread:{key, id}}); BX.th[id] = {msgs:t.messages||[]}; }
+    catch(err){ alert("No se pudo enviar: " + (err.message || err)); }
+    BX.sending = ""; bxRe(); }
+});
+document.addEventListener("input", e => { const d = e.target.closest("[data-bxdraft]"); if (d) BX.draft[d.dataset.bxdraft] = d.value; });
 /* ---------- Outreach de influencers: tablero para Head y Manager (avances, canales, semanas y listas) ---------- */
 const OR = {p:"7", l:"accion", q:"", n:40};
 function orState(x){
@@ -6446,6 +6497,7 @@ function renderOutreach(){
     <div class="row"><div><h2>Outreach de influencers</h2><p class="sub">${rows.length} perfiles en la lista · Instagram (DM de Mich) y Email (secuencia automática)</p></div><div class="spacer"></div>
       <div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div></div>
     ${S.isOwner && !S.viewAs ? mbHtml() : ""}
+    ${!S.viewAs ? bxHtml() : ""}
     <div class="or-k">${k(kp.nuevos, "nuevos en la lista")}${k(kp.dm, "DMs de Mich")}${k(kp.em, "emails enviados")}${k(kp.rep + kp.int, "respondieron", kp.rep + kp.int ? "on" : "", `${kp.rep} por email · ${kp.int} interesados por DM`)}${k(kp.meet, "meets", kp.meet ? "on" : "")}</div>
     <div class="or-ch">
       <section class="or-c"><h3><span class="or-dot ig"></span>Instagram · DM</h3>
