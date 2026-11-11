@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-11 00:23:07 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-11 00:48:32 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794356587">
+<link rel="stylesheet" href="/auth.css?v=1794358112">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794356587"></script>
+<script src="/claude-shim.js?v=1794358112"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -319,6 +319,7 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .or-w{display:grid;gap:0;border:1px solid var(--line);border-radius:12px}.or-w>.or-r{border:0}.or-b{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.or-h{display:grid;gap:2px;padding:0 12px 9px;font-size:12.5px}.or-h>div{display:flex;gap:8px}.or-h small{color:var(--muted);white-space:nowrap;min-width:92px}.or-ed{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:0 12px 9px}.or-ed input{flex:1;min-width:200px;font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}.or-cmp{display:grid;gap:8px;padding:4px 12px 12px;border-top:1px dashed var(--line)}
 .mi-w{display:grid}.mi-x{display:grid;gap:4px;padding:6px 10px 8px;margin-top:-4px;border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px}.mi-x .or-b{justify-content:flex-start}.mi-x .or-h,.mi-x .or-ed,.mi-x .or-cmp{padding-left:0;padding-right:0}
 .or-ck{display:flex!important;align-items:center;gap:8px;font-size:13px;border:0!important;background:none!important;padding:0!important;width:auto!important}.or-ck input{width:auto!important;margin:0}
+.or-top{margin-top:8px}
 .mb{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}.mb-h{display:flex;align-items:center;gap:8px}.mb-h h3{margin:0;font-size:15px}.mb-card{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
 .mb-r{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}.mb-a{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--line)}
@@ -6469,6 +6470,7 @@ function orHist(x){
   if (x.statusAt && ["interesado","agendo","descartado"].includes(x.status)) add(x.statusAt, {interesado:"🙋 Interesado", agendo:"📅 Agendó meet", descartado:"Descartado"}[x.status]);
   VTAGS.forEach(([k, l]) => { if (x[k] && x[k+"At"]) add(x[k+"At"], `${l}${x[k+"By"] ? " · " + esc(who(x[k+"By"])) : ""}`); });
   add(x.emailSetAt, `Correo agregado: ${esc(x.email||"")}`);
+  add(x.actionDoneAt, `✓ Atendido${x.actionDoneBy ? " · " + esc(who(x.actionDoneBy)) : ""}`);
   return ev.sort((a, b) => b.at - a.at);
 }
 /* en la lista de Mich (también en "Vista de usuario"), para Head y Manager (rol real): correo a mano, agregar/cambiar correo e historial (igual que en Outreach) */
@@ -6558,6 +6560,17 @@ function orState(x){
   if (st==="contactado") return {t:"✓ DM enviado", c:"", g:"dm-sent"};
   return {t:x.email && !x.top && !x.direct && !isUgc(x) ? "Por contactar · tiene email" : "Por contactar", c:"mut", g:"pend"};
 }
+/* "Necesitan acción": sale si contestó, le toca DM o necesita correo personalizado, y nadie lo quitó después de eso */
+function orActAt(x){ return Math.max(Number(x.emailRepliedAt)||0, Number(x.dmDueAt)||0, Number(x.personalAt)||0, x.status==="interesado" ? Number(x.statusAt)||0 : 0); }
+function orNeeds(r){ return ["resp","dm","personal"].includes(r.s.g) && !r.x.replyHandledAt && !(Number(r.x.actionDoneAt) >= orActAt(r.x)); }
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-ordone]"); if (!b) return;
+  const [u, id] = b.dataset.ordone.split("/"), x = ((S.vip||{})[u]||{})[id]; if (!x) return;
+  const undo = Number(x.actionDoneAt) >= orActAt(x), patch = undo ? {actionDoneAt:null} : {actionDoneAt:Date.now(), actionDoneBy:S.uid};
+  Object.assign(x, patch); bxRe();
+  try{ await db.doc(`meets/${u}/vip/${id}`).update(patch); if (!undo) quickToast(`✓ ${x.prospect || "Perfil"} salió de Necesitan acción`); }
+  catch(_){ Object.assign(x, undo ? {actionDoneAt:Date.now()} : {actionDoneAt:null}); bxRe(); quickToast("No se guardó"); }
+});
 function orLast(x){ return Math.max(...["createdAt","contactedAt","statusAt","email1At","email2At","email3At","emailRepliedAt","videoLastAt","dmDueAt"].map(k => Number(x[k]) || 0)); }
 function renderOutreach(){
   const box = $("orBox"); if (!box || S.tab!=="outreach" || busyIn(box)) return;
@@ -6589,7 +6602,7 @@ function renderOutreach(){
   const wk = `<table class="or-wk"><thead><tr><th>Semana</th><th>DMs</th><th>Emails</th><th>Respuestas</th><th>Meets</th></tr></thead><tbody>${weeks.slice().reverse().map(w => `<tr><td>${esc(fmtLocal(w.a).split(",")[0])}${w.a===w0 ? " <small>(esta)</small>" : ""}</td>
     <td><span class="or-bar dm" style="--w:${Math.round(w.dm/mx*100)}%"></span>${w.dm}</td><td><span class="or-bar em" style="--w:${Math.round(w.em/mx*100)}%"></span>${w.em}</td><td>${w.rep||"·"}</td><td>${w.meet ? `<b>${w.meet}</b>` : "·"}</td></tr>`).join("")}</tbody></table>`;
   // 4) listas
-  const LISTS = [["accion","Necesitan acción", r => ["resp","dm","personal"].includes(r.s.g) && !r.x.replyHandledAt],["personal","✍️ Correo personalizado", r => r.s.g==="personal"],["seq","En emails", r => r.s.g==="seq"],
+  const LISTS = [["accion","Necesitan acción", r => orNeeds(r)],["personal","✍️ Correo personalizado", r => r.s.g==="personal"],["seq","En emails", r => r.s.g==="seq"],
     ["resp","Respondieron", r => r.s.g==="resp"],["meet","Meets", r => r.s.g==="meet"],["dmsent","DM enviado", r => r.s.g==="dm-sent"],["pend","Por contactar", r => r.s.g==="pend" && !r.x.top && !r.x.direct],
     ["top","👑 Top tier", r => !!r.x.top],["direct","🤝 Contacto directo", r => !!r.x.direct && !r.x.top],["fin","Baja / no contactar / competidores", r => r.s.g==="fin"],["all","Todos", () => true]];
   const lf = (LISTS.find(l => l[0]===OR.l) || LISTS[0]), q = fold(OR.q.trim().replace(/^@/,""));
@@ -6598,10 +6611,15 @@ function renderOutreach(){
   const rowH = ({u, id, x, s: st}) => { const h = igUser(x.profile), url = safeUrl(x.profile||"");
     return `<div class="or-w"><div class="or-r"><div class="or-m"><b>${x.top ? "👑 " : x.direct ? "🤝 " : ""}${esc(x.prospect || h || "Sin nombre")}${vtagChips(x)}</b><small>${h ? "@" + esc(h) + " · " : ""}${x.folRange ? esc(String(x.folRange).replace(/^[^(]*\(|\)$/g,"")) : fmtFol(x.followers)} seguidores${x.email ? " · ✉ " + esc(x.email) : ""}${x.videoClicks ? " · 👀 vio el video" : ""}</small>
       ${x.emailReplySnippet && st.g==="resp" ? `<span class="mi-reply">“${esc(String(x.emailReplySnippet).slice(0, 220))}”</span>` : ""}</div>
-      <div class="or-s"><span class="or-st ${st.c}">${esc(st.t)}</span><small>${orLast(x) ? esc(fmtLocal(orLast(x))) : ""}${x.contactedBy ? " · " + esc(first(nameOf(S.ps||{}, x.contactedBy))) : ""}</small><div class="or-b">${url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">📷 Instagram</a>` : ""}${x.email ? `<button type="button" class="btn small${OR.cmp===`${u}/${id}`?" primary":""}" data-orcmp="${u}/${id}"${x.emailOptout?" disabled title=\"Pidió baja\"":""}>✉ Correo</button>` : ""}<button type="button" class="btn small" data-oremail="${u}/${id}">${x.email ? "✎" : "+ Correo"}</button></div></div></div>
+      <div class="or-s"><span class="or-st ${st.c}">${esc(st.t)}</span><small>${orLast(x) ? esc(fmtLocal(orLast(x))) : ""}${x.contactedBy ? " · " + esc(first(nameOf(S.ps||{}, x.contactedBy))) : ""}</small><div class="or-b">${url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">📷 Instagram</a>` : ""}${x.email ? `<button type="button" class="btn small${OR.cmp===`${u}/${id}`?" primary":""}" data-orcmp="${u}/${id}"${x.emailOptout?" disabled title=\"Pidió baja\"":""}>✉ Correo</button>` : ""}<button type="button" class="btn small" data-oremail="${u}/${id}">${x.email ? "✎" : "+ Correo"}</button>${OR.l==="accion" && !OR.q ? `<button type="button" class="btn small" data-ordone="${u}/${id}" title="Ya se atendió: sale de Necesitan acción (regresa si pasa algo nuevo)">✓ Quitar</button>` : ""}</div></div></div>
       ${OR.em===`${u}/${id}` ? orEmailHtml(u, id, x) : ""}${OR.cmp===`${u}/${id}` ? orCmpHtml(u, id, x) : ""}${orHistHtml(u, id, x)}`; };  const h = `<div class="or">
     <div class="row"><div><h2>Outreach de influencers</h2><p class="sub">${rows.length} perfiles en la lista · Instagram (DM de Mich) y Email (secuencia automática)</p></div><div class="spacer"></div>
       <div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div></div>
+    <section class="or-sec or-top"><h3 class="sec-h">Listas</h3>
+      <input type="search" class="mi-q" data-orq="1" placeholder="🔍 Buscar en toda la lista: nombre, @usuario, email" value="${esc(OR.q)}">
+      ${q ? "" : `<div class="mi-ef or-l">${LISTS.map(([v,l,f]) => { const n = rows.filter(f).length; return `<button type="button" data-orl="${v}" class="${OR.l===v?"on":""}">${l} <b>${n}</b></button>`; }).join("")}</div>`}
+      <div class="or-list">${list.slice(0, OR.n).map(rowH).join("") || `<p class="empty">${q ? "Nadie con esa búsqueda." : "Nada en esta lista."}</p>`}</div>
+      ${list.length > OR.n ? `<button type="button" class="btn small" data-ormore="1">Ver más (${list.length - OR.n})</button>` : ""}</section>
     ${S.isOwner && !S.viewAs ? mbHtml() : ""}
     ${!S.viewAs ? bxHtml() : ""}
     <div class="or-k">${k(kp.nuevos, "nuevos en la lista")}${k(kp.dm, "DMs de Mich")}${k(kp.em, "emails enviados")}${k(kp.rep + kp.int, "respondieron", kp.rep + kp.int ? "on" : "", `${kp.rep} por email · ${kp.int} interesados por DM`)}${k(kp.meet, "meets", kp.meet ? "on" : "")}</div>
@@ -6615,11 +6633,7 @@ function renderOutreach(){
     </div>
     <p class="mut small or-x">Aparte: 👑 ${top} top tier · 🤝 ${dir} contacto directo (estrategia propia, sin emails automáticos).</p>
     <section class="or-sec"><h3 class="sec-h">Avance por semana</h3>${wk}</section>
-    <section class="or-sec"><h3 class="sec-h">Listas</h3>
-      <input type="search" class="mi-q" data-orq="1" placeholder="🔍 Buscar en toda la lista: nombre, @usuario, email" value="${esc(OR.q)}">
-      ${q ? "" : `<div class="mi-ef or-l">${LISTS.map(([v,l,f]) => { const n = rows.filter(f).length; return `<button type="button" data-orl="${v}" class="${OR.l===v?"on":""}">${l} <b>${n}</b></button>`; }).join("")}</div>`}
-      <div class="or-list">${list.slice(0, OR.n).map(rowH).join("") || `<p class="empty">${q ? "Nadie con esa búsqueda." : "Nada en esta lista."}</p>`}</div>
-      ${list.length > OR.n ? `<button type="button" class="btn small" data-ormore="1">Ver más (${list.length - OR.n})</button>` : ""}</section>
+
   </div>`;
   if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
 }
