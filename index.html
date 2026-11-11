@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-11 01:13:20 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-11 01:35:36 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794359600">
+<link rel="stylesheet" href="/auth.css?v=1794360936">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794359600"></script>
+<script src="/claude-shim.js?v=1794360936"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -6449,7 +6449,7 @@ function bxHtml(){
         <div class="row"><button type="button" class="btn small primary" data-bxsend="${m.key}|${m.threadId}"${BX.sending===m.threadId?" disabled":""}>${BX.sending===m.threadId ? "Enviando…" : "Enviar respuesta"}</button></div></div>` : ""}</div>`; };
   return `<section class="mb bx">${head}${pills}${errs.length ? `<p class="err small">${errs.join(" · ")}</p>` : ""}${BX.err ? `<p class="err">${esc(BX.err)}</p>` : ""}
     ${BX.items==null ? `<p class="mut small">${BX.loading ? "Cargando buzón…" : ""}</p>` : its.length ? `<div class="mb-l">${its.slice(0, 40).map(row).join("")}</div>` : `<p class="mut small">No hay correos en la bandeja de entrada${BX.key ? " de esta cuenta" : ""}.</p>`}
-    <p class="mut small">Muestra la bandeja principal de las cuentas de envío (sin Promociones ni Redes). Para marcar como leído, ábrelo en Gmail.</p></section>`;
+    <p class="mut small">Muestra la bandeja principal de las cuentas de envío desde el 10 de noviembre (sin Promociones, Redes ni correos de Google). Para marcar como leído, ábrelo en Gmail.</p></section>`;
 }
 document.addEventListener("click", async e => {
   if (e.target.closest("[data-bxre]")){ OR_FIXED = false; orFixReplies(); return bxLoad(true); }
@@ -6589,7 +6589,8 @@ document.addEventListener("click", async e => {
   const b = e.target.closest("[data-ornotrep]"); if (!b) return;
   const [u, id] = b.dataset.ornotrep.split("/"), x = ((S.vip||{})[u]||{})[id]; if (!x) return;
   const bounce = confirm("¿El correo NO se pudo entregar (rebotó)?\n\nAceptar = rebotó (ya no se le mandan más correos)\nCancelar = fue respuesta automática (se sigue esperando su respuesta)");
-  const patch = bounce ? {emailRepliedAt:null, emailReplySnippet:null, emailBounced:true, emailBouncedAt:Date.now(), emailError:"Marcado a mano: no se pudo entregar"} : {emailRepliedAt:null, emailReplySnippet:null};
+  const seenAt = Math.max(Date.now(), Number(x.emailRepliedAt)||0); // para que esa misma respuesta no se vuelva a marcar como nueva
+  const patch = bounce ? {emailRepliedAt:null, emailReplySnippet:null, emailReplySeenAt:seenAt, emailBounced:true, emailBouncedAt:Date.now(), emailError:"Marcado a mano: no se pudo entregar"} : {emailRepliedAt:null, emailReplySnippet:null, emailReplySeenAt:seenAt};
   const prev = {emailRepliedAt:x.emailRepliedAt, emailReplySnippet:x.emailReplySnippet, emailBounced:x.emailBounced}; Object.assign(x, patch); bxRe();
   try{ await db.doc(`meets/${u}/vip/${id}`).update(patch); quickToast(bounce ? "Marcado como rebote: ya no cuenta como respuesta" : "Quitado: ya no cuenta como respuesta"); }
   catch(_){ Object.assign(x, prev); bxRe(); quickToast("No se guardó"); }

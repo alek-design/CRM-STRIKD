@@ -6440,7 +6440,7 @@ function bxHtml(){
         <div class="row"><button type="button" class="btn small primary" data-bxsend="${m.key}|${m.threadId}"${BX.sending===m.threadId?" disabled":""}>${BX.sending===m.threadId ? "Enviando…" : "Enviar respuesta"}</button></div></div>` : ""}</div>`; };
   return `<section class="mb bx">${head}${pills}${errs.length ? `<p class="err small">${errs.join(" · ")}</p>` : ""}${BX.err ? `<p class="err">${esc(BX.err)}</p>` : ""}
     ${BX.items==null ? `<p class="mut small">${BX.loading ? "Cargando buzón…" : ""}</p>` : its.length ? `<div class="mb-l">${its.slice(0, 40).map(row).join("")}</div>` : `<p class="mut small">No hay correos en la bandeja de entrada${BX.key ? " de esta cuenta" : ""}.</p>`}
-    <p class="mut small">Muestra la bandeja principal de las cuentas de envío (sin Promociones ni Redes). Para marcar como leído, ábrelo en Gmail.</p></section>`;
+    <p class="mut small">Muestra la bandeja principal de las cuentas de envío desde el 10 de noviembre (sin Promociones, Redes ni correos de Google). Para marcar como leído, ábrelo en Gmail.</p></section>`;
 }
 document.addEventListener("click", async e => {
   if (e.target.closest("[data-bxre]")){ OR_FIXED = false; orFixReplies(); return bxLoad(true); }
