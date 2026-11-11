@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-11 18:45:39 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-11 19:08:00 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794422739">
+<link rel="stylesheet" href="/auth.css?v=1794424080">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794422739"></script>
+<script src="/claude-shim.js?v=1794424080"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -1615,6 +1615,8 @@ body.mob-open header.top{z-index:31}
 #orBox .or-tabs{display:flex;gap:4px;margin:10px 0 8px;border-bottom:1px solid var(--line);overflow-x:auto}#orBox .or-tabs button{font:inherit;font-size:13.5px;background:none;border:0;border-bottom:2px solid transparent;padding:7px 12px;color:var(--muted);cursor:pointer;white-space:nowrap}
 #orBox .or-tabs button.on{color:var(--fg);border-bottom-color:var(--fg);font-weight:600}#orBox .or-tabs b{font-size:11px;padding:1px 6px;border-radius:99px;background:var(--fg);color:var(--bg);margin-left:4px}
 #orBox .or>.row{align-items:center}#orBox .or>.row h2{margin:0}#orBox .or>.row .sub{margin:2px 0 0}#orBox .or-top{margin-top:4px}#orBox .mb{border:0;padding:0;margin:4px 0}
+
+#orBox .or-qr{display:flex;gap:6px;align-items:center}#orBox .or-qr .mi-q{flex:1;margin:0}#orBox .or-chk{display:grid;gap:6px;margin:8px 0;padding:10px;border:1px dashed var(--line);border-radius:10px}#orBox .or-chkt td{white-space:normal}
 </style>
 
 <header class="top">
@@ -6434,11 +6436,13 @@ document.addEventListener("change", e => {
 const BX = {items:null, accounts:[], at:0, loading:false, err:"", key:"", open:"", th:{}, draft:{}, sending:"", show:false};
 async function bxLoad(force){
   if (!window.STRIKD_GMAIL_POST || BX.loading || (!force && Date.now() - BX.at < 90e3)) return;
-  BX.loading = true; BX.err = ""; bxRe();
+  BX.loading = true; BX.err = ""; bxSoft();
   try{ const r = await window.STRIKD_GMAIL_POST({inbox:{}}); BX.items = r.items || []; BX.accounts = r.accounts || []; BX.at = Date.now(); }
   catch(err){ BX.err = err.message || String(err); }
-  BX.loading = false; bxRe();
+  BX.loading = false; bxSoft();
 }
+/* repintar sin quitar el foco (para cargas en segundo plano: no interrumpe lo que estés escribiendo) */
+function bxSoft(){ const b = $("orBox"); if (b && !busyIn(b)) b.dataset.h = ""; renderOutreach(); }
 function bxRe(){ const a = document.activeElement, b = $("orBox"), m = $("view-mich");
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && ((b && b.contains(a)) || (m && m.contains(a) && !a.matches("#miQ")))) a.blur();
   if (b) b.dataset.h = ""; renderOutreach(); if (S.tab==="mich") renderMich(); } /* acción explícita: se vuelve a pintar aunque haya un campo enfocado */
@@ -6612,8 +6616,60 @@ document.addEventListener("click", async e => {
   catch(err){ alert("No se pudo reenviar: " + (err.message || err)); }
   BX.sending = ""; bxRe();
 });
+/* ---------- Revisar una lista pegada (de Excel/Sheets): quién ya está, a quién ya se le mandó email, y agregar lo que falta ---------- */
+function orChkParse(text){
+  return String(text||"").split(/\n+/).map(l => l.trim()).filter(Boolean).map(l => {
+    const t = l.split(/\t|\s{2,}|\s*[;|]\s*/).map(x => x.trim()).filter(Boolean);
+    const email = (l.match(/[^\s@,;]+@[^\s@,;]+\.[a-z]{2,}/i) || [""])[0].toLowerCase();
+    const hTok = t.find(x => /^@[A-Za-z0-9._]{2,30}$/.test(x)) || (l.match(/instagram\.com\/([A-Za-z0-9._]+)/i) || [])[1] || (t[0] && !t[0].includes("@") && /^[A-Za-z0-9._]{2,30}$/.test(t[0]) ? t[0] : "");
+    const h = String(hTok||"").replace(/^@/, "").toLowerCase().replace(/\.+$/, "");
+    const fTok = t.filter(x => x !== hTok && !x.includes("@")).reverse().find(x => /^[\d.,]+\s*[kKmM]?$/.test(x) && parseFol(x) >= 100);
+    return h || email ? {h, email, fol:fTok ? parseFol(fTok) : 0, line:l} : null;
+  }).filter(Boolean);
+}
+function orChkRun(rows){
+  const byH = {}, byE = {}; rows.forEach(r => { const h = (igUser(r.x.profile)||"").toLowerCase(); if (h) byH[h] = r; if (r.x.email) byE[String(r.x.email).toLowerCase()] = r; });
+  const seen = new Set();
+  return orChkParse(OR.chk.text).filter(p => { const k = p.h || p.email; if (seen.has(k)) return false; seen.add(k); return true; }).map(p => {
+    const r = (p.h && byH[p.h]) || (p.email && byE[p.email]) || null, x = r && r.x;
+    const sentAt = x ? Math.max(Number(x.email1At)||0, ...((x.mailLog||[]).map(m => Number(m.at)||0))) : 0;
+    const st = !x ? "nuevo" : sentAt ? "enviado" : "lista";
+    return {...p, r, st, sentAt, needEmail:!!(x && !x.email && p.email), diffEmail:!!(x && x.email && p.email && String(x.email).toLowerCase()!==p.email)};
+  });
+}
+function orChkHtml(rows){
+  const res = OR.chk.text ? orChkRun(rows) : [];
+  const n = k => res.filter(r => r.st===k).length, nE = res.filter(r => r.needEmail).length, nNew = res.filter(r => r.st==="nuevo" && r.h).length;
+  const tag = r => r.st==="enviado" ? `<span class="or-st ok">✉ Ya se le mandó email · ${esc(fmtLocal(r.sentAt).split(",")[0])}</span>` : r.st==="lista" ? `<span class="or-st">En la lista · sin email enviado</span>` : `<span class="or-st wait">No está en la lista</span>`;
+  return `<div class="or-chk"><label class="f">Pega aquí la lista (una persona por renglón: @usuario, correo y seguidores; como venga de Excel)<textarea rows="5" class="bx-ta" data-orchkt="1" placeholder="@usuario	correo@ejemplo.com	150,000">${esc(OR.chk.text)}</textarea></label>
+    ${res.length ? `<p class="small"><b>${res.length}</b> perfiles: <b>${n("enviado")}</b> ya recibieron email · <b>${n("lista")}</b> están en la lista sin email enviado · <b>${n("nuevo")}</b> no están en la lista${nE ? ` · ${nE} en la lista sin correo (aquí sí viene)` : ""}</p>
+      <div class="row">${nNew ? `<button type="button" class="btn small primary" data-orchkadd="1"${OR.chk.busy?" disabled":""}>${OR.chk.busy==="add" ? "Agregando…" : `+ Agregar a la lista los ${nNew} que faltan`}</button>` : ""}${nE ? `<button type="button" class="btn small" data-orchkem="1"${OR.chk.busy?" disabled":""}>${OR.chk.busy==="em" ? "Guardando…" : `Guardar el correo a los ${nE} que no tenían`}</button>` : ""}</div>
+      <table class="or-wk or-chkt"><thead><tr><th>Perfil</th><th>Correo pegado</th><th>Seguidores</th><th>Estado</th></tr></thead><tbody>${res.map(r => `<tr><td>${r.h ? `<a href="https://www.instagram.com/${esc(r.h)}/" target="_blank" rel="noopener">@${esc(r.h)}</a>` : "—"}${r.r ? ` <small class="mut">${esc(r.r.x.prospect||"")}</small>` : ""}</td>
+        <td>${esc(r.email||"—")}${r.needEmail ? ` <small class="mut">(en la lista no tenía)</small>` : r.diffEmail ? ` <small class="mut">(en la lista: ${esc(r.r.x.email)})</small>` : ""}</td><td>${r.fol ? esc(fmtFol(r.fol)) : "—"}</td><td>${tag(r)}</td></tr>`).join("")}</tbody></table>` : `<p class="mut small">Pega la lista y aquí te digo quién ya está, a quién ya le mandamos email y quién falta.</p>`}</div>`;
+}
+document.addEventListener("click", async e => {
+  if (e.target.closest("[data-orchk]")){ OR.chk.open = !OR.chk.open; return bxRe(); }
+  const add = e.target.closest("[data-orchkadd]"), em = e.target.closest("[data-orchkem]"); if (!add && !em) return;
+  const rows = michRows().map(([u,id,x]) => ({u, id, x})), res = orChkRun(rows);
+  if (add){
+    const todo = res.filter(r => r.st==="nuevo" && r.h), mich = vaPeople("influencer")[0] || meId();
+    if (!confirm(`¿Agregar ${todo.length} perfiles a la lista de influencers (a nombre de ${first(nameOf(S.ps||{}, mich)) || "Mich"})? Los que traen correo entran a la secuencia de emails.`)) return;
+    OR.chk.busy = "add"; bxRe(); let ok = 0, dup = 0;
+    for (const r of todo){ try{ const ref = db.collection(`meets/${mich}/vip`).doc(), key = "ig:" + r.h, commit = await claimVip(key, mich, ref.id);
+        await ref.set({prospect:r.h, profile:`https://www.instagram.com/${r.h}/`, followers:r.fol || 0, email:r.email || "", perfil:3, status:"nuevo", createdAt:Date.now(), igKey:key, byMich:true, addedBy:S.uid, imported:"lista-pegada"});
+        await commit(); ok++; }catch(err){ if (err && err.dup) dup++; } }
+    OR.chk.busy = ""; quickToast(`✓ ${ok} agregados${dup ? ` · ${dup} ya estaban` : ""}`); return bxRe();
+  }
+  const todo = res.filter(r => r.needEmail); if (!confirm(`¿Guardar el correo a ${todo.length} perfiles que no tenían?`)) return;
+  OR.chk.busy = "em"; bxRe(); let ok = 0;
+  for (const r of todo){ try{ const patch = {email:r.email, emailSetAt:Date.now(), emailSetBy:S.uid}; await db.doc(`meets/${r.r.u}/vip/${r.r.id}`).update(patch); Object.assign(r.r.x, patch); ok++; }catch(_){} }
+  OR.chk.busy = ""; quickToast(`✓ ${ok} correos guardados`); bxRe();
+});
+document.addEventListener("input", e => { const t = e.target.closest("[data-orchkt]"); if (t) OR.chk.text = t.value; });
+document.addEventListener("change", e => { const t = e.target.closest("[data-orchkt]"); if (t){ OR.chk.text = t.value; bxRe(); } });
+document.addEventListener("paste", e => { const t = e.target.closest("[data-orchkt]"); if (t) setTimeout(() => { OR.chk.text = t.value; bxRe(); }, 30); });
 /* ---------- Outreach de influencers: tablero para Head y Manager (avances, canales, semanas y listas) ---------- */
-const OR = {sec:(() => { try{ return localStorage.getItem("orSec") || "list"; }catch(_){ return "list"; } })(), p:"7", l:"accion", q:"", n:40, cmp:"", em:"", hist:{}, draft:{}, busy:""};
+const OR = {chk:{open:false, text:"", res:null, busy:""}, sec:(() => { try{ return localStorage.getItem("orSec") || "list"; }catch(_){ return "list"; } })(), p:"7", l:"accion", q:"", n:40, cmp:"", em:"", hist:{}, draft:{}, busy:""};
 function orState(x){
   const st = x.status || "nuevo";
   if (x.meetId) return {t:`📅 Meet${x.meetAt ? " " + fmtMeetAt(x.meetAt) : ""}`, c:"ok", g:"meet"};
@@ -6706,7 +6762,8 @@ function renderOutreach(){
       ${OR.em===`${u}/${id}` ? orEmailHtml(u, id, x) : ""}${OR.cmp===`${u}/${id}` ? orCmpHtml(u, id, x) : ""}${orHistHtml(u, id, x)}`; };  /* secciones en pestañas para que la pantalla no sea tan larga (Alek, 11 nov 2026) */
   const periodH = `<div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div>`;
   const listsH = `    <section class="or-sec or-top">
-      <input type="search" class="mi-q" data-orq="1" placeholder="🔍 Buscar en toda la lista: nombre, @usuario, email" value="${esc(OR.q)}">
+      <div class="or-qr"><input type="search" class="mi-q" data-orq="1" placeholder="🔍 Buscar en toda la lista: nombre, @usuario, email" value="${esc(OR.q)}"><button type="button" class="btn small${OR.chk.open?" primary":""}" data-orchk="1">📋 Revisar una lista</button></div>
+      ${OR.chk.open ? orChkHtml(rows) : ""}
       ${q ? "" : `<div class="mi-ef or-l">${LISTS.map(([v,l,f]) => { const n = rows.filter(f).length; if (!n && OR.l!==v && v!=="accion" && v!=="all") return ""; /* las vacías no se muestran */ return `<button type="button" data-orl="${v}" class="${OR.l===v?"on":""}">${l} <b>${n}</b></button>`; }).join("")}</div>`}
       <div class="or-list">${list.slice(0, OR.n).map(rowH).join("") || `<p class="empty">${q ? "Nadie con esa búsqueda." : "Nada en esta lista."}</p>`}</div>
       ${list.length > OR.n ? `<button type="button" class="btn small" data-ormore="1">Ver más (${list.length - OR.n})</button>` : ""}</section>`;
