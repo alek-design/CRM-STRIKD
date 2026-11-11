@@ -6291,7 +6291,7 @@ async function saveVip(o, extra){
 }
 function vipItems(uid){ return (uid===S.uid && !S.viewAs) ? S.myVip : (S.vip[uid] || {}); }
 /* ---------- lotes de emails por autorizar (solo el Head): se preparan a las 5 pm para el siguiente día hábil ---------- */
-const MB = {sub:null, open:{}, busy:"", msg:"", err:""};
+const MB = {sub:null, open:{}, busy:"", msg:"", err:"", showDone:{}};
 const mbDay = d => new Date(Date.parse(d + "T17:00:00Z")).toLocaleDateString("es-MX", {weekday:"long", day:"numeric", month:"short", timeZone:"UTC"});
 /* rango de seguidores para los nuevos del lote (approach 1); se guarda en config/main.mailSeq.fol y lo usa también el lote de las 5 pm */
 const folTxt = n => n >= 1e6 ? (n/1e6).toFixed(n%1e6 ? 1 : 0) + "M" : n >= 1e3 ? Math.round(n/1e3) + "K" : String(n);
@@ -6312,7 +6312,12 @@ document.addEventListener("change", e => { const i = e.target.closest("[data-mbf
   if (i.dataset.mbfmin) mbSetFol(n||0, f.max==null ? null : Number(f.max)); else mbSetFol(Number(f.min)||0, n); });
 const todayKey = () => new Date(Date.now()-OFF).toISOString().slice(0, 10);
 function mbHtml(){
-  const all = Object.values(S.mailBatch||{}).filter(b => b && b.date >= todayKey()).sort((a,b) => a.date < b.date ? -1 : 1);
+  const left = b => (b.items||[]).some(i => !i.skip && !i.sentAt && !i.void && !i.error);
+  const allB = Object.values(S.mailBatch||{}).filter(b => b && b.date >= todayKey()).sort((a,b) => (a.date + (a.id||"")) < (b.date + (b.id||"")) ? -1 : 1);
+  // los lotes ya terminados (todo enviado) se muestran en una línea; se abren si quieres verlos
+  const done = allB.filter(b => b.status==="approved" && !left(b)), all = allB.filter(b => !done.includes(b)).concat(done.filter(b => MB.showDone[b.id]));
+  const doneLine = done.length ? `<p class="small mb-done">${done.map(b => { const it = (b.items||[]).filter(i => !i.skip), s = it.filter(i => i.sentAt).length;
+    return `✓ <b>${esc(mbDay(b.date))}</b>: ${s} enviado${s===1?"":"s"}${it.length > s ? ` · ${it.length - s} no salieron` : ""} <button type="button" class="linkbtn" data-mbdone="${b.id}">${MB.showDone[b.id] ? "ocultar" : "ver"}</button>`; }).join(" · ")}</p>` : "";
   const cfg = (S.config||{}).mailSeq || {};
   const head = `<div class="mb-h"><h3>📧 Emails por autorizar</h3><span class="spacer"></span>
     ${(() => { const l = new Date(Date.now()-OFF), d = l.getUTCDay(), h = l.getUTCHours(), tb = (S.mailBatch||{})[todayKey()];
@@ -6322,27 +6327,28 @@ function mbHtml(){
   const note = cfg.approval===false ? `<p class="mut small">La autorización está apagada en Ajustes: los emails salen solos.</p>` : !cfg.on ? `<p class="mut small">La secuencia está apagada: puedes preparar y revisar lotes, pero no sale nada hasta que la enciendas en Ajustes.</p>` : "";
   const msg = MB.err ? `<p class="err">${esc(MB.err)}</p>` : MB.msg ? `<p class="ok-msg">${esc(MB.msg)}</p>` : "";
   const rng = mbRangeHtml(cfg);
-  if (!all.length) return `<section class="mb">${head}${rng}${note}${msg}<p class="mut small">No hay lotes. Se prepara uno solo a las 5 pm (con la secuencia encendida), o tócale a "Preparar siguiente lote". Se manda de lunes a jueves.</p></section>`;
-  return `<section class="mb">${head}${rng}${note}${msg}${all.map(mbCard).join("")}</section>`;
+  if (!all.length) return `<section class="mb">${head}${rng}${note}${msg}${doneLine}<p class="mut small">${done.length ? "No hay lotes pendientes." : "No hay lotes."} Se prepara uno solo a las 5 pm (con la secuencia encendida), o tócale a "Preparar siguiente lote". Se manda de lunes a jueves.</p></section>`;
+  return `<section class="mb">${head}${rng}${note}${msg}${doneLine}${all.map(mbCard).join("")}</section>`;
 }
 function mbCard(b){
+  const K = b.id || b.date;   // id del lote (puede haber más de uno por día: 2026-11-11, 2026-11-11-2…)
   const items = b.items || [], live = items.filter(i => !i.skip), sent = items.filter(i => i.sentAt).length, today = b.date===todayKey();
   const st = b.status==="approved" ? (today ? `<span class="or-st ok">✓ Autorizado · ${sent} de ${live.length} enviados</span>` : `<span class="or-st ok">✓ Autorizado</span>`) : `<span class="or-st wait">⏳ Por autorizar</span>`;
   const by = {}; live.forEach(i => by[i.from||i.key] = (by[i.from||i.key]||0) + 1);
   const steps = [1,2,3].map(n => [n, live.filter(i => i.step===n).length]).filter(x => x[1]);
-  const L = (i, ix) => { const op = MB.open[b.date+"#"+ix], ed = b.status!=="approved" && !i.sentAt;
+  const L = (i, ix) => { const op = MB.open[K+"#"+ix], ed = b.status!=="approved" && !i.sentAt;
     const s = i.sentAt ? `<span class="or-st ok">✓ enviado</span>` : i.error ? `<span class="or-st off" title="${esc(i.error)}">✗ error</span>` : i.void ? `<span class="or-st off">no salió: ${esc(i.void)}</span>` : i.skip ? `<span class="or-st off">${i.skipTag ? "fuera: " + esc(VTAG_L[i.skipTag]||"") : "quitado"}</span>` : "";
-    return `<div class="mb-i${i.skip?" off":""}"><button type="button" class="mb-r" data-mbopen="${b.date}#${ix}"><span class="mb-a">A${i.step}</span><span class="mb-n"><b>${esc(i.name||i.to)}</b><small>${esc(i.to)} · desde ${esc(String(i.from||i.key).split("@")[0])}</small></span><span class="mb-sj">${i.edited ? "✎ " : ""}${esc(i.subject)}</span>${s}<span class="mb-c">${op?"▴":"▾"}</span></button>
+    return `<div class="mb-i${i.skip?" off":""}"><button type="button" class="mb-r" data-mbopen="${K}#${ix}"><span class="mb-a">A${i.step}</span><span class="mb-n"><b>${esc(i.name||i.to)}</b><small>${esc(i.to)} · desde ${esc(String(i.from||i.key).split("@")[0])}</small></span><span class="mb-sj">${i.edited ? "✎ " : ""}${esc(i.subject)}</span>${s}<span class="mb-c">${op?"▴":"▾"}</span></button>
       ${(() => { const [, u, , id] = String(i.path||"").split("/"), x = ((S.vip||{})[u]||{})[id] || {}, url = safeUrl(x.profile || i.profile || ""), h = igUser(x.profile || i.profile || ""), nt = String(x.notes ?? i.notes ?? "").trim();
-        const tg = op && (b.status!=="approved" || !i.sentAt) ? `<span class="mb-tg">${VTAGS.map(([k,l]) => `<button type="button" class="mb-t${x[k]?" on":""}" data-mbtag="${b.date}#${ix}#${k}" aria-pressed="${x[k]?"true":"false"}">${l}</button>`).join("")}</span>` : "";
+        const tg = op && (b.status!=="approved" || !i.sentAt) ? `<span class="mb-tg">${VTAGS.map(([k,l]) => `<button type="button" class="mb-t${x[k]?" on":""}" data-mbtag="${K}#${ix}#${k}" aria-pressed="${x[k]?"true":"false"}">${l}</button>`).join("")}</span>` : "";
         return url || nt || tg ? `<div class="mb-x">${tg}${url ? `<a class="btn small mb-ig" href="${esc(url)}" target="_blank" rel="noopener">📷 ${h ? "@" + esc(h) : "Ver Instagram"}</a>` : ""}${nt ? `<span class="mb-nt">💬 ${esc(nt)}</span>` : ""}</div>` : ""; })()}
-      ${op ? `<div class="mb-d">${ed ? `<label class="f">Asunto<input data-mbf="subject" data-mbk="${b.date}#${ix}" value="${esc(i.subject)}"${i.step>1?" disabled title=\"Va en el mismo hilo del approach 1\"":""}></label>
-        <label class="f">Mensaje<textarea rows="14" class="ml-body" data-mbf="body" data-mbk="${b.date}#${ix}">${esc(i.body)}</textarea></label>` : `<p class="mb-b"><b>${esc(i.subject)}</b></p><pre class="mb-b">${esc(i.body)}</pre>`}
-        <div class="row">${ed ? `<button type="button" class="btn small" data-mbskip="${b.date}#${ix}">${i.skip ? "Volver a incluir" : "Quitar de este lote"}</button>` : ""}<button type="button" class="btn small" data-mbtest="item|${b.date}|${ix}">Enviarme prueba</button></div>
+      ${op ? `<div class="mb-d">${ed ? `<label class="f">Asunto<input data-mbf="subject" data-mbk="${K}#${ix}" value="${esc(i.subject)}"${i.step>1?" disabled title=\"Va en el mismo hilo del approach 1\"":""}></label>
+        <label class="f">Mensaje<textarea rows="14" class="ml-body" data-mbf="body" data-mbk="${K}#${ix}">${esc(i.body)}</textarea></label>` : `<p class="mb-b"><b>${esc(i.subject)}</b></p><pre class="mb-b">${esc(i.body)}</pre>`}
+        <div class="row">${ed ? `<button type="button" class="btn small" data-mbskip="${K}#${ix}">${i.skip ? "Volver a incluir" : "Quitar de este lote"}</button>` : ""}<button type="button" class="btn small" data-mbtest="item|${K}|${ix}">Enviarme prueba</button></div>
         <p class="mut small">${i.step===1 && ((S.config||{}).mailSeq||{}).video ? "El link de YouTube va donde dice {video} (o al final). " : i.step>1 && /\{video\}/.test(i.body) ? "El link de YouTube va donde dice {video}. " : ""}Al final va la firma de Gmail de ${esc(String(i.from||"la cuenta").split("@")[0])}${((S.config||{}).mailSeq||{}).optout ? " y la línea de «baja»" : ""}.</p></div>` : ""}</div>`; };
   return `<div class="mb-card"><div class="mb-ch"><b>${today ? "Hoy · " : ""}${esc(mbDay(b.date))}</b>${st}<span class="spacer"></span>
-      ${b.status==="approved" ? (sent ? "" : `<button type="button" class="btn small" data-mbap="${b.date}|0">Quitar autorización</button>`) : `<button type="button" class="btn small" data-mbplan="${b.date}">Volver a preparar</button><button type="button" class="btn small primary" data-mbap="${b.date}|1"${live.length?"":" disabled"}>Autorizar ${live.length}</button>`}
-      ${b.sendNow ? `<span class="or-st wait">⚡ Enviando ya…</span>` : live.some(i => !i.sentAt && !i.void && !i.error) ? `<button type="button" class="btn small" data-mbnow="${b.date}" title="Autoriza y empieza a mandar en este momento (1 por cuenta cada minuto, sin pasar el cupo del día)">⚡ Enviar ya</button>` : ""}</div>
+      ${b.status==="approved" ? (sent ? "" : `<button type="button" class="btn small" data-mbap="${K}|0">Quitar autorización</button>`) : `<button type="button" class="btn small" data-mbplan="${K}">Volver a preparar</button><button type="button" class="btn small primary" data-mbap="${K}|1"${live.length?"":" disabled"}>Autorizar ${live.length}</button>`}
+      ${b.sendNow ? `<span class="or-st wait">⚡ Enviando ya…</span>` : live.some(i => !i.sentAt && !i.void && !i.error) ? `<button type="button" class="btn small" data-mbnow="${K}" title="Autoriza y empieza a mandar en este momento (1 por cuenta cada minuto, sin pasar el cupo del día)">⚡ Enviar ya</button>` : ""}</div>
     <p class="small mut">${live.length} email${live.length===1?"":"s"}${steps.length ? " · " + steps.map(([n,c]) => `${c} de approach ${n}`).join(" · ") : ""}${Object.keys(by).length ? " · " + Object.entries(by).map(([k,n]) => `${esc(k.split("@")[0])} ${n}`).join(" · ") : ""}${items.length > live.length ? ` · ${items.length-live.length} quitados` : ""}${b.fol && (b.fol.min || b.fol.max) ? ` · nuevos de ${folTxt(b.fol.min||0)} a ${b.fol.max ? folTxt(b.fol.max) : "más"} seguidores` : ""}</p>
     <div class="mb-l">${items.map(L).join("") || `<p class="mut small">Nadie para este día.</p>`}</div></div>`;
 }
@@ -6380,8 +6386,9 @@ document.addEventListener("click", async e => {
   const sk = e.target.closest("[data-mbskip]"); if (sk && S.isOwner){ const [d, ix] = sk.dataset.mbskip.split("#"), b = (S.mailBatch||{})[d]; if (!b) return;
     const items = b.items.map((i, n) => n===Number(ix) ? {...i, skip:!i.skip} : i); return mbSave(d, items); }
   const ap = e.target.closest("[data-mbap]"); if (ap && S.isOwner){ const [d, on] = ap.dataset.mbap.split("|"), b = (S.mailBatch||{})[d]; if (!b) return;
-    if (on==="1" && !confirm(d===todayKey() ? `¿Autorizar ${b.items.filter(i => !i.skip).length} emails para HOY? Empiezan a salir en unos minutos, repartidos hasta las 6 pm.` : `¿Autorizar ${b.items.filter(i => !i.skip).length} emails para el ${mbDay(d)}? Salen repartidos de 9 am a 6 pm.`)) return;
+    if (on==="1" && !confirm(b.date===todayKey() ? `¿Autorizar ${b.items.filter(i => !i.skip).length} emails para HOY? Empiezan a salir en unos minutos, repartidos hasta las 6 pm.` : `¿Autorizar ${b.items.filter(i => !i.skip).length} emails para el ${mbDay(b.date)}? Salen repartidos de 9 am a 6 pm.`)) return;
     return mbSave(d, b.items, on==="1" ? {status:"approved", approvedAt:Date.now(), approvedBy:S.uid} : {status:"pending", approvedAt:null}); }
+  const dn = e.target.closest("[data-mbdone]"); if (dn){ MB.showDone[dn.dataset.mbdone] = !MB.showDone[dn.dataset.mbdone]; const bx = $("orBox"); if (bx) bx.dataset.h = ""; return schedule(); }
   const nw = e.target.closest("[data-mbnow]"); if (nw && S.isOwner){ const d = nw.dataset.mbnow, b = (S.mailBatch||{})[d]; if (!b) return;
     const n = b.items.filter(i => !i.skip && !i.sentAt && !i.void && !i.error).length, seqOn = !!((S.config||{}).mailSeq||{}).on;
     if (!seqOn) return alert("La secuencia está pausada. Enciéndela en Ajustes → Emails automáticos y vuelve a tocar Enviar ya.");
@@ -6389,9 +6396,10 @@ document.addEventListener("click", async e => {
     return mbSave(d, b.items, {status:"approved", approvedAt:b.approvedAt || Date.now(), approvedBy:b.approvedBy || S.uid, sendNow:true, sendNowAt:Date.now()}); }
   const pl = e.target.closest("[data-mbplan]"); if (pl && S.isOwner && window.STRIKD_GMAIL_POST){
     const d = pl.dataset.mbplan==="next" ? "" : pl.dataset.mbplan, b = d && (S.mailBatch||{})[d==="today" ? todayKey() : d];
+    const pid = b && b.id ? b.id : "", pdate = b ? b.date : d;
     if (b && b.items && b.items.some(i => i.skip || i.edited) && !confirm("Volver a preparar borra lo que quitaste o editaste en este lote. ¿Sigo?")) return;
     MB.busy = "plan"; MB.err = MB.msg = ""; schedule();
-    try{ const r = await window.STRIKD_GMAIL_POST({plan:{date:d, fol:((S.config||{}).mailSeq||{}).fol || null}}); MB.msg = r.status==="approved" ? "Ese lote ya estaba autorizado; no lo toqué." : `Listo: ${r.n} emails para el ${mbDay(r.date)}.`; }
+    try{ const r = await window.STRIKD_GMAIL_POST({plan:{date:pdate, id:pid, fol:((S.config||{}).mailSeq||{}).fol || null}}); MB.msg = r.status==="approved" ? "Ese lote ya estaba autorizado; no lo toqué." : `Listo: ${r.n} emails para el ${mbDay(r.date)}.`; }
     catch(err){ MB.err = err.message || String(err); }
     MB.busy = ""; const bx = $("orBox"); if (bx) bx.dataset.h = ""; return schedule(); }
   const ts = e.target.closest("[data-mbtest]"); if (ts && S.isOwner && window.STRIKD_GMAIL_POST){
@@ -7266,7 +7274,7 @@ function syncAdminSubs(){
     return; }
   if (!S.isLead) return;
   if (!waCampSub && S.uid) db.collection(`meets/${S.uid}/tpllog`).onSnapshot(s => { S.tplLog[S.uid]={}; s.docs.forEach(d=>S.tplLog[S.uid][d.id]=d.data()); schedule(); }, snapErr);
-  if (S.isOwner && !MB.sub) MB.sub = db.collection("mailBatch").onSnapshot(s => { S.mailBatch = {}; s.docs.forEach(d => S.mailBatch[d.id] = d.data()); schedule(); }, () => {});
+  if (S.isOwner && !MB.sub) MB.sub = db.collection("mailBatch").onSnapshot(s => { S.mailBatch = {}; s.docs.forEach(d => S.mailBatch[d.id] = {...d.data(), id:d.id}); schedule(); }, () => {});
   if (!waCampSub) waCampSub = db.collection("waCampaigns").onSnapshot(s => { S.waCamps={}; s.docs.forEach(d=>S.waCamps[d.id]=d.data()); schedule(); }, snapErr);
   // los prospectos de todos: AM y también los que registran el Head, el Manager y la Influencer a su nombre
   [...new Set(Object.keys(S.members).concat(S.uid ? [S.uid] : [], (S.config && S.config.headId) ? [S.config.headId] : []))].forEach(uid => {

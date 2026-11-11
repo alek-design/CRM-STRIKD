@@ -82,8 +82,9 @@ module.exports = async (req, res) => {
           if (b.test) return await ea.sendTest(c, {to:String(b.test.to || me.email || "").trim(), key:b.test.key, tplId:b.test.tplId, date:b.test.date, idx:Number(b.test.idx)});
           const date = b.plan.date === "today" ? ea.dayKey(Date.now()) : /^\d{4}-\d{2}-\d{2}$/.test(b.plan.date || "") ? b.plan.date : ea.nextBizDay(Date.now());
           const fol = b.plan.fol && typeof b.plan.fol === "object" ? {min:Number(b.plan.fol.min) || 0, max:b.plan.fol.max == null || b.plan.fol.max === "" ? null : Number(b.plan.fol.max)} : null;
-          const r = await ea.plan(c, date, {preview:true, ...(fol ? {fol} : {})});
-          return {ok:true, date, n:(r.items || []).length, status:r.status};
+          const pid = /^\d{4}-\d{2}-\d{2}(-\d+)?$/.test(b.plan.id || "") ? b.plan.id : "";
+          const r = await ea.plan(c, date, {preview:true, ...(pid ? {id:pid} : {}), ...(fol ? {fol} : {})});
+          return {ok:true, date, id:r.id, n:(r.items || []).length, status:r.status};
         }
         const key = b.disconnect === "general" || /^seq[1-5]$/.test(b.disconnect || "") ? (me.role === "head" ? b.disconnect : null) : b.disconnect === "me" ? me.id : null;
         if (!key) return {status:403, error:"Sin permiso"};
