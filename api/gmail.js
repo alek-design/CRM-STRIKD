@@ -20,9 +20,11 @@ module.exports = async (req, res) => {
           const { SEQ_KEYS } = require("../lib/emailauto");
           const keys = (await c.query("select key, email from public.gmail_tokens")).rows.filter(r => SEQ_KEYS.includes(r.key) || r.key === "general");
           if (b.inbox){
-            const vips = {}; (await c.query("select path, data->>'email' em, data->>'prospect' nm, data->>'profile' pr, coalesce(data->>'emailRepliedAt','') rep from public.docs where path like 'meets/%/vip/%' and coalesce(data->>'email','')<>''")).rows.forEach(r => vips[String(r.em).toLowerCase()] = {path:r.path, name:r.nm, profile:r.pr, replied:!!r.rep});
+            const vips = {}; const byTh = {};
+            (await c.query("select path, data->>'email' em, data->>'prospect' nm, data->>'profile' pr, coalesce(data->>'emailRepliedAt','') rep, data->>'email1Thread' th, data->'mailLog' ml from public.docs where path like 'meets/%/vip/%' and (coalesce(data->>'email','')<>'' or data ? 'email1Thread')")).rows.forEach(r => {
+              const v = {path:r.path, name:r.nm, profile:r.pr, replied:!!r.rep}; if (r.em) vips[String(r.em).toLowerCase()] = v; if (r.th) byTh[r.th] = v; (Array.isArray(r.ml) ? r.ml : []).forEach(m => { if (m && m.threadId) byTh[m.threadId] = v; }); });
             const res = await Promise.all(keys.filter(k => !b.inbox.key || k.key === b.inbox.key).map(async k => { try{ const t = await gmail.tokenFor(c, k.key); if (!t) return {key:k.key, email:k.email, error:"sin conexión"};
-              return {key:k.key, email:k.email, items:(await gmail.inbox(t.token, 25)).map(m => { const em = (String(m.from).match(/<([^>]+)>/) || [, m.from])[1].trim().toLowerCase(); return {...m, key:k.key, account:k.email, fromEmail:em, vip:vips[em] || null}; })}; }
+              return {key:k.key, email:k.email, items:(await gmail.inbox(t.token, 25)).map(m => { const em = (String(m.from).match(/<([^>]+)>/) || [, m.from])[1].trim().toLowerCase(); return {...m, key:k.key, account:k.email, fromEmail:em, vip:byTh[m.threadId] || vips[em] || null}; })}; }
               catch(e){ return {key:k.key, email:k.email, error:String(e.message || e)}; } }));
             return {ok:true, accounts:res.map(r => ({key:r.key, email:r.email, error:r.error || null, n:(r.items || []).length})), items:res.flatMap(r => r.items || []).sort((a, z) => z.at - a.at)};
           }
