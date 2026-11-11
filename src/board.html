@@ -6450,7 +6450,7 @@ function bxHtml(){
       <span class="mb-n"><b>${m.vip ? esc(m.vip.name || bxWho(m.from)) : bxWho(m.from)}</b><small>${esc(m.fromEmail)} · a ${esc(String(m.account).split("@")[0])}</small></span>
       <span class="bx-s">${bxBounce(m) ? `<span class="or-st wait">⚠️ No se entregó${m.vip ? " · " + esc(m.vip.name||"") : ""}</span> ` : ""}<b>${esc(m.subject || "(sin asunto)")}</b> <span class="mut">— ${esc(m.snippet)}</span></span><small class="bx-d">${esc(fmtLocal(m.at))}</small></button></div>
       ${op ? `<div class="mb-d">${bxBounce(m) && m.vip ? `<div class="bx-rs"><b>⚠️ Este correo no se entregó.</b> Corrige su correo y se le vuelve a mandar el mismo email desde ${esc(String(m.account).split("@")[0])}:
-          <div class="or-ed"><input type="email" data-bxrsv="${m.key}|${m.threadId}" value="${esc(bxVipEmail(m))}" placeholder="correo@correcto.com"><button type="button" class="btn small primary" data-bxrs="${m.key}|${m.threadId}"${BX.sending===m.threadId?" disabled":""}>${BX.sending===m.threadId ? "Enviando…" : "Cambiar correo y reenviar"}</button></div></div>` : ""}<div class="row">${m.vip && !bxBounce(m) ? (bxReplied(m) ? `<small class="mut">✓ Marcado como respuesta de ${esc(m.vip.name||"")}</small>` : `<button type="button" class="btn small primary" data-bxmark="${m.key}|${m.threadId}">✓ Marcar como respuesta</button><small class="mut">de ${esc(m.vip.name||"")} (lista de influencers)</small>`)
+          <div class="or-ed"><input type="email" data-bxrsv="${m.key}|${m.threadId}" value="${esc(bxVipEmail(m))}" placeholder="correo@correcto.com"><button type="button" class="btn small primary" data-bxrs="${m.key}|${m.threadId}"${BX.sending===m.threadId?" disabled":""}>${BX.sending===m.threadId ? "Enviando…" : "Cambiar correo y reenviar"}</button><button type="button" class="linkbtn" data-bxhide="${m.id}">Ya está resuelto, ocultar</button></div></div>` : bxBounce(m) ? `<div class="row"><button type="button" class="btn small" data-bxhide="${m.id}">✓ Ya está resuelto, ocultar</button></div>` : ""}<div class="row">${m.vip && !bxBounce(m) ? (bxReplied(m) ? `<small class="mut">✓ Marcado como respuesta de ${esc(m.vip.name||"")}</small>` : `<button type="button" class="btn small primary" data-bxmark="${m.key}|${m.threadId}">✓ Marcar como respuesta</button><small class="mut">de ${esc(m.vip.name||"")} (lista de influencers)</small>`)
           : bxBounce(m) ? "" : `<button type="button" class="btn small" data-bxlink="${m.key}|${m.threadId}">🔗 Es respuesta de un perfil…</button><small class="mut">Su correo no coincide con nadie de la lista</small>`}</div>
         ${!th ? `<p class="mut small">Cargando conversación…</p>` : th.err ? `<p class="err">${esc(th.err)}</p>` : th.msgs.map(x => `<div class="bx-m${x.mine?" me":""}"><small><b>${x.mine ? "Nosotros" : bxWho(x.from)}</b> · ${esc(fmtLocal(x.at))}</small><pre>${esc(x.text || "(sin texto)")}</pre></div>`).join("")}
         <label class="f">Responder desde ${esc(m.account)}<textarea rows="5" class="bx-ta" data-bxdraft="${m.threadId}" placeholder="Escribe tu respuesta… (se agrega tu firma de Gmail)">${esc(BX.draft[m.threadId]||"")}</textarea></label>
@@ -6584,6 +6584,9 @@ document.addEventListener("click", e => {
 });
 /* rebotes en el buzón: cambiar el correo del perfil y reenviar el mismo email */
 function bxBounce(m){ return /mailer-daemon|postmaster/i.test(m.fromEmail||"") || /undeliverable|no se (pudo|ha podido) entregar|address not found|no se encontr[oó] la direcci|delivery status notification|mail delivery (failed|subsystem)|delivery has failed/i.test((m.subject||"") + " " + (m.snippet||"")); }
+document.addEventListener("click", async e => { const h = e.target.closest("[data-bxhide]"); if (!h) return; const id = h.dataset.bxhide;
+  BX.items = (BX.items||[]).filter(i => i.id !== id); BX.open = ""; bxRe();
+  try{ await window.STRIKD_GMAIL_POST({hide:{id}}); quickToast("Oculto del buzón"); }catch(_){ quickToast("No se pudo ocultar"); bxLoad(true); } });
 function bxVipEmail(m){ const [, u, , id] = String((m.vip||{}).path||"").split("/"), x = ((S.vip||{})[u]||{})[id]; return (x && x.email) || ""; }
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-bxrs]"); if (!b) return;
@@ -6593,7 +6596,8 @@ document.addEventListener("click", async e => {
   if (to === bxVipEmail(m).toLowerCase() && !confirm("Es el mismo correo que rebotó. ¿Reenviar de todos modos?")) return;
   if (!confirm(`¿Guardar ${to} en el perfil de ${m.vip.name || "este influencer"} y reenviarle el email?`)) return;
   BX.sending = th; bxRe();
-  try{ const r = await window.STRIKD_GMAIL_POST({resend:{key:k, threadId:th, path:m.vip.path, email:to}});
+  try{ const r = await window.STRIKD_GMAIL_POST({resend:{key:k, threadId:th, path:m.vip.path, email:to, msgId:m.id}});
+    BX.items = (BX.items||[]).filter(i => i.id !== m.id); BX.open = ""; // el aviso de rebote ya no sale
     const [, u, , id] = m.vip.path.split("/"), x = ((S.vip||{})[u]||{})[id]; if (x) Object.assign(x, {email:to, emailBounced:false});
     quickToast(`✓ Reenviado a ${r.to} desde ${r.from}`); }
   catch(err){ alert("No se pudo reenviar: " + (err.message || err)); }

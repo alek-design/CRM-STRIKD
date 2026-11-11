@@ -15,17 +15,24 @@ module.exports = async (req, res) => {
       if (req.method === "POST"){
         const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
         // buzón de las cuentas de envío (Head y Manager): lista, hilo y responder
-        if (b.inbox || b.thread || b.reply || b.resend){
+        if (b.inbox || b.thread || b.reply || b.resend || b.hide){
           if (!lead) return {status:403, error:"Solo Head y Manager"};
           const { SEQ_KEYS } = require("../lib/emailauto");
           const keys = (await c.query("select key, email from public.gmail_tokens")).rows.filter(r => SEQ_KEYS.includes(r.key) || r.key === "general");
+          // correos ocultos del buzón (rebotes ya resueltos o que alguien ocultó)
+          await c.query("create table if not exists public.inbox_hidden (id text primary key, by_uid text, at timestamptz default now()); alter table public.inbox_hidden enable row level security;").catch(() => {});
+          if (b.hide){ for (const id of [].concat(b.hide.ids || b.hide.id || []).slice(0, 50)) await c.query("insert into public.inbox_hidden (id, by_uid) values ($1,$2) on conflict do nothing", [String(id), me.id]); return {ok:true}; }
           if (b.inbox){
+            const hidden = new Set((await c.query("select id from public.inbox_hidden where at > now() - interval '60 days'")).rows.map(r => r.id));
             const vips = {}; const byTh = {};
-            (await c.query("select path, data->>'email' em, data->>'prospect' nm, data->>'profile' pr, coalesce(data->>'emailRepliedAt','') rep, data->>'email1Thread' th, data->'mailLog' ml from public.docs where path like 'meets/%/vip/%' and (coalesce(data->>'email','')<>'' or data ? 'email1Thread')")).rows.forEach(r => {
-              const v = {path:r.path, name:r.nm, profile:r.pr, replied:!!r.rep}; if (r.em) vips[String(r.em).toLowerCase()] = v; if (r.th) byTh[r.th] = v; (Array.isArray(r.ml) ? r.ml : []).forEach(m => { if (m && m.threadId) byTh[m.threadId] = v; }); });
+            (await c.query("select path, data->>'email' em, data->>'prospect' nm, data->>'profile' pr, coalesce(data->>'emailRepliedAt','') rep, data->>'email1Thread' th, data->'mailLog' ml, coalesce((data->>'emailSetAt')::bigint,0) setat, coalesce((data->>'emailBounced')::boolean,false) bnc from public.docs where path like 'meets/%/vip/%' and (coalesce(data->>'email','')<>'' or data ? 'email1Thread')")).rows.forEach(r => {
+              const v = {path:r.path, name:r.nm, profile:r.pr, replied:!!r.rep, setAt:Number(r.setat) || 0, bounced:!!r.bnc}; if (r.em) vips[String(r.em).toLowerCase()] = v; if (r.th) byTh[r.th] = v; (Array.isArray(r.ml) ? r.ml : []).forEach(m => { if (m && m.threadId) byTh[m.threadId] = v; }); });
             const res = await Promise.all(keys.filter(k => !b.inbox.key || k.key === b.inbox.key).map(async k => { try{ const t = await gmail.tokenFor(c, k.key); if (!t) return {key:k.key, email:k.email, error:"sin conexión"};
               return {key:k.key, email:k.email, items:(await gmail.inbox(t.token, 25)).map(m => { const em = (String(m.from).match(/<([^>]+)>/) || [, m.from])[1].trim().toLowerCase(); return {...m, key:k.key, account:k.email, fromEmail:em, vip:byTh[m.threadId] || vips[em] || null}; })}; }
               catch(e){ return {key:k.key, email:k.email, error:String(e.message || e)}; } }));
+            // rebotes que ya se resolvieron (le cambiaron el correo después del aviso) tampoco salen
+            const isBounce = m => /mailer-daemon|postmaster/i.test(m.fromEmail || "") || /undeliverable|no se (pudo|ha podido) entregar|address not found|delivery status notification|delivery has failed/i.test((m.subject || "") + " " + (m.snippet || ""));
+            res.forEach(r => { if (r.items) r.items = r.items.filter(m => !hidden.has(m.id) && !(isBounce(m) && m.vip && !m.vip.bounced && m.vip.setAt > m.at)); });
             return {ok:true, accounts:res.map(r => ({key:r.key, email:r.email, error:r.error || null, n:(r.items || []).length})), items:res.flatMap(r => r.items || []).sort((a, z) => z.at - a.at)};
           }
           const k = keys.find(x => x.key === (b.thread || b.reply || b.resend).key); if (!k) return {status:400, error:"Cuenta no encontrada"};
@@ -50,6 +57,7 @@ module.exports = async (req, res) => {
             const patch = {email:to, emailSetAt:now, emailSetBy:me.id, emailBounced:false, emailBouncedAt:null, emailError:null, emailReplySeenAt:now, mailLog:log,
               ...(wasSeq ? {email1At:now, email1Thread:s2.threadId, email1MsgId:s2.messageId, email1Sender:k.key, email1Subject:subject} : {})};
             await c.query("update public.docs set data = data || $2::jsonb, version = version + 1, updated_at = now() where path = $1", [path, JSON.stringify(patch)]);
+            if (q.msgId) await c.query("insert into public.inbox_hidden (id, by_uid) values ($1,$2) on conflict do nothing", [String(q.msgId), me.id]).catch(() => {});
             return {ok:true, to, from:t.email};
           }
           // responder en el mismo hilo, con la firma de Gmail de esa cuenta
