@@ -2218,7 +2218,7 @@ function islandItems(){
     : [["agenda","cal","Agenda"],["board","home","Equipo",Number($("lateCount").textContent)||0],["more","more","Más"]];
   const more = am
     ? [...(resultsView() ? [["report","cal","Reporte del día"],["funnel","chart","Resultados"]] : []),["settings","gear","Ajustes"]]
-    : [["outreach","crown","Outreach"],["report","cal","Reporte del día"],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
+    : [["outreach","crown","Outreach"],["mich","crown","Influencers"],["report","cal","Reporte del día"],["funnel","chart","Resultados"],...(!$("tabVip").hidden ? [["vip","crown","Lista Mich"]] : []),
        ["settings","gear","Ajustes"]];
   return {main, more};
 }
@@ -4590,9 +4590,11 @@ function syncMichUi(){
   if (mm === S._mm) return; S._mm = mm;
   if (mm){ document.querySelectorAll("#tabs button").forEach(b => b.hidden = b.id!=="tabMich" && b.id!=="tabAgenda" && b.id!=="tabBoard"); if (!["mich","agenda","settings","flow"].includes(S.tab)) showTab("mich"); }
   else {
-    $("tabMich").hidden = true; document.querySelector('#tabs [data-tab="board"]').hidden = false;
+    // Head y Manager también ven la lista de influencers (pestaña "Influencers") para mandar correos, agregar correos y ver el historial
+    const seeList = adminMode() && !S.viewAs; $("tabMich").hidden = !seeList; $("tabMich").textContent = seeList ? "Influencers" : "Mi lista";
+    document.querySelector('#tabs [data-tab="board"]').hidden = false;
     if (S.viewAs){ $("tabAgenda").hidden = false; $("tabPerf").hidden = true; }
-    if (S.tab==="mich") showTab("agenda");
+    if (S.tab==="mich" && !seeList) showTab("agenda");
   }
 }
 const igUser = u => { const k = igKey(u||""); return k && k.startsWith("ig:") ? k.slice(3) : ""; };
@@ -5576,7 +5578,7 @@ function applyRole(saved){
   S.isLead = lead; S.roleApplied = true;
   const set = (id, show) => { const el = $(id); if (el) el.hidden = !show; };
   if (!S.viewAs){
-    ["tabFunnel","tabOutreach"].forEach(id => set(id, lead)); set("tabFlow", false); set("tabVip", false); // la Lista Mich ya no sale: Mich la trabaja en Mi lista
+    ["tabFunnel","tabOutreach","tabMich"].forEach(id => set(id, lead)); if (lead) $("tabMich").textContent = "Influencers"; set("tabFlow", false); set("tabVip", false); // la Lista Mich ya no sale: Mich la trabaja en Mi lista
     set("tabAgenda", true); set("adminActs", lead); set("viewAsBtn", S.isOwner); set("tabMine", false); set("tabPerf", false);
   }
   $("tabOrg").hidden = !S.isOwner || !!S.viewAs;
@@ -5584,7 +5586,7 @@ function applyRole(saved){
   if (lead){
     if (!downloads) claude.use("downloads").then(d => { downloads = d; $("xlsBtn").hidden = !d; });
     syncAdminSubs();
-    if (first) showTab(["flow","agenda","contacts","outreach","funnel","vip","org","board"].includes(saved) ? saved : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
+    if (first) showTab(["flow","agenda","contacts","outreach","mich","funnel","vip","org","board"].includes(saved) ? saved : "board"); if (first && /[?&]tab=/.test(location.search)){ const u = location.href; history.replaceState(null, "", location.pathname); setTimeout(() => openFromUrl(u), 50); }
     else showTab("agenda");
   } else {
     startMemberSide();
@@ -7030,7 +7032,7 @@ function exitViewAs(){
 /* Vista de usuario por rol: Account Manager, Manager o Influencer Outreach.
    Se elige desde Más (celular) o el menú de tu cuenta (computadora); te quedas en la misma pestaña. */
 function vaFixTab(){
-  const allowed = michMode() ? ["mich","agenda","settings"] : adminMode() ? ["agenda","board","outreach","flow","funnel","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["agenda","board","perf","settings"];
+  const allowed = michMode() ? ["mich","agenda","settings"] : adminMode() ? ["agenda","board","outreach","mich","flow","funnel","settings"].concat(S.isOwner && !S.viewMgr ? ["org"] : []) : ["agenda","board","perf","settings"];
   showTab(allowed.includes(S.tab) ? S.tab : allowed[0]);
 }
 function vaCur(){ return S.viewMgr ? "manager" : S.viewAs ? (roleOf(S.viewAs)==="influencer" ? "influencer" : "am") : "admin"; }
