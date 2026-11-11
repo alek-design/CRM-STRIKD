@@ -6468,6 +6468,16 @@ function miExtraHtml(u, id, x){
   return `<div class="mi-x"><div class="or-b">${x.email ? `<button type="button" class="btn small${OR.cmp===k?" primary":""}" data-orcmp="${k}"${x.emailOptout?" disabled title=\"Pidió baja\"":""}>✉ Correo</button>` : ""}<button type="button" class="btn small" data-oremail="${k}">${x.email ? "✎ Correo" : "+ Correo"}</button></div>
     ${OR.em===k ? orEmailHtml(u, id, x) : ""}${OR.cmp===k ? orCmpHtml(u, id, x) : ""}${orHistHtml(u, id, x)}</div>`;
 }
+// llena asunto y mensaje con una plantilla y el nombre del perfil (si la plantilla no trae asunto, se queda el que había)
+function orTplFill(t, x, cur){
+  if (!t) return {subject:cur.subject || "", body:""};
+  const nm = String(x.prospect||"").split(" ")[0], f = v => String(v||"").replace(/[{\[]\s*nombre\s*[}\]]/gi, nm);
+  return {subject:String(t.subject||"").trim() ? f(t.subject) : (cur.subject || ""), body:f(t.body)};
+}
+document.addEventListener("change", e => { const sl = e.target.closest("[data-orctpl]"); if (!sl) return; const k = sl.dataset.orctpl, d = OR.draft[k]; if (!d) return;
+  const [u, id] = k.split("/"), x = ((S.vip||{})[u]||{})[id]; if (!x) return;
+  if (d.edited && !confirm("Se va a reemplazar lo que escribiste con la plantilla. ¿Sigo?")){ sl.value = d.tpl; return; }
+  Object.assign(d, {tpl:sl.value, edited:false, blank:!sl.value}, sl.value ? orTplFill((S.mailTpl||{})[sl.value], x, d) : {subject:"", body:""}); bxRe(); });
 function orHistHtml(u, id, x){
   const k = `${u}/${id}`, ev = orHist(x); if (!ev.length) return "";
   const all = OR.hist[k], show = all ? ev : ev.slice(0, 3);
@@ -6477,12 +6487,15 @@ function orEmailHtml(u, id, x){
   return `<div class="or-ed"><input type="email" data-oremv="${u}/${id}" value="${esc(x.email||"")}" placeholder="correo@ejemplo.com" autocomplete="off"><button type="button" class="btn small primary" data-oremsave="${u}/${id}">Guardar</button><button type="button" class="btn small" data-oremx="1">Cancelar</button>${x.email ? `<button type="button" class="linkbtn" data-oremdel="${u}/${id}">Quitar correo</button>` : ""}</div>`;
 }
 function orCmpHtml(u, id, x){
-  const k = `${u}/${id}`, d = OR.draft[k] ||= (() => { const t = Object.values(S.mailTpl||{}).find(t => Number(t.step)===1 && t.active!==false) || {};
-    const nm = String(x.prospect||"").split(" ")[0], f = v => String(v||"").replace(/[{\[]\s*nombre\s*[}\]]/gi, nm);
-    return {key:"", subject:f(t.subject), body:f(t.body), seq:!x.email1At}; })();
+  mailSub(); // carga las plantillas si todavía no
+  const tpls = Object.entries(S.mailTpl||{}).sort((a, b) => (Number(a[1].step)||1) - (Number(b[1].step)||1) || String(a[1].name||"").localeCompare(String(b[1].name||"")));
+  const k = `${u}/${id}`, d = OR.draft[k] ||= (() => { const e = tpls.find(([, t]) => Number(t.step)===1 && t.active!==false) || [];
+    return {key:"", tpl:e[0] || "", ...orTplFill(e[1], x, {}), seq:!x.email1At}; })();
+  if (!d.tpl && !d.edited && !d.subject && !d.body && !d.blank){ const e = tpls.find(([, t]) => Number(t.step)===1 && t.active!==false); if (e) Object.assign(d, {tpl:e[0]}, orTplFill(e[1], x, d)); } // llegaron las plantillas
   const accts = ((GM.st||{}).seq||[]).filter(a => a.email);
   return `<div class="or-cmp"><div class="row"><label class="f">Desde<select data-orcf="key" data-k="${k}"><option value="">🔄 Rotar (la de menos envíos hoy)</option>${accts.map(a => `<option value="${a.key}"${d.key===a.key?" selected":""}>${esc(a.email)} · hoy ${a.today||0}/${a.quota||10}</option>`).join("")}</select></label>
       <span class="mut small">Para: ${esc(x.email)}</span></div>
+    <label class="f">Plantilla<select data-orctpl="${k}"><option value="">— En blanco —</option>${tpls.map(([tid, t]) => `<option value="${tid}"${d.tpl===tid?" selected":""}>${esc(t.name || "Sin nombre")} · approach ${Number(t.step)||1}${t.active===false ? " (pausada)" : ""}</option>`).join("")}</select></label>
     <label class="f">Asunto<input data-orcf="subject" data-k="${k}" value="${esc(d.subject)}"></label>
     <label class="f">Mensaje<textarea rows="10" class="bx-ta" data-orcf="body" data-k="${k}">${esc(d.body)}</textarea></label>
     <small class="mut">Pon {video} donde quieras el link del video. Se agrega la firma de Gmail de la cuenta.</small>
@@ -6512,7 +6525,7 @@ document.addEventListener("click", async e => {
     catch(err){ alert("No se pudo mandar: " + (err.message || err)); }
     OR.busy = ""; return bxRe(); }
 });
-document.addEventListener("input", e => { const f = e.target.closest("[data-orcf]"); if (!f) return; const d = OR.draft[f.dataset.k]; if (!d) return; d[f.dataset.orcf] = f.type==="checkbox" ? f.checked : f.value; });
+document.addEventListener("input", e => { const f = e.target.closest("[data-orcf]"); if (!f) return; const d = OR.draft[f.dataset.k]; if (!d) return; d[f.dataset.orcf] = f.type==="checkbox" ? f.checked : f.value; if (f.dataset.orcf==="subject" || f.dataset.orcf==="body") d.edited = true; });
 document.addEventListener("change", e => { const f = e.target.closest("[data-orcf]"); if (!f) return; const d = OR.draft[f.dataset.k]; if (!d) return; d[f.dataset.orcf] = f.type==="checkbox" ? f.checked : f.value; });
 document.addEventListener("keydown", e => { const i = e.target.closest("[data-oremv]"); if (i && e.key==="Enter"){ e.preventDefault(); const b = document.querySelector(`[data-oremsave="${i.dataset.oremv}"]`); b && b.click(); } });
 /* ---------- Outreach de influencers: tablero para Head y Manager (avances, canales, semanas y listas) ---------- */
