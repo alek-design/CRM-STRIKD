@@ -5769,7 +5769,7 @@ function seqHtml(g){
   if (!window.STRIKD_GMAIL_STATUS) return "";
   const cfg = (S.config||{}).mailSeq || {}, own = S.isOwner, accts = g.seq || [1,2,3,4,5].map(n => ({key:"seq"+n}));
   const rows = accts.map((a, i) => setRow("📤", `Cuenta de envío ${i+1}`, a.email
-      ? `${esc(a.email)} · hoy ${a.today||0}/${a.quota||10}${(a.quota||10) < 20 ? ` · calentando (sube a 20 en ${a.quota>=15?"1 semana":"2 semanas"})` : ""}${a.total ? ` · ${a.total} en total` : ""}`
+      ? `${esc(a.email)} · hoy ${a.today||0}/${a.quota||10}${(a.quota||10) < 20 ? ` · calentando (sube a 20 en ${a.quota>=15?"1 semana":"2 semanas"})` : ""}${a.manual ? ` · ${a.manual} a mano hoy` : ""}${a.total ? ` · ${a.total} en total` : ""}`
       : "Sin conectar", own ? (a.email ? `<button type="button" class="btn small" data-gm="dis-seq|${a.key}">Cambiar</button>` : `<button type="button" class="btn small primary" data-gm="con-seq|${a.key}">Conectar</button>`) : "")).join("");
   const nA = accts.filter(a => a.email).length, tp = n => Object.values(S.mailTpl||{}).some(t => Number(t.step)===n && t.active!==false);
   /* para encender solo hace falta una cuenta conectada y una plantilla activa del approach 1; lo demás es aviso */
@@ -6493,12 +6493,12 @@ function orCmpHtml(u, id, x){
     return {key:"", tpl:e[0] || "", ...orTplFill(e[1], x, {}), seq:!x.email1At}; })();
   if (!d.tpl && !d.edited && !d.subject && !d.body && !d.blank){ const e = tpls.find(([, t]) => Number(t.step)===1 && t.active!==false); if (e) Object.assign(d, {tpl:e[0]}, orTplFill(e[1], x, d)); } // llegaron las plantillas
   const accts = ((GM.st||{}).seq||[]).filter(a => a.email);
-  return `<div class="or-cmp"><div class="row"><label class="f">Desde<select data-orcf="key" data-k="${k}"><option value="">🔄 Rotar (la de menos envíos hoy)</option>${accts.map(a => `<option value="${a.key}"${d.key===a.key?" selected":""}>${esc(a.email)} · hoy ${a.today||0}/${a.quota||10}</option>`).join("")}</select></label>
+  return `<div class="or-cmp"><div class="row"><label class="f">Desde<select data-orcf="key" data-k="${k}"><option value="">🔄 Rotar (la de menos envíos hoy)</option>${accts.map(a => `<option value="${a.key}"${d.key===a.key?" selected":""}>${esc(a.email)} · a mano hoy ${a.manual||0}/${((S.config||{}).mailSeq||{}).manualMax||40}</option>`).join("")}</select></label>
       <span class="mut small">Para: ${esc(x.email)}</span></div>
     <label class="f">Plantilla<select data-orctpl="${k}"><option value="">— En blanco —</option>${tpls.map(([tid, t]) => `<option value="${tid}"${d.tpl===tid?" selected":""}>${esc(t.name || "Sin nombre")} · approach ${Number(t.step)||1}${t.active===false ? " (pausada)" : ""}</option>`).join("")}</select></label>
     <label class="f">Asunto<input data-orcf="subject" data-k="${k}" value="${esc(d.subject)}"></label>
     <label class="f">Mensaje<textarea rows="10" class="bx-ta" data-orcf="body" data-k="${k}">${esc(d.body)}</textarea></label>
-    <small class="mut">Pon {video} donde quieras el link del video. Se agrega la firma de Gmail de la cuenta.</small>
+    <small class="mut">Pon {video} donde quieras el link del video. Se agrega la firma de Gmail de la cuenta. Los correos a mano no gastan el cupo automático (tope aparte: ${((S.config||{}).mailSeq||{}).manualMax||40} por cuenta al día).</small>
     ${!x.email1At ? `<label class="or-ck"><input type="checkbox" data-orcf="seq" data-k="${k}"${d.seq?" checked":""}> Contar como su email 1 (después le salen solos el 2 y el 3, con autorización)</label>` : ""}
     <div class="row"><button type="button" class="btn small primary" data-orcsend="${k}"${OR.busy===k?" disabled":""}>${OR.busy===k ? "Enviando…" : "Enviar correo"}</button><button type="button" class="btn small" data-orcmp="${k}">Cancelar</button></div></div>`;
 }

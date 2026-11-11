@@ -53,11 +53,14 @@ module.exports = async (req, res) => {
           const toks = (await c.query("select key, email from public.gmail_tokens")).rows.filter(r => ea.SEQ_KEYS.includes(r.key));
           if (!toks.length) return {status:400, error:"Conecta al menos una cuenta de envío"};
           const day0 = new Date(Date.parse(new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10) + "T05:00:00Z")).toISOString();
-          const st = {}; (await c.query("select sender, count(*)::int n from public.email_log where at >= $1 and status <> 'error' group by sender", [day0])).rows.forEach(r => st[r.sender] = r.n);
+          // los correos a mano no gastan el cupo automático; tienen su propio tope por cuenta al día (config/main.mailSeq.manualMax, 40 por defecto)
+          const cfgS = (((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data || {}).mailSeq || {}, MAN = Number(cfgS.manualMax) || 40;
+          const st = {}; (await c.query("select sender, count(*)::int n from public.email_log where at >= $1 and status <> 'error' and (status = 'manual' or tpl = 'manual') group by sender", [day0])).rows.forEach(r => st[r.sender] = r.n);
           const fa = {}; (await c.query("select sender_email, min(at) a from public.email_log where status <> 'error' group by sender_email")).rows.forEach(r => fa[r.sender_email] = new Date(r.a).getTime());
-          const free = k => (st[k.key] || 0) < ea.quotaFor(fa[k.email], Date.now());
+          const free = k => (st[k.key] || 0) < MAN;
           const k = q.key ? toks.find(t => t.key === q.key) : toks.filter(free).sort((a, z) => (st[a.key] || 0) - (st[z.key] || 0))[0];
-          if (!k) return {status:400, error:q.key ? "Esa cuenta no está conectada" : "Todas las cuentas llegaron a su cupo de hoy"};
+          if (!k) return {status:400, error:q.key ? "Esa cuenta no está conectada" : `Todas las cuentas llegaron a ${MAN} correos a mano hoy`};
+          if (q.key && !free(k)) return {status:400, error:`Esa cuenta ya mandó ${MAN} correos a mano hoy; elige otra o deja "Rotar"`};
           const t = await gmail.tokenFor(c, k.key); if (!t) return {status:400, error:"La cuenta no responde; vuelve a conectarla"};
           const idn = await gmail.sendAs(t.token, t.email), m = ea.compose(text, 0, (((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data || {}).mailSeq || {}, path, true, idn.signature);
           const s2 = await gmail.send(t.token, {from:t.email, fromName:idn.displayName, to:x.email, subject, body:m.text, html:m.html});
@@ -88,7 +91,8 @@ module.exports = async (req, res) => {
       const rows = (await c.query("select key, email from public.gmail_tokens")).rows;
       const general = rows.find(r => r.key === "general") || null, mine = rows.find(r => r.key === me.id) || null;
       const day0 = new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10) + "T05:00:00Z";
-      const today = (await c.query("select sender, count(*)::int n from public.email_log where at >= $1 and status='sent' group by sender", [day0])).rows;
+      const today = (await c.query("select sender, count(*)::int n from public.email_log where at >= $1 and status='sent' and coalesce(tpl,'') <> 'manual' group by sender", [day0])).rows;
+      const todayMan = {}; (await c.query("select sender, count(*)::int n from public.email_log where at >= $1 and status <> 'error' and (status = 'manual' or tpl = 'manual') group by sender", [day0])).rows.forEach(r => todayMan[r.sender] = r.n);
       const base = {general:general ? {email:general.email} : null, me:mine ? {email:mine.email} : null, today:Object.fromEntries(today.map(r => [r.sender, r.n])), limit:20};
       if (!lead) return base;
       const tpl = (await c.query(`select tpl, step, count(*)::int sent, count(*) filter (where status in ('replied','optout'))::int replied from public.email_log
@@ -97,7 +101,7 @@ module.exports = async (req, res) => {
       const { quotaFor, SEQ_KEYS } = require("../lib/emailauto");
       const first = {}; (await c.query("select sender_email, min(at) a from public.email_log where status <> 'error' group by sender_email")).rows.forEach(r => first[r.sender_email] = new Date(r.a).getTime());
       const tot = {}; (await c.query("select sender, count(*)::int n from public.email_log where status <> 'error' group by sender")).rows.forEach(r => tot[r.sender] = r.n);
-      const seq = SEQ_KEYS.map(k => { const r = rows.find(x => x.key === k); return r ? {key:k, email:r.email, today:base.today[k] || 0, quota:quotaFor(first[r.email], Date.now()), total:tot[k] || 0, since:first[r.email] || null} : {key:k}; });
+      const seq = SEQ_KEYS.map(k => { const r = rows.find(x => x.key === k); return r ? {key:k, email:r.email, today:base.today[k] || 0, manual:todayMan[k] || 0, quota:quotaFor(first[r.email], Date.now()), total:tot[k] || 0, since:first[r.email] || null} : {key:k}; });
       await c.query("create table if not exists public.email_clicks (id bigserial primary key, uid text, vip_id text, step int, at timestamptz default now())").catch(() => {});
       const clk = {}; (await c.query("select step, count(distinct vip_id)::int n from public.email_clicks group by step")).rows.forEach(r => clk[r.step] = r.n);
       const steps = (await c.query(`select step, count(*)::int sent, count(*) filter (where status in ('replied','optout'))::int replied
