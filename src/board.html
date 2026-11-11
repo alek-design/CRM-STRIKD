@@ -4503,7 +4503,7 @@ function renderPlan(){
   const doneBox = (list, row, key) => (key==="tkDoneMine" ? myDoneAny : asgDoneAny) ? `<details class="tt-done"${MORE[key] ? " open" : ""}><summary data-tkdonet="${key}">Completadas${MORE.tkAllDone ? " · todas" : " · 7 días"} (${list.length})</summary>
     <div class="tt-done-bar"><button type="button" class="linkbtn" data-tkalldone="1">${MORE.tkAllDone ? "Solo las de 7 días" : "Ver todas las completadas"}</button>${MORE.tkAllDone ? `<input type="search" class="tt-done-q" data-tkdoneq="1" placeholder="Buscar tarea" value="${esc(MORE.tkDoneQ||"")}">` : ""}</div>
     ${list.filter(r => !dq || fold(String((r[2] || r[1] || {}).title||"")).includes(dq)).map(row).join("")}</details>` : "";
-  const replied = admin ? [] : Object.entries(vipItems(meId()) || {}).filter(([,x]) => x && x.emailRepliedAt && !x.replyHandledAt).sort((a,b) => (b[1].emailRepliedAt||0) - (a[1].emailRepliedAt||0));
+  const replied = admin ? [] : Object.entries(vipItems(meId()) || {}).filter(([,x]) => x && x.emailRepliedAt && !x.replyHandledAt && !x.emailBounced).sort((a,b) => (b[1].emailRepliedAt||0) - (a[1].emailRepliedAt||0));
   const repHtml = replied.length ? `<section class="pg2"><div class="pg2-h"><span>Contestaron tu email</span><b>${replied.length}</b></div><div class="pg2-card">${replied.map(([id,x]) => { const k = `${meId()}/${id}`;
       return `<div class="pr vem"><span class="pr-m"><b>${esc(x.prospect||"Influencer")}</b><small>${esc(fmtLocal(x.emailRepliedAt))}${x.email ? " · " + esc(x.email) : ""}</small>${x.emailReplySnippet ? `<span class="mi-reply">“${esc(String(x.emailReplySnippet).slice(0, 220))}”</span>` : ""}</span>
         <span class="rem-acts">${x.email ? `<button type="button" class="btn small" data-vemcopy="${esc(x.email)}">Copiar email</button>` : ""}<button type="button" class="btn small" data-vrdone="${k}" data-how="no">No le interesa</button><button type="button" class="btn small primary" data-vrdone="${k}">✓ Ya le contesté</button></span></div>`; }).join("")}</div></section>` : "";
@@ -6468,7 +6468,8 @@ function orHist(x){
   const manual = new Set((x.mailLog||[]).map(m => m.threadId));
   [1,2,3].forEach(n => { if (n===1 && x.email1Tpl==="manual" && manual.has(x.email1Thread)) return; add(x[`email${n}At`], `✉ Email ${n} de 3${n===1 && x.email1Sender ? "" : ""}`); });
   (x.mailLog||[]).forEach(m => add(m.at, `✉ Correo a mano${m.from ? " desde " + esc(String(m.from).split("@")[0]) : ""}${m.by ? " · " + esc(who(m.by)) : ""}: “${esc(String(m.subject||"").slice(0, 70))}”`));
-  if (x.emailRepliedAt) add(x.emailRepliedAt, x.emailOptout ? "Pidió baja" : x.emailBounced ? "El correo rebotó" : `💬 Contestó: “${esc(String(x.emailReplySnippet||"").slice(0, 120))}”`);
+  if (x.emailRepliedAt && !x.emailBounced) add(x.emailRepliedAt, x.emailOptout ? "Pidió baja" : `💬 Contestó: “${esc(String(x.emailReplySnippet||"").slice(0, 120))}”`);
+  if (x.emailBounced) add(x.emailBouncedAt || x.emailRepliedAt || x.email1At, "⚠️ El correo no se pudo entregar (rebotó)");
   add(x.dmDueAt, "Pasó a DM (3 emails sin respuesta)");
   add(x.videoClickAt, "👀 Abrió el video");
   if (x.statusAt && ["interesado","agendo","descartado"].includes(x.status)) add(x.statusAt, {interesado:"🙋 Interesado", agendo:"📅 Agendó meet", descartado:"Descartado"}[x.status]);
