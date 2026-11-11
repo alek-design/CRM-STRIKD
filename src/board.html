@@ -1602,6 +1602,10 @@ body.mob-open header.top{z-index:31}
 .pathfold{justify-self:start}
 .pl-item.task.late,.pl-item.task.soon,.pl-item.task.ok{border-left-color:var(--line2)!important}
 #pathWrap.folded #myLegend,#pathWrap.folded #myPath,#pathWrap.folded #onlyTodayL{display:none}
+
+#orBox .or-tabs{display:flex;gap:4px;margin:10px 0 8px;border-bottom:1px solid var(--line);overflow-x:auto}#orBox .or-tabs button{font:inherit;font-size:13.5px;background:none;border:0;border-bottom:2px solid transparent;padding:7px 12px;color:var(--muted);cursor:pointer;white-space:nowrap}
+#orBox .or-tabs button.on{color:var(--fg);border-bottom-color:var(--fg);font-weight:600}#orBox .or-tabs b{font-size:11px;padding:1px 6px;border-radius:99px;background:var(--fg);color:var(--bg);margin-left:4px}
+#orBox .or>.row{align-items:center}#orBox .or>.row h2{margin:0}#orBox .or>.row .sub{margin:2px 0 0}#orBox .or-top{margin-top:4px}#orBox .mb{border:0;padding:0;margin:4px 0}
 </style>
 
 <header class="top">
@@ -6436,7 +6440,7 @@ function bxHtml(){
   const its = (BX.items||[]).filter(m => !BX.key || m.key===BX.key), unread = (BX.items||[]).filter(m => m.unread).length;
   const accs = BX.accounts.filter(a => a.email);
   const head = `<div class="mb-h"><h3>📥 Buzón${unread ? ` <span class="bx-n">${unread} sin leer</span>` : ""}</h3><span class="spacer"></span>
-    <button type="button" class="btn small" data-bxre="1"${BX.loading?" disabled":""}>${BX.loading ? "Cargando…" : "↻ Actualizar"}</button><button type="button" class="btn small${BX.show?"":" primary"}" data-bxshow="1">${BX.show ? "Ocultar" : "Abrir buzón"}</button></div>`;
+    <button type="button" class="btn small" data-bxre="1"${BX.loading?" disabled":""}>${BX.loading ? "Cargando…" : "↻ Actualizar"}</button></div>`;
   if (!BX.show) return `<section class="mb bx">${head}</section>`;
   const pills = accs.length > 1 ? `<div class="mi-ef">${[["","Todos",(BX.items||[]).length], ...accs.map(a => [a.key, a.email.split("@")[0], a.n])].map(([k,l,n]) => `<button type="button" data-bxk="${k}" class="${BX.key===k?"on":""}">${esc(l)} <b>${n}</b></button>`).join("")}</div>` : "";
   const errs = BX.accounts.filter(a => a.error).map(a => `${esc(a.email.split("@")[0])}: ${esc(a.error)}`);
@@ -6596,7 +6600,7 @@ document.addEventListener("click", async e => {
   BX.sending = ""; bxRe();
 });
 /* ---------- Outreach de influencers: tablero para Head y Manager (avances, canales, semanas y listas) ---------- */
-const OR = {p:"7", l:"accion", q:"", n:40, cmp:"", em:"", hist:{}, draft:{}, busy:""};
+const OR = {sec:(() => { try{ return localStorage.getItem("orSec") || "list"; }catch(_){ return "list"; } })(), p:"7", l:"accion", q:"", n:40, cmp:"", em:"", hist:{}, draft:{}, busy:""};
 function orState(x){
   const st = x.status || "nuevo";
   if (x.meetId) return {t:`📅 Meet${x.meetAt ? " " + fmtMeetAt(x.meetAt) : ""}`, c:"ok", g:"meet"};
@@ -6678,7 +6682,7 @@ function renderOutreach(){
   // 4) listas
   const LISTS = [["accion","Necesitan acción", r => orNeeds(r)],["personal","✍️ Correo personalizado", r => r.s.g==="personal"],["seq","En emails", r => r.s.g==="seq"],
     ["resp","Respondieron", r => r.s.g==="resp"],["meet","Meets", r => r.s.g==="meet"],["dmsent","DM enviado", r => r.s.g==="dm-sent"],["pend","Por contactar", r => r.s.g==="pend" && !r.x.top && !r.x.direct],
-    ["top","👑 Top tier", r => !!r.x.top],["direct","🤝 Contacto directo", r => !!r.x.direct && !r.x.top],["fin","Baja / no contactar / competidores", r => r.s.g==="fin"],["all","Todos", () => true]];
+    ["top","👑 Top tier", r => !!r.x.top],["direct","🤝 Contacto directo", r => !!r.x.direct && !r.x.top],["fin","Baja / no contactar", r => r.s.g==="fin"],["all","Todos", () => true]];
   const lf = (LISTS.find(l => l[0]===OR.l) || LISTS[0]), q = fold(OR.q.trim().replace(/^@/,""));
   const hay = x => fold([x.prospect, igUser(x.profile), x.profile, x.email, x.notes].filter(Boolean).join(" "));
   const list = rows.filter(r => q ? hay(r.x).includes(q) : lf[2](r)).sort((a,b) => orLast(b.x) - orLast(a.x));
@@ -6686,17 +6690,14 @@ function renderOutreach(){
     return `<div class="or-w"><div class="or-r"><div class="or-m"><b>${x.top ? "👑 " : x.direct ? "🤝 " : ""}${esc(x.prospect || h || "Sin nombre")}${vtagChips(x)}</b><small>${h ? "@" + esc(h) + " · " : ""}${x.folRange ? esc(String(x.folRange).replace(/^[^(]*\(|\)$/g,"")) : fmtFol(x.followers)} seguidores${x.email ? " · ✉ " + esc(x.email) : ""}${x.videoClicks ? " · 👀 vio el video" : ""}</small>
       ${x.emailReplySnippet && st.g==="resp" ? `<span class="mi-reply">“${esc(String(x.emailReplySnippet).slice(0, 220))}”</span>` : ""}</div>
       <div class="or-s"><span class="or-st ${st.c}">${esc(st.t)}</span><small>${orLast(x) ? esc(fmtLocal(orLast(x))) : ""}${x.contactedBy ? " · " + esc(first(nameOf(S.ps||{}, x.contactedBy))) : ""}</small><div class="or-b">${url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">📷 Instagram</a>` : ""}${x.email ? `<button type="button" class="btn small${OR.cmp===`${u}/${id}`?" primary":""}" data-orcmp="${u}/${id}"${x.emailOptout?" disabled title=\"Pidió baja\"":""}>✉ Correo</button>` : ""}<button type="button" class="btn small" data-oremail="${u}/${id}">${x.email ? "✎" : "+ Correo"}</button>${x.emailRepliedAt && !x.emailBounced && !x.emailOptout ? `<button type="button" class="btn small" data-ornotrep="${u}/${id}" title="Era un aviso de no entrega o una respuesta automática: no cuenta como respuesta">✗ No fue respuesta</button>` : ""}${OR.l==="accion" && !OR.q ? `<button type="button" class="btn small" data-ordone="${u}/${id}" title="Ya se atendió: sale de Necesitan acción (regresa si pasa algo nuevo)">✓ Quitar</button>` : ""}</div></div></div>
-      ${OR.em===`${u}/${id}` ? orEmailHtml(u, id, x) : ""}${OR.cmp===`${u}/${id}` ? orCmpHtml(u, id, x) : ""}${orHistHtml(u, id, x)}`; };  const h = `<div class="or">
-    <div class="row"><div><h2>Outreach de influencers</h2><p class="sub">${rows.length} perfiles en la lista · Instagram (DM de Mich) y Email (secuencia automática)</p></div><div class="spacer"></div>
-      <div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div></div>
-    <section class="or-sec or-top"><h3 class="sec-h">Listas</h3>
+      ${OR.em===`${u}/${id}` ? orEmailHtml(u, id, x) : ""}${OR.cmp===`${u}/${id}` ? orCmpHtml(u, id, x) : ""}${orHistHtml(u, id, x)}`; };  /* secciones en pestañas para que la pantalla no sea tan larga (Alek, 11 nov 2026) */
+  const periodH = `<div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div>`;
+  const listsH = `    <section class="or-sec or-top">
       <input type="search" class="mi-q" data-orq="1" placeholder="🔍 Buscar en toda la lista: nombre, @usuario, email" value="${esc(OR.q)}">
-      ${q ? "" : `<div class="mi-ef or-l">${LISTS.map(([v,l,f]) => { const n = rows.filter(f).length; return `<button type="button" data-orl="${v}" class="${OR.l===v?"on":""}">${l} <b>${n}</b></button>`; }).join("")}</div>`}
+      ${q ? "" : `<div class="mi-ef or-l">${LISTS.map(([v,l,f]) => { const n = rows.filter(f).length; if (!n && OR.l!==v && v!=="accion" && v!=="all") return ""; /* las vacías no se muestran */ return `<button type="button" data-orl="${v}" class="${OR.l===v?"on":""}">${l} <b>${n}</b></button>`; }).join("")}</div>`}
       <div class="or-list">${list.slice(0, OR.n).map(rowH).join("") || `<p class="empty">${q ? "Nadie con esa búsqueda." : "Nada en esta lista."}</p>`}</div>
-      ${list.length > OR.n ? `<button type="button" class="btn small" data-ormore="1">Ver más (${list.length - OR.n})</button>` : ""}</section>
-    ${S.isOwner && !S.viewAs ? mbHtml() : ""}
-    ${!S.viewAs ? bxHtml() : ""}
-    <div class="or-k">${k(kp.nuevos, "nuevos en la lista")}${k(kp.dm, "DMs de Mich")}${k(kp.em, "emails enviados")}${k(kp.rep + kp.int, "respondieron", kp.rep + kp.int ? "on" : "", `${kp.rep} por email · ${kp.int} interesados por DM`)}${k(kp.meet, "meets", kp.meet ? "on" : "")}</div>
+      ${list.length > OR.n ? `<button type="button" class="btn small" data-ormore="1">Ver más (${list.length - OR.n})</button>` : ""}</section>`;
+  const numsH = `    <div class="or-k">${k(kp.nuevos, "nuevos en la lista")}${k(kp.dm, "DMs de Mich")}${k(kp.em, "emails enviados")}${k(kp.rep + kp.int, "respondieron", kp.rep + kp.int ? "on" : "", `${kp.rep} por email · ${kp.int} interesados por DM`)}${k(kp.meet, "meets", kp.meet ? "on" : "")}</div>
     <div class="or-ch">
       <section class="or-c"><h3><span class="or-dot ig"></span>Instagram · DM</h3>
         <div class="or-f">${k(pend.length - pendEm, "por contactar")}${k(g["dm"]||0, "listos para DM", (g["dm"]||0) ? "wait" : "")}${k(dmTot, "contactados")}${k(cnt(x => x.status==="interesado"), "interesados")}${k(meetDm, "meets")}</div>
@@ -6706,12 +6707,23 @@ function renderOutreach(){
         <p class="mut small">Respuesta: <b>${pct(repEm, emTot)}</b> de ${emTot} a los que se les escribió.${accts.length ? ` Cuentas: ${accts.map(a => `${esc(a.email.split("@")[0])} ${a.today||0}/${a.quota||10}`).join(" · ")} hoy.` : gs.seq ? " Sin cuentas de envío conectadas." : ""}</p></section>
     </div>
     <p class="mut small or-x">Aparte: 👑 ${top} top tier · 🤝 ${dir} contacto directo (estrategia propia, sin emails automáticos).</p>
-    <section class="or-sec"><h3 class="sec-h">Avance por semana</h3>${wk}</section>
-
+    <section class="or-sec"><h3 class="sec-h">Avance por semana</h3>${wk}</section>`;
+  const mbPend = Object.values(S.mailBatch||{}).filter(b => b && b.date >= todayKey() && b.status!=="approved").reduce((n, b) => n + (b.items||[]).filter(i => !i.skip).length, 0);
+  if (!S.viewAs) bxLoad(false); // para el contador de no leídos
+  const bxUn = (BX.items||[]).filter(m => m.unread).length;
+  const SECS = [["list","📋 Listas", rows.filter(LISTS[0][2]).length], ...(S.isOwner && !S.viewAs ? [["mb","📧 Por autorizar", mbPend]] : []), ["bx","📥 Buzón", bxUn], ["res","📊 Resumen", 0]];
+  if (!SECS.some(x => x[0]===OR.sec)) OR.sec = "list";
+  if (OR.sec==="bx") BX.show = true;
+  const h = `<div class="or">
+    <div class="row"><div><h2>Outreach de influencers</h2><p class="sub">${rows.length} perfiles · Instagram (DM) y Email</p></div><div class="spacer"></div>
+      ${OR.sec==="res" ? periodH : ""}</div>
+    <div class="or-tabs" role="tablist">${SECS.map(([v,l,n]) => `<button type="button" role="tab" data-orsec="${v}" class="${OR.sec===v?"on":""}">${l}${n ? ` <b>${n}</b>` : ""}</button>`).join("")}</div>
+    ${OR.sec==="list" ? listsH : OR.sec==="mb" ? mbHtml() : OR.sec==="bx" ? bxHtml() : numsH}
   </div>`;
   if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
 }
 document.addEventListener("click", e => {
+  const sc = e.target.closest("[data-orsec]"); if (sc){ OR.sec = sc.dataset.orsec; try{ localStorage.setItem("orSec", OR.sec); }catch(_){} return bxRe(); }
   const p = e.target.closest("[data-orp]"); if (p){ OR.p = p.dataset.orp; return renderOutreach(); }
   const l = e.target.closest("[data-orl]"); if (l){ OR.l = l.dataset.orl; OR.n = 40; return renderOutreach(); }
   if (e.target.closest("[data-ormore]")){ OR.n += 60; return renderOutreach(); }
