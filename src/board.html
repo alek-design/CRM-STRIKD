@@ -6580,7 +6580,8 @@ document.addEventListener("click", async e => {
   const b = e.target.closest("[data-ornotrep]"); if (!b) return;
   const [u, id] = b.dataset.ornotrep.split("/"), x = ((S.vip||{})[u]||{})[id]; if (!x) return;
   const bounce = confirm("¿El correo NO se pudo entregar (rebotó)?\n\nAceptar = rebotó (ya no se le mandan más correos)\nCancelar = fue respuesta automática (se sigue esperando su respuesta)");
-  const patch = bounce ? {emailRepliedAt:null, emailReplySnippet:null, emailBounced:true, emailBouncedAt:Date.now(), emailError:"Marcado a mano: no se pudo entregar"} : {emailRepliedAt:null, emailReplySnippet:null};
+  const seenAt = Math.max(Date.now(), Number(x.emailRepliedAt)||0); // para que esa misma respuesta no se vuelva a marcar como nueva
+  const patch = bounce ? {emailRepliedAt:null, emailReplySnippet:null, emailReplySeenAt:seenAt, emailBounced:true, emailBouncedAt:Date.now(), emailError:"Marcado a mano: no se pudo entregar"} : {emailRepliedAt:null, emailReplySnippet:null, emailReplySeenAt:seenAt};
   const prev = {emailRepliedAt:x.emailRepliedAt, emailReplySnippet:x.emailReplySnippet, emailBounced:x.emailBounced}; Object.assign(x, patch); bxRe();
   try{ await db.doc(`meets/${u}/vip/${id}`).update(patch); quickToast(bounce ? "Marcado como rebote: ya no cuenta como respuesta" : "Quitado: ya no cuenta como respuesta"); }
   catch(_){ Object.assign(x, prev); bxRe(); quickToast("No se guardó"); }
