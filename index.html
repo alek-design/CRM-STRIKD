@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-11 00:48:32 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-11 00:51:49 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794358112">
+<link rel="stylesheet" href="/auth.css?v=1794358309">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794358112"></script>
+<script src="/claude-shim.js?v=1794358309"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -352,6 +352,19 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sw{flex:none;display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:13px;font-weight:600;background:none;border:0;color:var(--muted);cursor:pointer;padding:4px 0;white-space:nowrap}.sw i{width:40px;height:24px;border-radius:999px;background:var(--line2);position:relative;transition:background .15s}.sw i::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}.sw.on{color:var(--fg)}.sw.on i{background:#25D366}.sw.on i::after{left:19px}
 .cw-resch{gap:8px}.cw-resch input{font:inherit;font-size:16px;padding:5px 8px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);color:var(--fg)}
 .d-next-d,.pg-row small,.tk-sub{white-space:pre-wrap}
+
+/* Outreach compacto (Alek, 10 nov 2026: "los bloques están demasiado grandes") */
+#orBox .or-sec{margin-top:12px}#orBox .sec-h{font-size:14px;margin:0 0 6px}#orBox .mi-q{padding:6px 10px;font-size:13px;margin-bottom:6px}
+#orBox .mi-ef button{font-size:12px;padding:3px 9px}#orBox .mi-ef{gap:4px}
+#orBox .or-list{gap:4px}#orBox .or-w{border-radius:10px}#orBox .or-r{padding:6px 10px;gap:8px}#orBox .or-m b{font-size:13.5px}#orBox .or-m small{font-size:11.5px}
+#orBox .or-s{flex-direction:row;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}#orBox .or-st{font-size:11.5px;padding:1px 7px}#orBox .or-s small{font-size:11px}
+#orBox .or-b .btn.small,#miBox .mi-x .btn.small{padding:3px 8px;font-size:11.5px}#orBox .or-h{padding:0 10px 6px;font-size:11.5px;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}#orBox .or-h.open{display:grid}
+#orBox .or-h small{min-width:0}#miBox .or-h{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11.5px}#miBox .or-h.open{display:grid}
+#orBox .mb{padding:8px 10px;margin:8px 0}#orBox .mb-h h3{font-size:14px}#orBox .mb-card{padding-top:6px;margin-top:6px}#orBox .mb-r{padding:5px 8px;gap:8px}#orBox .mb-x{padding:0 8px 6px 40px}
+#orBox .mb-rg{padding:6px 8px;margin:6px 0 2px;gap:4px;grid-template-columns:auto 1fr;align-items:center}#orBox .mb-rg small{grid-column:1/-1}#orBox .mb-rc input{width:120px;padding:3px 7px}
+#orBox .or-k{gap:6px;margin:8px 0 10px;grid-template-columns:repeat(5,minmax(0,1fr))}#orBox .or-k>span{padding:6px 10px;border-radius:10px}#orBox .or-k b{font-size:17px}
+#orBox .or-ch{gap:8px}#orBox .or-c{padding:8px 10px;border-radius:10px}#orBox .or-c h3{font-size:13px;margin-bottom:4px}#orBox .or-f b{font-size:16px}#orBox .or-f{gap:4px 12px}
+#orBox .or-wk td{padding:3px 6px}#orBox .or-wk{font-size:12.5px}#orBox h2{font-size:18px}
 </style>
 <div id="splash" aria-hidden="true"><svg viewBox="250 645 400 695" role="img" aria-label="STRIKD"><polygon points="539,657 430,1046 262,1100"/><polygon points="639,887 473,940 362,1328"/></svg></div>
 <script>(function(){var t0=Date.now(),done=false;function hide(){if(done)return;done=true;var s=document.getElementById("splash");if(!s)return;var w=Math.max(0,550-(Date.now()-t0));setTimeout(function(){s.classList.add("out");setTimeout(function(){s.remove()},400)},w)}window.STRIKD_SPLASH_HIDE=hide;setTimeout(hide,2600);})();</script>
@@ -6330,7 +6343,7 @@ function mbCard(b){
     const s = i.sentAt ? `<span class="or-st ok">✓ enviado</span>` : i.error ? `<span class="or-st off" title="${esc(i.error)}">✗ error</span>` : i.void ? `<span class="or-st off">no salió: ${esc(i.void)}</span>` : i.skip ? `<span class="or-st off">${i.skipTag ? "fuera: " + esc(VTAG_L[i.skipTag]||"") : "quitado"}</span>` : "";
     return `<div class="mb-i${i.skip?" off":""}"><button type="button" class="mb-r" data-mbopen="${b.date}#${ix}"><span class="mb-a">A${i.step}</span><span class="mb-n"><b>${esc(i.name||i.to)}</b><small>${esc(i.to)} · desde ${esc(String(i.from||i.key).split("@")[0])}</small></span><span class="mb-sj">${i.edited ? "✎ " : ""}${esc(i.subject)}</span>${s}<span class="mb-c">${op?"▴":"▾"}</span></button>
       ${(() => { const [, u, , id] = String(i.path||"").split("/"), x = ((S.vip||{})[u]||{})[id] || {}, url = safeUrl(x.profile || i.profile || ""), h = igUser(x.profile || i.profile || ""), nt = String(x.notes ?? i.notes ?? "").trim();
-        const tg = b.status!=="approved" || !i.sentAt ? `<span class="mb-tg">${VTAGS.map(([k,l]) => `<button type="button" class="mb-t${x[k]?" on":""}" data-mbtag="${b.date}#${ix}#${k}" aria-pressed="${x[k]?"true":"false"}">${l}</button>`).join("")}</span>` : "";
+        const tg = op && (b.status!=="approved" || !i.sentAt) ? `<span class="mb-tg">${VTAGS.map(([k,l]) => `<button type="button" class="mb-t${x[k]?" on":""}" data-mbtag="${b.date}#${ix}#${k}" aria-pressed="${x[k]?"true":"false"}">${l}</button>`).join("")}</span>` : "";
         return url || nt || tg ? `<div class="mb-x">${tg}${url ? `<a class="btn small mb-ig" href="${esc(url)}" target="_blank" rel="noopener">📷 ${h ? "@" + esc(h) : "Ver Instagram"}</a>` : ""}${nt ? `<span class="mb-nt">💬 ${esc(nt)}</span>` : ""}</div>` : ""; })()}
       ${op ? `<div class="mb-d">${ed ? `<label class="f">Asunto<input data-mbf="subject" data-mbk="${b.date}#${ix}" value="${esc(i.subject)}"${i.step>1?" disabled title=\"Va en el mismo hilo del approach 1\"":""}></label>
         <label class="f">Mensaje<textarea rows="14" class="ml-body" data-mbf="body" data-mbk="${b.date}#${ix}">${esc(i.body)}</textarea></label>` : `<p class="mb-b"><b>${esc(i.subject)}</b></p><pre class="mb-b">${esc(i.body)}</pre>`}
@@ -6404,7 +6417,7 @@ document.addEventListener("change", e => {
   const items = b.items.map((i, n) => n===Number(ix) ? {...i, [f.dataset.mbf]:f.value, edited:true} : i); mbSave(d, items);
 });
 /* ---------- Buzón: lo que llega a las cuentas de envío (Head y Manager). Leer y contestar en el mismo hilo ---------- */
-const BX = {items:null, accounts:[], at:0, loading:false, err:"", key:"", open:"", th:{}, draft:{}, sending:"", show:true};
+const BX = {items:null, accounts:[], at:0, loading:false, err:"", key:"", open:"", th:{}, draft:{}, sending:"", show:false};
 async function bxLoad(force){
   if (!window.STRIKD_GMAIL_POST || BX.loading || (!force && Date.now() - BX.at < 90e3)) return;
   BX.loading = true; BX.err = ""; bxRe();
@@ -6422,7 +6435,7 @@ function bxHtml(){
   const its = (BX.items||[]).filter(m => !BX.key || m.key===BX.key), unread = (BX.items||[]).filter(m => m.unread).length;
   const accs = BX.accounts.filter(a => a.email);
   const head = `<div class="mb-h"><h3>📥 Buzón${unread ? ` <span class="bx-n">${unread} sin leer</span>` : ""}</h3><span class="spacer"></span>
-    <button type="button" class="btn small" data-bxre="1"${BX.loading?" disabled":""}>${BX.loading ? "Cargando…" : "↻ Actualizar"}</button><button type="button" class="btn small" data-bxshow="1">${BX.show ? "Ocultar" : "Ver"}</button></div>`;
+    <button type="button" class="btn small" data-bxre="1"${BX.loading?" disabled":""}>${BX.loading ? "Cargando…" : "↻ Actualizar"}</button><button type="button" class="btn small${BX.show?"":" primary"}" data-bxshow="1">${BX.show ? "Ocultar" : "Abrir buzón"}</button></div>`;
   if (!BX.show) return `<section class="mb bx">${head}</section>`;
   const pills = accs.length > 1 ? `<div class="mi-ef">${[["","Todos",(BX.items||[]).length], ...accs.map(a => [a.key, a.email.split("@")[0], a.n])].map(([k,l,n]) => `<button type="button" data-bxk="${k}" class="${BX.key===k?"on":""}">${esc(l)} <b>${n}</b></button>`).join("")}</div>` : "";
   const errs = BX.accounts.filter(a => a.error).map(a => `${esc(a.email.split("@")[0])}: ${esc(a.error)}`);
@@ -6491,8 +6504,8 @@ document.addEventListener("change", e => { const sl = e.target.closest("[data-or
   Object.assign(d, {tpl:sl.value, edited:false, blank:!sl.value}, sl.value ? orTplFill((S.mailTpl||{})[sl.value], x, d) : {subject:"", body:""}); bxRe(); });
 function orHistHtml(u, id, x){
   const k = `${u}/${id}`, ev = orHist(x); if (!ev.length) return "";
-  const all = OR.hist[k], show = all ? ev : ev.slice(0, 3);
-  return `<div class="or-h">${show.map(e => `<div><small>${esc(fmtLocal(e.at))}</small><span>${e.t}</span></div>`).join("")}${ev.length > 3 ? `<button type="button" class="linkbtn" data-orhist="${k}">${all ? "Ver menos" : `Ver todo (${ev.length})`}</button>` : ""}</div>`;
+  const all = OR.hist[k], show = all ? ev : ev.slice(0, 1);
+  return `<div class="or-h${all?" open":""}">${show.map(e => `<div><small>${esc(fmtLocal(e.at))}</small><span>${e.t}</span></div>`).join("")}${ev.length > 1 ? `<button type="button" class="linkbtn" data-orhist="${k}">${all ? "Ocultar historial" : `Historial (${ev.length})`}</button>` : ""}</div>`;
 }
 function orEmailHtml(u, id, x){
   return `<div class="or-ed"><input type="email" data-oremv="${u}/${id}" value="${esc(x.email||"")}" placeholder="correo@ejemplo.com" autocomplete="off"><button type="button" class="btn small primary" data-oremsave="${u}/${id}">Guardar</button><button type="button" class="btn small" data-oremx="1">Cancelar</button>${x.email ? `<button type="button" class="linkbtn" data-oremdel="${u}/${id}">Quitar correo</button>` : ""}</div>`;
@@ -6595,7 +6608,7 @@ function renderOutreach(){
   const dmTot = cnt(x => x.contactedAt), emTot = cnt(x => x.email1At), repEm = cnt(x => x.emailRepliedAt && !x.emailOptout && !x.emailBounced), vidTot = cnt(x => x.videoClickAt || x.videoClicks);
   const meetDm = cnt(x => (x.meetId || x.status==="agendo") && x.contactedAt && !x.email1At), meetEm = cnt(x => (x.meetId || x.status==="agendo") && x.email1At);
   // 3) semanas
-  const W = 8, w0 = weekFrom(), weeks = Array.from({length:W}, (_, i) => { const a = w0 - (W-1-i)*7*D, b = a + 7*D;
+  const W = 6, w0 = weekFrom(), weeks = Array.from({length:W}, (_, i) => { const a = w0 - (W-1-i)*7*D, b = a + 7*D;
     const by = f => rows.filter(({x}) => { const t = Number(f(x)); return t >= a && t < b; }).length;
     return {a, dm:by(x => x.contactedAt), em:emailsIn(a, b), rep:by(x => !x.emailOptout && !x.emailBounced ? x.emailRepliedAt : 0) + by(x => x.status==="interesado" ? x.statusAt : 0), meet:by(x => x.meetId || x.status==="agendo" ? x.statusAt : 0)}; });
   const mx = Math.max(1, ...weeks.map(w => Math.max(w.dm, w.em)));
