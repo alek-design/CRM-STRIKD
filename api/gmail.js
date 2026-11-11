@@ -15,7 +15,7 @@ module.exports = async (req, res) => {
       if (req.method === "POST"){
         const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
         // buzón de las cuentas de envío (Head y Manager): lista, hilo y responder
-        if (b.inbox || b.thread || b.reply){
+        if (b.inbox || b.thread || b.reply || b.resend){
           if (!lead) return {status:403, error:"Solo Head y Manager"};
           const { SEQ_KEYS } = require("../lib/emailauto");
           const keys = (await c.query("select key, email from public.gmail_tokens")).rows.filter(r => SEQ_KEYS.includes(r.key) || r.key === "general");
@@ -28,9 +28,30 @@ module.exports = async (req, res) => {
               catch(e){ return {key:k.key, email:k.email, error:String(e.message || e)}; } }));
             return {ok:true, accounts:res.map(r => ({key:r.key, email:r.email, error:r.error || null, n:(r.items || []).length})), items:res.flatMap(r => r.items || []).sort((a, z) => z.at - a.at)};
           }
-          const k = keys.find(x => x.key === (b.thread || b.reply).key); if (!k) return {status:400, error:"Cuenta no encontrada"};
+          const k = keys.find(x => x.key === (b.thread || b.reply || b.resend).key); if (!k) return {status:400, error:"Cuenta no encontrada"};
           const t = await gmail.tokenFor(c, k.key); if (!t) return {status:400, error:"La cuenta no responde; vuelve a conectarla"};
           if (b.thread) return {ok:true, messages:await gmail.thread(t.token, String(b.thread.id))};
+          // rebotó: se le cambia el correo al perfil y se le vuelve a mandar el mismo correo (nuevo hilo, misma cuenta, con la firma de Gmail)
+          if (b.resend){
+            const ea = require("../lib/emailauto"), q = b.resend, path = String(q.path || ""), to = String(q.email || "").trim().toLowerCase();
+            if (!/^meets\/[^/]+\/vip\/[^/]+$/.test(path)) return {status:400, error:"Perfil no válido"};
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) return {status:400, error:"Ese correo no se ve bien"};
+            const x = ((await c.query("select data from public.docs where path=$1", [path])).rows[0] || {}).data; if (!x) return {status:404, error:"Ese perfil ya no está en la lista"};
+            const msgs = await gmail.thread(t.token, String(q.threadId)), mine = msgs.filter(m => m.mine), last = mine[mine.length - 1];
+            if (!last) return {status:400, error:"No encontré el correo que se le mandó en esa conversación"};
+            const body = String(last.text || "").split(/\n-- ?\n/)[0].replace(/\n*Si prefieres que no te volvamos a escribir[\s\S]*$/i, "").trim();
+            if (!body) return {status:400, error:"El correo original está vacío"};
+            const cfgS = (((await c.query("select data from public.docs where path='config/main'")).rows[0] || {}).data || {}).mailSeq || {};
+            const idn = await gmail.sendAs(t.token, t.email), m = ea.compose(body, 0, cfgS, path, true, idn.signature), subject = String(last.subject || x.email1Subject || "").replace(/^re:\s*/i, "");
+            const s2 = await gmail.send(t.token, {from:t.email, fromName:idn.displayName, to, subject, body:m.text, html:m.html});
+            const now = Date.now(), [, u, , vid] = path.split("/"), wasSeq = String(q.threadId) === String(x.email1Thread || "");
+            await c.query("insert into public.email_log (sender, sender_email, uid, vip_id, step, tpl, to_email, message_id, thread_id, status) values ($1,$2,$3,$4,$5,'manual',$6,$7,$8,'sent')", [k.key, t.email, u, vid, wasSeq ? 1 : 0, to, s2.messageId, s2.threadId]);
+            const log = (Array.isArray(x.mailLog) ? x.mailLog : []).concat([{at:now, by:me.id, from:t.email, subject:"Reenviado (rebotó): " + subject, threadId:s2.threadId}]).slice(-30);
+            const patch = {email:to, emailSetAt:now, emailSetBy:me.id, emailBounced:false, emailBouncedAt:null, emailError:null, emailReplySeenAt:now, mailLog:log,
+              ...(wasSeq ? {email1At:now, email1Thread:s2.threadId, email1MsgId:s2.messageId, email1Sender:k.key, email1Subject:subject} : {})};
+            await c.query("update public.docs set data = data || $2::jsonb, version = version + 1, updated_at = now() where path = $1", [path, JSON.stringify(patch)]);
+            return {ok:true, to, from:t.email};
+          }
           // responder en el mismo hilo, con la firma de Gmail de esa cuenta
           const msgs = await gmail.thread(t.token, String(b.reply.threadId)), last = [...msgs].reverse().find(m => !m.mine) || msgs[msgs.length - 1];
           if (!last) return {status:400, error:"Hilo vacío"};
