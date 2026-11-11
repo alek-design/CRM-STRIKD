@@ -6443,7 +6443,7 @@ function bxHtml(){
     <p class="mut small">Muestra la bandeja principal de las cuentas de envío (sin Promociones ni Redes). Para marcar como leído, ábrelo en Gmail.</p></section>`;
 }
 document.addEventListener("click", async e => {
-  if (e.target.closest("[data-bxre]")) return bxLoad(true);
+  if (e.target.closest("[data-bxre]")){ OR_FIXED = false; orFixReplies(); return bxLoad(true); }
   if (e.target.closest("[data-bxshow]")){ BX.show = !BX.show; return bxRe(); }
   const k = e.target.closest("[data-bxk]"); if (k){ BX.key = k.dataset.bxk; return bxRe(); }
   const o = e.target.closest("[data-bxo]"); if (o){ const [key, id] = o.dataset.bxo.split("|"); BX.open = BX.open===id ? "" : id; bxRe();
@@ -6588,7 +6588,10 @@ document.addEventListener("click", async e => {
 /* una vez por sesión: que el servidor vuelva a revisar en Gmail a los que están como "contestó" (los avisos de no entrega pasan a rebote) */
 let OR_FIXED = false;
 function orFixReplies(){ if (OR_FIXED || !S.isLead || !window.STRIKD_GMAIL_POST) return; OR_FIXED = true;
-  window.STRIKD_GMAIL_POST({fixReplies:true}).then(r => { const n = (r.rebote||0) + (r.auto||0); if (n) quickToast(`✓ ${n} que no eran respuesta se corrigieron${r.rebote ? ` (${r.rebote} rebotaron)` : ""}`); }).catch(() => { OR_FIXED = false; }); }
+  window.STRIKD_GMAIL_POST({fixReplies:true}).then(r => { const n = (r.rebote||0) + (r.auto||0);
+    if (n) quickToast(`✓ ${n} que no eran respuesta se corrigieron${r.rebote ? ` (${r.rebote} rebotaron)` : ""}`);
+    if (r.nuevas) quickToast(`✉️ ${r.nuevas} respuesta${r.nuevas===1?"":"s"} nueva${r.nuevas===1?"":"s"} marcada${r.nuevas===1?"":"s"}`);
+    setTimeout(() => { OR_FIXED = false; }, 120e3); }).catch(() => { OR_FIXED = false; }); }  /* se vuelve a revisar cada 2 min mientras estés en Outreach */
 function orLast(x){ return Math.max(...["createdAt","contactedAt","statusAt","email1At","email2At","email3At","emailRepliedAt","videoLastAt","dmDueAt"].map(k => Number(x[k]) || 0)); }
 function renderOutreach(){
   const box = $("orBox"); if (!box || S.tab!=="outreach" || busyIn(box)) return;

@@ -74,7 +74,7 @@ module.exports = async (req, res) => {
           return {ok:true, from:t.email, to:x.email, asSeq};
         }
         // lotes con autorización y emails de prueba (solo el Head)
-        if (b.fixReplies){ if (!lead) return {status:403, error:"Solo Head y Manager"}; return {ok:true, ...(await require("../lib/emailauto").fixReplies(c))}; }
+        if (b.fixReplies){ if (!lead) return {status:403, error:"Solo Head y Manager"}; const ea = require("../lib/emailauto"); const f = await ea.fixReplies(c), sr = await ea.scanReplies(c).catch(() => ({})); return {ok:true, ...f, nuevas:sr.respuestas || 0, rebotesNuevos:sr.rebotes || 0}; }
         if (b.plan || b.test || b.refresh){
           if (me.role !== "head") return {status:403, error:"Solo el Head"};
           const ea = require("../lib/emailauto");
@@ -107,10 +107,10 @@ module.exports = async (req, res) => {
       const clk = {}; (await c.query("select step, count(distinct vip_id)::int n from public.email_clicks group by step")).rows.forEach(r => clk[r.step] = r.n);
       const steps = (await c.query(`select step, count(*)::int sent, count(*) filter (where status in ('replied','optout'))::int replied
         from public.email_log where status <> 'error' group by step`)).rows.map(r => ({...r, clicked:clk[r.step] || 0}));
-      const q = (await c.query(`select count(*) filter (where data ? 'email1At' and not (data ? 'emailRepliedAt') and not (data ? 'dmDueAt') and not (data ? 'emailOptout'))::int active,
+      const q = (await c.query(`select count(*) filter (where data ? 'email1At' and coalesce(data->>'emailRepliedAt','') = '' and not (data ? 'dmDueAt') and coalesce((data->>'emailOptout')::boolean,false) = false)::int active,
         count(*) filter (where data ? 'dmDueAt' and coalesce(data->>'status','nuevo')='nuevo')::int dm,
         count(*) filter (where coalesce(data->>'email','')<>'' and not (data ? 'email1At') and coalesce(data->>'status','nuevo') in ('nuevo','contactado') and coalesce(data->>'meetId','')=''
-          and coalesce((data->>'top')::boolean,false)=false and coalesce((data->>'direct')::boolean,false)=false and coalesce((data->>'personal')::boolean,false)=false and coalesce((data->>'noContact')::boolean,false)=false and coalesce((data->>'competitor')::boolean,false)=false and coalesce((data->>'emailSkip')::boolean,false)=false and coalesce(data->>'kind','')<>'ugc' and not (data ? 'emailOptout'))::int waiting
+          and coalesce((data->>'top')::boolean,false)=false and coalesce((data->>'direct')::boolean,false)=false and coalesce((data->>'personal')::boolean,false)=false and coalesce((data->>'noContact')::boolean,false)=false and coalesce((data->>'competitor')::boolean,false)=false and coalesce((data->>'emailSkip')::boolean,false)=false and coalesce(data->>'kind','')<>'ugc' and coalesce((data->>'emailOptout')::boolean,false) = false)::int waiting
         from public.docs where path like 'meets/%/vip/%'`)).rows[0] || {};
       return {...base, people:rows.filter(r => r.key !== "general" && !SEQ_KEYS.includes(r.key)).map(r => ({uid:r.key, email:r.email})), tpl, seq, steps, queue:q};
     });
