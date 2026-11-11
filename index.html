@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-11 19:08:00 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-11 20:11:32 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794424080">
+<link rel="stylesheet" href="/auth.css?v=1794427892">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794424080"></script>
+<script src="/claude-shim.js?v=1794427892"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -6647,6 +6647,31 @@ function orChkHtml(rows){
       <table class="or-wk or-chkt"><thead><tr><th>Perfil</th><th>Correo pegado</th><th>Seguidores</th><th>Estado</th></tr></thead><tbody>${res.map(r => `<tr><td>${r.h ? `<a href="https://www.instagram.com/${esc(r.h)}/" target="_blank" rel="noopener">@${esc(r.h)}</a>` : "—"}${r.r ? ` <small class="mut">${esc(r.r.x.prospect||"")}</small>` : ""}</td>
         <td>${esc(r.email||"—")}${r.needEmail ? ` <small class="mut">(en la lista no tenía)</small>` : r.diffEmail ? ` <small class="mut">(en la lista: ${esc(r.r.x.email)})</small>` : ""}</td><td>${r.fol ? esc(fmtFol(r.fol)) : "—"}</td><td>${tag(r)}</td></tr>`).join("")}</tbody></table>` : `<p class="mut small">Pega la lista y aquí te digo quién ya está, a quién ya le mandamos email y quién falta.</p>`}</div>`;
 }
+/* Excel con los correos de quienes todavía no han sido contactados (ni email ni DM) · Alek, 11 nov 2026 */
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-orxls]"); if (!b) return;
+  b.disabled = true;
+  try{
+    const X = await loadXlsx(), seen = new Set(), det = [];
+    michRows().forEach(([u, id, x]) => {
+      const em = String(x.email||"").trim().toLowerCase();
+      if (!em || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em) || seen.has(em)) return;
+      if (orState(x).g!=="pend" || x.email1At || (x.mailLog||[]).length || x.contactedAt || x.meetId) return;
+      seen.add(em);
+      det.push({"Email": em, "Nombre": x.prospect||"", "Instagram": igUser(x.profile) ? "@" + igUser(x.profile) : "", "Seguidores": Number(x.followers)||"",
+        "Etiquetas": [x.top && "Top tier", x.direct && "Contacto directo", x.personal && "Correo personalizado"].filter(Boolean).join(", ")});
+    });
+    const wb = X.utils.book_new(), ws = X.utils.json_to_sheet(det.length ? det.map(d => ({"Email": d.Email})) : [{"Email":""}]);
+    ws["!cols"] = [{wch:38}];
+    X.utils.book_append_sheet(wb, ws, "Emails");
+    const ws2 = X.utils.json_to_sheet(det.length ? det : [{"Sin contactos":""}]);
+    ws2["!cols"] = [38,26,26,12,30].map(w => ({wch:w})); ws2["!autofilter"] = {ref: ws2["!ref"]};
+    X.utils.book_append_sheet(wb, ws2, "Detalle");
+    await downloads.save({filename:`emails-sin-contactar-${new Date(Date.now()-OFF).toISOString().slice(0,10)}.xlsx`, data: X.write(wb, {bookType:"xlsx", type:"array"})});
+    quickToast(`✓ Excel listo: ${det.length} correos sin contactar`);
+  }catch(err){ quickToast(err && err.code==="declined" ? "Descarga cancelada." : "No se pudo generar el Excel."); }
+  b.disabled = false;
+});
 document.addEventListener("click", async e => {
   if (e.target.closest("[data-orchk]")){ OR.chk.open = !OR.chk.open; return bxRe(); }
   const add = e.target.closest("[data-orchkadd]"), em = e.target.closest("[data-orchkem]"); if (!add && !em) return;
@@ -6762,7 +6787,7 @@ function renderOutreach(){
       ${OR.em===`${u}/${id}` ? orEmailHtml(u, id, x) : ""}${OR.cmp===`${u}/${id}` ? orCmpHtml(u, id, x) : ""}${orHistHtml(u, id, x)}`; };  /* secciones en pestañas para que la pantalla no sea tan larga (Alek, 11 nov 2026) */
   const periodH = `<div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div>`;
   const listsH = `    <section class="or-sec or-top">
-      <div class="or-qr"><input type="search" class="mi-q" data-orq="1" placeholder="🔍 Buscar en toda la lista: nombre, @usuario, email" value="${esc(OR.q)}"><button type="button" class="btn small${OR.chk.open?" primary":""}" data-orchk="1">📋 Revisar una lista</button></div>
+      <div class="or-qr"><input type="search" class="mi-q" data-orq="1" placeholder="🔍 Buscar en toda la lista: nombre, @usuario, email" value="${esc(OR.q)}"><button type="button" class="btn small${OR.chk.open?" primary":""}" data-orchk="1">📋 Revisar una lista</button><button type="button" class="btn small" data-orxls="1" title="Correos de los perfiles a los que todavía no se les ha mandado email ni DM">⬇ Excel: emails sin contactar</button></div>
       ${OR.chk.open ? orChkHtml(rows) : ""}
       ${q ? "" : `<div class="mi-ef or-l">${LISTS.map(([v,l,f]) => { const n = rows.filter(f).length; if (!n && OR.l!==v && v!=="accion" && v!=="all") return ""; /* las vacías no se muestran */ return `<button type="button" data-orl="${v}" class="${OR.l===v?"on":""}">${l} <b>${n}</b></button>`; }).join("")}</div>`}
       <div class="or-list">${list.slice(0, OR.n).map(rowH).join("") || `<p class="empty">${q ? "Nadie con esa búsqueda." : "Nada en esta lista."}</p>`}</div>
