@@ -74,6 +74,7 @@ module.exports = async (req, res) => {
           return {ok:true, from:t.email, to:x.email, asSeq};
         }
         // lotes con autorización y emails de prueba (solo el Head)
+        if (b.fixReplies){ if (!lead) return {status:403, error:"Solo Head y Manager"}; return {ok:true, ...(await require("../lib/emailauto").fixReplies(c))}; }
         if (b.plan || b.test || b.refresh){
           if (me.role !== "head") return {status:403, error:"Solo el Head"};
           const ea = require("../lib/emailauto");

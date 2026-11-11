@@ -6576,9 +6576,23 @@ document.addEventListener("click", async e => {
   try{ await db.doc(`meets/${u}/vip/${id}`).update(patch); if (!undo) quickToast(`✓ ${x.prospect || "Perfil"} salió de Necesitan acción`); }
   catch(_){ Object.assign(x, undo ? {actionDoneAt:Date.now()} : {actionDoneAt:null}); bxRe(); quickToast("No se guardó"); }
 });
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-ornotrep]"); if (!b) return;
+  const [u, id] = b.dataset.ornotrep.split("/"), x = ((S.vip||{})[u]||{})[id]; if (!x) return;
+  const bounce = confirm("¿El correo NO se pudo entregar (rebotó)?\n\nAceptar = rebotó (ya no se le mandan más correos)\nCancelar = fue respuesta automática (se sigue esperando su respuesta)");
+  const patch = bounce ? {emailRepliedAt:null, emailReplySnippet:null, emailBounced:true, emailBouncedAt:Date.now(), emailError:"Marcado a mano: no se pudo entregar"} : {emailRepliedAt:null, emailReplySnippet:null};
+  const prev = {emailRepliedAt:x.emailRepliedAt, emailReplySnippet:x.emailReplySnippet, emailBounced:x.emailBounced}; Object.assign(x, patch); bxRe();
+  try{ await db.doc(`meets/${u}/vip/${id}`).update(patch); quickToast(bounce ? "Marcado como rebote: ya no cuenta como respuesta" : "Quitado: ya no cuenta como respuesta"); }
+  catch(_){ Object.assign(x, prev); bxRe(); quickToast("No se guardó"); }
+});
+/* una vez por sesión: que el servidor vuelva a revisar en Gmail a los que están como "contestó" (los avisos de no entrega pasan a rebote) */
+let OR_FIXED = false;
+function orFixReplies(){ if (OR_FIXED || !S.isLead || !window.STRIKD_GMAIL_POST) return; OR_FIXED = true;
+  window.STRIKD_GMAIL_POST({fixReplies:true}).then(r => { const n = (r.rebote||0) + (r.auto||0); if (n) quickToast(`✓ ${n} que no eran respuesta se corrigieron${r.rebote ? ` (${r.rebote} rebotaron)` : ""}`); }).catch(() => { OR_FIXED = false; }); }
 function orLast(x){ return Math.max(...["createdAt","contactedAt","statusAt","email1At","email2At","email3At","emailRepliedAt","videoLastAt","dmDueAt"].map(k => Number(x[k]) || 0)); }
 function renderOutreach(){
   const box = $("orBox"); if (!box || S.tab!=="outreach" || busyIn(box)) return;
+  orFixReplies();
   if (!adminMode()){ box.innerHTML = `<p class="empty">Solo para Head y Manager.</p>`; return; }
   gmLoad();
   const rows = michRows().map(([u,id,x]) => ({u, id, x, s:orState(x)})), now = Date.now(), D = 864e5;
@@ -6616,7 +6630,7 @@ function renderOutreach(){
   const rowH = ({u, id, x, s: st}) => { const h = igUser(x.profile), url = safeUrl(x.profile||"");
     return `<div class="or-w"><div class="or-r"><div class="or-m"><b>${x.top ? "👑 " : x.direct ? "🤝 " : ""}${esc(x.prospect || h || "Sin nombre")}${vtagChips(x)}</b><small>${h ? "@" + esc(h) + " · " : ""}${x.folRange ? esc(String(x.folRange).replace(/^[^(]*\(|\)$/g,"")) : fmtFol(x.followers)} seguidores${x.email ? " · ✉ " + esc(x.email) : ""}${x.videoClicks ? " · 👀 vio el video" : ""}</small>
       ${x.emailReplySnippet && st.g==="resp" ? `<span class="mi-reply">“${esc(String(x.emailReplySnippet).slice(0, 220))}”</span>` : ""}</div>
-      <div class="or-s"><span class="or-st ${st.c}">${esc(st.t)}</span><small>${orLast(x) ? esc(fmtLocal(orLast(x))) : ""}${x.contactedBy ? " · " + esc(first(nameOf(S.ps||{}, x.contactedBy))) : ""}</small><div class="or-b">${url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">📷 Instagram</a>` : ""}${x.email ? `<button type="button" class="btn small${OR.cmp===`${u}/${id}`?" primary":""}" data-orcmp="${u}/${id}"${x.emailOptout?" disabled title=\"Pidió baja\"":""}>✉ Correo</button>` : ""}<button type="button" class="btn small" data-oremail="${u}/${id}">${x.email ? "✎" : "+ Correo"}</button>${OR.l==="accion" && !OR.q ? `<button type="button" class="btn small" data-ordone="${u}/${id}" title="Ya se atendió: sale de Necesitan acción (regresa si pasa algo nuevo)">✓ Quitar</button>` : ""}</div></div></div>
+      <div class="or-s"><span class="or-st ${st.c}">${esc(st.t)}</span><small>${orLast(x) ? esc(fmtLocal(orLast(x))) : ""}${x.contactedBy ? " · " + esc(first(nameOf(S.ps||{}, x.contactedBy))) : ""}</small><div class="or-b">${url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">📷 Instagram</a>` : ""}${x.email ? `<button type="button" class="btn small${OR.cmp===`${u}/${id}`?" primary":""}" data-orcmp="${u}/${id}"${x.emailOptout?" disabled title=\"Pidió baja\"":""}>✉ Correo</button>` : ""}<button type="button" class="btn small" data-oremail="${u}/${id}">${x.email ? "✎" : "+ Correo"}</button>${x.emailRepliedAt && !x.emailBounced && !x.emailOptout ? `<button type="button" class="btn small" data-ornotrep="${u}/${id}" title="Era un aviso de no entrega o una respuesta automática: no cuenta como respuesta">✗ No fue respuesta</button>` : ""}${OR.l==="accion" && !OR.q ? `<button type="button" class="btn small" data-ordone="${u}/${id}" title="Ya se atendió: sale de Necesitan acción (regresa si pasa algo nuevo)">✓ Quitar</button>` : ""}</div></div></div>
       ${OR.em===`${u}/${id}` ? orEmailHtml(u, id, x) : ""}${OR.cmp===`${u}/${id}` ? orCmpHtml(u, id, x) : ""}${orHistHtml(u, id, x)}`; };  const h = `<div class="or">
     <div class="row"><div><h2>Outreach de influencers</h2><p class="sub">${rows.length} perfiles en la lista · Instagram (DM de Mich) y Email (secuencia automática)</p></div><div class="spacer"></div>
       <div class="subnav or-p">${P.map(([v,l]) => `<button type="button" data-orp="${v}" class="${OR.p===v?"on":""}">${l}</button>`).join("")}</div></div>
