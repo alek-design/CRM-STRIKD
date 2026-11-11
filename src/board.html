@@ -6434,7 +6434,9 @@ function bxHtml(){
     return `<div class="bx-i${m.unread?" un":""}${op?" op":""}"><button type="button" class="mb-r" data-bxo="${m.key}|${m.threadId}">
       <span class="mb-n"><b>${m.vip ? esc(m.vip.name || bxWho(m.from)) : bxWho(m.from)}</b><small>${esc(m.fromEmail)} · a ${esc(String(m.account).split("@")[0])}</small></span>
       <span class="bx-s"><b>${esc(m.subject || "(sin asunto)")}</b> <span class="mut">— ${esc(m.snippet)}</span></span><small class="bx-d">${esc(fmtLocal(m.at))}</small></button>
-      ${op ? `<div class="mb-d">${m.vip && m.vip.profile ? `<div class="row"><a class="btn small" href="${esc(safeUrl(m.vip.profile))}" target="_blank" rel="noopener">📷 Ver perfil</a><small class="mut">Está en la lista de influencers</small></div>` : ""}
+      ${op ? `<div class="mb-d"><div class="row">${m.vip && m.vip.profile ? `<a class="btn small" href="${esc(safeUrl(m.vip.profile))}" target="_blank" rel="noopener">📷 Ver perfil</a>` : ""}
+        ${m.vip ? (bxReplied(m) ? `<small class="mut">✓ Marcado como respuesta de ${esc(m.vip.name||"")}</small>` : `<button type="button" class="btn small primary" data-bxmark="${m.key}|${m.threadId}">✓ Marcar como respuesta</button><small class="mut">de ${esc(m.vip.name||"")} (lista de influencers)</small>`)
+          : `<button type="button" class="btn small" data-bxlink="${m.key}|${m.threadId}">🔗 Es respuesta de un perfil…</button><small class="mut">Su correo no coincide con nadie de la lista</small>`}</div>
         ${!th ? `<p class="mut small">Cargando conversación…</p>` : th.err ? `<p class="err">${esc(th.err)}</p>` : th.msgs.map(x => `<div class="bx-m${x.mine?" me":""}"><small><b>${x.mine ? "Nosotros" : bxWho(x.from)}</b> · ${esc(fmtLocal(x.at))}</small><pre>${esc(x.text || "(sin texto)")}</pre></div>`).join("")}
         <label class="f">Responder desde ${esc(m.account)}<textarea rows="5" class="bx-ta" data-bxdraft="${m.threadId}" placeholder="Escribe tu respuesta… (se agrega tu firma de Gmail)">${esc(BX.draft[m.threadId]||"")}</textarea></label>
         <div class="row"><button type="button" class="btn small primary" data-bxsend="${m.key}|${m.threadId}"${BX.sending===m.threadId?" disabled":""}>${BX.sending===m.threadId ? "Enviando…" : "Enviar respuesta"}</button></div></div>` : ""}</div>`; };
@@ -6544,6 +6546,27 @@ document.addEventListener("click", async e => {
 document.addEventListener("input", e => { const f = e.target.closest("[data-orcf]"); if (!f) return; const d = OR.draft[f.dataset.k]; if (!d) return; d[f.dataset.orcf] = f.type==="checkbox" ? f.checked : f.value; if (f.dataset.orcf==="subject" || f.dataset.orcf==="body") d.edited = true; });
 document.addEventListener("change", e => { const f = e.target.closest("[data-orcf]"); if (!f) return; const d = OR.draft[f.dataset.k]; if (!d) return; d[f.dataset.orcf] = f.type==="checkbox" ? f.checked : f.value; });
 document.addEventListener("keydown", e => { const i = e.target.closest("[data-oremv]"); if (i && e.key==="Enter"){ e.preventDefault(); const b = document.querySelector(`[data-oremsave="${i.dataset.oremv}"]`); b && b.click(); } });
+/* marcar a mano un correo del buzón como respuesta de un perfil (por si no se detectó solo) */
+function bxReplied(m){ const [, u, , id] = String((m.vip||{}).path||"").split("/"), x = ((S.vip||{})[u]||{})[id]; return x ? !!x.emailRepliedAt && Number(x.emailRepliedAt) >= m.at - 60e3 : !!(m.vip||{}).replied; }
+async function bxMarkReply(path, m){
+  const [, u, , id] = path.split("/"), x = ((S.vip||{})[u]||{})[id];
+  const patch = {emailRepliedAt:m.at, emailReplySeenAt:m.at, emailReplySnippet:String(m.snippet||"").slice(0, 300), replyHandledAt:null, actionDoneAt:null, emailBounced:false, emailCheckedAt:Date.now(),
+    ...(x && !x.email && m.fromEmail ? {email:m.fromEmail} : {})};
+  try{ await db.doc(path).update(patch); if (x) Object.assign(x, patch); if (m.vip) m.vip.replied = true; quickToast("✓ Marcado como respuesta: ya sale en Necesitan acción"); }
+  catch(_){ alert("No se guardó. Intenta otra vez."); }
+  bxRe();
+}
+document.addEventListener("click", e => {
+  const mk = e.target.closest("[data-bxmark]"); if (mk){ const [k, th] = mk.dataset.bxmark.split("|"), m = (BX.items||[]).find(i => i.key===k && i.threadId===th); if (m && m.vip) bxMarkReply(m.vip.path, m); return; }
+  const ln = e.target.closest("[data-bxlink]"); if (ln){ const [k, th] = ln.dataset.bxlink.split("|"), m = (BX.items||[]).find(i => i.key===k && i.threadId===th); if (!m) return;
+    const q = (prompt(`¿De quién es este correo (${m.fromEmail})? Escribe su @usuario, nombre o correo:`) || "").trim().toLowerCase().replace(/^@/, ""); if (!q) return;
+    const hits = michRows().filter(([,,x]) => [x.prospect, igUser(x.profile), x.email].filter(Boolean).some(v => fold(String(v)).includes(fold(q))));
+    if (!hits.length) return alert("No encontré a nadie con eso en la lista.");
+    const [u, id, x] = hits.length===1 ? hits[0] : (() => { const i = Number(prompt(hits.slice(0, 9).map(([,,x], n) => `${n+1}. ${x.prospect||""} @${igUser(x.profile)||""}`).join("\n") + "\n\n¿Cuál? (número)")) - 1; return hits[i] || []; })();
+    if (!u) return;
+    if (!confirm(`¿Marcar este correo como respuesta de ${x.prospect || "@" + igUser(x.profile)}?${!x.email ? `\nTambién se le guarda el correo ${m.fromEmail}.` : ""}`)) return;
+    m.vip = {path:`meets/${u}/vip/${id}`, name:x.prospect, profile:x.profile}; bxMarkReply(m.vip.path, m); }
+});
 /* ---------- Outreach de influencers: tablero para Head y Manager (avances, canales, semanas y listas) ---------- */
 const OR = {p:"7", l:"accion", q:"", n:40, cmp:"", em:"", hist:{}, draft:{}, busy:""};
 function orState(x){

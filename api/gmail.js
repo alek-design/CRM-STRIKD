@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
           const { SEQ_KEYS } = require("../lib/emailauto");
           const keys = (await c.query("select key, email from public.gmail_tokens")).rows.filter(r => SEQ_KEYS.includes(r.key) || r.key === "general");
           if (b.inbox){
-            const vips = {}; (await c.query("select path, data->>'email' em, data->>'prospect' nm, data->>'profile' pr from public.docs where path like 'meets/%/vip/%' and coalesce(data->>'email','')<>''")).rows.forEach(r => vips[String(r.em).toLowerCase()] = {path:r.path, name:r.nm, profile:r.pr});
+            const vips = {}; (await c.query("select path, data->>'email' em, data->>'prospect' nm, data->>'profile' pr, coalesce(data->>'emailRepliedAt','') rep from public.docs where path like 'meets/%/vip/%' and coalesce(data->>'email','')<>''")).rows.forEach(r => vips[String(r.em).toLowerCase()] = {path:r.path, name:r.nm, profile:r.pr, replied:!!r.rep});
             const res = await Promise.all(keys.filter(k => !b.inbox.key || k.key === b.inbox.key).map(async k => { try{ const t = await gmail.tokenFor(c, k.key); if (!t) return {key:k.key, email:k.email, error:"sin conexión"};
               return {key:k.key, email:k.email, items:(await gmail.inbox(t.token, 25)).map(m => { const em = (String(m.from).match(/<([^>]+)>/) || [, m.from])[1].trim().toLowerCase(); return {...m, key:k.key, account:k.email, fromEmail:em, vip:vips[em] || null}; })}; }
               catch(e){ return {key:k.key, email:k.email, error:String(e.message || e)}; } }));
@@ -74,7 +74,7 @@ module.exports = async (req, res) => {
           return {ok:true, from:t.email, to:x.email, asSeq};
         }
         // lotes con autorización y emails de prueba (solo el Head)
-        if (b.fixReplies){ if (!lead) return {status:403, error:"Solo Head y Manager"}; const ea = require("../lib/emailauto"); const f = await ea.fixReplies(c), sr = await ea.scanReplies(c).catch(() => ({})); return {ok:true, ...f, nuevas:sr.respuestas || 0, rebotesNuevos:sr.rebotes || 0}; }
+        if (b.fixReplies){ if (!lead) return {status:403, error:"Solo Head y Manager"}; const ea = require("../lib/emailauto"); const f = {}, sr = await ea.scanReplies(c).catch(() => ({})); /* la corrección de rebotes ya corrió una vez (cron); aquí solo se buscan respuestas nuevas */ return {ok:true, ...f, nuevas:sr.respuestas || 0, rebotesNuevos:sr.rebotes || 0}; }
         if (b.plan || b.test || b.refresh){
           if (me.role !== "head") return {status:403, error:"Solo el Head"};
           const ea = require("../lib/emailauto");
