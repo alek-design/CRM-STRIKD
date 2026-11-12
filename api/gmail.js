@@ -115,7 +115,7 @@ module.exports = async (req, res) => {
           const fol = b.plan.fol && typeof b.plan.fol === "object" ? {min:Number(b.plan.fol.min) || 0, max:b.plan.fol.max == null || b.plan.fol.max === "" ? null : Number(b.plan.fol.max)} : null;
           const pid = /^\d{4}-\d{2}-\d{2}(-\d+)?$/.test(b.plan.id || "") ? b.plan.id : "";
           const r = await ea.plan(c, date, {preview:true, ...(pid ? {id:pid} : {}), ...(fol ? {fol} : {})});
-          return {ok:true, date, id:r.id, n:(r.items || []).length, status:r.status};
+          return {ok:true, date, id:r.id, n:(r.items || []).length, batch:r.status};
         }
         const key = b.disconnect === "general" || /^seq[1-5]$/.test(b.disconnect || "") ? (me.role === "head" ? b.disconnect : null) : b.disconnect === "me" ? me.id : null;
         if (!key) return {status:403, error:"Sin permiso"};
@@ -146,6 +146,6 @@ module.exports = async (req, res) => {
         from public.docs where path like 'meets/%/vip/%'`)).rows[0] || {};
       return {...base, people:rows.filter(r => r.key !== "general" && !SEQ_KEYS.includes(r.key)).map(r => ({uid:r.key, email:r.email})), tpl, seq, steps, queue:q};
     });
-    res.status(out.status || 200).json(out);
+    res.status(Number.isInteger(out.status) && out.status >= 200 && out.status < 600 ? out.status : 200).json(out);
   }catch(err){ res.status(500).json({error:String(err.message || err)}); }
 };

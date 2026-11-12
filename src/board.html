@@ -6407,7 +6407,7 @@ document.addEventListener("click", async e => {
     const pid = b && b.id ? b.id : "", pdate = b ? b.date : d;
     if (b && b.items && b.items.some(i => i.skip || i.edited) && !confirm("Volver a preparar borra lo que quitaste o editaste en este lote. ¿Sigo?")) return;
     MB.busy = "plan"; MB.err = MB.msg = ""; schedule();
-    try{ const r = await window.STRIKD_GMAIL_POST({plan:{date:pdate, id:pid, fol:((S.config||{}).mailSeq||{}).fol || null}}); MB.msg = r.status==="approved" ? "Ese lote ya estaba autorizado; no lo toqué." : `Listo: ${r.n} emails para el ${mbDay(r.date)}.`; }
+    try{ const r = await window.STRIKD_GMAIL_POST({plan:{date:pdate, id:pid, fol:((S.config||{}).mailSeq||{}).fol || null}}); MB.msg = (r.batch || r.status)==="approved" ? "Ese lote ya estaba autorizado; no lo toqué." : `Listo: ${r.n} emails para el ${mbDay(r.date)}.`; }
     catch(err){ MB.err = err.message || String(err); }
     MB.busy = ""; const bx = $("orBox"); if (bx) bx.dataset.h = ""; return schedule(); }
   const ts = e.target.closest("[data-mbtest]"); if (ts && S.isOwner && window.STRIKD_GMAIL_POST){
