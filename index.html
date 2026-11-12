@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-12 23:15:32 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-12 23:57:24 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){if(e.lineno<=1||(e.filename&&e.filename.indexOf(location.origin)!==0))return;show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794525332">
+<link rel="stylesheet" href="/auth.css?v=1794527844">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794525332"></script>
+<script src="/claude-shim.js?v=1794527844"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -332,7 +332,8 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .or-c{border:1px solid var(--line);border-radius:14px;padding:12px 14px}.or-c h3{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px}.or-dot{width:9px;height:9px;border-radius:50%;display:inline-block}.or-dot.ig{background:#d62976}.or-dot.em{background:#3b82f6}
 .or-on,.or-off{font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px}.or-on{background:color-mix(in srgb,var(--ok) 18%,transparent)}.or-off{background:var(--line);color:var(--muted)}
 .or-f{display:flex;flex-wrap:wrap;gap:6px 14px}.or-f span,.or-k span{display:flex;flex-direction:column;font-size:12px;color:var(--muted)}.or-f b{font-size:20px;color:var(--fg)}.or-f .wait b{color:var(--wait)}.or-x{margin:8px 0 4px}
-.or-sec{margin-top:18px}.or-wk{width:100%;border-collapse:collapse;font-size:13px}.or-wk th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;padding:4px 6px}.or-wk td{padding:6px;border-top:1px solid var(--line);white-space:nowrap}
+.or-sec{margin-top:18px}.or-days .or-tot td{border-top:1px solid var(--line,#333);font-weight:600}
+.or-wk{width:100%;border-collapse:collapse;font-size:13px}.or-wk th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;padding:4px 6px}.or-wk td{padding:6px;border-top:1px solid var(--line);white-space:nowrap}
 .or-bar{display:inline-block;height:8px;width:calc(var(--w) * .6);max-width:60%;min-width:2px;border-radius:4px;margin-right:6px;vertical-align:middle}.or-bar.dm{background:#d62976}.or-bar.em{background:#3b82f6}
 .or-l{flex-wrap:wrap}.or-list{display:grid;gap:6px;margin-top:8px}.or-r{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:9px 12px}
 .or-m{display:grid;gap:2px;min-width:0}.or-m small{color:var(--muted);overflow-wrap:anywhere}.or-s{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right;flex-shrink:0}.or-s small{color:var(--muted);font-size:11.5px}
@@ -6695,6 +6696,29 @@ document.addEventListener("change", e => { const t = e.target.closest("[data-orc
 document.addEventListener("paste", e => { const t = e.target.closest("[data-orchkt]"); if (t) setTimeout(() => { OR.chk.text = t.value; bxRe(); }, 30); });
 /* ---------- Outreach de influencers: tablero para Head y Manager (avances, canales, semanas y listas) ---------- */
 const OR = {chk:{open:false, text:"", res:null, busy:""}, sec:(() => { try{ return localStorage.getItem("orSec") || "list"; }catch(_){ return "list"; } })(), p:"7", l:"accion", q:"", n:40, cmp:"", em:"", hist:{}, draft:{}, busy:""};
+/* Avance por día de la lista de Mich (últimos 14 días, hora de Cancún) · Alek, 12 nov 2026
+   "Contactados" = personas contactadas por primera vez ese día (DM o email 1, lo que haya sido primero) */
+function orDays(rows, now){
+  const D = 864e5, d0 = (() => { const d = new Date(now-OFF); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) + OFF; })();
+  const days = [];
+  for (let i = 0; i < 14; i++) days.push(d0 - i*D);
+  const inD = (t, a) => { t = Number(t); return t >= a && t < a + D; };
+  const firstC = x => { const ts = [x.contactedAt, x.email1At].map(Number).filter(t => t > 0); return ts.length ? Math.min(...ts) : 0; };
+  const by = (a, f) => rows.filter(({x}) => f(x, a)).length;
+  const R = days.map(a => ({a,
+    nuevos: by(a, x => inD(firstC(x), a)),
+    dm: by(a, x => inD(x.contactedAt, a)),
+    e1: by(a, x => inD(x.email1At, a)),
+    seg: rows.reduce((n, {x}) => n + ["email2At","email3At"].filter(k => inD(x[k], a)).length, 0),
+    rep: by(a, x => !x.emailOptout && !x.emailBounced && inD(x.emailRepliedAt, a)) + by(a, x => x.status==="interesado" && inD(x.statusAt, a)),
+    meet: by(a, x => (x.meetId || x.status==="agendo") && inD(x.statusAt, a))}))
+    .filter(r => { const wd = new Date(r.a - OFF + 12*3600e3).getUTCDay(); return r.a === d0 || !(wd===0 || wd===6) || r.nuevos || r.dm || r.e1 || r.seg || r.rep || r.meet; });   /* fines de semana solo si hubo algo */
+  const tot = f => R.reduce((n, r) => n + r[f], 0), c = n => n ? n : "·";
+  const lbl = a => a === d0 ? "Hoy" : a === d0 - D ? "Ayer" : new Date(a - OFF + 12*3600e3).toLocaleDateString("es-MX", {weekday:"short", day:"numeric", month:"short", timeZone:"UTC"});
+  return `<table class="or-wk or-days"><thead><tr><th>Día</th><th title="Influencers contactados por primera vez ese día (DM o email 1)">Contactados</th><th>DM</th><th>Email 1</th><th title="Approach 2 y 3">Seguimientos</th><th>Respuestas</th><th>Meets</th></tr></thead><tbody>${R.map(r => `<tr><td>${esc(lbl(r.a))}</td><td><b>${c(r.nuevos)}</b></td><td>${c(r.dm)}</td><td>${c(r.e1)}</td><td>${c(r.seg)}</td><td>${c(r.rep)}</td><td>${r.meet ? `<b>${r.meet}</b>` : "·"}</td></tr>`).join("")}
+    <tr class="or-tot"><td>Total</td><td><b>${tot("nuevos")}</b></td><td>${tot("dm")}</td><td>${tot("e1")}</td><td>${tot("seg")}</td><td>${tot("rep")}</td><td>${tot("meet")}</td></tr></tbody></table>
+    <p class="mut small">Contactados = influencers de la lista a los que se les escribió por primera vez ese día (por DM o con el email 1). Seguimientos = approach 2 y 3. Últimos 14 días (sábado y domingo solo si hubo movimiento).</p>`;
+}
 function orState(x){
   const st = x.status || "nuevo";
   if (x.meetId) return {t:`📅 Meet${x.meetAt ? " " + fmtMeetAt(x.meetAt) : ""}`, c:"ok", g:"meet"};
@@ -6802,6 +6826,7 @@ function renderOutreach(){
         <p class="mut small">Respuesta: <b>${pct(repEm, emTot)}</b> de ${emTot} a los que se les escribió.${accts.length ? ` Cuentas: ${accts.map(a => `${esc(a.email.split("@")[0])} ${a.today||0}/${a.quota||10}`).join(" · ")} hoy.` : gs.seq ? " Sin cuentas de envío conectadas." : ""}</p></section>
     </div>
     <p class="mut small or-x">Aparte: 👑 ${top} top tier · 🤝 ${dir} contacto directo (estrategia propia, sin emails automáticos).</p>
+    <section class="or-sec"><h3 class="sec-h">Avance por día</h3>${orDays(rows, now)}</section>
     <section class="or-sec"><h3 class="sec-h">Avance por semana</h3>${wk}</section>`;
   const mbPend = Object.values(S.mailBatch||{}).filter(b => b && b.date >= todayKey() && b.status!=="approved").reduce((n, b) => n + (b.items||[]).filter(i => !i.skip).length, 0);
   if (!S.viewAs) bxLoad(false); // para el contador de no leídos
