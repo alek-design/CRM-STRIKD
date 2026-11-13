@@ -339,8 +339,7 @@
     if (!("PushManager" in window) || !window.Notification) return alert("Este navegador no permite notificaciones. En iPhone necesitas iOS 16.4 o más nuevo.");
     const t = (await sb.auth.getSession()).data.session.access_token, H = {"content-type":"application/json", authorization:"Bearer " + t};
     try{
-      if (Notification.permission === "granted" && localStorage.getItem("strikd_push") === "1"){ await fetch("/api/push", {method:"POST", headers:H, body:JSON.stringify({test:true})}); return; }
-      const perm = await Notification.requestPermission();
+      const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
       if (perm !== "granted") return alert("No diste permiso. Puedes activarlo después en Ajustes → Notificaciones → STRIKD.");
       const reg = await navigator.serviceWorker.ready;
       const k = await fetch("/api/push", {headers:H}).then(r => r.json());
@@ -349,7 +348,12 @@
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "no se guardó");
       localStorage.setItem("strikd_push", "1");
       if (me.role === "head") fetch("/api/push-cron", {method:"POST", headers:H}).catch(() => {});
-      await fetch("/api/push", {method:"POST", headers:H, body:JSON.stringify({test:true})});
+      // prueba y resultado visible (antes no decía nada si no llegaba)
+      const j = await fetch("/api/push", {method:"POST", headers:H, body:JSON.stringify({test:true})}).then(r => r.json()).catch(e => ({error:String(e)}));
+      if (j.error) alert("No se pudo mandar la prueba: " + j.error);
+      else if (!j.sent) alert("Este dispositivo quedó registrado, pero la prueba no llegó a ninguno de tus " + (j.devices || 0) + " dispositivo(s).\n\n" + (j.errors && j.errors.length ? "Detalle: " + j.errors.join(" · ") + "\n\n" : "") + "Revisa en Ajustes del celular → Notificaciones → STRIKD que estén permitidas y que no tengas un modo Concentración / No molestar.");
+      else if (window.STRIKD_TOAST) window.STRIKD_TOAST("✓ Prueba enviada a " + j.sent + " de " + j.devices + " dispositivo(s). Si no la ves, revisa No molestar / Concentración.");
+      else alert("✓ Prueba enviada a " + j.sent + " de " + j.devices + " dispositivo(s). Si no la ves en unos segundos, revisa que no tengas No molestar / Concentración.");
     }catch(e){ alert("No se pudieron activar las notificaciones: " + (e.message || e)); }
   }
   window.STRIKD_PUSH = pushEnable;
