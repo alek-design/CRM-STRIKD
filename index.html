@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-13 18:13:58 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-13 19:39:58 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){if(e.lineno<=1||(e.filename&&e.filename.indexOf(location.origin)!==0))return;show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794593638">
+<link rel="stylesheet" href="/auth.css?v=1794598798">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794593638"></script>
+<script src="/claude-shim.js?v=1794598798"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -2180,12 +2180,17 @@ function maybeOnboard(){
   const A = window.STRIKD_ACT; if (!A || ONB.open || !S.uid || !S.roleApplied || S.viewAs) return;
   const m = S.members && S.members[S.uid]; if (!m) return;
   let ls = {}; try{ ls = {done:localStorage.getItem("strikd_onb_" + S.uid), push:localStorage.getItem("strikd_onb_push")}; }catch(e){}
-  const pushAsk = A.standalone() && A.pushSupported() && !A.pushOn() && !A.pushBlocked() && ls.push !== "skip";
+  // pedir notificaciones en cualquier dispositivo donde no estén activas (p. ej. celular nuevo): en el iPhone desde Safari explica cómo instalar; si están bloqueadas, cómo desbloquear.
+  // "Ahora no" lo pospone 3 días en ese dispositivo.
+  let ss = null; try{ ss = sessionStorage.getItem("strikd_push_seen"); }catch(e){}
+  const skipUntil = Number(ls.push) || 0, snoozed = ls.push === "skip" ? false : skipUntil > Date.now();
+  const pushAsk = !A.pushOn() && (A.pushSupported() || A.needsInstall()) && !snoozed && !ss;
   let steps = [];
   if (!m.onboarded && ls.done !== "1") steps = ["google", "push", "theme"].filter(k => !(k==="google" && A.google().connected) && !(k==="push" && A.pushOn()));
   else if (pushAsk && !ONB.checked) steps = ["push"];
   ONB.checked = true;
   if (!steps.length){ if (!m.onboarded && ls.done !== "1") onbFinish(); return; }
+  if (steps.length===1 && steps[0]==="push"){ try{ sessionStorage.setItem("strikd_push_seen", "1"); }catch(e){} }
   ONB.steps = steps; ONB.i = 0; ONB.open = true; onbRender();
 }
 function onbRender(){
@@ -2200,7 +2205,7 @@ function onbRender(){
     const st = A.pushOn() ? "on" : A.needsInstall() ? "install" : A.pushBlocked() ? "blocked" : !A.pushSupported() ? "no" : "ask";
     body = `<div class="onb-ic">🔔</div><h2>Activa las notificaciones</h2><p>Te avisamos de tus pendientes, meets y respuestas a tus emails, aunque tengas la app cerrada.</p>
       ${st==="on" ? `<p class="onb-ok">✓ Activadas</p><button type="button" class="btn primary" data-onb="next">Siguiente</button>`
-      : st==="install" ? `<p><b>Primero instala la app:</b> en Safari toca Compartir (↑) → <b>Agregar a inicio</b>, y ábrela desde el ícono. Ahí te pedimos el permiso.</p><button type="button" class="btn primary" data-onb="next">Entendido</button>`
+      : st==="install" ? `<p><b>Primero instala la app:</b> en Safari toca Compartir (↑) → <b>Agregar a inicio</b>, y ábrela desde el ícono (no desde Safari). Ahí te pedimos el permiso.</p><button type="button" class="btn primary" data-onb="next">Entendido</button><button type="button" class="onb-skip" data-onb="pskip">Ahora no</button>`
       : st==="blocked" ? `<p>Están bloqueadas. Actívalas en Ajustes del iPhone → Notificaciones → STRIKD.</p><button type="button" class="btn primary" data-onb="next">Siguiente</button>`
       : st==="no" ? `<p>Este navegador no permite notificaciones.</p><button type="button" class="btn primary" data-onb="next">Siguiente</button>`
       : `<button type="button" class="btn primary" data-onb="pon">Activar notificaciones</button><button type="button" class="onb-skip" data-onb="pskip">Ahora no</button>`}`;
@@ -2216,7 +2221,7 @@ async function onbClick(e){
   const A = window.STRIKD_ACT, k = b.dataset.onb;
   if (k==="gcon"){ try{ localStorage.setItem("strikd_onb_resume", "1"); }catch(_){ } return A.googleConnect(); }
   if (k==="pon"){ b.disabled = true; try{ await A.pushEnable(); }finally{ b.disabled = false; } return onbRender(); }
-  if (k==="pskip"){ try{ localStorage.setItem("strikd_onb_push", "skip"); }catch(_){ } k2(); return; }
+  if (k==="pskip"){ try{ localStorage.setItem("strikd_onb_push", String(Date.now() + 3*864e5)); }catch(_){ } k2(); return; }
   if (k==="t-light" || k==="t-dark"){ setTheme(k==="t-light" ? "light" : "dark"); return onbRender(); }
   if (k==="next") k2();
   function k2(){ ONB.i++; if (ONB.i >= ONB.steps.length) onbFinish(); else onbRender(); }
