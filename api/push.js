@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
       await init(c);
       if (req.method === "GET"){ const k = await vapid(c); const n = (await c.query("select count(*)::int n from public.push_subs where user_id=$1", [me.id])).rows[0].n; return {publicKey:k.publicKey, devices:n}; }
       if (req.method === "DELETE"){ await c.query("delete from public.push_subs where endpoint=$1 and user_id=$2", [String(body.endpoint || ""), me.id]); return {ok:true}; }
-      if (body.test){ const n = await sendTo(c, [me.id], {title:"STRIKD", body:"Listo: así te van a llegar los mensajes nuevos de WhatsApp.", url:"/?tab=msgs", tag:"prueba"}); return {sent:n}; }
+      if (body.test){ const n = await sendTo(c, [me.id], {title:"STRIKD", body:"Listo: así te van a llegar los avisos del panel (emails, DMs y reportes).", url:"/?tab=hoy", tag:"prueba"}); return {sent:n}; }
       const sub = body.subscription;
       if (!sub || !sub.endpoint || !sub.keys) throw Object.assign(new Error("Suscripción inválida"), {status:400});
       await c.query(`insert into public.push_subs (endpoint, user_id, sub, ua) values ($1,$2,$3,$4)
