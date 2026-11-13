@@ -11,6 +11,7 @@ const emailauto = require("../lib/emailauto");
 const weekfreeze = require("../lib/weekfreeze");
 const perfilresp = require("../lib/perfilresp");
 const vipimport = require("../lib/vipimport");
+const michdm = require("../lib/michdm");
 const step = async (fn) => { try{ return await fn(); }catch(e){ return {error:String(e.message || e)}; } };
 module.exports = async (req, res) => {
   res.setHeader("cache-control", "no-store");
@@ -28,6 +29,7 @@ module.exports = async (req, res) => {
         semana:await step(() => weekfreeze.run(c)),
         importacion:await step(() => vipimport.run(c)),
         responsables:await step(() => perfilresp.run(c)),
+        dmsMich:await step(() => michdm.run(c)),                 // 12, 3 y 6 pm: contador de DMs de Mich (meta 30)
       };
       return {ok:true, ...Object.fromEntries(Object.entries(r).filter(([, v]) => v))};
     });
