@@ -31,6 +31,8 @@ module.exports = async (req, res) => {
         from public.push_subs s left join public.app_users u on u.id = s.user_id group by 1 order by 1`)) || [];
       r.reporte_diario = (await q(`select r.day, coalesce(u.name, u.email) persona, r.ok as dispositivos_que_recibieron, r.note as nota, r.sent_at
         from public.report_sent r left join public.app_users u on u.id = r.user_id order by r.sent_at desc limit 8`)) || [];
+      r.dms_mich = (await q(`select d.day, d.slot as hora, coalesce(u.name, u.email) persona, d.ok as dispositivos_que_recibieron, d.sent_at
+        from public.dm_nudge_sent d left join public.app_users u on u.id = d.user_id order by d.sent_at desc limit 10`)) || [];
       return r;
     });
     res.json(out);
