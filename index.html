@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-15 22:07:06 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-16 18:02:48 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){if(e.lineno<=1||(e.filename&&e.filename.indexOf(location.origin)!==0))return;show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794780426">
+<link rel="stylesheet" href="/auth.css?v=1794852168">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794780426"></script>
+<script src="/claude-shim.js?v=1794852168"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -2322,7 +2322,12 @@ function syncAcct(){
 
 /* ---------- render scheduler ---------- */
 let pending=false;
-function schedule(){ if(pending) return; pending=true; setTimeout(()=>{ pending=false; render(); }, 30); }
+/* mientras hay un dedo tocando la pantalla no se redibuja (si no, el botón cambia bajo el dedo y el toque se pierde; pasaba al regresar de Instagram) */
+let TOUCH_AT = 0;
+document.addEventListener("pointerdown", () => { TOUCH_AT = Date.now(); }, true);
+document.addEventListener("pointerup", () => { TOUCH_AT = 0; }, true);
+document.addEventListener("pointercancel", () => { TOUCH_AT = 0; }, true);
+function schedule(){ if(pending) return; pending=true; const go = () => { if (TOUCH_AT && Date.now() - TOUCH_AT < 800) return setTimeout(go, 60); pending=false; render(); }; setTimeout(go, 30); }
 
 async function profiles(ids){
   if (!user || !ids.length) return {};
@@ -4856,6 +4861,16 @@ async function vipEditOpen(k){
   });
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-medit]"); if (!b || b.closest("#view-mich")) return; e.preventDefault(); e.stopPropagation(); vipEditOpen(b.dataset.medit); });
+/* Palomear con un solo toque: se marca al levantar el dedo (no espera al "click", que en iPhone se pierde si la lista se redibuja al regresar de otra app) */
+const MI_TAP = {at:0, k:""};
+document.addEventListener("pointerup", e => {
+  if (e.pointerType === "mouse") return;
+  const b = e.target.closest && e.target.closest("[data-mdone],[data-mundo]"); if (!b) return;
+  const k = b.dataset.mdone || b.dataset.mundo, st = b.dataset.mdone ? "contactado" : "nuevo";
+  if (MI_TAP.k === k + st && Date.now() - MI_TAP.at < 1500) return;
+  MI_TAP.at = Date.now(); MI_TAP.k = k + st; e.preventDefault();
+  michMark(k, st);
+}, true);
 async function michMark(k, status){
   const [u, id] = k.split("/"), x = (S.vip[u]||{})[id]; if (!x) return;
   if (status==="contactado"){ const q = michQuota(); if (q.until){ const t = $("miToast"); t.hidden = false; t.innerHTML = `<span>🧊 En pausa: vuelves en ${esc(fmtLeft(q.until - Date.now()))}</span>`; clearTimeout(MICH.tT); MICH.tT = setTimeout(() => { t.hidden = true; }, 3000); return; } }
@@ -4908,6 +4923,7 @@ $("view-mich").addEventListener("click", e => {
     x.emailOptout = Date.now(); renderMich();
     db.doc(`meets/${u}/vip/${id}`).update({emailOptout:x.emailOptout, emailOptoutBy:S.uid}).then(() => quickToast("✓ Ya no se le escribirá")).catch(() => { delete x.emailOptout; renderMich(); quickToast("No se guardó"); }); return; }
   const bk = e.target.closest("[data-mbook]"); if (bk){ e.preventDefault(); e.stopPropagation(); return michBookOpen(bk.dataset.mbook); }
+  if (e.target.closest("[data-mdone],[data-mundo]") && Date.now() - MI_TAP.at < 1500){ e.preventDefault(); e.stopPropagation(); return; } // ya se marcó en el pointerup
   const dn = e.target.closest("[data-mdone]"), un = e.target.closest("[data-mundo]"), tu = e.target.closest("[data-mtundo]");
   if (dn){ e.preventDefault(); e.stopPropagation(); return michMark(dn.dataset.mdone, "contactado"); }
   if (un){ e.preventDefault(); e.stopPropagation(); return michMark(un.dataset.mundo, "nuevo"); }
@@ -6004,7 +6020,8 @@ function presOnline(){ return presPeople().filter(u => presOf(u).st==="on"); }
   let t = null; const later = () => { clearTimeout(t); t = setTimeout(() => { const a = document.activeElement; if (!(a && a.matches && a.matches("input,textarea,select"))) fix(); }, 120); };
   document.addEventListener("focusout", e => { if (e.target && e.target.matches && e.target.matches("input,textarea,select")) later(); });
   if (window.visualViewport){ let h = window.visualViewport.height; window.visualViewport.addEventListener("resize", () => { const nh = window.visualViewport.height; if (nh > h + 80) later(); h = nh; }); }
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState==="visible") later(); });
+  let hadField = false;
+  document.addEventListener("visibilitychange", () => { const a = document.activeElement; if (document.visibilityState==="hidden") hadField = !!(a && a.matches && a.matches("input,textarea,select")); else if (hadField) later(); });
 })();
 let PRES_LAST = 0;
 /* Tiempo activo en la app: cuenta un minuto por cada minuto con la app abierta y con actividad (tocar, escribir, scroll).
