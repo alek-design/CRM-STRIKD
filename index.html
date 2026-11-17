@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-16 18:02:48 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-17 21:44:46 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){if(e.lineno<=1||(e.filename&&e.filename.indexOf(location.origin)!==0))return;show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1794852168">
+<link rel="stylesheet" href="/auth.css?v=1794951886">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1794852168"></script>
+<script src="/claude-shim.js?v=1794951886"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -324,7 +324,8 @@ span.cw-own-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .or-ck{display:flex!important;align-items:center;gap:8px;font-size:13px;border:0!important;background:none!important;padding:0!important;width:auto!important}.or-ck input{width:auto!important;margin:0}
 .or-top{margin-top:8px}
 .mb{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0}.mb-h{display:flex;align-items:center;gap:8px}.mb-h h3{margin:0;font-size:15px}.mb-card{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
-.mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
+.mb-ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-ch>b{display:inline-block}.mb-ch>b::first-letter{text-transform:uppercase}.bx-del{order:3;flex:none;border:0;background:none;font-size:15px;padding:6px 8px;cursor:pointer;opacity:.55;border-radius:8px}.bx-del:hover{opacity:1;background:var(--hover,rgba(127,127,127,.12))}
+.mb-l{display:grid;gap:4px;margin-top:6px}.mb-i{border:1px solid var(--line);border-radius:10px}.mb-i.off{opacity:.55}
 .mb-r{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:inherit;text-align:left;padding:8px 10px;cursor:pointer;font:inherit}.mb-a{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--line)}
 .mb-n{display:grid;min-width:0;flex:0 1 240px}.mb-n small{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mb-sj{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:13px}.mb-c{color:var(--muted)}
 .mb-d{padding:0 10px 10px;display:grid;gap:8px}.mb-d textarea{width:100%;font:inherit}.mb-b{white-space:pre-wrap;margin:0;font:inherit;font-size:13.5px}.ok-msg{color:var(--ok);font-size:13px}.sq-ap{display:grid;gap:2px;margin:6px 0}
@@ -6485,7 +6486,7 @@ function bxHtml(){
     const ig = m.vip && m.vip.profile ? safeUrl(m.vip.profile) : "", igh = ig ? igUser(m.vip.profile) : "";
     return `<div class="bx-i${m.unread?" un":""}${op?" op":""}"><div class="bx-top">${ig ? `<a class="btn small bx-ig" href="${esc(ig)}" target="_blank" rel="noopener" title="Abrir su Instagram">📷 ${igh ? "@" + esc(igh) : "Instagram"}</a>` : ""}<button type="button" class="mb-r" data-bxo="${m.key}|${m.threadId}">
       <span class="mb-n"><b>${m.vip ? esc(m.vip.name || bxWho(m.from)) : bxWho(m.from)}</b><small>${esc(m.fromEmail)} · a ${esc(String(m.account).split("@")[0])}</small></span>
-      <span class="bx-s">${bxBounce(m) ? `<span class="or-st wait">⚠️ No se entregó${m.vip ? " · " + esc(m.vip.name||"") : ""}</span> ` : ""}<b>${esc(m.subject || "(sin asunto)")}</b> <span class="mut">— ${esc(m.snippet)}</span></span><small class="bx-d">${esc(fmtLocal(m.at))}</small></button></div>
+      <span class="bx-s">${bxBounce(m) ? `<span class="or-st wait">⚠️ No se entregó${m.vip ? " · " + esc(m.vip.name||"") : ""}</span> ` : ""}<b>${esc(m.subject || "(sin asunto)")}</b> <span class="mut">— ${esc(m.snippet)}</span></span><small class="bx-d">${esc(fmtLocal(m.at))}</small></button><button type="button" class="bx-del" data-bxdel="${m.id}" title="Eliminar del buzón" aria-label="Eliminar del buzón">🗑</button></div>
       ${op ? `<div class="mb-d">${bxBounce(m) && m.vip ? `<div class="bx-rs"><b>⚠️ Este correo no se entregó.</b> Corrige su correo y se le vuelve a mandar el mismo email desde ${esc(String(m.account).split("@")[0])}:
           <div class="or-ed"><input type="email" data-bxrsv="${m.key}|${m.threadId}" value="${esc(bxVipEmail(m))}" placeholder="correo@correcto.com"><button type="button" class="btn small primary" data-bxrs="${m.key}|${m.threadId}"${BX.sending===m.threadId?" disabled":""}>${BX.sending===m.threadId ? "Enviando…" : "Cambiar correo y reenviar"}</button><button type="button" class="linkbtn" data-bxhide="${m.id}">Ya está resuelto, ocultar</button></div></div>` : bxBounce(m) ? `<div class="row"><button type="button" class="btn small" data-bxhide="${m.id}">✓ Ya está resuelto, ocultar</button></div>` : ""}<div class="row">${m.vip && !bxBounce(m) ? (bxReplied(m) ? `<small class="mut">✓ Marcado como respuesta de ${esc(m.vip.name||"")}</small>` : `<button type="button" class="btn small primary" data-bxmark="${m.key}|${m.threadId}">✓ Marcar como respuesta</button><small class="mut">de ${esc(m.vip.name||"")} (lista de influencers)</small>`)
           : bxBounce(m) ? "" : `<button type="button" class="btn small" data-bxlink="${m.key}|${m.threadId}">🔗 Es respuesta de un perfil…</button><small class="mut">Su correo no coincide con nadie de la lista</small>`}</div>
@@ -6621,9 +6622,10 @@ document.addEventListener("click", e => {
 });
 /* rebotes en el buzón: cambiar el correo del perfil y reenviar el mismo email */
 function bxBounce(m){ return /mailer-daemon|postmaster/i.test(m.fromEmail||"") || /undeliverable|no se (pudo|ha podido) entregar|address not found|no se encontr[oó] la direcci|delivery status notification|mail delivery (failed|subsystem)|delivery has failed/i.test((m.subject||"") + " " + (m.snippet||"")); }
-document.addEventListener("click", async e => { const h = e.target.closest("[data-bxhide]"); if (!h) return; const id = h.dataset.bxhide;
+document.addEventListener("click", async e => { const h = e.target.closest("[data-bxhide],[data-bxdel]"); if (!h) return; const id = h.dataset.bxhide || h.dataset.bxdel, del = !!h.dataset.bxdel;
+  if (del && !confirm("¿Eliminar este correo del buzón?\n\nDeja de salir aquí (sigue en Gmail). Si esa persona vuelve a escribir, aparece de nuevo.")) return;
   BX.items = (BX.items||[]).filter(i => i.id !== id); BX.open = ""; bxRe();
-  try{ await window.STRIKD_GMAIL_POST({hide:{id}}); quickToast("Oculto del buzón"); }catch(_){ quickToast("No se pudo ocultar"); bxLoad(true); } });
+  try{ await window.STRIKD_GMAIL_POST({hide:{id}}); quickToast(del ? "🗑 Eliminado del buzón" : "Oculto del buzón"); }catch(_){ quickToast("No se pudo ocultar"); bxLoad(true); } });
 function bxVipEmail(m){ const [, u, , id] = String((m.vip||{}).path||"").split("/"), x = ((S.vip||{})[u]||{})[id]; return (x && x.email) || ""; }
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-bxrs]"); if (!b) return;
