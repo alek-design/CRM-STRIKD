@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
               catch(e){ return {key:k.key, email:k.email, error:String(e.message || e)}; } }));
             // rebotes que ya se resolvieron (le cambiaron el correo después del aviso) tampoco salen
             const isBounce = m => /mailer-daemon|postmaster/i.test(m.fromEmail || "") || /undeliverable|no se (pudo|ha podido) entregar|address not found|delivery status notification|delivery has failed/i.test((m.subject || "") + " " + (m.snippet || ""));
-            res.forEach(r => { if (r.items) r.items = r.items.filter(m => !hidden.has(m.id) && !(isBounce(m) && m.vip && !m.vip.bounced && m.vip.setAt > m.at)); });
+            res.forEach(r => { if (r.items) r.items = r.items.filter(m => !hidden.has(m.id) && !/\(\s*failure\s*\)/i.test(m.subject || "") /* avisos "(Failure)" de Gmail: no salen nunca (Alek, 17 nov) */ && !(isBounce(m) && m.vip && !m.vip.bounced && m.vip.setAt > m.at)); });
             return {ok:true, accounts:res.map(r => ({key:r.key, email:r.email, error:r.error || null, n:(r.items || []).length})), items:res.flatMap(r => r.items || []).sort((a, z) => z.at - a.at)};
           }
           const k = keys.find(x => x.key === (b.thread || b.reply || b.resend).key); if (!k) return {status:400, error:"Cuenta no encontrada"};
