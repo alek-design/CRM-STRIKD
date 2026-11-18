@@ -6370,7 +6370,7 @@ function mbCard(b){
   const by = {}; live.forEach(i => by[i.from||i.key] = (by[i.from||i.key]||0) + 1);
   const steps = [1,2,3].map(n => [n, live.filter(i => i.step===n).length]).filter(x => x[1]);
   const L = (i, ix) => { const op = MB.open[K+"#"+ix], ed = b.status!=="approved" && !i.sentAt;
-    const s = i.sentAt ? `<span class="or-st ok">✓ enviado</span>` : i.error ? `<span class="or-st off" title="${esc(i.error)}">✗ error</span>` : i.void ? `<span class="or-st off">no salió: ${esc(i.void)}</span>` : i.skip ? `<span class="or-st off">${i.skipTag ? "fuera: " + esc(VTAG_L[i.skipTag]||"") : "quitado"}</span>` : "";
+    const s = i.sentAt ? `<span class="or-st ok">✓ enviado</span>` : i.error ? `<span class="or-st off" title="${esc(i.error)}">✗ error</span>` : i.void ? `<span class="or-st off">no salió: ${esc(i.void)}</span>` : i.skip ? `<span class="or-st off">${i.skipTag ? "fuera: " + esc(VTAG_L[i.skipTag]||"") : i.skipWhy ? esc(i.skipWhy) : "quitado"}</span>` : "";
     return `<div class="mb-i${i.skip?" off":""}"><button type="button" class="mb-r" data-mbopen="${K}#${ix}"><span class="mb-a">A${i.step}</span><span class="mb-n"><b>${esc(i.name||i.to)}</b><small>${esc(i.to)} · desde ${esc(String(i.from||i.key).split("@")[0])}</small></span><span class="mb-sj">${i.edited ? "✎ " : ""}${esc(i.subject)}</span>${s}<span class="mb-c">${op?"▴":"▾"}</span></button>
       ${(() => { const [, u, , id] = String(i.path||"").split("/"), x = ((S.vip||{})[u]||{})[id] || {}, url = safeUrl(x.profile || i.profile || ""), h = igUser(x.profile || i.profile || ""), nt = String(x.notes ?? i.notes ?? "").trim();
         const tg = op && (b.status!=="approved" || !i.sentAt) ? `<span class="mb-tg">${VTAGS.map(([k,l]) => `<button type="button" class="mb-t${x[k]?" on":""}" data-mbtag="${K}#${ix}#${k}" aria-pressed="${x[k]?"true":"false"}">${l}</button>`).join("")}</span>` : "";
@@ -6409,6 +6409,7 @@ async function mbRefresh(manual){
   const has = Object.values(S.mailBatch||{}).some(b => b && b.date >= todayKey()); if (!has && !manual) return;
   try{ const r = await window.STRIKD_GMAIL_POST({refresh:true});
     if (r.emails || manual) quickToast(r.emails ? `✓ ${r.emails} email${r.emails===1?"":"s"} de los lotes actualizados con la plantilla nueva` : "Los lotes ya estaban al día");
+    if (r.repetidos) quickToast(`🧹 ${r.repetidos} repetido${r.repetidos===1?"":"s"} quitado${r.repetidos===1?"":"s"} de los lotes (ya se les había enviado)`);
     if (r.sinPlantilla) quickToast(`⚠️ ${r.sinPlantilla} email${r.sinPlantilla===1?"":"s"} quedaron fuera: no hay plantilla activa de su approach`); }
   catch(err){ if (manual) alert("No se pudieron actualizar los lotes: " + (err.message || err)); }
 }

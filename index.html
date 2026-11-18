@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<script>window.STRIKD_BUILD="2026-11-18 11:26:28 UTC"</script>
+<script>window.STRIKD_BUILD="2026-11-18 14:59:39 UTC"</script>
 <script>(function(){var n=0;function show(t){try{var bm=document.getElementById("bootMsg");if(!document.getElementById("sgAuth")&&bm&&bm.hidden)return;if(++n>3)return;var b=document.getElementById("errBox");if(!b){b=document.createElement("div");b.id="errBox";b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.35 -apple-system,system-ui,sans-serif;padding:8px 10px;border-radius:10px;pointer-events:none;white-space:pre-wrap;word-break:break-word";(document.body||document.documentElement).appendChild(b);}b.textContent+=(b.textContent?"\n":"")+"Error: "+String(t).slice(0,220);}catch(_){}}window.addEventListener("error",function(e){if(e.lineno<=1||(e.filename&&e.filename.indexOf(location.origin)!==0))return;show((e.message||"")+(e.filename?" @"+e.filename.split("/").pop()+":"+e.lineno:""));});window.addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesa: "+(r&&(r.message||r.code)||r));});})();</script>
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="STRIKD"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="theme-color" content="#000000">
-<link rel="stylesheet" href="/auth.css?v=1795001188">
+<link rel="stylesheet" href="/auth.css?v=1795013979">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="/claude-shim.js?v=1795001188"></script>
+<script src="/claude-shim.js?v=1795013979"></script>
 </head><body>
 <title>Tablero de Meets</title>
 <script>
@@ -6379,7 +6379,7 @@ function mbCard(b){
   const by = {}; live.forEach(i => by[i.from||i.key] = (by[i.from||i.key]||0) + 1);
   const steps = [1,2,3].map(n => [n, live.filter(i => i.step===n).length]).filter(x => x[1]);
   const L = (i, ix) => { const op = MB.open[K+"#"+ix], ed = b.status!=="approved" && !i.sentAt;
-    const s = i.sentAt ? `<span class="or-st ok">✓ enviado</span>` : i.error ? `<span class="or-st off" title="${esc(i.error)}">✗ error</span>` : i.void ? `<span class="or-st off">no salió: ${esc(i.void)}</span>` : i.skip ? `<span class="or-st off">${i.skipTag ? "fuera: " + esc(VTAG_L[i.skipTag]||"") : "quitado"}</span>` : "";
+    const s = i.sentAt ? `<span class="or-st ok">✓ enviado</span>` : i.error ? `<span class="or-st off" title="${esc(i.error)}">✗ error</span>` : i.void ? `<span class="or-st off">no salió: ${esc(i.void)}</span>` : i.skip ? `<span class="or-st off">${i.skipTag ? "fuera: " + esc(VTAG_L[i.skipTag]||"") : i.skipWhy ? esc(i.skipWhy) : "quitado"}</span>` : "";
     return `<div class="mb-i${i.skip?" off":""}"><button type="button" class="mb-r" data-mbopen="${K}#${ix}"><span class="mb-a">A${i.step}</span><span class="mb-n"><b>${esc(i.name||i.to)}</b><small>${esc(i.to)} · desde ${esc(String(i.from||i.key).split("@")[0])}</small></span><span class="mb-sj">${i.edited ? "✎ " : ""}${esc(i.subject)}</span>${s}<span class="mb-c">${op?"▴":"▾"}</span></button>
       ${(() => { const [, u, , id] = String(i.path||"").split("/"), x = ((S.vip||{})[u]||{})[id] || {}, url = safeUrl(x.profile || i.profile || ""), h = igUser(x.profile || i.profile || ""), nt = String(x.notes ?? i.notes ?? "").trim();
         const tg = op && (b.status!=="approved" || !i.sentAt) ? `<span class="mb-tg">${VTAGS.map(([k,l]) => `<button type="button" class="mb-t${x[k]?" on":""}" data-mbtag="${K}#${ix}#${k}" aria-pressed="${x[k]?"true":"false"}">${l}</button>`).join("")}</span>` : "";
@@ -6418,6 +6418,7 @@ async function mbRefresh(manual){
   const has = Object.values(S.mailBatch||{}).some(b => b && b.date >= todayKey()); if (!has && !manual) return;
   try{ const r = await window.STRIKD_GMAIL_POST({refresh:true});
     if (r.emails || manual) quickToast(r.emails ? `✓ ${r.emails} email${r.emails===1?"":"s"} de los lotes actualizados con la plantilla nueva` : "Los lotes ya estaban al día");
+    if (r.repetidos) quickToast(`🧹 ${r.repetidos} repetido${r.repetidos===1?"":"s"} quitado${r.repetidos===1?"":"s"} de los lotes (ya se les había enviado)`);
     if (r.sinPlantilla) quickToast(`⚠️ ${r.sinPlantilla} email${r.sinPlantilla===1?"":"s"} quedaron fuera: no hay plantilla activa de su approach`); }
   catch(err){ if (manual) alert("No se pudieron actualizar los lotes: " + (err.message || err)); }
 }
