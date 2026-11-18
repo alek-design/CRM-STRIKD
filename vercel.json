@@ -19,6 +19,9 @@
     },
     "api/push-check.js": {
       "maxDuration": 60
+    },
+    "api/gmail.js": {
+      "maxDuration": 60
     }
   },
   "headers": [
