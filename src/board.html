@@ -116,6 +116,7 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .pf-rt{margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;font-size:14px;background:var(--surface)}.pf-rt small{display:block;color:var(--muted);font-size:12px;margin-top:2px}.pf-rt b.bad{color:#e5484d}.pf-rt b.mid{color:#b45309}
 .chip.elim{cursor:pointer;border:1px solid color-mix(in srgb,#e5484d 40%,transparent);color:#e5484d;background:transparent;font:inherit;font-size:12px;font-weight:600}
 .mi-ef{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}.mi-ef button{font:inherit;font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}.mi-ef button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.mi-ef b{opacity:.7;font-weight:600;margin-left:2px}
+.dup-live{display:block;font-size:12.5px;margin-top:4px;line-height:1.35;min-height:0}.dup-live:empty{display:none}.dup-live.bad{color:var(--bad,#e5484d);font-weight:500}.dup-live.ok{color:var(--good,#30a46c)}.dup-live.near{color:var(--mut,#999)}
 .mi-em.no{opacity:.75}
 .mi-em{display:block;font-size:12px;color:var(--muted);margin-top:2px}.mi-emadd{font:inherit;font-size:12px;font-weight:600;margin-top:4px;padding:2px 9px;border-radius:999px;border:1px dashed var(--line);background:none;color:var(--fg);align-self:flex-start}
 .own-sel{font:inherit;font-size:12.5px;font-weight:600;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);max-width:180px}
@@ -6297,6 +6298,31 @@ async function dupCheck(profile, email){
   }
   return "";
 }
+/* Revisión en vivo mientras se escribe el @ o el link de Instagram, en todas las formas de agregar (Alek, 20 nov 2026):
+   formulario principal, "+ Agregar" de la lista de Mich, agregar desde una tarea y "Registrar meet" de un perfil nuevo. */
+const LIVE_IG = 'input#f_profile, input[data-miv="ig"], input[data-tkv$="|ig"], input[data-vf="profile"]';
+function liveVipRows(){ const out = []; Object.entries(S.vip||{}).forEach(([u, m]) => Object.entries(m||{}).forEach(([id, x]) => out.push([u, id, x]))); Object.entries(S.myVip||{}).forEach(([id, x]) => { if (!(S.vip||{})[meId()]) out.push([meId(), id, x]); }); return out; }
+function liveHint(inp){ let h = inp.parentElement && inp.parentElement.querySelector(":scope > .dup-live"); if (!h){ h = document.createElement("small"); h.className = "dup-live"; h.setAttribute("aria-live", "polite"); inp.insertAdjacentElement("afterend", h); } return h; }
+let LIVE_T = 0, LIVE_N = 0;
+document.addEventListener("input", e => {
+  const inp = e.target.closest && e.target.closest(LIVE_IG); if (!inp) return;
+  clearTimeout(LIVE_T); const n = ++LIVE_N, val = inp.value.trim();
+  LIVE_T = setTimeout(async () => {
+    const h = liveHint(inp), k = igKey(val), typed = (k ? k.slice(3) : val.replace(/^@/, "").replace(/.*instagram\.com\//i, "").split(/[/?#]/)[0]).toLowerCase();
+    if (!typed || typed.length < 2){ h.textContent = ""; h.className = "dup-live"; return; }
+    const who = u => u===meId() ? "tú" : nameOf(S.ps||{}, u);
+    const rows = liveVipRows().map(([u, id, x]) => ({u, x, h:(igKey(x.profile||"") || x.igKey || "").replace(/^ig:/, "")})).filter(r => r.h);
+    const exact = rows.find(r => r.h === typed);
+    const near = rows.filter(r => r.h !== typed && (r.h.startsWith(typed) || (typed.length >= 4 && r.h.includes(typed)))).slice(0, 3);
+    const show = (cls, html) => { if (n !== LIVE_N) return; h.className = "dup-live " + cls; h.innerHTML = html; };
+    if (exact) return show("bad", `⚠️ <b>@${esc(typed)}</b> ya está en la lista${exact.x.prospect ? ` (${esc(exact.x.prospect)})` : ""} · lo agregó ${esc(who(exact.u))}${exact.x.createdAt ? ` el ${esc(fmtLocal(exact.x.createdAt).split(",")[0])}` : ""}.`);
+    // lo que no está en pantalla: se pregunta al índice (lo que agregó cualquiera del equipo)
+    if (k){ try{ const d = await db.doc(`vipIndex/${k}`).get(); const v = d.exists ? d.data() : null;
+      if (v && v.uid) return show("bad", `⚠️ <b>@${esc(typed)}</b> ya está en la lista · lo agregó ${esc(who(v.uid))}${v.at ? ` el ${esc(fmtLocal(v.at).split(",")[0])}` : ""}.`); }catch(_){} }
+    if (inp.id === "f_profile"){ const m = await dupCheck(val, ""); if (m) return show("bad", "⚠️ " + esc(m)); }
+    show(near.length ? "near" : "ok", (k ? `✓ <b>@${esc(typed)}</b> no está en la lista.` : "") + (near.length ? ` ${k ? "Parecidos" : "Ya están"}: ${near.map(r => `<b>@${esc(r.h)}</b>`).join(", ")}` : ""));
+  }, 250);
+});
 let DUPT = 0;
 document.addEventListener("change", e => { if (e.target.id!=="f_profile" && e.target.id!=="f_email") return; const t = ++DUPT;
   dupCheck($("f_profile").value.trim(), $("f_email").value.trim()).then(msg => { if (t!==DUPT) return; const er = $("formErr"); if (msg){ er.textContent = msg + " No lo puedes registrar otra vez."; er.hidden = false; } else if (/No lo puedes registrar otra vez/.test(er.textContent)) er.hidden = true; }); });
